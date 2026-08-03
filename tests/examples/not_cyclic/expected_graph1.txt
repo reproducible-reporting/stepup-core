@@ -10,13 +10,13 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
-              source   file:input.txt [amended]
+              source   file:input.txt [dynamic]
               source   file:plan.py
              product   file:input.txt
              product   file:output.txt
-                sink   file:output.txt [amended]
+                sink   file:output.txt [dynamic]
 
 file:input.txt
                state = STATIC

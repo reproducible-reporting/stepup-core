@@ -10,9 +10,9 @@ file:plan.py
 step:./plan.py
                state = PENDING
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
-              source   file:cases.txt [amended]
+              source   file:cases.txt [dynamic]
               source   file:plan.py
              product   file:cases.txt
              product   file:work.py
@@ -35,7 +35,7 @@ file:work.py
 step:./work.py case1.txt
                state = FAILED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:cases.txt
               source   file:work.py

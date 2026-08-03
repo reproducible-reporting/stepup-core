@@ -949,7 +949,7 @@ class DirectorHandler:
         -----
         This is an RPC wrapper for `Workflow.amend_step`.
 
-        When some amended inputs are still `UNCONFIRMED` (matches of a static tree not yet hashed),
+        When some dynamic inputs are still `UNCONFIRMED` (matches of a static tree not yet hashed),
         this call blocks until they are resolved to `STATIC` or `MISSING`,
         running their hash jobs immediately rather than through the builder's queue:
         the calling step already occupies a slot and is idle while it waits,
@@ -1030,7 +1030,7 @@ class DirectorHandler:
     async def getinfo(self, job_i: int) -> StepInfo:
         """Return step information, consistent with return values of functions in stepup.core.api.
 
-        For the sake of consistency, amended step arguments are not included.
+        For the sake of consistency, dynamic dependencies are not included.
         """
         async with self.db:
             step = self.scheduler.get_step(job_i)

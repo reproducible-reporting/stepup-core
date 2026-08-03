@@ -168,11 +168,11 @@ async def test_diamond_exact_vs_attributed(wfp: Workflow):
 
 
 #
-# Deferred with a detached amended input (the defer_cap regression)
+# Deferred with a detached dynamic input (the defer_cap regression)
 #
 
 
-async def test_deferred_detached_amended_input(wfp: Workflow):
+async def test_deferred_detached_dynamic_input(wfp: Workflow):
     scheduler, plan = await _prepare(wfp)
     async with wfp.db:
         wfp.define_step(plan, "work")

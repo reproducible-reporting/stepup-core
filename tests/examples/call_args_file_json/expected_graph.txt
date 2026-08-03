@@ -10,14 +10,14 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:args.json
              product   file:data.txt
              product   file:work.py
              product   step:./work.py run --inp=args.json
-                sink   file:args.json [amended]
+                sink   file:args.json [dynamic]
 
 file:data.txt
                state = STATIC
@@ -38,7 +38,7 @@ file:args.json
 step:./work.py run --inp=args.json
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:args.json
               source   file:data.txt

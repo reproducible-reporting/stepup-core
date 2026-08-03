@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:work.py
@@ -52,10 +52,10 @@ file:pong.txt
 step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
-              source   file:ping.txt [amended]
-              source   file:pong.txt [amended]
+              source   file:ping.txt [dynamic]
+              source   file:pong.txt [dynamic]
               source   file:work.py
              product   file:work.txt
                 sink   file:work.txt

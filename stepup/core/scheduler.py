@@ -9,7 +9,7 @@ import attrs
 
 from .enums import FileState, Need, StepState
 from .hash import FileHash
-from .job import Job, RunJob, ValidateAmendedJob
+from .job import Job, RunJob, ValidateDynamicJob
 from .path import dir_range_upper
 from .sqlite3 import DBSession
 from .step import STEP_DISPATCH_WHERE, Step, unavailable_input_sql
@@ -359,7 +359,7 @@ SELECT
     node.label,
     node.detached,
     file.state,
-    EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = dep.i),
+    EXISTS (SELECT 1 FROM dynamic_dep WHERE dynamic_dep.i = dep.i),
     file.hash
 FROM node JOIN dependency AS dep ON node.i = dep.source
 JOIN file ON file.node = node.i
@@ -561,9 +561,10 @@ class Scheduler:
         Parameters
         ----------
         producer_i
-            Node id of the step that (re)built the file being amended as an input.
+            Node id of the step that (re)built the file
+            that the amended consumer step uses as a dynamic input.
         consumer_i
-            Node id of the step amending that file as an input.
+            Node id of the amended step that uses the file as a dynamic input.
 
         Returns
         -------
@@ -666,13 +667,13 @@ class Scheduler:
             raise ValueError(f"No job found for job_i={job_i}.")
         return step
 
-    def _derive_job(self, step: Step) -> RunJob | ValidateAmendedJob:
+    def _derive_job(self, step: Step) -> RunJob | ValidateDynamicJob:
         """Derive a Job instance for a step that is ready to be queued."""
-        amended_inputs_ready = True
+        dynamic_inputs_ready = True
         inp_hashes = {}
         db = self.workflow.db
         cur = db.execute(SELECT_INPUTS, (step.i,))
-        for path, detached, fs_value, is_amended, hash_value in cur:
+        for path, detached, fs_value, is_dynamic, hash_value in cur:
             # All exception cases handled in this loop should have been filtered out
             # by the SELECT_INPUTS query.
             # We keep them here as sanity checks, because they indicate a serious internal error.
@@ -693,12 +694,12 @@ class Scheduler:
                 continue
 
             # Sanity checks
-            if is_amended:
+            if is_dynamic:
                 if not detached and file_state in (FileState.AWAITED, FileState.OUTDATED):
-                    # Attached amended inputs with state AWAITED or OUTDATED are not ready.
+                    # Attached dynamic inputs with state AWAITED or OUTDATED are not ready.
                     # This should never have been selected for queueing.
                     raise RuntimeError(
-                        f"Step {step} has an amended input {path} that is not ready yet, "
+                        f"Step {step} has a dynamic input {path} that is not ready yet, "
                         f"but is in an unexpected state {file_state}"
                     )
             else:
@@ -708,12 +709,12 @@ class Scheduler:
                     f"but is in an unexpected state {file_state}"
                 )
 
-            # If we reach this code path, the current input is amended and
+            # If we reach this code path, the current input is dynamic and
             # (1) is detached or (2) has state MISSING.
-            # In this case, we request to validate amended inputs first.
-            # This means that amended inputs will be discarded and rederived again
-            # if any of the initial or available amended inputs have changed.
-            amended_inputs_ready = False
+            # In this case, we request to validate dynamic inputs first.
+            # This means that dynamic inputs will be discarded and rederived again
+            # if any of the initial or available dynamic inputs have changed.
+            dynamic_inputs_ready = False
 
         # Get the current step hash, which is used to determine whether the step can be skipped.
         step_hash = step.get_hash()
@@ -722,19 +723,19 @@ class Scheduler:
 
         job_i = self._next_job_i()
         self.jobs[job_i] = step
-        if amended_inputs_ready or step_hash is None:
-            # All (amended) inputs are ready, or the job is not skippable.
+        if dynamic_inputs_ready or step_hash is None:
+            # All (dynamic) inputs are ready, or the job is not skippable.
             # When there is a hash, this will check if any inputs have changed since the last run,
             # and skip the job if not.
             # In all other cases, the job will be executed without skipping,
             # and the step hash will be updated after completion.
             job = RunJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
         else:
-            # If the initial inputs are ready, but the amended inputs are not,
-            # and there is a step hash, we need to validate the amended inputs first.
+            # If the initial inputs are ready, but the dynamic inputs are not,
+            # and there is a step hash, we need to validate the dynamic inputs first.
             # If they are not available, and if the existing inputs have changed,
             # they may also no longer be needed.
-            job = ValidateAmendedJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
+            job = ValidateDynamicJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
         if self.write_joblog:
             write_joblog_record("CREATED", job_i, job.name)
         return job

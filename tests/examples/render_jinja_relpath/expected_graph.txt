@@ -10,8 +10,8 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = PUBLIC [amended]
-                     = STEPUP_PATH_FILTER [amended]
+           using_env = PUBLIC [dynamic]
+                     = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:variables.py
@@ -52,8 +52,8 @@ file:public/preamble.inc.tex
 step:./plan.py  # wd=static
                state = SUCCEEDED
                 need = PLAN
-           using_env = PUBLIC [amended]
-                     = STEPUP_PATH_FILTER [amended]
+           using_env = PUBLIC [dynamic]
+                     = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:static/plan.py
              product   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
@@ -66,8 +66,8 @@ file:static/plan.py
 step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = PUBLIC [amended]
-                     = STEPUP_PATH_FILTER [amended]
+           using_env = PUBLIC [dynamic]
+                     = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py  # wd=static
               source   file:static/main.tex
               source   file:static/variables.py

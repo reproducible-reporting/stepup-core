@@ -10,8 +10,8 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = INP_VAR_TEST_STEPUP_WORKDIR [amended]
-                     = STEPUP_PATH_FILTER [amended]
+           using_env = INP_VAR_TEST_STEPUP_WORKDIR [dynamic]
+                     = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:sub/input.txt

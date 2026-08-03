@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
                nglob = trip*.json
              creator   root:
               source   file:plan.py
@@ -39,7 +39,7 @@ file:trip2.json
 step:sc-render-jinja template.txt trip1.json rendered-trip1.txt
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:template.txt
               source   file:trip1.json
@@ -54,7 +54,7 @@ file:rendered-trip1.txt
 step:sc-render-jinja template.txt trip2.json rendered-trip2.txt
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:template.txt
               source   file:trip2.json

@@ -31,7 +31,7 @@ These functions take the same arguments as those of the [`glob()`][stepup.core.a
 and also return a [`NamedGlob`][stepup.core.nglob] instance.
 
 Note that the `StepInfo` object will only contain information known at the time the step is defined.
-Amended information (inputs, outputs, ...) cannot be retrieved from `StepInfo` objects.
+Dynamic dependencies (inputs, outputs, ...) cannot be retrieved from `StepInfo` objects.
 Also note that relative paths in `inp`, `out` and `vol` are relative to the working directory.
 
 ## Example

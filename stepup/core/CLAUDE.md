@@ -51,7 +51,7 @@ Naming gotcha — two similar flags with different meanings:
   keep building unrelated steps after a step has failed.
 - `carry_on` (internal, part of the director's `amend()` RPC result):
   whether a running step may continue after amending its inputs,
-  or must abort because some amended inputs are not yet available.
+  or must abort because some dynamic inputs are not yet available.
 
 ## Step Launching and Interruption (`run.py`)
 

@@ -1,0 +1,31 @@
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./work.py
+ SUCCESS │ ./work.py
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+ DELETED │ inp.txt
+   PHASE │ build
+   START │ ./work.py
+DEFERRED │ ./work.py
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
+inp.txt
+────────────────────────────────────────────────────────────────────────────────
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             MISSING: inp.txt  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Run `stepup browse` and search for a name above to see the steps involved.
+────────────────────────────────────────────────────────────────────────────────
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

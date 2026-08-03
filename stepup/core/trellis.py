@@ -945,7 +945,7 @@ class Trellis:
             # (directly or indirectly) by an attached sink.
             # Note that a cycle of creator and dependency edges within the detached part of the
             # graph is a fixed point of this loop as well, without any attached sink involved,
-            # e.g. a step that declares one of its own products as an (amended) input.
+            # e.g. a step that declares one of its own products as a (dynamic) input.
             # Whatever the reason for its survival, a detached node that lost a product this way
             # is no longer a complete record of what it created, see after the loop.
             query = (

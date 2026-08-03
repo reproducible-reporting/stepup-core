@@ -8,7 +8,7 @@ When the first word of the command passed to [`run()`][stepup.core.api.run] ends
 StepUp automatically selects a Python-aware execution mode.
 It will automatically detect the modules imported by the script,
 and if they correspond to local files in your workflow,
-the step is amended with these files as required inputs.
+the step is amended with these files as dynamic dependencies.
 This way, if the local modules have changed, StepUp will know the script needs to run again.
 The script file itself is also automatically added as an input dependency.
 

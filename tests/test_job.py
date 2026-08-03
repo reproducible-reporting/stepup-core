@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from stepup.core.job import Job, RunJob, ValidateAmendedJob
+from stepup.core.job import Job, RunJob, ValidateDynamicJob
 
 
 def _make_job(cls, step_hash):
@@ -18,7 +18,7 @@ def _make_job(cls, step_hash):
     [
         (RunJob, None, "RUN", "R"),
         (RunJob, "fake-hash", "SKIP", "S"),
-        (ValidateAmendedJob, "fake-hash", "VALIDATE_AMENDED", "V"),
+        (ValidateDynamicJob, "fake-hash", "VALIDATE_DYNAMIC", "V"),
     ],
 )
 def test_prefix_letter_and_name(cls, step_hash, prefix, letter):

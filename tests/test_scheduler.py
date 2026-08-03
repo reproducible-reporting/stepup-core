@@ -185,9 +185,9 @@ def _add_dep_returning_id(con, source_id, sink_id):
     return cur.lastrowid
 
 
-def _mark_dep_amended(con, dep_id):
-    """Mark an existing dependency as amended."""
-    con.execute("INSERT INTO amended_dep (i) VALUES (?)", (dep_id,))
+def _mark_dep_dynamic(con, dep_id):
+    """Mark an existing dependency as dynamic."""
+    con.execute("INSERT INTO dynamic_dep (i) VALUES (?)", (dep_id,))
 
 
 def _get_runnable_ids(con, need_threshold=Need.OPTIONAL):
@@ -1087,7 +1087,7 @@ def test_deferred_step_not_runnable(con):
 
 
 def test_volatile_input_blocks_step(con):
-    """A VOLATILE input always blocks a step, regardless of initial/amended status."""
+    """A VOLATILE input always blocks a step, regardless of initial/dynamic status."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.VOLATILE)
     _add_dep(con, 3, 2)
@@ -1149,60 +1149,60 @@ def test_initial_input_static_allows_step(con):
     assert _get_runnable_ids(con) == [2]
 
 
-def test_amended_input_awaited_blocks_step(con):
-    """An amended, attached input in AWAITED state blocks the step."""
+def test_dynamic_input_awaited_blocks_step(con):
+    """A dynamic, attached input in AWAITED state blocks the step."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.AWAITED)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
-def test_amended_input_outdated_blocks_step(con):
-    """An amended, attached input in OUTDATED state blocks the step."""
+def test_dynamic_input_outdated_blocks_step(con):
+    """A dynamic, attached input in OUTDATED state blocks the step."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.OUTDATED)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
-def test_amended_input_built_allows_step(con):
-    """An amended, attached input in BUILT state does not block the step."""
+def test_dynamic_input_built_allows_step(con):
+    """A dynamic, attached input in BUILT state does not block the step."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.BUILT)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     _recompute_ready(con)
     assert _get_runnable_ids(con) == [2]
 
 
-def test_amended_input_missing_allows_step(con):
-    """An amended, attached input in MISSING state does not block the step.
+def test_dynamic_input_missing_allows_step(con):
+    """A dynamic, attached input in MISSING state does not block the step.
 
     MISSING is neither AWAITED nor OUTDATED, so case 1 of the blocking condition does not apply.
-    The step proceeds and will validate its amended inputs before running.
+    The step proceeds and will validate its dynamic inputs before running.
     """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.MISSING)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     _recompute_ready(con)
     assert _get_runnable_ids(con) == [2]
 
 
-def test_amended_input_detached_allows_step(con):
-    """An amended dependency on a detached file node does not block the step.
+def test_dynamic_input_detached_allows_step(con):
+    """A dynamic dependency on a detached file node does not block the step.
 
-    Case 1 requires NOT input_node.detached, and case 2 only covers initial (non-amended) deps,
-    so a detached amended input is not a blocking condition.
+    Case 1 requires NOT input_node.detached, and case 2 only covers initial (non-dynamic) deps,
+    so a detached dynamic input is not a blocking condition.
     """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.MISSING, detached=True)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     _recompute_ready(con)
     assert _get_runnable_ids(con) == [2]
 
@@ -1333,7 +1333,7 @@ def test_select_next_step_uses_dispatch_index(con, need_threshold):
 def _get_inputs(con, sink_id):
     """Run SELECT_INPUTS for the given sink and return all rows as a list of dicts."""
     rows = con.execute(SELECT_INPUTS, (sink_id,)).fetchall()
-    keys = ("label", "detached", "state", "amended", "hash")
+    keys = ("label", "detached", "state", "dynamic", "hash")
     return [dict(zip(keys, row, strict=True)) for row in rows]
 
 
@@ -1344,7 +1344,7 @@ def test_select_inputs_no_inputs(con):
 
 
 def test_select_inputs_built_file(con):
-    """A BUILT file dependency returns the correct row with is_amended=False."""
+    """A BUILT file dependency returns the correct row with is_dynamic=False."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.BUILT)
     _add_dep(con, 3, 2)
@@ -1354,7 +1354,7 @@ def test_select_inputs_built_file(con):
     assert row["label"] == "file_3.txt"
     assert row["detached"] == 0
     assert row["state"] == FileState.BUILT.value
-    assert row["amended"] == 0
+    assert row["dynamic"] == 0
     file_hash = FileHash.from_json(row["hash"])
     assert file_hash.digest == b"\x01\x02\x03"
     assert file_hash.mode == 0o100644
@@ -1384,23 +1384,23 @@ def test_select_inputs_awaited_file(con):
     assert rows[0]["hash"] is None
 
 
-def test_select_inputs_amended_flag_true(con):
-    """An amended dependency returns amended=1."""
+def test_select_inputs_dynamic_flag_true(con):
+    """A dynamic dependency returns dynamic=1."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.BUILT)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     rows = _get_inputs(con, 2)
-    assert rows[0]["amended"] == 1
+    assert rows[0]["dynamic"] == 1
 
 
-def test_select_inputs_amended_flag_false(con):
-    """A non-amended dependency returns amended=0."""
+def test_select_inputs_dynamic_flag_false(con):
+    """A non-dynamic dependency returns dynamic=0."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.BUILT)
     _add_dep(con, 3, 2)
     rows = _get_inputs(con, 2)
-    assert rows[0]["amended"] == 0
+    assert rows[0]["dynamic"] == 0
 
 
 def test_select_inputs_detached_file(con):
@@ -1530,8 +1530,8 @@ def test_resource_counts_resource_not_in_available_excluded(con):
 #
 # The three blocking branches are:
 #   VOLATILE      – any dep type, any detach state
-#   Case 1        – amended AND NOT detached AND state IN (AWAITED, OUTDATED)
-#   Case 2        – initial (not amended) AND (detached OR state not in {BUILT, STATIC})
+#   Case 1        – dynamic AND NOT detached AND state IN (AWAITED, OUTDATED)
+#   Case 2        – initial (not dynamic) AND (detached OR state not in {BUILT, STATIC})
 # -----------------------------------------------------------------------
 
 
@@ -1558,50 +1558,50 @@ def test_unavailable_input_volatile_initial(con):
     assert _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_volatile_amended(con):
-    """VOLATILE always blocks regardless of amended status."""
+def test_unavailable_input_volatile_dynamic(con):
+    """VOLATILE always blocks regardless of dynamic status."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.VOLATILE)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     assert _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_case1_amended_nondetached_awaited(con):
-    """Case 1: amended, non-detached, AWAITED -> unavailable."""
+def test_unavailable_input_case1_dynamic_nondetached_awaited(con):
+    """Case 1: dynamic, non-detached, AWAITED -> unavailable."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.AWAITED)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     assert _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_case1_amended_nondetached_outdated(con):
-    """Case 1: amended, non-detached, OUTDATED -> unavailable."""
+def test_unavailable_input_case1_dynamic_nondetached_outdated(con):
+    """Case 1: dynamic, non-detached, OUTDATED -> unavailable."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.OUTDATED)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     assert _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_case1_miss_amended_nondetached_missing(con):
-    """Amended, non-detached, MISSING: MISSING not in {AWAITED, OUTDATED} so case 1 does not fire;
-    case 2 does not fire because the dep is amended -> available."""
+def test_unavailable_input_case1_miss_dynamic_nondetached_missing(con):
+    """Dynamic, non-detached, MISSING: MISSING not in {AWAITED, OUTDATED} so case 1 does not fire;
+    case 2 does not fire because the dep is dynamic -> available."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.MISSING)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     assert not _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_case1_miss_amended_detached_awaited(con):
-    """Amended, detached, AWAITED: case 1 requires NOT detached so it does not fire;
+def test_unavailable_input_case1_miss_dynamic_detached_awaited(con):
+    """Dynamic, detached, AWAITED: case 1 requires NOT detached so it does not fire;
     case 2 requires an initial dep so it also does not fire -> available."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.AWAITED, detached=True)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     assert not _has_unavailable_input(con, 2)
 
 
@@ -1829,7 +1829,7 @@ def test_checking_step_not_checkable(con):
 
 
 def test_checkable_step_blocked_by_unavailable_initial_input(con):
-    """A step with a hash but an unavailable initial (non-amended) input is NOT checkable."""
+    """A step with a hash but an unavailable initial (non-dynamic) input is NOT checkable."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_step_hash(con, 2)
     _insert_input_file(con, 3, 1, FileState.AWAITED)
@@ -1838,10 +1838,10 @@ def test_checkable_step_blocked_by_unavailable_initial_input(con):
     assert _get_checkable_ids(con) == []
 
 
-def test_checkable_step_with_ready_initial_and_unready_amended_input(con):
-    """A step with a hash: ready initial input + unready amended input IS checkable.
+def test_checkable_step_with_ready_initial_and_unready_dynamic_input(con):
+    """A step with a hash: ready initial input + unready dynamic input IS checkable.
 
-    This is the ValidateAmendedJob case: amended inputs not yet ready, but we can
+    This is the ValidateDynamicJob case: dynamic inputs not yet ready, but we can
     still validate that the initial inputs haven't changed (without resource slots).
     """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
@@ -1849,12 +1849,12 @@ def test_checkable_step_with_ready_initial_and_unready_amended_input(con):
     # Ready initial input
     _insert_input_file(con, 3, 1, FileState.STATIC)
     _add_dep(con, 3, 2)
-    # Unready amended input (MISSING — case 1 of UNAVAILABLE_INPUT blocks but not INITIAL)
+    # Unready dynamic input (MISSING — case 1 of UNAVAILABLE_INPUT blocks but not INITIAL)
     _insert_input_file(con, 4, 1, FileState.MISSING)
     dep_id = _add_dep_returning_id(con, 4, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     _recompute_ready(con)
-    # MISSING amended inputs are NOT blocked by UNAVAILABLE_INPUT
+    # MISSING dynamic inputs are NOT blocked by UNAVAILABLE_INPUT
     # (case 1 only blocks AWAITED/OUTDATED),
     # so both the runnable and checkable paths of SELECT_NEXT_STEP allow them.
     assert _get_checkable_ids(con) == [2]
@@ -1892,26 +1892,26 @@ def test_checkable_step_with_hash_and_exhausted_resource(con):
     assert _get_checkable_ids(con) == [2]
 
 
-def test_unavailable_input_blocks_on_amended_awaited(con):
-    """UNAVAILABLE_INPUT blocks on amended AWAITED inputs."""
+def test_unavailable_input_blocks_on_dynamic_awaited(con):
+    """UNAVAILABLE_INPUT blocks on dynamic AWAITED inputs."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.AWAITED)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     assert _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_blocks_on_amended_outdated(con):
-    """UNAVAILABLE_INPUT blocks on amended OUTDATED inputs."""
+def test_unavailable_input_blocks_on_dynamic_outdated(con):
+    """UNAVAILABLE_INPUT blocks on dynamic OUTDATED inputs."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.OUTDATED)
     dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
+    _mark_dep_dynamic(con, dep_id)
     assert _has_unavailable_input(con, 2)
 
 
 def test_unavailable_input_blocks_on_initial_awaited(con):
-    """UNAVAILABLE_INPUT blocks on an initial (non-amended) AWAITED input."""
+    """UNAVAILABLE_INPUT blocks on an initial (non-dynamic) AWAITED input."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.AWAITED)
     _add_dep(con, 3, 2)
@@ -1919,7 +1919,7 @@ def test_unavailable_input_blocks_on_initial_awaited(con):
 
 
 def test_unavailable_input_blocks_on_volatile(con):
-    """UNAVAILABLE_INPUT blocks on VOLATILE inputs (initial or amended)."""
+    """UNAVAILABLE_INPUT blocks on VOLATILE inputs (initial or dynamic)."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.VOLATILE)
     _add_dep(con, 3, 2)
@@ -2079,7 +2079,7 @@ async def test_build_completed_writes_large_relative_change(wfs: Workflow):
 
 
 async def test_second_job_completed_overwrites_pending_duration(wfs: Workflow):
-    """A step that re-runs within one phase (validate-amended path) keeps only its latest
+    """A step that re-runs within one phase (validate-dynamic path) keeps only its latest
     measured duration in the accumulation buffer -- last value wins, same as today's
     last-write-wins per-row UPDATE."""
     async with wfs.db:

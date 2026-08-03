@@ -4,7 +4,7 @@
  SUCCESS │ ./plan.py
    START │ ./work.py
 DEFERRED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 2 job(s).
@@ -26,7 +26,7 @@ Run `stepup browse` and search for a name above to see the steps involved.
     FAIL │ ./work.py
 ────────────────────────── Deferred more than 1 times ──────────────────────────
 ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 never.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 never.txt is now available.

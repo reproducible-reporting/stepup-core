@@ -7,7 +7,7 @@ for data.txt to appear, reads it, and only then calls amend(). On the first atte
 this is unconditionally flagged "unfresh" (regardless of whether the read actually saw
 complete content) because the check is based on step dispatch/completion timestamps,
 not file content --- so the step is deferred. On the next attempt, its start_time is
-long past producer.sh's completion, so the amended input is accepted.
+long past producer.sh's completion, so the dynamic input is accepted.
 """
 
 import time

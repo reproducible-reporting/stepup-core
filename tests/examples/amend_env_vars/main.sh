@@ -1,14 +1,15 @@
 #!/usr/bin/env -S bash -x
 source ../example.rc
 
+# Prepare some variables
+export ENV_VAR_TEST_STEPUP_SDASFD="AAAA"
+
 # Run the example
-export INP_VAR_TEST_STEPUP_FOO="foo"
-export INP_VAR_TEST_STEPUP_BAR="bar"
-sb -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
-stepup graph current_graph
+stepup graph current_graph1
 stepup join
 
 # Wait for background processes, if any.
@@ -16,6 +17,20 @@ wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-[[ -f foo.txt ]] || exit 1
-[[ -f bar.txt ]] || exit 1
-[[ -f bar.log ]] || exit 1
+grep AAAA output.txt
+
+# Restart with changed variable
+export ENV_VAR_TEST_STEPUP_SDASFD="BBBB"
+rm .stepup/*.log
+sb -j 1 -w -e & # > current_stdout2.txt &
+
+stepup wait
+stepup graph current_graph2
+stepup join
+
+# Wait for background processes, if any.
+wait
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit 1
+grep BBBB output.txt

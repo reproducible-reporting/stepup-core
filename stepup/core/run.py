@@ -264,10 +264,10 @@ class Run:
     """List of expected output files that were not created."""
 
     unavailable: set[str] = attrs.field(init=False, factory=set)
-    """Amended input paths that were genuinely not built yet, if the step was deferred."""
+    """Dynamic inputs that were genuinely not built yet, if the step was deferred."""
 
     unfresh: set[str] = attrs.field(init=False, factory=set)
-    """Amended input paths that failed the freshness check, if the step was deferred."""
+    """Dynamic inputs that failed the freshness check, if the step was deferred."""
 
     interrupted_defer: bool = attrs.field(init=False, default=False)
     """Set to True when the step has reached its defer cap."""
@@ -281,7 +281,7 @@ class Run:
     """Flag indicating whether the step was handled successfully.
 
     A nonzero returncode sets it False,
-    but so do independent conditions like missing outputs or unfresh amended inputs.
+    but so do independent conditions like missing outputs or unfresh dynamic inputs.
     """
 
     worker: Worker | None = attrs.field(init=False, default=None)
@@ -745,7 +745,7 @@ def _forkserver_entry(
     This function runs in a forked child process and sends a `ChildOutcome` back via
     `result_conn`, whose `payload` is a `(returncode, stdout, stderr)` tuple.
     When `ep_value` is `None`, `cmd` is a Python script path run via `runpy.run_path`,
-    with local imports auto-detected and amended as inputs.
+    with local imports auto-detected and registered as dynamic inputs.
     When `ep_value` is a `module:attr` string, the corresponding console_script function
     is imported and called directly without import tracking.
     """

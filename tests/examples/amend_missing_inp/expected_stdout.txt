@@ -4,7 +4,7 @@
  SUCCESS │ ./plan.py
    START │ ./work.py
 DEFERRED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 missing.txt
 ────────────────────────────────────────────────────────────────────────────────
    START │ echo Will be deleted by accident > missing.txt

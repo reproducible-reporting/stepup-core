@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:README NOW.txt
@@ -46,7 +46,7 @@ file:white space leaves a lot of room for mistakes.txt
 step:'./script is cool.py' plan
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:script is cool.py
              product   step:'./script is cool.py' run
@@ -54,7 +54,7 @@ step:'./script is cool.py' plan
 step:'./script is cool.py' run
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:'./script is cool.py' plan
               source   file:README NOW.txt
               source   file:script is cool.py

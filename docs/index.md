@@ -105,22 +105,25 @@ while "Step" reflects how StepUp defines operations as individual *steps*.
   instead of introducing a new domain-specific language (DSL).
 
 - 🕸️ **Partial Directed Acyclic Graph (PDAG) Execution:**
-  StepUp supports PDAG execution, similar to [tup](https://gittup.org/tup).
-  This means it can start steps even when the full workflow is not yet known.
-  For example, at startup, it will begin executing steps
-  before having complete knowledge of the entire build graph.
+  StepUp supports execution of partially known DAGs, similar to [tup](https://gittup.org/tup).
+  Execution can begin before the complete workflow graph is defined.
+  Similarly, the cost of an incremental build is proportional to
+  the number of steps that need to be rebuilt, not the total number of steps in the workflow.
 
 - 🔄 **Dynamic Workflows:**
-  While a step is running, it can inform StepUp that it needs *additional inputs*,
-  in which case the step will be deferred
-  until the additional inputs have become available.
-  Similarly, a step can define additional outputs during its execution.
+  StepUp makes no distinction between the generation and execution of the workflow.
+  Any step can extend the workflow with new files and steps based on runtime information.
+  Dynamic workflows in StepUp even go a step further:
+  a running step can dynamically register newly discovered dependencies
+  (inputs, outputs, or environment variables) on the fly.
+  If a dynamic input is missing when requested, the step is automatically deferred
+  until its dependencies are built by other steps.
 
 - 🗓️ **Advanced Scheduling:**
   StepUp can schedule steps in parallel to prioritize steps that are on the critical path of the workflow.
   In addition, one can define resources and resource limits for steps,
   which StepUp will respect when scheduling.
-  For instance, this can be used to limit the number of steps using a GPU that can run in parallel.
+  For instance, this can be used to limit the number of concurrent steps using a GPU.
 
 - 🌐 **Graph Visualization Webserver:**
   The `stepup browse` command launches a small local web server
@@ -141,7 +144,7 @@ while "Step" reflects how StepUp defines operations as individual *steps*.
 - 🧹 **Automatic Cleanup:**
   Old outputs are *automatically removed*
   when the steps creating those files are removed from the workflow.
-  This cleanup is only performed after a completely successful build.
+  This cleanup is only performed after a complete and successful build.
 
 - ⏳ **Progress Bar:**
   The StepUp terminal user interface provides easy-to-follow *progress* information.
@@ -160,14 +163,14 @@ while "Step" reflects how StepUp defines operations as individual *steps*.
     - A file is changed and then reverted to its original state.
     - Switching between branches in Git.
 
-- 🌱 **Environment Variable Dependencies:**
+- 💲 **Environment Variable Dependencies:**
   Steps can have environment variables as dependencies,
   so that they are flagged for re-execution after the variables change.
 
 - 🧩 **Pattern Matching:**
   Rich pattern-matching rules make it easy to multiplex a step over multiple similar inputs.
 
-- 📤 **Optional Outputs:**
+- 💾 **Optional Outputs:**
   Steps *do not need to have output files*.
   They will be rerun if inputs have changed since the last run.
 

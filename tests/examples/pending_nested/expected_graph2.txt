@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
                nglob = work?.py
                nglob = inp?.txt
              creator   root:
@@ -54,7 +54,7 @@ file:inp3.txt
 step:./work1.py
                state = PENDING
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   (file:inp1.txt)
               source   file:work1.py
@@ -70,7 +70,7 @@ file:out1.txt
 step:./work2.py
                state = PENDING
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./work1.py
               source   file:inp2.txt
               source   file:work2.py
@@ -86,7 +86,7 @@ file:out2.txt
 step:./work3.py
                state = PENDING
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./work2.py
               source   file:inp3.txt
               source   file:work3.py

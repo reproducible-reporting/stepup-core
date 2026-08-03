@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 # Environment variables that StepUp sets for each step (see Executor._run_command).
-# These are managed by StepUp and must not be amended as env dependencies or set as overrides.
+# These are managed by StepUp and can never be declared as (initial/dynamic) dependencies by a step.
 RESERVED_ENV_VARS = frozenset(
     {"HERE", "ROOT", "STEPUP_JOB_I", "STEPUP_STEP_INP_DIGEST", "STEPUP_STEP_NEED"}
 )
@@ -66,22 +66,22 @@ STEP_DISPATCH_WHERE = f"""step.state = {StepState.PENDING.value} AND
 
 # Boolean expression identifying an input file that blocks a step from running.
 # It references three aliases the enclosing query must provide:
-# `input_file` (file row), `input_node` (node row) and `amended_dep`
-# (LEFT JOINed amended_dep row, NULL for an initial dependency).
+# `input_file` (file row), `input_node` (node row) and `dynamic_dep`
+# (LEFT JOINed dynamic_dep row, NULL for an initial dependency).
 # Shared verbatim by dispatch (RECOMPUTE_READY, via `unavailable_input_sql` below,
 # in scheduler.py) and by the end-of-build analysis in pending.py,
 # so the two can never disagree about what "blocked" means.
 UNAVAILABLE_INPUT_WHERE = f"""
 input_file.state = {FileState.VOLATILE.value} OR
 (
-    -- Case 1: Is an amended dependency
-    amended_dep.i IS NOT NULL AND
+    -- Case 1: Is a dynamic dependency
+    dynamic_dep.i IS NOT NULL AND
     NOT input_node.detached AND
     input_file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
 ) OR
 (
     -- Case 2: Is an initial dependency
-    amended_dep.i IS NULL AND
+    dynamic_dep.i IS NULL AND
     (
         input_node.detached OR
         input_file.state NOT IN ({FileState.BUILT.value}, {FileState.STATIC.value})
@@ -115,7 +115,7 @@ def unavailable_input_sql(correlate: str) -> str:
     FROM dependency AS dep
     JOIN file AS input_file ON input_file.node = dep.source
     JOIN node AS input_node ON input_node.i = dep.source
-    LEFT JOIN amended_dep ON amended_dep.i = dep.i
+    LEFT JOIN dynamic_dep ON dynamic_dep.i = dep.i
     WHERE dep.sink = {correlate} AND ({UNAVAILABLE_INPUT_WHERE})
     """
 
@@ -414,35 +414,35 @@ CREATE TABLE IF NOT EXISTS nglob (
 );
 CREATE INDEX IF NOT EXISTS nglob_node ON nglob(node);
 
--- Marks which dependency rows were amended (discovered while the step ran) rather than
--- declared up front, so reset_for_rerun() knows which sources/sinks to drop between runs.
-CREATE TABLE IF NOT EXISTS amended_dep (
+-- Marks which dependency rows were dynamic (discovered while the step ran) rather than
+-- declared upfront, so reset_for_rerun() knows which sources/sinks to drop between runs.
+CREATE TABLE IF NOT EXISTS dynamic_dep (
     i INTEGER PRIMARY KEY,
     FOREIGN KEY (i) REFERENCES dependency(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
--- Keep _check_ready in sync with amended-dependency changes: an amended/un-amended
+-- Keep _check_ready in sync with dynamic-dependency changes: a dynamic/initial
 -- dependency edge is evaluated differently by the "unavailable input" test (see
--- scheduler.UNAVAILABLE_INPUT), so flag the sink step whenever a dependency's amended
+-- scheduler.UNAVAILABLE_INPUT), so flag the sink step whenever a dependency's dynamic
 -- status changes.
-CREATE TRIGGER IF NOT EXISTS amended_dep_check_ready_ins AFTER INSERT ON amended_dep
+CREATE TRIGGER IF NOT EXISTS dynamic_dep_check_ready_ins AFTER INSERT ON dynamic_dep
 BEGIN
     UPDATE step SET _check_ready = 1
     WHERE node = (SELECT sink FROM dependency WHERE i = NEW.i);
 END;
-CREATE TRIGGER IF NOT EXISTS amended_dep_check_ready_del AFTER DELETE ON amended_dep
+CREATE TRIGGER IF NOT EXISTS dynamic_dep_check_ready_del AFTER DELETE ON dynamic_dep
 BEGIN
     UPDATE step SET _check_ready = 1
     WHERE node = (SELECT sink FROM dependency WHERE i = OLD.i);
 END;
 
 -- Environment variable names each step depends on, and the value observed when recorded
--- (declared up front or amended during the run).
+-- (initial or dynamic).
 CREATE TABLE IF NOT EXISTS env_var (
     node INTEGER NOT NULL,
     name TEXT NOT NULL,
     value TEXT,
-    amended INTEGER NOT NULL CHECK(amended IN (0, 1)),
+    dynamic INTEGER NOT NULL CHECK(dynamic IN (0, 1)),
     PRIMARY KEY (node, name),
     -- The PRIMARY KEY above already indexes lookups by node (leftmost column),
     -- so no separate index on (node) is needed.
@@ -620,8 +620,8 @@ class PathRecord:
     detached: bool
     """Whether the path is detached, i.e. its creating step moved on without it."""
 
-    amended: bool
-    """Whether the path was amended, i.e. discovered while the step was running."""
+    dynamic: bool
+    """Whether the path was a dynamic dependency, i.e. discovered while the step was running."""
 
     _hash_json: str | None = attrs.field(repr=False)
     """The JSON representation of the file's hash, decoded lazily through `hash`."""
@@ -745,10 +745,10 @@ class Step(Node):
         else:
             yield "need", f"{implied_need.name} (implied by sinks > {need.name})"
 
-        sql = "SELECT name, amended FROM env_var WHERE node = ?"
+        sql = "SELECT name, dynamic FROM env_var WHERE node = ?"
         label = "using_env"
-        for env_var, amended in self.db.execute(sql, (self.i,)):
-            yield label, f"{env_var} [amended]" if amended else env_var
+        for env_var, dynamic in self.db.execute(sql, (self.i,)):
+            yield label, f"{env_var} [dynamic]" if dynamic else env_var
             label = ""
 
         label = "env_overrides"
@@ -795,20 +795,20 @@ class Step(Node):
     ) -> bool:
         """Decide whether this detached step may be fully recycled by `Trellis.recycle`.
 
-        A detached step can only be recycled when the declared (non-amended) inputs,
+        A detached step can only be recycled when the initial (non-dynamic) inputs,
         environment variables and (volatile) outputs of the new declaration
         match those of the detached step exactly.
         """
-        old_inp_paths = sorted(r.path for r in self.inp_paths(amended=False, include_detached=True))
+        old_inp_paths = sorted(r.path for r in self.inp_paths(dynamic=False, include_detached=True))
         if old_inp_paths != sorted(inp_paths):
             return False
-        old_env_vars = sorted(self.env_deps(amended=False))
+        old_env_vars = sorted(self.env_deps(dynamic=False))
         if old_env_vars != sorted(env_deps):
             return False
-        old_out_paths = sorted(r.path for r in self.out_paths(amended=False, include_detached=True))
+        old_out_paths = sorted(r.path for r in self.out_paths(dynamic=False, include_detached=True))
         if old_out_paths != sorted(out_paths):
             return False
-        old_vol_paths = sorted(r.path for r in self.vol_paths(amended=False, include_detached=True))
+        old_vol_paths = sorted(r.path for r in self.vol_paths(dynamic=False, include_detached=True))
         return old_vol_paths == sorted(vol_paths)
 
     def update_recycled(
@@ -858,10 +858,10 @@ class Step(Node):
         """Yield one formatted `"kind:label"` string per dependency edge.
 
         Detached edges are wrapped in parentheses
-        and amended edges get an `" [amended]"` suffix.
+        and dynamic edges get an `" [dynamic]"` suffix.
         """
         sql = (
-            "SELECT kind, label, detached, dependency.i IN amended_dep "
+            "SELECT kind, label, detached, dependency.i IN dynamic_dep "
             "FROM node JOIN dependency ON node.i = "
         )
         sql += " source WHERE sink = ?" if do_sources else " sink WHERE source = ?"
@@ -870,12 +870,12 @@ class Step(Node):
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
-        for kind, label, detached, amended in self.db.execute(sql, data):
+        for kind, label, detached, dynamic in self.db.execute(sql, data):
             node_str = f"{kind}:{label}"
             if detached:
                 node_str = f"({node_str})"
-            if amended:
-                node_str += " [amended]"
+            if dynamic:
+                node_str += " [dynamic]"
             yield node_str
 
     @property
@@ -887,7 +887,7 @@ class Step(Node):
     def get_step_info(self) -> StepInfo:
         """Return a `StepInfo` object with information about this step.
 
-        Amended information is not included for consistency with
+        Dynamic dependencies are not included for consistency with
         the information that is available when defining a step.
         """
         if self.is_detached():
@@ -897,10 +897,10 @@ class Step(Node):
         command, workdir = self.command_workdir
         return StepInfo(
             command,
-            [r.path for r in self.inp_paths(amended=False)],
-            self.env_deps(amended=False),
-            [r.path for r in self.out_paths(amended=False)],
-            [r.path for r in self.vol_paths(amended=False)],
+            [r.path for r in self.inp_paths(dynamic=False)],
+            self.env_deps(dynamic=False),
+            [r.path for r in self.out_paths(dynamic=False)],
+            [r.path for r in self.vol_paths(dynamic=False)],
             workdir,
         )
 
@@ -928,12 +928,12 @@ class Step(Node):
             (state.value, deferred, self.i),
         )
 
-    def has_unavailable_amended_input(self) -> bool:
-        """Determine if any amended input dependency is not currently `STATIC` or `BUILT`."""
+    def has_unavailable_dynamic_input(self) -> bool:
+        """Determine if any dynamic input dependency is not currently `STATIC` or `BUILT`."""
         sql = f"""
         SELECT EXISTS (
             SELECT 1 FROM dependency
-            JOIN amended_dep ON amended_dep.i = dependency.i
+            JOIN dynamic_dep ON dynamic_dep.i = dependency.i
             JOIN file ON file.node = dependency.source
             WHERE dependency.sink = ?
             AND file.state NOT IN ({FileState.STATIC.value}, {FileState.BUILT.value})
@@ -1037,14 +1037,14 @@ class Step(Node):
         rows = [(self.i, name, os.getenv(name)) for name in env_deps if name not in env_overrides]
         self.db.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
 
-    def env_deps(self, *, amended: bool | None = None) -> Iterator[str]:
+    def env_deps(self, *, dynamic: bool | None = None) -> Iterator[str]:
         """Iterate over used environment variable names (not values)."""
         sql = "SELECT name FROM env_var WHERE node = ?"
-        if amended is not None:
+        if dynamic is not None:
             sql += " AND"
-            if not amended:
+            if not dynamic:
                 sql += " NOT"
-            sql += " amended = 1"
+            sql += " dynamic = 1"
         for row in self.db.execute(sql, (self.i,)):
             yield row[0]
 
@@ -1057,7 +1057,7 @@ class Step(Node):
         relation: str,
         *,
         include_detached: bool = False,
-        amended: bool | None = None,
+        dynamic: bool | None = None,
         filter_states: tuple[FileState, ...] = (),
     ) -> Iterator[PathRecord]:
         """Iterate over paths of this step using various criteria."""
@@ -1065,7 +1065,7 @@ class Step(Node):
         data = {"node": self.i}
         if relation == "product":
             # There is no dependency row for a product, so `idep` is NULL, which makes the
-            # amended-exists check below (and an `amended=True` filter) naturally resolve to
+            # dynamic-exists check below (and a `dynamic=True` filter) naturally resolve to
             # "never amended" -- correct, since a declared static/missing path can't be amended.
             sql = (
                 "WITH relevant AS (SELECT i AS node, NULL AS idep FROM node WHERE creator = :node)"
@@ -1088,7 +1088,7 @@ class Step(Node):
             "state",
             "hash",
             "detached",
-            "EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = relevant.idep)",
+            "EXISTS (SELECT 1 FROM dynamic_dep WHERE dynamic_dep.i = relevant.idep)",
         ]
         where = "WHERE kind = 'file'"
 
@@ -1096,14 +1096,14 @@ class Step(Node):
         if not include_detached:
             where += " AND NOT detached"
 
-        # Select only the initial files (not amended)
-        if amended is not None:
-            if amended:
-                join += " JOIN amended_dep ON amended_dep.i = relevant.idep"
+        # Select only the initial files (not dynamic)
+        if dynamic is not None:
+            if dynamic:
+                join += " JOIN dynamic_dep ON dynamic_dep.i = relevant.idep"
             else:
                 where += (
-                    " AND NOT EXISTS (SELECT 1 FROM amended_dep"
-                    " WHERE amended_dep.i = relevant.idep)"
+                    " AND NOT EXISTS (SELECT 1 FROM dynamic_dep"
+                    " WHERE dynamic_dep.i = relevant.idep)"
                 )
 
         # Filter certain states
@@ -1115,34 +1115,34 @@ class Step(Node):
             where += f" AND ({' OR '.join(where_states)})"
 
         sql += f" SELECT {', '.join(fields)} FROM relevant {join} {where}"
-        for label, state, hash_json, detached, amended_flag in self.db.execute(sql, data):
-            yield PathRecord(label, FileState(state), bool(detached), bool(amended_flag), hash_json)
+        for label, state, hash_json, detached, is_dynamic in self.db.execute(sql, data):
+            yield PathRecord(label, FileState(state), bool(detached), bool(is_dynamic), hash_json)
 
     def inp_paths(
-        self, *, include_detached: bool = False, amended: bool | None = None
+        self, *, include_detached: bool = False, dynamic: bool | None = None
     ) -> Iterator[PathRecord]:
         """Iterate over input files of this step."""
-        yield from self._paths("source", include_detached=include_detached, amended=amended)
+        yield from self._paths("source", include_detached=include_detached, dynamic=dynamic)
 
     def out_paths(
-        self, *, include_detached: bool = False, amended: bool | None = None
+        self, *, include_detached: bool = False, dynamic: bool | None = None
     ) -> Iterator[PathRecord]:
         """Iterate over output files of this step."""
         yield from self._paths(
             "sink",
             include_detached=include_detached,
-            amended=amended,
+            dynamic=dynamic,
             filter_states=REGULAR_OUTPUT_STATES,
         )
 
     def vol_paths(
-        self, *, include_detached: bool = False, amended: bool | None = None
+        self, *, include_detached: bool = False, dynamic: bool | None = None
     ) -> Iterator[PathRecord]:
         """Iterate over volatile output files of this step."""
         yield from self._paths(
             "sink",
             include_detached=include_detached,
-            amended=amended,
+            dynamic=dynamic,
             filter_states=(FileState.VOLATILE,),
         )
 
@@ -1179,8 +1179,8 @@ class Step(Node):
 
         The following are dropped:
 
-        - amended inputs and (volatile) outputs
-        - amended environment variables
+        - dynamic inputs and (volatile) outputs
+        - dynamic environment variables
         - nglobs
         - stored stdout/stderr and recorded subprocess invocations
 
@@ -1194,38 +1194,38 @@ class Step(Node):
 
         - output files that are in state BUILT
         """
-        # Drop amended sources.
+        # Drop dynamic sources.
         rows = list(
             self.db.execute(
                 "SELECT dependency.i, node.i, node.label, node.kind FROM dependency "
                 "JOIN node ON node.i = source "
-                "JOIN amended_dep ON amended_dep.i = dependency.i WHERE sink = ?",
+                "JOIN dynamic_dep ON dynamic_dep.i = dependency.i WHERE sink = ?",
                 (self.i,),
             )
         )
-        self.db.executemany("DELETE FROM amended_dep WHERE i = ?", ((row[0],) for row in rows))
+        self.db.executemany("DELETE FROM dynamic_dep WHERE i = ?", ((row[0],) for row in rows))
         self.del_sources(
             [self.graph.node_classes[kind](self.graph, i, label) for _, i, label, kind in rows]
         )
 
-        # Drop amended environment variables
-        self.db.execute("DELETE FROM env_var WHERE node = ? AND amended = 1", (self.i,))
+        # Drop dynamic environment variables
+        self.db.execute("DELETE FROM env_var WHERE node = ? AND dynamic = 1", (self.i,))
 
         # Drop nglobs
         self.db.execute("DELETE FROM nglob WHERE node = ?", (self.i,))
 
-        # Drop amended sinks and detach the corresponding sink nodes.
+        # Drop dynamic sinks and detach the corresponding sink nodes.
         records_sink = list(
             self.db.execute(
                 "SELECT dependency.i, sink, label, kind FROM dependency "
-                "JOIN amended_dep ON amended_dep.i = dependency.i "
+                "JOIN dynamic_dep ON dynamic_dep.i = dependency.i "
                 "JOIN node ON sink = node.i "
                 "WHERE source = ?",
                 (self.i,),
             )
         )
         ideps_sink = [(row[0],) for row in records_sink]
-        self.db.executemany("DELETE FROM amended_dep WHERE i = ?", ideps_sink)
+        self.db.executemany("DELETE FROM dynamic_dep WHERE i = ?", ideps_sink)
         for _, i, label, kind in records_sink:
             node = self.graph.node_classes[kind](self.graph, i, label)
             node.del_sources([self])
@@ -1277,8 +1277,8 @@ class Step(Node):
         step reaches a genuine terminal `FAILED` state (not on an accepted defer):
         the discarded run's children must not keep running (or linger attached) even
         before the creator's actual rerun happens, which may be much later. Unlike
-        `reset_for_rerun()`, this does not touch amended dependencies, so a defer
-        triggered by an unavailable amended input does not sever the dependency edge
+        `reset_for_rerun()`, this does not touch dynamic dependencies, so a defer
+        triggered by an unavailable dynamic input does not sever the dependency edge
         that `mark_pending()` relies on to wake the step up again once that input
         becomes available.
 
@@ -1348,7 +1348,7 @@ class Step(Node):
                     # Any later file changes relevant to the step will result in
                     # a call to mark_pending(), which will clear the deferred flag.
                     # This makes the step eligible for scheduling again.
-                    deferred = self.has_unavailable_amended_input()
+                    deferred = self.has_unavailable_dynamic_input()
                     self.set_state(StepState.PENDING, deferred)
                 else:
                     logger.info(

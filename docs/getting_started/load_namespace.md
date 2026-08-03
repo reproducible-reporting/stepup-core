@@ -11,7 +11,7 @@ simplifies this process:
 - It supports loading from JSON, YAML, TOML and Python files.
 - It assigns all loaded variables to a namespace, which is easier to use than a dictionary.
 - It can load from multiple files and merge them into a single namespace.
-- The step calling `loadns()` is automatically amended with the loaded files as inputs,
+- The step calling `loadns()` is automatically amended with the loaded files as dynamic inputs,
   unless explicitly disabled.
 
 ## Example

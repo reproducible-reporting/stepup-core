@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:a/plan.py
@@ -31,7 +31,7 @@ file:b/plan.py
 step:./plan.py  # wd=a
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:a/plan.py
              product   file:a/hop1.txt
@@ -40,7 +40,7 @@ step:./plan.py  # wd=a
 step:./plan.py  # wd=b
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:b/plan.py
              product   step:cp ../a/hop2.txt done.txt  # wd=b

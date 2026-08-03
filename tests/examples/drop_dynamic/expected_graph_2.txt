@@ -1,0 +1,47 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+           explained = yes
+             creator   root:
+              source   file:plan.py
+             product   file:work.py
+             product   step:./work.py
+             product   step:sleep 0.5; echo 'Some input for drop_dynamic example' > inp.txt
+
+file:work.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./work.py
+
+step:./work.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+           explained = yes
+             creator   step:./plan.py
+              source   file:inp.txt [dynamic]
+              source   file:work.py
+
+file:inp.txt
+               state = BUILT
+             creator   step:sleep 0.5; echo 'Some input for drop_dynamic example' > inp.txt
+              source   step:sleep 0.5; echo 'Some input for drop_dynamic example' > inp.txt
+                sink   step:./work.py
+
+step:sleep 0.5; echo 'Some input for drop_dynamic example' > inp.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           explained = yes
+             creator   step:./plan.py
+             product   file:inp.txt
+                sink   file:inp.txt

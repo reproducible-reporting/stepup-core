@@ -18,7 +18,7 @@ wait
 grep word1 out1.txt
 grep word2 out2.txt
 
-# Edit the managed amended input out of band, then restart. Its producer reverts it on
+# Edit the dynamic input out of band, then restart. Its producer reverts it on
 # restart, so work.py stays skipped.
 echo "word2 and other" > inp2.txt
 rm .stepup/*.log

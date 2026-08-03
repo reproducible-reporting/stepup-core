@@ -4,7 +4,7 @@
  SUCCESS │ ./plan.py
    START │ ./work.py
 DEFERRED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
    START │ echo word2 > inp2.txt

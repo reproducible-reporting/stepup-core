@@ -1,2 +1,2 @@
-Environment variables are substituted in all paths given to the `amend` function.
-Each variable used is added to the `env_vars` set of the same amend call.
+Steps that are running can also specify that they use certain environment variables,
+which will be taken into account when deciding if the step can be skipped in a future run.

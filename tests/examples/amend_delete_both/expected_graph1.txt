@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
            explained = yes
              creator   root:
               source   file:plan.py
@@ -27,7 +27,7 @@ step:./work.py > log.txt
            explained = yes
              creator   step:./plan.py
               source   file:data1.txt
-              source   file:data2.txt [amended]
+              source   file:data2.txt [dynamic]
               source   file:work.py
              product   file:log.txt
                 sink   file:log.txt

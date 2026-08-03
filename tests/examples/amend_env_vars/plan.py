@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
 from stepup.core.api import run, static
 
-static("foo.txt", "work.py")
-run("./work.py")
+static("demovars.py")
+run("./demovars.py > output.txt", shell=True, inp=["demovars.py"], out=["output.txt"])

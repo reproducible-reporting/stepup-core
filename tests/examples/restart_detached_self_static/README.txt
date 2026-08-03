@@ -1,5 +1,5 @@
 A plan step in a subdirectory declares data.txt static and then reads it,
-so data.txt is a product of that plan step and an amended input of the same step.
+so data.txt is a product of that plan step and a dynamic input of the same step.
 The subdirectory is dropped from the top-level plan and then added back again.
 
 This creator/dependency cycle survives the cleanup of the detached subdirectory:

@@ -6,7 +6,7 @@
  SUCCESS │ ./prep.py plan
    START │ ./work.py
 DEFERRED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 out1.txt
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./prep.py run

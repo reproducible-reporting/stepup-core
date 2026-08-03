@@ -169,7 +169,7 @@ alphabetically within each group.
 
 :   Maximum number of times a step can be deferred (since it last succeeded)
     before it is reported as failed instead of parked pending again.
-    This guards against livelocks where a step's amended inputs keep flapping.
+    This guards against livelocks where a step's dynamic inputs keep flip-flopping.
     The default is `100`, deliberately generous.
 
 `progress` / `STEPUP_BUILD_PROGRESS` / `--progress`, `--no-progress`

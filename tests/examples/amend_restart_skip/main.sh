@@ -18,7 +18,7 @@ wait
 grep word1 out1.txt
 grep word2 out2.txt
 
-# Restart without changes. The amended dependencies persist, so the step is skipped.
+# Restart without changes. The dynamic dependencies persist, so the step is skipped.
 rm .stepup/*.log
 sb -j 1 -w -e & # > current_stdout2.txt &
 

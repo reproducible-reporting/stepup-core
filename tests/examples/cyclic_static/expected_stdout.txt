@@ -4,7 +4,7 @@
  SUCCESS │ ./plan.py
    START │ ./work1.py
 DEFERRED │ ./work1.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./work2.py

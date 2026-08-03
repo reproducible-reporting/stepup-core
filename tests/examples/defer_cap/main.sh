@@ -11,7 +11,7 @@ PID=$!
 stepup wait
 
 # Editing trigger.txt (an ordinary, already-STATIC input) makes X eligible again
-# (mark_pending), without ever making the amended never.txt available.
+# (mark_pending), without ever making the dynamic input never.txt available.
 echo v1 > trigger.txt
 stepup watch-update trigger.txt
 stepup run
@@ -34,7 +34,7 @@ stepup graph current_graph
 stepup join
 
 # Check that the full exception is printed when exceeding the cap.
-grep "stepup.core.exceptions.InputNotFoundError: Amended inputs are not available yet." .stepup/fail.log || exit 1
+grep "stepup.core.exceptions.InputNotFoundError: Dynamic inputs are not available yet." .stepup/fail.log || exit 1
 
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e

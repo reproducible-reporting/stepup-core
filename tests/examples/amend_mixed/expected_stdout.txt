@@ -4,7 +4,7 @@
  SUCCESS │ ./plan.py
    START │ ./work.py > log.txt
 DEFERRED │ ./work.py > log.txt
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 tmp1.txt
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp inp1.txt tmp1.txt

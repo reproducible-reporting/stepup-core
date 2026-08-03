@@ -33,7 +33,7 @@ class AmendWhileHoldingError(GraphError):
     """`amend(inp=...)` was called while the calling step has an open `hold()` block.
 
     An `amend(inp=...)` inside a `hold()` block can deadlock:
-    the step cannot release the hold without the amended input,
+    the step cannot release the hold without the dynamic input,
     and the input's producer cannot run until the hold is released.
     Call the amend-triggering code before entering the `with hold():` block.
     `amend(env=..., out=..., vol=...)` cannot deadlock this way and does not raise this error.
@@ -62,7 +62,7 @@ class EnvVarError(StepUpError):
 
 
 class InputNotFoundError(Exception):
-    """Raised when amended inputs are not available yet."""
+    """Raised when dynamic inputs are not available yet."""
 
 
 class CgroupError(RuntimeError):

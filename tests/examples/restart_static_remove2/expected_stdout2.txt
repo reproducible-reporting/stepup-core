@@ -4,7 +4,7 @@
  DELETED │ inp.txt
    PHASE │ build
 DROPAMEND │ ./plan.py
-────────────────────── Outdated amended step information ───────────────────────
+──────────────────────── Outdated dynamic dependencies ─────────────────────────
 Modified step hash   compact ➜ explained, inp_digest ea40b2f8 ➜ 603fc93b, out_digest b19341b7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./plan.py

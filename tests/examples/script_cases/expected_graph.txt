@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:helper.py
@@ -34,9 +34,9 @@ file:work.py
 step:./work.py plan --step-info=current_step_info.json
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
-              source   file:helper.py [amended]
+              source   file:helper.py [dynamic]
               source   file:work.py
              product   file:current_step_info.json
              product   step:./work.py run +7.0
@@ -51,9 +51,9 @@ file:current_step_info.json
 step:./work.py run -- -5.0
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./work.py plan --step-info=current_step_info.json
-              source   file:helper.py [amended]
+              source   file:helper.py [dynamic]
               source   file:work.py
              product   file:data-5.0.txt
                 sink   file:data-5.0.txt
@@ -66,9 +66,9 @@ file:data-5.0.txt
 step:./work.py run +7.0
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./work.py plan --step-info=current_step_info.json
-              source   file:helper.py [amended]
+              source   file:helper.py [dynamic]
               source   file:work.py
              product   file:data+7.0.txt
                 sink   file:data+7.0.txt

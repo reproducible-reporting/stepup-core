@@ -13,7 +13,7 @@ with open("trigger_work.txt", "w") as f:
 # before the amend() call below runs.
 time.sleep(2.0)
 
-# The amended input must exist on disk, so `api.amend()`'s post-check
+# The dynamic input must exist on disk, so `api.amend()`'s post-check
 # (`_check_inp_paths`) cannot be the reason for the abort below: only the detached
 # branch of `DirectorHandler.amend()` may cause it.
 Path("extra_input.txt").write_text("extra")

@@ -4,7 +4,7 @@
  SUCCESS │ ./plan.py
    START │ ./work.py
 DEFERRED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 2 job(s).
@@ -24,7 +24,7 @@ Run `stepup browse` and search for a name above to see the steps involved.
    PHASE │ build
    START │ ./work.py
 DEFERRED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 1 job(s).
@@ -44,7 +44,7 @@ Run `stepup browse` and search for a name above to see the steps involved.
    PHASE │ build
    START │ ./work.py
 DEFERRED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 1 job(s).
@@ -66,7 +66,7 @@ Run `stepup browse` and search for a name above to see the steps involved.
     FAIL │ ./work.py
 ────────────────────────── Deferred more than 3 times ──────────────────────────
 ./work.py  # exit=1
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 never.txt
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)

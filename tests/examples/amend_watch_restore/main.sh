@@ -13,7 +13,7 @@ stepup graph current_graph1
 grep word1 out1.txt
 grep word2 out2.txt
 
-# Edit the managed amended input out of band. Its producer reverts it on the next run,
+# Edit the dynamic input out of band. Its producer reverts it on the next run,
 # so work.py stays skipped.
 echo "word2 and some" > inp2.txt
 stepup watch-update inp2.txt

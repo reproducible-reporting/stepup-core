@@ -10,9 +10,9 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
-              source   file:config.json [amended]
+              source   file:config.json [dynamic]
               source   file:plan.py
              product   file:config.json
              product   file:data.txt
@@ -37,7 +37,7 @@ file:work.py
 step:./work.py run '{"factor": 2, "inp": ["data.txt"], "out": ["result.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:data.txt
               source   file:work.py

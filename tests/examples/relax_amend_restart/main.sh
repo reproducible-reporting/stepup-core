@@ -17,10 +17,10 @@ wait
 
 [[ -f data.txt ]] || exit 1
 grep hello data.txt
-grep "Unfresh amended inputs" .stepup/success.log || exit 1
+grep "Unfresh dynamic inputs" .stepup/success.log || exit 1
 
 # Phase 2: restart the director (fresh Scheduler => empty start_times/stop_times).
-# Force consumer.py to re-attempt via an edit to its ordinary (non-amended) input,
+# Force consumer.py to re-attempt via an edit to its iniril (non-dynamic) input,
 # without touching data.txt or producer.sh at all --- producer.sh stays SUCCEEDED and
 # is never re-dispatched this invocation, so it has no stop_times entry whatsoever.
 # The freshness check must therefore be skipped entirely (no entry --> treated as

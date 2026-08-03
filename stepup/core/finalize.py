@@ -227,7 +227,7 @@ def _other_lines(summary: PendingSummary) -> list[str]:
         (summary.cyclic, "{n} step(s) are waiting on each other, e.g. {example}."),
         (
             summary.deferred,
-            "{n} step(s) are deferred with unavailable amended inputs, e.g. {example}.",
+            "{n} step(s) are deferred with unavailable dynamic inputs, e.g. {example}.",
         ),
         (
             summary.other,

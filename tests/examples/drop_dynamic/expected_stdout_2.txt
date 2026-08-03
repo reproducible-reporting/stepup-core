@@ -1,0 +1,27 @@
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 3 file(s) for changes
+ UPDATED │ plan.py (digest 3eb66c71 ➜ 66781fbe, size 220 ➜ 268)
+   PHASE │ build
+  NOSKIP │ ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 09337be6 ➜ e97c352d, out_digest e3b0c442 ➜ (unset)
+Modified inp hash    plan.py (digest 3eb66c71 ➜ 66781fbe, size 220 ➜ 268)
+────────────────────────────── Remained the same ───────────────────────────────
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ sleep 0.5; echo 'Some input for drop_dynamic example' > inp.txt
+ SUCCESS │ sleep 0.5; echo 'Some input for drop_dynamic example' > inp.txt
+    SKIP │ ./work.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       explained, inp_digest 6ece54df, out_digest e3b0c442
+Same inp hash        inp.txt
+Same inp hash        work.py
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot
+DIRECTOR │ See you!

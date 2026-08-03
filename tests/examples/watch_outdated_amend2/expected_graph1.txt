@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
                nglob = inp*.txt
            explained = yes
              creator   root:
@@ -59,7 +59,7 @@ step:./work.py subs1.txt > subs2.txt
                 need = DEFAULT
            explained = yes
              creator   step:./plan.py
-              source   file:conv1.txt [amended]
+              source   file:conv1.txt [dynamic]
               source   file:subs1.txt
               source   file:work.py
              product   file:subs2.txt
@@ -76,7 +76,7 @@ step:./work.py subs2.txt > subs3.txt
                 need = DEFAULT
            explained = yes
              creator   step:./plan.py
-              source   file:conv1.txt [amended]
+              source   file:conv1.txt [dynamic]
               source   file:subs2.txt
               source   file:work.py
              product   file:subs3.txt

@@ -6,7 +6,7 @@
  SUCCESS │ cp -p asource1.txt data1.txt
    START │ ./work.py > log.txt
 DEFERRED │ ./work.py > log.txt
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 data2.txt
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p asource2.txt data2.txt

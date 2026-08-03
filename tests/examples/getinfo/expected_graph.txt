@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:README.txt
@@ -43,12 +43,12 @@ step:./getinfo.py  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
            using_env = BAR
-                     = EGG [amended]
+                     = EGG [dynamic]
                      = FOO
-                     = STEPUP_PATH_FILTER [amended]
+                     = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:README.txt
-              source   file:inp1.txt [amended]
+              source   file:inp1.txt [dynamic]
               source   file:sub/getinfo.py
               source   file:sub/inp0.txt
              product   file:out0.txt
@@ -58,11 +58,11 @@ step:./getinfo.py  # wd=sub
              product   file:vol1.txt
              product   file:vol2.txt
                 sink   file:out0.txt
-                sink   file:out2.txt [amended]
+                sink   file:out2.txt [dynamic]
                 sink   file:sub/out1.txt
                 sink   file:sub/vol0.txt
                 sink   file:vol1.txt
-                sink   file:vol2.txt [amended]
+                sink   file:vol2.txt [dynamic]
 
 file:out0.txt
                state = BUILT

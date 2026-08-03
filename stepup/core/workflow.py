@@ -818,7 +818,7 @@ class Workflow(Trellis):
         which makes the step eligible for scheduling again.
         """
         # Note that RUNNING and CHECKING are ignored.
-        # This method may be called on RUNNING steps that create their own amended inputs.
+        # This method may be called on RUNNING steps that create their own dynamic inputs.
         # CHECKING steps are mid hash-check and will settle naturally (SUCCEEDED or PENDING).
         state = step.get_state()
         if state in (StepState.RUNNING, StepState.CHECKING):
@@ -1610,7 +1610,7 @@ class Workflow(Trellis):
         unavailable = set()
         unfresh = set()
         unconfirmed = set()
-        amended_ideps = []
+        dynamic_ideps = []
 
         # Process inp_paths
         infos = self._supply_files(step, inp_paths, new=False)
@@ -1622,7 +1622,7 @@ class Workflow(Trellis):
                 if isinstance(producer, Step) and ran_concurrently(producer.i, step.i):
                     unfresh.add(info.file.path)
             if info.new_idep is not None:
-                amended_ideps.append((info.new_idep,))
+                dynamic_ideps.append((info.new_idep,))
             if info.is_unconfirmed:
                 unconfirmed.add(info.file)
 
@@ -1635,15 +1635,15 @@ class Workflow(Trellis):
         for out_path in out_paths:
             file = self._declare_file(step, out_path, FileState.AWAITED)
             new_idep = file.add_source(step)
-            amended_ideps.append((new_idep,))
+            dynamic_ideps.append((new_idep,))
 
         # Create vol_paths
         for vol_path in vol_paths:
             file = self._declare_file(step, vol_path, FileState.VOLATILE)
             new_idep = file.add_source(step)
-            amended_ideps.append((new_idep,))
+            dynamic_ideps.append((new_idep,))
 
-        self.db.executemany("INSERT INTO amended_dep VALUES (?)", amended_ideps)
+        self.db.executemany("INSERT INTO dynamic_dep VALUES (?)", dynamic_ideps)
         return False, unavailable, unfresh, self._build_to_check(unconfirmed)
 
     #

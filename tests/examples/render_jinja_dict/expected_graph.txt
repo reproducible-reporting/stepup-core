@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:template.txt
@@ -26,7 +26,7 @@ file:template.txt
 step:sc-render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:template.txt
              product   file:rendered-trip1.txt
@@ -40,7 +40,7 @@ file:rendered-trip1.txt
 step:sc-render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:template.txt
              product   file:rendered-trip2.txt

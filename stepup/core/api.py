@@ -194,7 +194,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     because `static()` takes no keyword arguments. Use `glob()` to get either.
     """
     # Flatten the arguments and substitute environment variables in one pass.
-    # A single `subs_env_vars()` context is used so the env vars are amended once.
+    # A single `subs_env_vars()` context is used so the env vars are passed in amend() once.
     su_lit_paths = []
     su_pattern_matches = []
     su_match_paths = []
@@ -730,7 +730,7 @@ def amend(
     out: Iterable[StrPath] | StrPath = (),
     vol: Iterable[StrPath] | StrPath = (),
 ) -> None:
-    """Declare additional inputs, outputs, and environment dependencies from within a running step.
+    """Declare dynamic inputs, outputs, and environment dependencies from within a running step.
 
     Parameters
     ----------
@@ -756,11 +756,11 @@ def amend(
     PathError
         When `inp`, `out`, or `vol` contain a directory.
     InputNotFoundError
-        When amended inputs are not yet available.
+        When dynamic inputs are not yet available.
         Let this exception propagate — do not catch it.
         The director defers the step once the missing inputs become available.
-        Note this call blocks until any amended input still matching an unconfirmed static
-        tree entry is hashed, so it may take a while for large files.
+        Note this call blocks until any dynamic input matching an unconfirmed static file is hashed,
+        so it may take a while for large files.
     AmendWhileHoldingError
         When `inp` is non-empty and this is called anywhere in the calling step's execution
         while a `with hold():` block of that same step is still open.
@@ -789,10 +789,10 @@ def amend(
     since it avoids the wasted work of a deferred step.
 
     For additional output files, `amend(out=...)` or `amend(vol=...)` is required before writing.
-    These will raise an exception if the amended outputs collide with files declared elsewhere
+    These will raise an exception if dynamic outputs collide with files declared elsewhere
     in the workflow, preventing accidental overwrites of other step's files.
 
-    Repeated calls are safe: items already amended in prior calls are silently skipped.
+    Repeated calls are safe: dynamic dependencies known from prior calls are silently skipped.
     """
     # Pre-process the arguments for the Director process.
     inp_paths = coerce_paths(inp)
@@ -831,7 +831,7 @@ def amend(
     tr_out_paths = {translate(out_path) for out_path in su_out_paths}
     tr_vol_paths = {translate(vol_path) for vol_path in su_vol_paths}
 
-    # Filter out previously amended information
+    # Filter out previously given dynamic dependencies.
     tr_inp_paths.difference_update(AMEND_HISTORY["inp"])
     env_deps.difference_update(AMEND_HISTORY["env"])
     tr_out_paths.difference_update(AMEND_HISTORY["out"])
@@ -845,8 +845,8 @@ def amend(
     ):
         return
 
-    # Finally, amend for real. This call may block while the director hashes any amended
-    # input that still matches an unconfirmed static tree entry, which can exceed
+    # Finally, amend for real. This call may block while the director hashes any dynamic
+    # input that still matches an unconfirmed static file, which can exceed
     # STEPUP_SYNC_RPC_TIMEOUT for a large file, hence the disabled socket timeout.
     job_i = get_job_i()
     carry_on = RPC_CLIENT.call.amend(
@@ -858,7 +858,7 @@ def amend(
         _rpc_timeout=0,
     )
     if carry_on is False:
-        raise InputNotFoundError("Amended inputs are not available yet.")
+        raise InputNotFoundError("Dynamic inputs are not available yet.")
 
     # Double check that all inputs are indeed present.
     _check_inp_paths(su_inp_paths)
@@ -884,11 +884,12 @@ def hold() -> Iterator[None]:
     scopes stay held back until the **outermost** block exits, not the innermost one.
 
     No `amend(inp=...)` call may be made anywhere in the calling step's execution while any
-    `hold()` block is open, not even one that would resolve instantly and harmlessly: it would
-    risk a deadlock, since the step cannot release the hold without the amended input, and the
-    input's producer cannot run until the hold is released. See `amend()`'s
-    `AmendWhileHoldingError`. `amend(env=..., out=..., vol=...)` carries no such risk and
-    remains allowed while holding, since none of those can depend on a held-back step's output.
+    `hold()` block is open, not even one that would resolve instantly and harmlessly:
+    it would risk a deadlock, since the step cannot release the hold without the dynamic input,
+    and the input's producer cannot run until the hold is released.
+    See `amend()`'s `AmendWhileHoldingError`.
+    `amend(env=..., out=..., vol=...)` carries no such risk and remains allowed while holding,
+    since none of those can depend on a held-back step's output.
 
     If the block raises, releasing the hold is still attempted, but a failure of that release
     call never replaces the original exception: it is logged instead, so the real cause of the
@@ -1403,7 +1404,7 @@ def loadns(
         If not given, the current working directory is used.
         This is only relevant for variables loaded from Python files.
     do_amend
-        If ``True``, All loaded files are amended as inputs to the current step.
+        If ``True``, the current step is amended with the loaded files as input dependencies.
 
     Returns
     -------
@@ -1471,7 +1472,7 @@ def dumpns(path: StrPath, data: dict[str, Any] | SimpleNamespace, *, do_amend: b
         A `dict` or `SimpleNamespace` of variables to write.
         `cattrs`-supported types (attrs classes, dataclasses) are unstructured automatically.
     do_amend
-        If `True`, the file is amended as an output of the current step before writing.
+        If `True`, the step is amended with the output file before writing.
 
     Raises
     ------

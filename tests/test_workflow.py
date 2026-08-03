@@ -121,10 +121,10 @@ step:cp foo.txt sub/bar.txt
                 need = DEFAULT
              creator   root:
               source   (file:foo.txt)
-              source   (file:spam.txt) [amended]
+              source   (file:spam.txt) [dynamic]
              product   file:egg.csv
              product   file:sub/bar.txt
-                sink   file:egg.csv [amended]
+                sink   file:egg.csv [dynamic]
                 sink   file:sub/bar.txt
 
 (file:foo.txt)
@@ -180,7 +180,7 @@ async def test_step(wfs: Workflow):
     # (The extra inputs and outputs are not meant to be sensible for the copy command.)
     async with wfs.db:
         step.set_state(StepState.RUNNING)
-        assert not step.has_unavailable_amended_input()
+        assert not step.has_unavailable_dynamic_input()
     async with wfs.db:
         is_detached, unavailable, unfresh, to_check = amend_step(
             wfs, step, inp_paths=["spam.txt"], out_paths=["egg.csv"]
@@ -189,7 +189,7 @@ async def test_step(wfs: Workflow):
         assert not is_detached
         assert unavailable == {"spam.txt"}
         assert not unfresh
-        assert step.has_unavailable_amended_input()
+        assert step.has_unavailable_dynamic_input()
         assert {(r.path, r.detached) for r in step.inp_paths(include_detached=True)} == {
             ("foo.txt", True),
             ("spam.txt", True),
@@ -910,7 +910,7 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
         assert wfp.format_str() == txt
 
 
-async def test_skip_step_amended_detached_input(wfp: Workflow):
+async def test_skip_step_dynamic_detached_input(wfp: Workflow):
     async with wfp.db:
         # Prepare jobs for normal run
         plan = wfp.find(Step, "./plan.py")
@@ -998,13 +998,13 @@ async def test_amend_step(wfp: Workflow):
         assert not carry_on
         assert to_check == {}
         assert {
-            (r.path, r.detached) for r in step.inp_paths(include_detached=True, amended=True)
+            (r.path, r.detached) for r in step.inp_paths(include_detached=True, dynamic=True)
         } == {
             ("inp1", True),
             ("inp2", True),
         }
-        assert {r.path for r in step.out_paths(amended=True)} == {"out3"}
-        assert {r.path for r in step.vol_paths(amended=True)} == {"vol4"}
+        assert {r.path for r in step.out_paths(dynamic=True)} == {"out3"}
+        assert {r.path for r in step.vol_paths(dynamic=True)} == {"vol4"}
         step.completed(None, True)
         step.set_state(StepState.PENDING)
         declare_static(wfp, plan, ["inp1"])
@@ -1072,7 +1072,7 @@ async def test_amend_step_freshness_unfresh(wfs: Workflow):
         assert unfresh == {"data.txt"}
 
 
-PENDING_STEP_SKIP_AMENDED_GRAPH = """\
+PENDING_STEP_SKIP_DYNAMIC_GRAPH = """\
 root:
              product   file:plan.py
              product   step:./plan.py
@@ -1110,14 +1110,14 @@ step:cat < inp > out 2> vol
           inp_digest = 63636363 63636363 63636363 63636363 63636363 63636363 63636363 63636363
           out_digest = 64646464 64646464 64646464 64646464 64646464 64646464 64646464 64646464
              creator   step:./plan.py
-              source   file:ainp [amended]
+              source   file:ainp [dynamic]
               source   file:inp
              product   file:aout
              product   file:avol
              product   file:out
              product   file:vol
-                sink   file:aout [amended]
-                sink   file:avol [amended]
+                sink   file:aout [dynamic]
+                sink   file:avol [dynamic]
                 sink   file:out
                 sink   file:vol
 
@@ -1145,7 +1145,7 @@ file:avol
 """
 
 
-async def test_define_pending_step_skip_amended(wfp: Workflow):
+async def test_define_pending_step_skip_dynamic(wfp: Workflow):
     async with wfp.db:
         # Define workflow
         plan = wfp.find(Step, "./plan.py")
@@ -1161,7 +1161,7 @@ async def test_define_pending_step_skip_amended(wfp: Workflow):
             {"out": fake_hash("out"), "aout": fake_hash("aout")}, HashUpdateCause.SUCCEEDED
         )
         step.completed(StepHash(b"c" * 32, None, b"d" * 32, None), False)
-        assert wfp.format_str() == PENDING_STEP_SKIP_AMENDED_GRAPH
+        assert wfp.format_str() == PENDING_STEP_SKIP_DYNAMIC_GRAPH
         assert step.get_state() == StepState.SUCCEEDED
 
         # Check run
@@ -1170,7 +1170,7 @@ async def test_define_pending_step_skip_amended(wfp: Workflow):
         assert step_hash.inp_digest == b"c" * 32
         assert step_hash.out_digest == b"d" * 32
 
-        # Simulate amended input change
+        # Simulate dynamic input change
         wfp.update_file_hashes({"ainp": fake_hash("ainp")}, HashUpdateCause.EXTERNAL)
         assert step.get_state() == StepState.PENDING
         out = wfp.find(File, "out")
@@ -1191,7 +1191,7 @@ async def test_define_pending_step_skip_amended(wfp: Workflow):
         }
         assert wfp.find(File, "aout").creator() == step
         assert wfp.find(File, "avol").creator() == step
-        assert wfp.format_str() == PENDING_STEP_SKIP_AMENDED_GRAPH
+        assert wfp.format_str() == PENDING_STEP_SKIP_DYNAMIC_GRAPH
         assert step.get_state() == StepState.SUCCEEDED
 
         # Check deletion of hash
@@ -2155,20 +2155,20 @@ async def test_env_vars(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog1", env_deps=["name", "other"])
         step = wfp.find(Step, "prog1")
-        assert set(step.env_deps(amended=False)) == {"name", "other"}
-        assert set(step.env_deps(amended=True)) == set()
+        assert set(step.env_deps(dynamic=False)) == {"name", "other"}
+        assert set(step.env_deps(dynamic=True)) == set()
         assert set(step.env_deps()) == {"name", "other"}
 
 
-async def test_amended_env_vars(wfp: Workflow):
+async def test_dynamic_env_vars(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog1", env_deps=["egg"])
         step = wfp.find(Step, "prog1")
         amend_step(wfp, step, env_deps=["foo", "egg"])
         amend_step(wfp, step, env_deps=["foo", "bar"])
-        assert set(step.env_deps(amended=False)) == {"egg"}
-        assert set(step.env_deps(amended=True)) == {"bar", "foo"}
+        assert set(step.env_deps(dynamic=False)) == {"egg"}
+        assert set(step.env_deps(dynamic=True)) == {"bar", "foo"}
         assert set(step.env_deps()) == {"bar", "egg", "foo"}
 
 
@@ -2190,9 +2190,9 @@ async def test_setenv_amend_ignored(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog1", env_overrides={"FOO": "bar"})
         step = wfp.find(Step, "prog1")
-        # A variable overridden via env_overrides is not tracked as an amended dependency.
+        # A variable overridden via env_overrides is not tracked as a dynamic dependency.
         amend_step(wfp, step, env_deps=["FOO", "EGG"])
-        assert set(step.env_deps(amended=True)) == {"EGG"}
+        assert set(step.env_deps(dynamic=True)) == {"EGG"}
         assert set(step.env_deps()) == {"EGG"}
 
 
@@ -2585,9 +2585,9 @@ async def test_static_tree_amend_inp(wfp: Workflow):
         carry_on, to_check = _amend(wfp, prog, inp_paths=["static/other.md"])
         assert carry_on
         assert to_check == {"static/other.md": FileHash.unknown()}
-        carry_on, to_check = _amend(wfp, prog, inp_paths=["static/amended.md", "other/amended.md"])
+        carry_on, to_check = _amend(wfp, prog, inp_paths=["static/dynamic.md", "other/dynamic.md"])
         assert not carry_on
-        assert to_check == {"static/amended.md": FileHash.unknown()}
+        assert to_check == {"static/dynamic.md": FileHash.unknown()}
 
 
 async def test_static_tree_amend_out(wfp: Workflow):
@@ -2599,10 +2599,10 @@ async def test_static_tree_amend_out(wfp: Workflow):
         prog = wfp.find(Step, "prog")
     with pytest.raises(GraphError):
         async with wfp.db:
-            amend_step(wfp, prog, vol_paths=["data/vol_amended/vol.txt"])
+            amend_step(wfp, prog, vol_paths=["data/vol_dynamic/vol.txt"])
     with pytest.raises(GraphError):
         async with wfp.db:
-            amend_step(wfp, prog, out_paths=["data/out_amended/out.txt"])
+            amend_step(wfp, prog, out_paths=["data/out_dynamic/out.txt"])
 
 
 async def test_static_tree_recursive(wfp: Workflow):
@@ -2818,14 +2818,14 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
 
         # Simulate running the step, which amends a few things.
         amend_step(wfp, step, inp_paths=["foo"], env_deps=["AAA"], vol_paths=["bbb"])
-        assert {(r.path, r.detached, r.amended) for r in step.inp_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step.inp_paths(include_detached=True)} == {
             ("foo", False, True)
         }
         assert set(step.env_deps()) == {"AAA"}
-        assert {(r.path, r.detached, r.amended) for r in step.out_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step.out_paths(include_detached=True)} == {
             ("bar", False, False),
         }
-        assert {(r.path, r.detached, r.amended) for r in step.vol_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step.vol_paths(include_detached=True)} == {
             ("bbb", False, True),
         }
         wfp.update_file_hashes({"bar": fake_hash("bar")}, HashUpdateCause.SUCCEEDED)
@@ -2836,15 +2836,15 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
         # Detach the static input.
         foo1.detach()
         assert foo1.is_detached()
-        # Amended info is not removed
-        assert {(r.path, r.detached, r.amended) for r in step.inp_paths(include_detached=True)} == {
+        # Dynamic info is not removed
+        assert {(r.path, r.detached, r.dynamic) for r in step.inp_paths(include_detached=True)} == {
             ("foo", True, True)
         }
         assert set(step.env_deps()) == {"AAA"}
-        assert {(r.path, r.detached, r.amended) for r in step.out_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step.out_paths(include_detached=True)} == {
             ("bar", False, False),
         }
-        assert {(r.path, r.detached, r.amended) for r in step.vol_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step.vol_paths(include_detached=True)} == {
             ("bbb", False, True),
         }
 
@@ -2864,10 +2864,10 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
             ("foo", False)
         }
         assert {r.path for r in step.out_paths()} == {"bar"}
-        # Note that amended info is removed when inputs of a step are detached.
+        # Note that dynamic info is removed when inputs of a step are detached.
         assert {r.path for r in step.vol_paths()} == {"bbb"}
 
-        # Check that amended info is back and hash is still in place
+        # Check that dynamic info is back and hash is still in place
         assert step.get_hash() is not None
 
 
@@ -3417,7 +3417,7 @@ async def test_step_lost_child(wfp: Workflow):
         # that declares data.txt, since that output is not one of its declared outputs.
         assert step.is_alive()
         assert step.get_hash() is None
-        assert list(step.out_paths(amended=False, include_detached=True)) == []
+        assert list(step.out_paths(dynamic=False, include_detached=True)) == []
         assert not step.can_recycle(out_paths=["data.txt"])
 
         # The next cleanup removes it.
@@ -3426,7 +3426,7 @@ async def test_step_lost_child(wfp: Workflow):
         assert list(wfp.nodes(Step, include_detached=True)) == [plan]
 
 
-async def test_step_lost_amended_child(wfp: Workflow):
+async def test_step_lost_dynamic_child(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog")
@@ -3440,7 +3440,7 @@ async def test_step_lost_amended_child(wfp: Workflow):
         declare_static(wfp, wfp.root, ["data.txt"])
         assert wfp.find(File, "data.txt").creator() == wfp.root
 
-        # Amended outputs are not compared by can_recycle, so redeclaring the step recycles it.
+        # Dynamic outputs are not compared by can_recycle, so redeclaring the step recycles it.
         # It must run again to recreate data.txt, i.e. it must have lost its hash.
         assert step.get_hash() is None
         wfp.define_step(plan, "prog")
@@ -3867,7 +3867,7 @@ async def test_defer_clear_independent_of_count(wfs: Workflow):
 
 
 async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Workflow):
-    """`completed()` re-derives amended-input availability directly from the graph,
+    """`completed()` re-derives dynamic-input availability directly from the graph,
     instead of trusting a stale amend-time snapshot.
 
     This matters because a producer may complete (and call `mark_step_pending()`) while

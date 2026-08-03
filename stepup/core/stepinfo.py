@@ -27,8 +27,8 @@ def _convert_to_strs(words: Iterable[str]) -> list[str]:
 class StepInfo:
     """The `step()` function returns an instance of this class to help defining follow-up steps.
 
-    This object will not contain any information that is amended while the step is executed.
-    It only holds information known at the time the step is defined.
+    This object will not contain any dynamic dependency information.
+    It only holds initial dependencies known at the time the step is defined.
 
     All paths and environment variables are stored in sorted order to ensure consistency.
     """

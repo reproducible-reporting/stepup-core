@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from .step import Step
 
 
-__all__ = ("Job", "RunJob", "ValidateAmendedJob")
+__all__ = ("Job", "RunJob", "ValidateDynamicJob")
 
 
 @attrs.define(frozen=True)
@@ -77,21 +77,21 @@ class Job:
 
 
 @attrs.define(frozen=True)
-class ValidateAmendedJob(Job):
-    """Validate that amended inputs have not changed yet, or enforce a full rerun.
+class ValidateDynamicJob(Job):
+    """Validate that dynamic inputs have not changed yet, or enforce a full rerun.
 
     This job checks whether the inputs of a step have changed since the last run,
-    in which case the amended inputs may be outdated. When that is the case:
+    in which case the dynamic inputs may be outdated. When that is the case:
     - The step cannot be skipped and the step hash should be discarded.
-    - The amended inputs need to be recreated by running the step.
+    - The dynamic inputs need to be recreated by running the step.
     """
 
     @property
     def prefix(self) -> str:
-        return "VALIDATE_AMENDED"
+        return "VALIDATE_DYNAMIC"
 
     def coro(self, executor: "Executor"):
-        inner = executor.validate_amended_job(
+        inner = executor.validate_dynamic_job(
             self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
         )
         return _run_job_with_log(self.job_i, self.name, inner) if executor.write_joblog else inner

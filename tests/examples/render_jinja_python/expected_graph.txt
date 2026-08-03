@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:template.md
@@ -30,8 +30,8 @@ file:variables.py
 step:sc-render-jinja template.md variables.py rendered.md
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = ENV_VAR_TEST_STEPUP_RENDER [amended]
-                     = STEPUP_PATH_FILTER [amended]
+           using_env = ENV_VAR_TEST_STEPUP_RENDER [dynamic]
+                     = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:template.md
               source   file:variables.py

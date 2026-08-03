@@ -136,8 +136,8 @@ class PendingSummary:
     """Steps stuck in (or downstream of) a dynamic cycle: no root blocker reaches them."""
 
     deferred: PendingOther
-    """Steps deferred on an unavailable amended input, but with no blocking input found
-    at report time (a stale `deferred` flag; see `Step.has_unavailable_amended_input`).
+    """Steps deferred on an unavailable dynamic input, but with no blocking input found
+    at report time (a stale `deferred` flag; see `Step.has_unavailable_dynamic_input`).
     """
 
     other: PendingOther
@@ -189,7 +189,7 @@ _CREATE_PEND_TABLES = (
     """,
     # Blocking (file -> step) edges: dep.source is an input file that blocks dep.sink from
     # running, i.e. UNAVAILABLE_INPUT_WHERE holds, or the deferred-with-unavailable-
-    # amended-input test does. One row per (file, step) pair; a file can block many steps
+    # dynamic-input test does. One row per (file, step) pair; a file can block many steps
     # and a step can have many blocking files.
     """
     CREATE TEMP TABLE pend_file_block (
@@ -306,8 +306,8 @@ WHERE step.state = {StepState.PENDING.value}
 
 
 # Blocking inputs of every step in U: UNAVAILABLE_INPUT_WHERE's ordinary dispatch test, or
-# (only for a deferred step) the has_unavailable_amended_input test that set `deferred`
-# in the first place -- a deferred step's amended inputs are not otherwise covered by
+# (only for a deferred step) the has_unavailable_dynamic_input test that set `deferred`
+# in the first place -- a deferred step's dynamic inputs are not otherwise covered by
 # UNAVAILABLE_INPUT_WHERE once they are no longer AWAITED/OUTDATED (e.g. detached or
 # MISSING), which is exactly the gap defer_cap-shaped workflows fall into.
 _INSERT_PEND_FILE_BLOCK = f"""
@@ -317,10 +317,10 @@ FROM pend_step
 JOIN dependency AS dep ON dep.sink = pend_step.i
 JOIN file AS input_file ON input_file.node = dep.source
 JOIN node AS input_node ON input_node.i = dep.source
-LEFT JOIN amended_dep ON amended_dep.i = dep.i
+LEFT JOIN dynamic_dep ON dynamic_dep.i = dep.i
 WHERE ({UNAVAILABLE_INPUT_WHERE})
    OR (
-       pend_step.deferred AND amended_dep.i IS NOT NULL
+       pend_step.deferred AND dynamic_dep.i IS NOT NULL
        AND input_file.state NOT IN ({FileState.STATIC.value}, {FileState.BUILT.value})
    )
 """

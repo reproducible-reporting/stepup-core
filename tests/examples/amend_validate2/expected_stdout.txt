@@ -4,7 +4,7 @@
  SUCCESS │ ./plan.py
    START │ ./work.py
 DEFERRED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 ping.txt
 pong.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -12,7 +12,7 @@ pong.txt
  SUCCESS │ echo ping > ping.txt
    START │ ./work.py
 DEFERRED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
+────────────────────────── Unavailable dynamic inputs ──────────────────────────
 pong.txt
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 4 job(s).

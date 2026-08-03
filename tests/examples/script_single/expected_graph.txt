@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:work/generate.py
@@ -26,7 +26,7 @@ file:work/generate.py
 step:./generate.py plan --step-info=../current_step_info.json  # wd=work
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:work/generate.py
              product   file:current_step_info.json
@@ -66,7 +66,7 @@ file:work/config.json
 step:./generate.py run  # wd=work
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
               source   file:work/config.json
               source   file:work/generate.py

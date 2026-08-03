@@ -12,7 +12,7 @@ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot an
  UPDATED │ subs.txt
    PHASE │ build
 DROPAMEND │ ./work.py
-────────────────────── Outdated amended step information ───────────────────────
+──────────────────────── Outdated dynamic dependencies ─────────────────────────
 Modified step hash   explained, inp_digest 85ad62b4 ➜ b375115a, out_digest 2aa07484 ➜ (unset)
 Deleted inp hash     data/inp1.txt
 Modified inp hash    subs.txt (digest ae39a09a ➜ d642a3da)

@@ -97,8 +97,8 @@ nav:
     - advanced_topics/blocked_steps.md
     - advanced_topics/environment_variables.md
     - advanced_topics/volatile_outputs.md
-    - advanced_topics/amending_steps.md
-    - advanced_topics/amending_static_inputs.md
+    - advanced_topics/dynamic_dependencies.md
+    - advanced_topics/dynamic_static_inputs.md
     - advanced_topics/variable_substitution.md
     - advanced_topics/here_and_root.md
     - advanced_topics/stepup_root.md

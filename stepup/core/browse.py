@@ -528,14 +528,14 @@ class GraphServer(BaseHTTPRequestHandler):
                     "its children are not safe to run until it calls <code>release()</code>.</p>"
                 )
 
-            sql_env = "SELECT name, amended FROM env_var WHERE node = ?"
+            sql_env = "SELECT name, dynamic FROM env_var WHERE node = ?"
             env_deps = list(self.con.execute(sql_env, (node_i,)))
             if len(env_deps) > 0:
                 yield "<h3>Uses Environment Variables</h3>"
-                for env_var, amended in env_deps:
+                for env_var, dynamic in env_deps:
                     line = f"<p>{env_var}"
-                    if amended:
-                        line += " [amended]"
+                    if dynamic:
+                        line += " [dynamic]"
                     line += "</p>"
                     yield line
 
@@ -683,7 +683,7 @@ class GraphServer(BaseHTTPRequestHandler):
 
         # Format the sources
         source_rows = self.con.execute(
-            f"SELECT node.i, kind, label, dependency.i IN amended_dep, {STATE_SQL} FROM node "
+            f"SELECT node.i, kind, label, dependency.i IN dynamic_dep, {STATE_SQL} FROM node "
             "JOIN dependency ON dependency.source = node.i "
             "WHERE dependency.sink = ? ORDER BY node.kind, node.label",
             (node_i,),
@@ -691,13 +691,13 @@ class GraphServer(BaseHTTPRequestHandler):
         if len(source_rows) > 0:
             yield "<p>Sources</p>"
             yield '<table class="edges">'
-            for sup_i, sup_kind, sup_label, amended, state in source_rows:
-                yield self._format_node(sup_i, sup_kind, sup_label, False, state, amended)
+            for sup_i, sup_kind, sup_label, dynamic, state in source_rows:
+                yield self._format_node(sup_i, sup_kind, sup_label, False, state, dynamic)
             yield "</table>"
 
         # Format the sinks
         sink_rows = self.con.execute(
-            f"SELECT node.i, kind, label, dependency.i IN amended_dep, {STATE_SQL} FROM node "
+            f"SELECT node.i, kind, label, dependency.i IN dynamic_dep, {STATE_SQL} FROM node "
             "JOIN dependency ON dependency.sink = node.i "
             "WHERE dependency.source = ? ORDER BY node.kind, node.label",
             (node_i,),
@@ -705,8 +705,8 @@ class GraphServer(BaseHTTPRequestHandler):
         if len(sink_rows) > 0:
             yield "<p>Sinks</p>"
             yield '<table class="edges">'
-            for cons_i, cons_kind, cons_label, amended, state in sink_rows:
-                yield self._format_node(cons_i, cons_kind, cons_label, False, state, amended)
+            for cons_i, cons_kind, cons_label, dynamic, state in sink_rows:
+                yield self._format_node(cons_i, cons_kind, cons_label, False, state, dynamic)
             yield "</table>"
 
     def _search(self, env, args):
@@ -765,7 +765,7 @@ class GraphServer(BaseHTTPRequestHandler):
         label: str,
         detached: bool,
         state: int | None = None,
-        amended: bool = False,
+        dynamic: bool = False,
     ) -> str:
         sym = KIND_SYMBOLS.get(kind, f"?{kind}?")
         display_label = escape_command_display(label) if kind == "step" else label
@@ -776,8 +776,8 @@ class GraphServer(BaseHTTPRequestHandler):
             node_str = f"[{kind}]"
         if detached:
             node_str = f"({node_str})"
-        if amended:
-            node_str += " <i>[amended]</i>"
+        if dynamic:
+            node_str += " <i>[dynamic]</i>"
         if state is None:
             state_str = ""
         elif kind == "file":

@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:input_a.txt
@@ -48,11 +48,11 @@ file:work.py
 step:./work.py plan '{}'
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
-              source   file:input_a.txt [amended]
-              source   file:input_b.txt [amended]
-              source   file:input_c.txt [amended]
+              source   file:input_a.txt [dynamic]
+              source   file:input_b.txt [dynamic]
+              source   file:input_c.txt [dynamic]
               source   file:work.py
              product   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
              product   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
@@ -61,7 +61,7 @@ step:./work.py plan '{}'
 step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./work.py plan '{}'
               source   file:input_a.txt
               source   file:work.py
@@ -76,7 +76,7 @@ file:output_a.txt
 step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./work.py plan '{}'
               source   file:input_b.txt
               source   file:work.py
@@ -91,7 +91,7 @@ file:output_b.txt
 step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./work.py plan '{}'
               source   file:input_c.txt
               source   file:work.py

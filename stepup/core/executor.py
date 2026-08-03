@@ -78,7 +78,7 @@ class Executor:
     One shared instance serves all concurrent steps.
     The external API is used as follows:
 
-    - The methods `validate_amended_job`, `try_skip_job` and `execute_job`
+    - The methods `validate_dynamic_job`, `try_skip_job` and `execute_job`
       are the coroutines created by the builder for each job.
     - `defer` is called from `director.py`
     - `interrupt` is called from `builder.py`.
@@ -190,7 +190,7 @@ class Executor:
     # Functions called by jobs, see job.py
     #
 
-    async def validate_amended_job(
+    async def validate_dynamic_job(
         self,
         job_i: int,
         step: Step,
@@ -198,7 +198,7 @@ class Executor:
         env_deps: list[str],
         step_hash: StepHash,
     ):
-        """Test if the inputs (hashes) have changed, which would invalidate the amended step info.
+        """Test if the inputs (hashes) have changed, which would invalidate the dynamic step info.
 
         If the job can be validated, it is put back in the pending state,
         so that it can be re-queued when new inputs arrive.
@@ -208,8 +208,8 @@ class Executor:
             # Step failed early due to unexpected input changes, error already reported.
             return
         if step_hash.inp_digest != new_hash.inp_digest:
-            # Inputs have changed, so discard amended info
-            await self._outdated_amended(run, step_hash, new_hash)
+            # Inputs have changed, so discard dynamic info
+            await self._outdated_dynamic(run, step_hash, new_hash)
             await self._reset_step_to_pending(step)
             return
 
@@ -272,9 +272,10 @@ class Executor:
     ):
         """Execute a step (no skipping).
 
-        The command always runs. If it wants to be deferred (unavailable or unfresh
-        amended inputs) but the defer cap has been exceeded, the step is marked as
-        failed instead of being scheduled for another execution attempt.
+        The command is never skipped in this method.
+        If it wants to be deferred (unavailable or unfresh dynamic inputs)
+        but the defer cap has been exceeded,
+        the step fails instead of being scheduled for another execution attempt.
         """
         run, new_hash = await self._new_run(job_i, step, inp_hashes, env_deps)
         if new_hash is None:
@@ -372,7 +373,7 @@ class Executor:
             # Some of the stopping logic is found in `execute_job`, after this classification.
             run.success = False
             new_hash = None
-            # Clear the amended inputs to mark the step as failed instead of pending.
+            # Clear the dynamic inputs to mark the step as failed instead of pending.
             run.unavailable.clear()
             run.unfresh.clear()
             wants_defer = False
@@ -710,7 +711,7 @@ class Executor:
     ) -> tuple[StepHash | None, dict[str, FileHash], dict[str, FileHash]]:
         """Compute a new step hash with updated input and output file hashes, applied to `run`."""
         async with self.db:
-            # Some inputs may be amended and still unavailable,
+            # Some inputs may be dynamic and still unavailable,
             # for which checking hashes is too early.
             # Therefore, only check the hashes of built and static files.
             inp_hashes = {
@@ -833,9 +834,9 @@ class Executor:
                 )
             )
         if len(run.unavailable) > 0:
-            pages.append(("Unavailable amended inputs", "\n".join(sorted(run.unavailable))))
+            pages.append(("Unavailable dynamic inputs", "\n".join(sorted(run.unavailable))))
         if len(run.unfresh) > 0:
-            pages.append(("Unfresh amended inputs", "\n".join(sorted(run.unfresh))))
+            pages.append(("Unfresh dynamic inputs", "\n".join(sorted(run.unfresh))))
         if len(run.inp_messages) > 0:
             run.inp_messages.sort()
             pages.append(("Invalid inputs", "\n".join(run.inp_messages)))
@@ -889,10 +890,10 @@ class Executor:
                 pages.append(("Remained the same", page_same))
             await self.reporter("NOSKIP", run.description, pages)
 
-    async def _outdated_amended(self, run: Run, old_hash: StepHash, new_hash: StepHash):
+    async def _outdated_dynamic(self, run: Run, old_hash: StepHash, new_hash: StepHash):
         if self.explain_rerun:
             page_change, page_same = compare_step_hashes(old_hash, new_hash)
-            pages = [("Outdated amended step information", page_change)]
+            pages = [("Outdated dynamic dependencies", page_change)]
             if len(page_same) > 0:
                 pages.append(("Remained the same (or missing)", page_same))
             await self.reporter("DROPAMEND", run.description, pages)

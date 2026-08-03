@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
            explained = yes
              creator   root:
               source   file:plan.py
@@ -37,7 +37,7 @@ file:variables.json
 step:./demovars.py
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
            explained = yes
              creator   step:./plan.py
               source   file:demovars.py
@@ -48,7 +48,7 @@ step:./printvars.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = ENV_VAR_TEST_STEPUP_AWDFTD
-                     = STEPUP_PATH_FILTER [amended]
+                     = STEPUP_PATH_FILTER [dynamic]
            explained = yes
              creator   step:./demovars.py
               source   file:printvars.py

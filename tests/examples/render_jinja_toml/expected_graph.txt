@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
                nglob = trip*.toml
              creator   root:
               source   file:plan.py
@@ -39,7 +39,7 @@ file:trip2.toml
 step:sc-render-jinja template.txt trip1.toml rendered-trip1.txt
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:template.txt
               source   file:trip1.toml
@@ -54,7 +54,7 @@ file:rendered-trip1.txt
 step:sc-render-jinja template.txt trip2.toml rendered-trip2.txt
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:template.txt
               source   file:trip2.toml

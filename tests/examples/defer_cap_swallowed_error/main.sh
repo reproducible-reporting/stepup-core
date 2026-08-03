@@ -11,7 +11,7 @@ PID=$!
 stepup wait
 
 # Editing trigger.txt (an ordinary, already-STATIC input) makes X eligible again
-# (mark_pending), without ever making the amended never.txt available.
+# (mark_pending), without ever making the dynamic input never.txt available.
 echo v1 > trigger.txt
 stepup watch-update trigger.txt
 stepup run

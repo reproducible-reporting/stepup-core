@@ -171,7 +171,7 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   As a result, the "Hashing" row is gone from the resource-usage summary;
   that time is now counted under "Director".
 - A known race condition related to `amend(inp=...)` has been fixed.
-  It is now safe to call `amend(inp=...)` after an amended input file has already been read.
+  It is now safe to call `amend(inp=...)` after a dynamic input file has already been read.
   (It is not the most efficient approach to call `amend(inp=...)` too late,
   but in some cases it is the only practical one.)
 - The scheduler has been replaced by a new and more efficient implementation.

@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:www/plan.py
@@ -24,10 +24,10 @@ file:www/plan.py
 step:./plan.py  # wd=www
                state = SUCCEEDED
                 need = PLAN
-           using_env = HERE [amended]
-                     = PUBLIC [amended]
-                     = ROOT [amended]
-                     = STEPUP_PATH_FILTER [amended]
+           using_env = HERE [dynamic]
+                     = PUBLIC [dynamic]
+                     = ROOT [dynamic]
+                     = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:www/plan.py
              product   file:www/index.md

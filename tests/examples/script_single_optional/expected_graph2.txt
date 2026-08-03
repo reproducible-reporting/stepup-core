@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
              product   file:generate.py
@@ -26,7 +26,7 @@ file:generate.py
 step:./generate.py plan --optional
                state = SUCCEEDED
                 need = PLAN
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:generate.py
              product   step:./generate.py run
@@ -34,7 +34,7 @@ step:./generate.py plan --optional
 step:./generate.py run
                state = SUCCEEDED
                 need = DEFAULT (implied by sinks > OPTIONAL)
-           using_env = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./generate.py plan --optional
               source   file:generate.py
              product   file:runout.txt
