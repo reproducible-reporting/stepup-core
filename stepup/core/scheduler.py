@@ -749,24 +749,34 @@ class Scheduler:
             write_joblog_record("COMPLETED", job.job_i, job.name)
         logger.info("Done %s", job.name)
 
-    def build_completed(self):
+    async def build_completed(self):
         """Perform some finalization after the build has completed.
+
+        The following actions are performed:
 
         - Reset the job counter.
         - Write accumulated step durations to the database and clear the buffer.
+        - Run `_update_meta_after()` to refresh the tail times of steps with `_check_after=1`.
         - Clear the start/stop time buffers used to detect unfresh inputs.
+
+        Note that this requires that the `initialize()` method has been called.
         """
         self.job_counter = 0
         if len(self.new_durations) > 0:
-            self.db.executemany(
-                "UPDATE step SET duration = :duration WHERE node = :node "
-                "AND ABS(duration - :duration) > 0.1 * duration",
-                [
-                    {"node": node, "duration": duration}
-                    for node, duration in self.new_durations.items()
-                ],
-            )
+            async with self.db:
+                self.db.executemany(
+                    "UPDATE step SET duration = :duration WHERE node = :node "
+                    "AND ABS(duration - :duration) > 0.1 * duration",
+                    [
+                        {"node": node, "duration": duration}
+                        for node, duration in self.new_durations.items()
+                    ],
+                )
             self.new_durations.clear()
+
+        # Update the tail times, so they can be inspected with `stepup browse` after the build.
+        async with self.db:
+            self._update_meta_after()
         # Also clear the timings used to detect unfresh inputs (see ran_concurrently).
         # This is safe to do here because the builder is guaranteed to have no RUNNING steps.
         self.start_times.clear()

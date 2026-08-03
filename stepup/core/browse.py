@@ -473,10 +473,8 @@ class GraphServer(BaseHTTPRequestHandler):
         # Format the state (if a file or a step)
         if kind == "step":
             sql_props = (
-                "SELECT state, need, duration, deferred,"
-                "defer_count, subshell,"
-                "env_overrides, _safe, _check_safe, _holding, "
-                "_implied_need, _check_after "
+                "SELECT state, need, duration, deferred, defer_count, subshell, env_overrides, "
+                "_safe, _check_safe, _holding, _implied_need, _tail_time, _check_after "
                 "FROM step WHERE node = ?"
             )
             (
@@ -491,6 +489,7 @@ class GraphServer(BaseHTTPRequestHandler):
                 check_safe,
                 holding,
                 implied_need_id,
+                tail_time,
                 check_after,
             ) = self.con.execute(sql_props, (node_i,)).fetchone()
             state = StepState(state_i)
@@ -502,11 +501,23 @@ class GraphServer(BaseHTTPRequestHandler):
                 yield f"<p><b>Defer count:</b> {defer_count}</p>"
             need = Need(need_id)
             implied_need = Need(implied_need_id)
-            if need == implied_need:
+            if detached:
+                yield (
+                    f"<p><b>Need:</b> {need.name} "
+                    "(implied need not propagated because it is detached)</p>"
+                )
+            elif need == implied_need:
                 yield f"<p><b>Need:</b> {need.name}</p>"
             else:
-                yield (f"<p><b>Need:</b> {implied_need.name} (implied by sinks > {need.name})</p>")
+                yield f"<p><b>Need:</b> {implied_need.name} (implied by sinks > {need.name})</p>"
             yield f"<p><b>Duration:</b> {duration:.2f} s</p>"
+            if detached:
+                yield "<p><b>Tail time:</b> not applicable to detached steps</p>"
+            else:
+                yield (
+                    f"<p><b>Tail time:</b> {tail_time:.2f} s "
+                    "(longest wall-time path to any terminal node, including its own duration)</p>"
+                )
             if not safe:
                 yield (
                     "<p><b>This step is not safe to run:</b> "
@@ -519,8 +530,9 @@ class GraphServer(BaseHTTPRequestHandler):
                 )
             if check_after:
                 yield (
-                    "<p><b>The need of this step has not been propagated to the "
-                    "<code>_implied_need</code> field of this step and its sources yet.</b></p>"
+                    "<p><b>The need and duration of this step have not been propagated to the "
+                    "<code>_implied_need</code> and <code>_tail_time</code> fields of this step "
+                    "and its sources yet.</b></p>"
                 )
             if holding:
                 yield (

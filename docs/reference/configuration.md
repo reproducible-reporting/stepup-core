@@ -132,11 +132,19 @@ alphabetically within each group.
 
 `duration` / `STEPUP_BUILD_DURATION` / `--duration`, `--no-duration`
 
-:   Set to `false` to disable recording of step wall times as "duration" for future runs.
+:   Set to `false` to disable recording of step wall times as their `duration` for future runs.
     StepUp uses the duration information to prioritize the execution
     of steps with the longest critical path (in time units) to any terminal node.
-    While this is generally beneficial, it can result in non-deterministic execution order,
+    (This is stored in the database as the `_tail_time` field of each step.)
+    While accurate durations are generally beneficial,
+    they can result in non-deterministic execution order,
     which can be undesirable in some cases, such as testing.
+
+    When disabled, durations remain unchanged from the previous run
+    or stay at their initial value if the step has never been executed before.
+    The initial value can be provided when defining the step, or defaults to `1.0` if not provided.
+    With the `1.0` default, the `_tail_time` of a step degrades to
+    the number of steps in the longest path to any terminal node.
 
 `explain_rerun` / `STEPUP_BUILD_EXPLAIN_RERUN` / `--explain-rerun`, `-e`, `--no-explain-rerun`
 

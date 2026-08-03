@@ -8,6 +8,7 @@ import logging
 from types import SimpleNamespace
 
 import pytest
+from conftest import get_duration_and_tail_time
 
 from stepup.core.builder import Builder
 from stepup.core.enums import HashUpdateCause
@@ -49,27 +50,35 @@ def _make_builder(scheduler: Scheduler, workflow: Workflow) -> Builder:
     )
 
 
-async def test_stop_flushes_pending_durations(wfs: Workflow):
+async def test_stop_flushes_pending_durations(wfp: Workflow):
     """`stop()` is the one path that runs whether a build phase ends normally or via an
     uncaught step-task exception (see `director.py`'s `finally` around `gather()`), so it
     is a best-effort rescue point for durations accumulated but not yet flushed by
     `finalize()`."""
-    async with wfs.db:
-        wfs.define_step(wfs.root, "echo")
-        step = wfs.find(Step, "echo")
+    scheduler = Scheduler(wfp, db=wfp.db, use_duration=True)
+    await scheduler.initialize(None)
 
-    scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
-    scheduler.new_durations[step.i] = 2.0  # outside the 10% no-op threshold
-    builder = _make_builder(scheduler, wfs)
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "foo", out_paths=["data.txt"], duration=2.0)
+        foo = wfp.find(Step, "foo")
+        wfp.define_step(plan, "bar", inp_paths=["data.txt"])
+        bar = wfp.find(Step, "bar")
+
+    scheduler.new_durations[bar.i] = 3.0
+    builder = _make_builder(scheduler, wfp)
 
     await builder.stop()
 
     assert scheduler.new_durations == {}
-    async with wfs.db:
-        duration = wfs.db.execute("SELECT duration FROM step WHERE node = ?", (step.i,)).fetchone()[
-            0
-        ]
+    duration, tail_time, check_after = await get_duration_and_tail_time(wfp.db, foo)
     assert duration == 2.0
+    assert tail_time == 5.0
+    assert check_after == 0
+    duration, tail_time, check_after = await get_duration_and_tail_time(wfp.db, bar)
+    assert duration == 3.0
+    assert tail_time == 3.0
+    assert check_after == 0
 
 
 async def test_stop_swallows_flush_failure(wfs: Workflow, caplog, monkeypatch):

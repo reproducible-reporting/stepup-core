@@ -123,6 +123,14 @@ def amend_step(workflow, step, **kwargs):
     return workflow.amend_step(step, **kwargs)
 
 
+async def get_duration_and_tail_time(db: DBSession, step: Step) -> tuple[float, float, int]:
+    async with db:
+        duration, tail_time, check_after = db.execute(
+            "SELECT duration, _tail_time, _check_after FROM step WHERE node = ?", (step.i,)
+        ).fetchone()
+    return duration, tail_time, check_after
+
+
 @pytest_asyncio.fixture
 async def wfs(request) -> AsyncIterator[Workflow]:
     """A workflow from scratch, no plan.py

@@ -5,6 +5,7 @@
 import time
 
 import pytest
+from conftest import get_duration_and_tail_time
 
 from stepup.core.enums import FileState, Need, StepState
 from stepup.core.file import FILE_SCHEMA
@@ -2007,15 +2008,9 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
 # -----------------------------------------------------------------------
 
 
-def _get_duration_and_check_after(wfs: Workflow, step: Step) -> tuple[float, int]:
-    return wfs.db.execute(
-        "SELECT duration, _check_after FROM step WHERE node = ?", (step.i,)
-    ).fetchone()
-
-
 async def test_job_completed_accumulates_duration_without_writing_db(wfs: Workflow):
     async with wfs.db:
-        wfs.define_step(wfs.root, "echo")
+        wfs.define_step(wfs.root, "echo", duration=2.5)
         step = wfs.find(Step, "echo")
 
     scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
@@ -2025,9 +2020,10 @@ async def test_job_completed_accumulates_duration_without_writing_db(wfs: Workfl
     await scheduler.job_completed(job)
 
     assert step.i in scheduler.new_durations
-    async with wfs.db:
-        duration, _check_after = _get_duration_and_check_after(wfs, step)
-    assert duration == 1.0  # schema default, unaffected until build_completed() runs
+    duration, tail_time, check_after = await get_duration_and_tail_time(wfs.db, step)
+    assert duration == 2.5
+    assert tail_time == 1.0  # not updated yet
+    assert check_after == 1  # no propagation yet
 
 
 async def test_job_completed_no_op_when_use_duration_disabled(wfs: Workflow):
@@ -2045,37 +2041,50 @@ async def test_job_completed_no_op_when_use_duration_disabled(wfs: Workflow):
 
 
 async def test_build_completed_skips_small_relative_change(wfs: Workflow):
+    scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
+    await scheduler.initialize(None)  # not strictly needed, because the threshold is not exceeded.
+
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         step = wfs.find(Step, "echo")
         wfs.db.execute("UPDATE step SET _check_after = 0 WHERE node = ?", (step.i,))
 
-        scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
-        scheduler.new_durations[step.i] = 1.05  # within 10% of the schema default (1.0)
+    scheduler.new_durations[step.i] = 1.05  # within 10% of the schema default (1.0)
 
-        scheduler.build_completed()
+    await scheduler.build_completed()
 
-        duration, check_after = _get_duration_and_check_after(wfs, step)
+    duration, tail_time, check_after = await get_duration_and_tail_time(wfs.db, step)
     assert duration == 1.0
+    assert tail_time == 1.0
     assert check_after == 0
     assert scheduler.new_durations == {}
 
 
-async def test_build_completed_writes_large_relative_change(wfs: Workflow):
-    async with wfs.db:
-        wfs.define_step(wfs.root, "echo")
-        step = wfs.find(Step, "echo")
-        wfs.db.execute("UPDATE step SET _check_after = 0 WHERE node = ?", (step.i,))
+async def test_build_completed_writes_large_relative_change(wfp: Workflow):
+    scheduler = Scheduler(wfp, db=wfp.db, use_duration=True)
+    await scheduler.initialize(None)
 
-        scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
-        scheduler.new_durations[step.i] = 2.0  # 100% change from the schema default (1.0)
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "foo", out_paths=["data.txt"], duration=2.0)
+        foo = wfp.find(Step, "foo")
+        wfp.define_step(plan, "bar", inp_paths=["data.txt"])
+        bar = wfp.find(Step, "bar")
+        wfp.db.execute("UPDATE step SET _check_after = 0")
 
-        scheduler.build_completed()
+    scheduler.new_durations[bar.i] = 3.0
 
-        duration, check_after = _get_duration_and_check_after(wfs, step)
-    assert duration == 2.0
-    assert check_after == 1  # step_flag_check_after_duration fired
+    await scheduler.build_completed()
+
     assert scheduler.new_durations == {}
+    duration, tail_time, check_after = await get_duration_and_tail_time(wfp.db, foo)
+    assert duration == 2.0
+    assert tail_time == 5.0
+    assert check_after == 0
+    duration, tail_time, check_after = await get_duration_and_tail_time(wfp.db, bar)
+    assert duration == 3.0
+    assert tail_time == 3.0
+    assert check_after == 0
 
 
 async def test_second_job_completed_overwrites_pending_duration(wfs: Workflow):

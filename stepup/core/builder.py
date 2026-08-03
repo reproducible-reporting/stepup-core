@@ -193,8 +193,6 @@ class Builder:
     async def finalize(self):
         """Final steps after the builder has executed a bunch of jobs."""
         await self.reporter("DIRECTOR", f"Ran {self.scheduler.job_counter} job(s).")
-        async with self.db:
-            self.scheduler.build_completed()
         await revert_optional(self.db, self.workflow, self.reporter)
         self.returncode = await report_completion(
             self.db, self.workflow, self.scheduler, self.reporter
@@ -214,6 +212,10 @@ class Builder:
             async with self.db:
                 self.workflow.clean()
             await remove_outdated_outputs(self.db, self.workflow, self.reporter)
+        # Flush the step durations and refresh the derived tail times,
+        # now that clean() has settled the graph.
+        await self.scheduler.build_completed()
+        # Finalize the reporter status.
         await self._report_counts()
         await self.reporter.check_logs()
 
@@ -310,20 +312,20 @@ class Builder:
     async def stop(self):
         """Cancel any still-running step tasks and signal their child processes."""
         self.executor.interrupt(signal.SIGTERM)
-        # Started hash jobs are covered by executor.interrupt() above, through
-        # Executor.running; this covers the queued-but-not-yet-started ones, whose
-        # futures would otherwise hang forever.
+        # Started hash jobs are covered by executor.interrupt() above, through Executor.running.
+        # This covers the queued-but-not-yet-started jobs,
+        # whose futures would otherwise hang forever.
         self.hash_queue.shutdown()
         tasks = list(self.running_tasks)
         for task in tasks:
             task.cancel()
         if len(tasks) > 0:
             await asyncio.gather(*tasks, return_exceptions=True)
-        # Best-effort rescue of durations accumulated during a phase that ended without
-        # reaching finalize(), e.g. because a step task raised an unexpected exception.
+        # Best-effort rescue of durations accumulated during and refresh derived tail times
+        # if the build phase ended without reaching the `finalize()` method,
+        # e.g. because a step task raised an unexpected exception.
         # Never let a flush failure mask the original error or block shutdown.
         try:
-            async with self.db:
-                self.scheduler.build_completed()
+            await self.scheduler.build_completed()
         except Exception:  # noqa: BLE001
             logger.warning("Failed to flush step durations during shutdown.", exc_info=True)
