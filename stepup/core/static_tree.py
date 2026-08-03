@@ -22,7 +22,7 @@ class StaticTree(Node):
         """Always raise, since a static tree does not use sources."""
         raise NotImplementedError("A static tree does not use sources.")
 
-    def lost_product(self):
+    def after_lost_product(self):
         """Do nothing, since a static tree has no cached result that could go stale.
 
         A static tree only declares files static;

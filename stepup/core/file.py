@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS file (
 -- disk is unchanged. A hash that came from BUILT or OUTDATED reflects what a step produced,
 -- not a confirmed source's content, so it must not survive a recycle into UNCONFIRMED -- that
 -- would let a leftover build product be silently adopted as a trusted source. Do not add
--- `hash` to the `SET` clause of the upsert in File.initialize() -- that would defeat the
+-- `hash` to the `SET` clause of the upsert in File.initialize_row() -- that would defeat the
 -- STATIC-origin optimization this trigger is carving the exception for.
 CREATE TRIGGER IF NOT EXISTS file_clear_hash AFTER UPDATE OF state ON file
 WHEN (
@@ -68,7 +68,7 @@ class File(Node):
         return FILE_SCHEMA
 
     @classmethod
-    def create_label(cls, label: str, **kwargs) -> str:
+    def adjust_label(cls, label: str, **kwargs) -> str:
         """Do not allow certain filenames, just as a sanity check to detect problems early."""
         # These are not allowed but may pass "existence" checks
         if label in (".", "..", ""):
@@ -79,7 +79,7 @@ class File(Node):
             raise ValueError(f"Invalid file name: {label}")
         return str(label)
 
-    def initialize(self, state: FileState):  # type: ignore
+    def initialize_row(self, state: FileState):  # type: ignore
         """Create extra information in the database about this node.
 
         Parameters
@@ -117,7 +117,7 @@ class File(Node):
         if state == FileState.BUILT:
             self.graph.mark_file_outdated(self)
 
-    def validate(self):
+    def validate_row(self):
         """Validate that extra information about this node is present in the database."""
         row = self.db.execute("SELECT 1 FROM file WHERE node = ?", (self.i,)).fetchone()
         if row is None:
@@ -130,12 +130,12 @@ class File(Node):
         if not file_hash.is_unknown:
             yield "digest", format_digest(file_hash.digest)
 
-    def lost_product(self):
+    def after_lost_product(self):
         """Always raise, since a file node never has products and thus never loses one."""
         raise AssertionError("A file node never has products, so it cannot lose one.")
 
-    def clean(self):
-        """Perform a cleanup right before the detached node is removed from the graph.
+    def before_delete(self):
+        """Perform a cleanup right before the detached node is deleted from the graph.
 
         The row in the file table is removed automatically by `ON DELETE CASCADE`
         when the node row is deleted; here we only queue the on-disk file for deletion.

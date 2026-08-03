@@ -93,7 +93,7 @@ def _insert_step(
     computation: after wiring up the inputs, call `_recompute_ready(con)` before querying
     SELECT_NEXT_STEP.
 
-    `safe_ignoring_hold` defaults to `safe`, mirroring `Step.initialize()`'s seeding of
+    `safe_ignoring_hold` defaults to `safe`, mirroring `Step.initialize_row()`'s seeding of
     `_safe_ignoring_hold` from the same `safe` value; pass it explicitly to set up a step
     that is only unsafe because of an active hold
     (`safe=False, safe_ignoring_hold=True`).

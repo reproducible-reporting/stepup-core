@@ -7,4 +7,4 @@ demonstrates that startup reconciliation for an exact-file target (mirroring
 so only the reconciliation pass picks up `wanted.txt`'s producer step again. `other.txt`,
 which is not targeted, stays unbuilt even though its (shared) input also changed. A further
 run then edits `plan.py` (a comment only) to show that the same elevation also happens when
-the step is redeclared via `Step.recycle()` instead of a fresh declaration.
+the step is redeclared via `Step.reattach()` instead of a fresh declaration.

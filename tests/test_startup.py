@@ -28,7 +28,7 @@ def _make_stray_unconfirmed(workflow: Workflow, path: str) -> None:
     step's `reset_for_rerun()`), which is more machinery than this test needs. This
     reproduces the on-disk shape of a director killed after redeclaring an
     already-known-good static file but before its confirming hash job completed --
-    see `File.initialize()` for why the hash column survives such a redeclare.
+    see `File.initialize_row()` for why the hash column survives such a redeclare.
     """
     workflow.db.execute(
         "UPDATE file SET state = ? WHERE node = (SELECT i FROM node WHERE label = ?)",

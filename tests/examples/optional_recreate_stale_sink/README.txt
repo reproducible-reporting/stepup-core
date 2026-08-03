@@ -5,7 +5,7 @@ out_paths list no longer matches, so a fresh step row is initialized while the
 old dependency edge to its (still needed) output file survives untouched --
 del_sources() only cuts the step's own sources, never its sinks.
 
-Step.initialize() seeds a fresh/recycled OPTIONAL step with _check_after = 0,
+Step.initialize_row() seeds a fresh/recycled OPTIONAL step with _check_after = 0,
 relying on the assumption that a dependency-edge insert will always follow and
 re-flag the step for a needed-status recompute. Here, the new declaration adds
 no dependency edges of its own (no inp/out/env/vol paths at all), so nothing

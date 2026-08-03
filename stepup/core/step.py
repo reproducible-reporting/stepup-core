@@ -230,7 +230,7 @@ CREATE INDEX IF NOT EXISTS step_dispatch ON step(
 -- Multi-row / recursive graph consequences (e.g. flagging a step's recursive products, or
 -- steps reached across dependency edges two hops away) stay in explicit Python-invoked SQL
 -- instead: see RECURSIVE_CHECK_WITH_PRODUCTS and RECURSIVE_CHECK_AFTER_SOURCES below (used
--- by Step.detach()/Step.recycle()), which together with the triggers here account for the
+-- by Step.detach()/Step.reattach()), which together with the triggers here account for the
 -- complete _check_safe/_check_after/_check_ready bookkeeping story.
 
 -- Keep _check_after/_check_ready in sync with dependency-edge changes touching either
@@ -342,7 +342,7 @@ CREATE TEMP TABLE IF NOT EXISTS step_need_count (
     PRIMARY KEY (implied_need, succeeded)
 ) WITHOUT ROWID;
 
--- Step.initialize() always deletes any existing row for this node before inserting a fresh
+-- Step.initialize_row() always deletes any existing row for this node before inserting a fresh
 -- one (never INSERT OR REPLACE), precisely so that reusing a recycled node's step row goes
 -- through the ordinary insert/delete triggers below instead of REPLACE's silent,
 -- non-trigger-firing implicit delete.
@@ -644,7 +644,7 @@ class Step(Node):
         return STEP_SCHEMA
 
     @classmethod
-    def create_label(cls, label: str, workdir: str = ".", **kwargs):
+    def adjust_label(cls, label: str, workdir: str = ".", **kwargs):
         """Derive the step label from the command and optional working directory."""
         if "  # wd=" in label:
             raise ValueError(
@@ -655,14 +655,14 @@ class Step(Node):
             label += f"  # wd={workdir}"
         return label
 
-    def initialize(
+    def initialize_row(
         self,
         *,
         safe: bool = False,
         need: Need = Need.DEFAULT,
         subshell: bool = False,
         duration: float | None = None,
-        **kwargs,  # workdir is consumed by create_label, not used here
+        **kwargs,  # workdir is consumed by adjust_label, not used here
     ):
         """Create extra information in the database about this node.
 
@@ -726,7 +726,7 @@ class Step(Node):
             },
         )
 
-    def validate(self):
+    def validate_row(self):
         """Validate extra information about this node is present in the database."""
         row = self.db.execute("SELECT 1 FROM step WHERE node = ?", (self.i,)).fetchone()
         if row is None:
@@ -773,7 +773,7 @@ class Step(Node):
             if step_hash.inp_info is not None:
                 yield "explained", "yes"
 
-    def lost_product(self):
+    def after_lost_product(self):
         """Invalidate the step hash because a product of this detached step was lost.
 
         A product is lost when `Trellis.clean` deletes it
@@ -811,7 +811,7 @@ class Step(Node):
         old_vol_paths = sorted(r.path for r in self.vol_paths(dynamic=False, include_detached=True))
         return old_vol_paths == sorted(vol_paths)
 
-    def update_recycled(
+    def after_recycle(
         self,
         *,
         need: Need = Need.DEFAULT,
@@ -828,7 +828,7 @@ class Step(Node):
         Other declaration arguments (`safe` and the path lists) are deliberately ignored:
         the path lists were verified by `can_recycle`
         and the `_safe` metadata is recomputed by the scheduler
-        via the `_check_safe` flag set by `Step.recycle`.
+        via the `_check_safe` flag set by `Step.reattach`.
 
         `duration`, when `None`, deliberately leaves the recycled step's existing duration
         (its previous measurement, if any) untouched, unlike a brand-new step's default.
@@ -850,12 +850,13 @@ class Step(Node):
     # Getters and setters
     #
 
-    def _dependencies_str(
+    def _dependency_keys(
         self,
         node_type: type[NodeType] = Self,
-        do_sources: bool = True,
+        *,
+        upstream: bool,
     ) -> Iterator[str]:
-        """Yield one formatted `"kind:label"` string per dependency edge.
+        """Iterate over sinks (or with upstream=True sources), formatted as `kind:label` keys.
 
         Detached edges are wrapped in parentheses
         and dynamic edges get an `" [dynamic]"` suffix.
@@ -863,20 +864,19 @@ class Step(Node):
         sql = (
             "SELECT kind, label, detached, dependency.i IN dynamic_dep "
             "FROM node JOIN dependency ON node.i = "
-        )
-        sql += " source WHERE sink = ?" if do_sources else " sink WHERE source = ?"
+        ) + ("source WHERE sink = ?" if upstream else "sink WHERE source = ?")
         data = [self.i]
         if node_type is not Self:
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
         for kind, label, detached, dynamic in self.db.execute(sql, data):
-            node_str = f"{kind}:{label}"
+            key = f"{kind}:{label}"
             if detached:
-                node_str = f"({node_str})"
+                key = f"({key})"
             if dynamic:
-                node_str += " [dynamic]"
-            yield node_str
+                key += " [dynamic]"
+            yield key
 
     @property
     def command_workdir(self) -> tuple[str, Path]:
@@ -1527,9 +1527,9 @@ class Step(Node):
         # Source steps of the detached subtree lost a sink, so their metadata is stale.
         self.db.execute(RECURSIVE_CHECK_AFTER_SOURCES, (self.i,))
 
-    def recycle(self, new_creator: Node):
-        """Reconnect the node to a new creator node, preserving its properties."""
-        super().recycle(new_creator)
+    def reattach(self, new_creator: Node):
+        """Reattach the node to a new creator node, preserving its properties."""
+        super().reattach(new_creator)
         self._check_with_products()
 
     def _check_with_products(self):

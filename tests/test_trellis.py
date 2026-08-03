@@ -31,7 +31,7 @@ async def test_from_scratch(trellis):
     assert trellis.root.i == 1
     async with trellis.db:
         assert trellis.root.creator() == trellis.root
-        assert trellis.root.creator_detached() == (trellis.root, False)
+        assert trellis.root.creator_and_detached() == (trellis.root, False)
         with pytest.raises(attrs.exceptions.FrozenInstanceError):
             trellis.root.i = 3
         assert trellis.format_str() == FROM_SCRATCH_FORMAT_STR
@@ -99,7 +99,7 @@ class Foo(Node):
         """Return node-specific SQL commands to initialize the database."""
         return FOO_SCHEMA
 
-    def initialize(self, value: int | None = None):
+    def initialize_row(self, value: int | None = None):
         """Create extra information in the database about this node."""
         if value is not None:
             self.db.execute(
@@ -109,7 +109,7 @@ class Foo(Node):
             )
         self.db.execute("INSERT INTO log VALUES(?)", (f"init {self.key()}",))
 
-    def validate(self):
+    def validate_row(self):
         """Validate extra information about this node is present in the database."""
         row = self.db.execute("SELECT 1 FROM foo WHERE node = ?", (self.i,)).fetchone()
         if row is None:
@@ -120,11 +120,11 @@ class Foo(Node):
         row = self.db.execute("SELECT value FROM foo WHERE node = ?", (self.i,)).fetchone()
         yield "value", str(row[0])
 
-    def lost_product(self):
+    def after_lost_product(self):
         """Invalidate cached results because a product of this detached node was removed."""
-        self.db.execute("INSERT INTO log VALUES(?)", (f"lost_product {self.key()}",))
+        self.db.execute("INSERT INTO log VALUES(?)", (f"after_lost_product {self.key()}",))
 
-    def clean(self):
+    def before_delete(self):
         """Perform a cleanup right before the detached node is removed from the graph."""
         self.db.execute("DELETE FROM foo WHERE node = ?", (self.i,))
         self.db.execute("INSERT INTO log VALUES(?)", (f"clean {self.key()}",))
@@ -133,9 +133,9 @@ class Foo(Node):
         """Decide whether this detached node may be fully recycled by `Trellis.recycle`."""
         return value == self.get_value()
 
-    def update_recycled(self, **kwargs):
+    def after_recycle(self, **kwargs):
         """Update the mutable declared properties of this node after a full recycle."""
-        self.db.execute("INSERT INTO log VALUES(?)", (f"update_recycled {self.key()}",))
+        self.db.execute("INSERT INTO log VALUES(?)", (f"after_recycle {self.key()}",))
 
     def act(self, message: str):
         self.db.execute("INSERT INTO log VALUES(?)", (f"act {self.key()} {message}",))
@@ -195,7 +195,7 @@ root:
 async def test_singleton(lt):
     async with lt.db:
         assert lt.root.creator() == lt.root
-        assert lt.root.creator_detached() == (lt.root, False)
+        assert lt.root.creator_and_detached() == (lt.root, False)
         foo = lt.create(Foo, lt.root, "one", value=1)
         assert foo.key() == "f:one"
         assert foo.i == 2
@@ -205,12 +205,12 @@ async def test_singleton(lt):
         assert len(list(foo.sources())) == 0
         assert len(list(foo.products())) == 0
         assert foo.creator() == lt.root
-        assert foo.creator_detached() == (lt.root, False)
+        assert foo.creator_and_detached() == (lt.root, False)
         assert lt.format_str() == SINGLETON1_FORMAT_STR
         foo.detach()
         assert foo.is_detached()
         assert foo.creator() is None
-        assert foo.creator_detached() == (None, None)
+        assert foo.creator_and_detached() == (None, None)
         assert lt.format_str() == SINGLETON2_FORMAT_STR
         foo = lt.create(Foo, lt.root, "one")
         assert lt.format_str() == SINGLETON1_FORMAT_STR
@@ -338,9 +338,9 @@ async def test_chain(lt):
 
         # Test creator
         assert foo3.creator() == foo2
-        assert foo3.creator_detached() == (foo2, False)
+        assert foo3.creator_and_detached() == (foo2, False)
         assert foo4.creator() == foo0
-        assert foo4.creator_detached() == (foo0, False)
+        assert foo4.creator_and_detached() == (foo0, False)
 
         # Test products
         assert list(foo2.products()) == [foo3]
@@ -383,25 +383,25 @@ async def test_chain(lt):
         assert list(foo2.sources()) == [foo0, foo1]
         assert foo2.is_detached()
         assert foo2.creator() is None
-        assert foo2.creator_detached() == (None, None)
+        assert foo2.creator_and_detached() == (None, None)
         assert list(foo2.products()) == [foo3]
         # foo3
         assert list(foo3.sinks()) == []
         assert list(foo3.sources()) == []
         assert foo3.is_detached()
         assert foo3.creator() == foo2
-        assert foo3.creator_detached() == (foo2, True)
+        assert foo3.creator_and_detached() == (foo2, True)
         assert list(foo3.products()) == []
         # foo4
         assert list(foo4.sinks()) == []
         assert list(foo4.sources()) == []
         assert foo4.creator() == foo0
-        assert foo4.creator_detached() == (foo0, False)
+        assert foo4.creator_and_detached() == (foo0, False)
         assert list(foo4.products()) == []
 
         # Detach, recycle, clean, and check log messages
         foo0.detach()
-        foo2.recycle(foo1)
+        foo2.reattach(foo1)
         assert lt.format_str() == CHAIN2_FORMAT_STR
         lt.clean()
         rows = lt.db.execute("SELECT msg FROM log").fetchall()
@@ -414,7 +414,7 @@ async def test_chain(lt):
             "init f:four",
             "clean f:four",
             # foo0 lost foo4 to the cleanup, but survives it as a source of the attached foo2.
-            "lost_product f:zero",
+            "after_lost_product f:zero",
         ]
 
 
@@ -487,36 +487,36 @@ async def test_clean_nested(lt):
         foo2 = lt.create(Foo, None, "2", value=2)
         foo3 = lt.create(Foo, lt.root, "3", value=3)
 
-        # Test is_alive method
-        assert foo0.is_alive()
-        assert foo1.is_alive()
-        assert foo2.is_alive()
-        assert foo3.is_alive()
+        # Test in_graph method
+        assert foo0.in_graph()
+        assert foo1.in_graph()
+        assert foo2.in_graph()
+        assert foo3.in_graph()
 
         foo1.add_source(foo0)
         foo2.add_source(foo1)
         foo3.add_source(foo2)
         lt.clean()
         assert lt.find(Foo, "3") == foo3
-        assert lt.find_detached(Foo, "3") == (foo3, False)
+        assert lt.find_and_detached(Foo, "3") == (foo3, False)
         assert lt.find(Foo, "0") == foo0
-        assert lt.find_detached(Foo, "0") == (foo0, True)
+        assert lt.find_and_detached(Foo, "0") == (foo0, True)
         foo3.detach()
         assert lt.find(Foo, "3") == foo3
-        assert lt.find_detached(Foo, "3") == (foo3, True)
+        assert lt.find_and_detached(Foo, "3") == (foo3, True)
         assert lt.find(Foo, "0") == foo0
-        assert lt.find_detached(Foo, "0") == (foo0, True)
+        assert lt.find_and_detached(Foo, "0") == (foo0, True)
         lt.clean()
         assert lt.find(Foo, "3") is None
-        assert lt.find_detached(Foo, "3") == (None, None)
+        assert lt.find_and_detached(Foo, "3") == (None, None)
         assert lt.find(Foo, "0") is None
-        assert lt.find_detached(Foo, "0") == (None, None)
+        assert lt.find_and_detached(Foo, "0") == (None, None)
 
-        # Test is_alive method
-        assert not foo0.is_alive()
-        assert not foo1.is_alive()
-        assert not foo2.is_alive()
-        assert not foo3.is_alive()
+        # Test in_graph method
+        assert not foo0.in_graph()
+        assert not foo1.in_graph()
+        assert not foo2.in_graph()
+        assert not foo3.in_graph()
 
 
 async def test_create_detached(lt):
@@ -671,7 +671,7 @@ async def test_relocate_tree(lt):
         # foo0 --> foo4 --> foo1 +-> foo2
         #                        +-> foo3
         foo1.detach()
-        foo1.recycle(foo4)
+        foo1.reattach(foo4)
         assert lt.format_str() == RELOCATE_FORMAT_STR
 
 
@@ -788,7 +788,7 @@ async def test_relocate_nested_detached(lt):
         # The new topology is:
         # foo0 --> foo4 --> foo2
         foo1.detach()
-        foo2.recycle(foo4)
+        foo2.reattach(foo4)
         print(lt.format_str())
         assert lt.format_str() == RELOCATE_NESTED_FORMAT_STR
 
@@ -802,11 +802,11 @@ async def test_relocate_nested_detached(lt):
             "init f:3",
             "init f:4",
             # foo1 lost foo2 to foo4.
-            "lost_product f:1",
+            "after_lost_product f:1",
             "clean f:3",
             # foo1 also lost foo3, deleted by the cleanup above.
             # It survives the cleanup itself, because foo2 is an attached sink of foo1.
-            "lost_product f:1",
+            "after_lost_product f:1",
         ]
 
 
@@ -844,6 +844,6 @@ async def test_trellis_recycle(lt):
         assert list(foo1.products()) == [foo2]
         assert foo1.get_value() == 1
 
-        # The update_recycled hook was invoked exactly once.
-        rows = lt.db.execute("SELECT msg FROM log WHERE msg LIKE 'update_recycled %'").fetchall()
-        assert rows == [("update_recycled f:1",)]
+        # The after_recycle hook was invoked exactly once.
+        rows = lt.db.execute("SELECT msg FROM log WHERE msg LIKE 'after_recycle %'").fetchall()
+        assert rows == [("after_recycle f:1",)]

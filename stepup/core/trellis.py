@@ -18,6 +18,10 @@ __all__ = ("Node", "NodeType", "Root", "Trellis")
 logger = logging.getLogger(__name__)
 
 
+# The SQL schema for the Trellis database, consists of two main parts:
+# 1. The `node` table, which stores for each node its kind, label, creator and detached flag.
+#    (This contains the creator -> product edges of the provenance graph.)
+# 2. The `dependency` table, which stores all source-sink relations of the dependency graph.
 TRELLIS_SCHEMA = """
 PRAGMA application_id={application_id};
 PRAGMA user_version={schema_version};
@@ -103,7 +107,10 @@ FROM node LEFT JOIN all_products ON node.i = all_products.current
 WHERE node.detached = (all_products.current IS NOT NULL)
 """
 
-RECURSE_SINKS_SINGLE = """
+# Recursively find all sinks of a node by following source -> sink edges,
+# including the given node itself.
+# This can be combined with either SELECT_WALK or SELECT_CYCLIC.
+RECURSE_SINKS = """
 WITH RECURSIVE all_sink(current) AS (
     -- Initial: Set initial node
     SELECT ? AS current
@@ -136,9 +143,8 @@ class Node:
     These are typically short-lived objects.
     They only store a few immutable pieces of information:
 
-    - `con`: the SQLite connection.
+    - `graph`: the graph to which this node belongs.
     - `i`: the identifier of the node in the database.
-    - `kind`: determines the subclass of `Node` to use.
     - `label`: a unique (within its kind) label for the node.
 
     All other information related to this node is directly taken from or stored in the database.
@@ -147,15 +153,19 @@ class Node:
 
     - `kind` to control the formatting of the key string.
     - `schema` to extend the trellis schema.
-    - `create_label` to override the user-provided label of a node.
+    - `adjust_label` to override the user-provided label of a node.
     - `initialize` to create or update rows for new nodes outside the default Trellis tables.
     - `validate` to check if the necessary rows outside the default Trellis tables are made.
     - `format_properties` to define the properties of the node.
-    - `lost_product` is called when a detached node loses a product node.
-    - `clean` to decide if a detached node can be removed and to release resources.
+    - `before_delete` to release resources related to a node.
+    - `after_lost_product` is called after a detached node loses a product node.
     - `can_recycle` to decide if a detached node can be fully recycled by `Trellis.recycle`.
-    - `update_recycled` to update the mutable declared properties after a full recycle.
+    - `after_recycle` to update the mutable declared properties after a full recycle.
     """
+
+    #
+    # Immutable attributes
+    #
 
     graph: "Trellis" = attrs.field(repr=False)
     """The Trellis object that contains the node."""
@@ -170,22 +180,14 @@ class Node:
     since it is considered immutable.
     """
 
-    @property
-    def db(self) -> DBSession:
-        """The SQLite database."""
-        return self.graph.db
+    #
+    # Methods to be overridden by subclasses
+    #
 
     @classmethod
     def kind(cls) -> str:
         """Lower-case prefix of the key string representing a node."""
         return cls.__name__.lower()
-
-    def key(self, detached: bool = False) -> str:
-        """Return the key representation of the node, for terminal display."""
-        result = f"{self.kind()}:{self.label}"
-        if detached:
-            result = f"({result})"
-        return result
 
     @classmethod
     def schema(cls) -> str | None:
@@ -193,31 +195,31 @@ class Node:
         return None
 
     @classmethod
-    def create_label(cls, label: str, **kwargs):
+    def adjust_label(cls, label: str, **kwargs):
         """Optionally override the user-provided label when creating a node."""
         return str(label)
 
-    def initialize(self, **kwargs):
+    def initialize_row(self, **kwargs):
         """Create extra information in the database about this node."""
 
-    def validate(self):
+    def validate_row(self):
         """Validate that extra information about this node is present in the database."""
 
     def format_properties(self) -> Iterator[tuple[str, str]]:
         """Iterate over key-value pairs with the properties of the node, for terminal display."""
         yield from []
 
-    def clean(self):
-        """Perform a cleanup right before the detached node is removed from the graph."""
+    def before_delete(self):
+        """Perform a cleanup right before the detached node is deleted from the graph."""
 
-    def lost_product(self):
+    def after_lost_product(self):
         """Invalidate cached results because a product of this detached node was removed.
 
         This keeps the node (and its recyclable metadata) in the graph:
         only `Trellis.clean` ever deletes nodes.
         It is called on a detached node that loses a product,
         either because the product was deleted (`Trellis.clean`)
-        or because another creator took it over (`Trellis.create` and `Node.recycle`).
+        or because another creator took it over (`Trellis.create` and `Node.reattach`).
         Such a node is no longer a faithful record of what it created,
         so subclasses must drop whatever would let them be skipped when recycled later.
 
@@ -240,14 +242,26 @@ class Node:
         """
         return False
 
-    def update_recycled(self, **kwargs):
+    def after_recycle(self, **kwargs):
         """Update the mutable declared properties of this node after a full recycle."""
 
     #
-    # Getters and Iterators
+    # Properties, Getters and Iterators
     #
 
-    def is_alive(self) -> bool:
+    @property
+    def db(self) -> DBSession:
+        """The SQLite database."""
+        return self.graph.db
+
+    def key(self, detached: bool = False) -> str:
+        """Return the key representation of the node, for terminal display."""
+        result = f"{self.kind()}:{self.label}"
+        if detached:
+            result = f"({result})"
+        return result
+
+    def in_graph(self) -> bool:
         """True when the node is still present in the database."""
         return self.db.execute("SELECT 1 FROM node WHERE i = ?", (self.i,)).fetchone() is not None
 
@@ -268,7 +282,7 @@ class Node:
         i, kind, label = row
         return self.graph.node_classes[kind](self.graph, i, label)
 
-    def creator_detached(self) -> tuple[Self, bool] | tuple[None, None]:
+    def creator_and_detached(self) -> tuple[Self, bool] | tuple[None, None]:
         """Return the creator of the node.
 
         Returns
@@ -298,8 +312,8 @@ class Node:
         for i, kind, label in self.db.execute(query, data):
             yield self.graph.node_classes[kind](self.graph, i, label)
 
-    def products_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
-        """Iterate over (a subset of) products of this node, formatted as strings."""
+    def product_keys(self, node_type: type[NodeType] = Self) -> Iterator[str]:
+        """Iterate over (a subset of) products of this node, formatted as `kind:label` keys."""
         sql = "SELECT kind, label, detached FROM node WHERE creator = ?"
         data = [self.i]
         if node_type is not Self:
@@ -307,22 +321,21 @@ class Node:
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
         for kind, label, detached in self.db.execute(sql, data):
-            node_str = f"{kind}:{label}"
+            key = f"{kind}:{label}"
             if detached:
-                node_str = f"({node_str})"
-            yield node_str
+                key = f"({key})"
+            yield key
 
     def _dependencies(
         self,
         node_type: type[NodeType] = Self,
         include_detached: bool = False,
-        do_sources: bool = True,
+        *,
+        upstream: bool = True,
     ) -> Iterator[NodeType]:
-        sql = "SELECT node.i, kind, label FROM node JOIN dependency ON node.i = "
-        if do_sources:
-            sql += "source WHERE sink = ?"
-        else:
-            sql += "sink WHERE source = ?"
+        sql = "SELECT node.i, kind, label FROM node JOIN dependency ON node.i = " + (
+            "source WHERE sink = ?" if upstream else "sink WHERE source = ?"
+        )
         data = [self.i]
         if node_type is not Self:
             sql += " AND kind = ?"
@@ -336,39 +349,46 @@ class Node:
         self, node_type: type[NodeType] = Self, include_detached: bool = False
     ) -> Iterator[NodeType]:
         """Iterate over nodes that supply to this one."""
-        yield from self._dependencies(node_type, include_detached, do_sources=True)
+        yield from self._dependencies(node_type, include_detached, upstream=True)
 
     def sinks(
         self, node_type: type[NodeType] = Self, include_detached: bool = False
     ) -> Iterator[NodeType]:
         """Iterate over nodes that consume from this one."""
-        yield from self._dependencies(node_type, include_detached, do_sources=False)
+        yield from self._dependencies(node_type, include_detached, upstream=False)
 
-    def _dependencies_str(
+    def _dependency_keys(
         self,
         node_type: type[NodeType] = Self,
-        do_sources: bool = True,
+        *,
+        upstream: bool,
     ) -> Iterator[str]:
-        sql = "SELECT kind, label, detached FROM node JOIN dependency ON node.i = "
-        sql += " source WHERE sink = ?" if do_sources else " sink WHERE source = ?"
+        """Iterate over sinks (or with reverse=True sources), formatted as `kind:label` keys.
+
+        Detached edges are wrapped in parentheses.
+        Subclasses may decorate the strings with additional information.
+        """
+        sql = "SELECT kind, label, detached FROM node JOIN dependency ON node.i = " + (
+            "source WHERE sink = ?" if upstream else "sink WHERE source = ?"
+        )
         data = [self.i]
         if node_type is not Self:
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
         for kind, label, detached in self.db.execute(sql, data):
-            node_str = f"{kind}:{label}"
+            key = f"{kind}:{label}"
             if detached:
-                node_str = f"({node_str})"
-            yield node_str
+                key = f"({key})"
+            yield key
 
-    def sources_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
-        """Iterate over nodes that supply to this one, formatted as strings."""
-        yield from self._dependencies_str(node_type, do_sources=True)
+    def source_keys(self, node_type: type[NodeType] = Self) -> Iterator[str]:
+        """Iterate over nodes that supply to this one, formatted as `kind:label` keys."""
+        yield from self._dependency_keys(node_type, upstream=True)
 
-    def sinks_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
-        """Iterate over nodes that consume from this one, formatted as strings."""
-        yield from self._dependencies_str(node_type, do_sources=False)
+    def sink_keys(self, node_type: type[NodeType] = Self) -> Iterator[str]:
+        """Iterate over nodes that consume from this one, formatted as `kind:label` keys."""
+        yield from self._dependency_keys(node_type, upstream=False)
 
     #
     # Graph modifications
@@ -401,10 +421,8 @@ class Node:
             if not detached:
                 self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, True))
 
-    def recycle(self, new_creator: "Node"):
-        """Reconnect the node to a new creator node, preserving its properties.
-
-        This method is used to reattach a detached node to a new creator node.
+    def reattach(self, new_creator: "Node"):
+        """Reattach the node to a new creator node, preserving its properties.
 
         Raises
         ------
@@ -414,12 +432,12 @@ class Node:
             If the new_creator is not an instance of Node.
         """
         if not self.is_detached():
-            raise ValueError("Node.recycle can only be called on a detached node.")
+            raise ValueError("Node.reattach can only be called on a detached node.")
         if not isinstance(new_creator, Node):
             raise TypeError(f"Argument new_creator must be a Node, got {type(new_creator)}")
         if new_creator.is_detached():
             raise ValueError("New creator node must not be detached.")
-        old_creator, old_creator_detached = self.creator_detached()
+        old_creator, old_creator_detached = self.creator_and_detached()
         self.db.execute(
             "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (new_creator.i, self.i)
         )
@@ -428,7 +446,7 @@ class Node:
         if old_creator is not None:
             if not old_creator_detached:
                 raise GraphError("Old creator of detached node is not detached.")
-            old_creator.lost_product()
+            old_creator.after_lost_product()
         # Propagate the detached=FALSE property to all product nodes.
         self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, False))
 
@@ -454,7 +472,7 @@ class Node:
             (or is this node itself), which means the corresponding edge would
             introduce a cyclic dependency.
         """
-        cur = self.db.execute(RECURSE_SINKS_SINGLE + SELECT_WALK, (self.i,))
+        cur = self.db.execute(RECURSE_SINKS + SELECT_WALK, (self.i,))
         sink_is = {row[0] for row in cur}
         if not sink_is.isdisjoint(source_is):
             raise CyclicError("New relation introduces a cyclic dependency")
@@ -486,7 +504,7 @@ class Node:
         """
         if not skip_cycle_check:
             # Check whether the new edge would introduce a cyclic dependency.
-            cur = self.db.execute(RECURSE_SINKS_SINGLE + SELECT_CYCLIC, (self.i, source.i))
+            cur = self.db.execute(RECURSE_SINKS + SELECT_CYCLIC, (self.i, source.i))
             if cur.fetchone()[0] > 0:
                 raise CyclicError("New relation introduces a cyclic dependency")
         try:
@@ -498,18 +516,16 @@ class Node:
             raise GraphError("Relation already exists") from exc
         return cur.lastrowid
 
-    def del_sources(self, sources: list["Node"] | None = None):
-        """Delete given sources.
+    def del_sources(self, sources: list["Node"]):
+        """Delete given sources."""
+        self.db.executemany(
+            "DELETE FROM dependency WHERE source = ? AND sink = ?",
+            ((source.i, self.i) for source in sources),
+        )
 
-        Without arguments, all sources of the current node are deleted.
-        """
-        if sources is None:
-            self.db.execute("DELETE FROM dependency WHERE sink = ?", (self.i,))
-        else:
-            self.db.executemany(
-                "DELETE FROM dependency WHERE source = ? AND sink = ?",
-                ((source.i, self.i) for source in sources),
-            )
+    def del_all_sources(self):
+        """Delete all sources of the current node."""
+        self.db.execute("DELETE FROM dependency WHERE sink = ?", (self.i,))
 
 
 @attrs.define(frozen=True)
@@ -518,54 +534,52 @@ class Root(Node):
 
     (Indirect) products of the root node are considered active nodes in the graph.
     Nodes that are not connected (indirectly) to the root node are considered detached,
-    and will be removed when the Trellis.clean method is called.
+    and will be removed when the `Trellis.clean()` method is called.
     """
 
-    def clean(self):
+    def before_delete(self):
         """Always raise, since the root node is never detached and thus never cleaned up."""
-        raise AssertionError("Root node cannot be cleaned")
+        raise AssertionError("Root node cannot be deleted")
 
-    def lost_product(self):
+    def after_lost_product(self):
         """Always raise, since the root node can never lose a product this way.
 
-        `lost_product` is only called on a detached node:
-        `Trellis.clean` only deletes detached nodes,
-        and `Trellis.create` and `Node.recycle` only take a product away
+        `Node.after_lost_product()` is only called on a detached node:
+        `Trellis.clean()` only deletes detached nodes,
+        and `Trellis.create()` and `Node.reattach()` only take a product away
         from an already-detached creator.
         The root node is never detached.
         """
-        raise AssertionError("Root node cannot be the creator of a detached node.")
+        raise AssertionError("A node can never be detached from the Root node.")
 
 
 @attrs.define(eq=False)
 class Trellis:
-    """Base class for provenance and dependency graphs.
+    """Base class for combined provenance + dependency graphs."""
 
-    Subclasses should implement at least the following:
-
-    - Override `default_node_classes` to define the types of nodes that are supported.
-    """
-
-    # The database lock managing the SQLite connection where the graph is stored.
     db: DBSession = attrs.field()
+    """The database session managing the SQLite connection where the graph is stored."""
 
-    # The types of nodes that are supported.
     node_classes: dict[str, type[Node]] = attrs.field(init=False)
+    """The types of nodes that are supported."""
+
+    _root: Root = attrs.field(init=False)
+    """Pre-fetched results from the database."""
 
     @node_classes.default
     def _default_node_classes(self) -> dict[str, type[Node]]:
         return {node_class.kind(): node_class for node_class in self.default_node_classes()}
 
-    @staticmethod
-    def default_node_classes() -> list[type[Node]]:
-        return [Root]
-
-    # Pre-fetched results from the database
-    _root: Root = attrs.field(init=False)
-
     #
     # Initialization
     #
+
+    @staticmethod
+    def default_node_classes() -> list[type[Node]]:
+        """Specify the default node classes that are supported by this graph.
+
+        Subclasses can override this to add more node classes."""
+        return [Root]
 
     @property
     def application_id(self) -> int:
@@ -582,49 +596,7 @@ class Trellis:
         # While making this change, the enums were also made more intuitive.
         # Schema 2 became outdated due to the worker actions.
         # Schema 3 became outdated due to a change in step table (dirty field).
-        # Schema 4 became outdated due to the v4.0.0 rewrite
-        # (schema 4 itself was last released in v3.2.3):
-        # - Directory file nodes are no longer part of the graph (implicit instead);
-        #   deferred globs were removed in favor of static trees;
-        #   "orphan" was renamed to "detached".
-        # - File hashing switched from Blake2B to SHA-256, and the file table's separate
-        #   digest/mode/mtime/size/inode columns were merged into a single nullable JSON
-        #   `hash` column (NULL replacing the old sentinel values). Added
-        #   `FileState.UNCONFIRMED` to distinguish truly missing files from those still
-        #   needing a hash check.
-        # - The step table was reworked for the new scheduling algorithm: many fields
-        #   added/removed, DEFAULT clauses added, step hashes collapsed to a single JSON
-        #   blob, and labels now store the raw command line instead of an
-        #   action-name-prefixed one. The QUEUED state was removed and CHECKING was added
-        #   (hash-checking a step for a possible skip without consuming a resource slot).
-        # - Step readiness/safety/deferral bookkeeping (previously read-branch-write in
-        #   Python) moved into triggers and CHECK constraints: the deferred/state CHECK,
-        #   `step_clear_deferred`, `step_flag_check_safe`/`step_flag_check_after_duration`,
-        #   and the `_has_hash`/`_ready`/`_check_ready` columns with their maintaining
-        #   triggers and the `step_dispatch`/`step_check_ready` indexes. New
-        #   `step_need_count`/`path_list`/`node_list` temp tables avoid full-table scans for
-        #   counts and batch lookups.
-        # - Added re-entrant `hold()`/`release()` support: `step._holding`,
-        #   `step._safe_ignoring_hold`, and the `step_reset_holding` trigger.
-        # - Graph invariants (creator/dependency kind rules, single root node) moved from
-        #   Python (`Workflow._check_creator`/`_check_source`, `Trellis._check_creator`,
-        #   and their `Node`/`Trellis` call sites, all removed) into node/dependency CHECK
-        #   constraints and triggers.
-        # - Added `step_outcome` (stdout/stderr) and `step_subprocess` (subprocess
-        #   invocations, keyed by rowid instead of an explicit seq column) tables.
-        # - `nglob_multi.data` changed from a pickle blob to JSON.
-        # - `ON DELETE CASCADE` added to all satellite tables; indexes tuned; `auto_vacuum`
-        #   set to INCREMENTAL with a paired vacuum worker.
-        # - `file_clear_hash` also nulls the hash when a BUILT/OUTDATED file is recycled into
-        #   UNCONFIRMED, so a leftover build product from a removed step is not silently
-        #   trusted as a confirmed source when it is adopted by a static tree.
-        # - `nglob_multi` (one row per multi-pattern glob registration, storing a serialized
-        #   `NGlobMulti`) was replaced by `nglob` (one row per single pattern, storing a
-        #   serialized `NamedGlob`), since cross-pattern glob consistency was removed.
-        # - Added `pattern` and `regex` columns to `nglob`, derived from `data`, so that
-        #   per-declaration and per-file-event checks never have to deserialize the
-        #   unbounded match set in `data`.
-
+        # Schema 4 became outdated due to the v4.0.0 rewrite.
         return 5
 
     @classmethod
@@ -690,7 +662,7 @@ class Trellis:
                 f"Attached node is not reachable from root via creator chain: {node.key()}"
             )
         for node in self.nodes():
-            node.validate()
+            node.validate_row()
 
     #
     # Basic attributes and introspection
@@ -707,7 +679,7 @@ class Trellis:
         row = self.db.execute(sql, data).fetchone()
         return None if row is None else node_type(self, row[0], label)
 
-    def find_detached(
+    def find_and_detached(
         self, node_type: type[NodeType], label: str
     ) -> tuple[NodeType, bool] | tuple[None, None]:
         """Return the node and detached flag for the given node class and label."""
@@ -718,18 +690,6 @@ class Trellis:
             return None, None
         i, detached = row
         return node_type(self, i, label), bool(detached)
-
-    def node(self, node_type: type[NodeType], i: int) -> NodeType | None:
-        """Return the node for the given node class and identifier."""
-        sql = "SELECT kind, label FROM node WHERE i = ?"
-        data = (i,)
-        row = self.db.execute(sql, data).fetchone()
-        if row is None:
-            return None
-        kind, label = row
-        if kind != node_type.kind():
-            raise TypeError(f"Node with id {i} is not of type {node_type.kind()}")
-        return node_type(self, i, label)
 
     def nodes(
         self,
@@ -769,11 +729,9 @@ class Trellis:
             pairs = []
             if ci is not None and (label != clabel):
                 pairs.append(("creator", creator.key(cdetached)))
-            pairs.extend(("source", other_str) for other_str in node.sources_str())
-            pairs.extend(
-                ("product", other_str) for other_str in node.products_str() if other_str != "root:"
-            )
-            pairs.extend(("sink", other_str) for other_str in node.sinks_str())
+            pairs.extend(("source", key) for key in node.source_keys())
+            pairs.extend(("product", key) for key in node.product_keys() if key != "root:")
+            pairs.extend(("sink", key) for key in node.sink_keys())
             for role, key in pairs:
                 lines.append(f"{role:>20s}   {key}")
             lines.append("")
@@ -812,16 +770,16 @@ class Trellis:
             raise TypeError(f"Argument node_type must be a subclass of Node, got {node_type}")
         if not (isinstance(creator, Node) or creator is None):
             raise TypeError(f"Argument creator must be a Node or None, got {type(creator)}")
-        label = node_type.create_label(label, **kwargs)
+        label = node_type.adjust_label(label, **kwargs)
 
-        node, detached = self.find_detached(node_type, label)
+        node, detached = self.find_and_detached(node_type, label)
         if node is not None:
             # Recycle old data if needed and add/update node
             if not detached:
                 raise GraphError(f"Node ({node.key()}) already exists and is not detached.")
 
             # Get the old creator before this information is lost.
-            old_creator, old_creator_detached = node.creator_detached()
+            old_creator, old_creator_detached = node.creator_and_detached()
             # Replace the old creator by the new one.
             if creator is None:
                 creator_i = None
@@ -839,9 +797,9 @@ class Trellis:
             if old_creator is not None:
                 if not old_creator_detached:
                     raise GraphError("Old creator of detached node is not detached.")
-                old_creator.lost_product()
+                old_creator.after_lost_product()
             # Cut all ties to sources, so this node starts from a clean slate.
-            node.del_sources()
+            node.del_all_sources()
             # Since this node is recreated, it cannot have created other nodes (yet).
             for product in node.products():
                 product.detach()
@@ -867,8 +825,8 @@ class Trellis:
             )
             node_i = cur.lastrowid
             node = node_type(self, node_i, label)
-        node.initialize(**kwargs)
-        node.validate()
+        node.initialize_row(**kwargs)
+        node.validate_row()
         return node
 
     def recycle(
@@ -891,7 +849,7 @@ class Trellis:
             The label of the node.
         kwargs
             Additional node-specific arguments,
-            passed to `can_recycle` and `update_recycled`.
+            passed to `can_recycle` and `after_recycle`.
 
         Returns
         -------
@@ -899,14 +857,14 @@ class Trellis:
             The fully recycled node,
             or `None` when there is no compatible detached node with this label.
         """
-        label = node_type.create_label(label, **kwargs)
-        node, detached = self.find_detached(node_type, label)
+        label = node_type.adjust_label(label, **kwargs)
+        node, detached = self.find_and_detached(node_type, label)
         if node is None or not detached or not node.can_recycle(**kwargs):
             return None
-        # Node.recycle validates the new creator and cleans up the old one.
-        node.recycle(creator)
-        node.update_recycled(**kwargs)
-        node.validate()
+        # Node.reattach validates the new creator and cleans up the old one.
+        node.reattach(creator)
+        node.after_recycle(**kwargs)
+        node.validate_row()
         logger.info("Recycle node: %s", node.key())
         return node
 
@@ -956,8 +914,8 @@ class Trellis:
             for i, kind, label, creator_i in self.db.execute(query):
                 node = self.node_classes[kind](self, i, label)
                 cleaned_some = True
-                node.del_sources()
-                node.clean()
+                node.del_all_sources()
+                node.before_delete()
                 self.db.execute("DELETE FROM node where i = ?", (i,))
                 creator_is.discard(i)
                 if creator_i is not None:
@@ -976,4 +934,4 @@ class Trellis:
             ).fetchone()
             if row is not None:
                 kind, label = row
-                self.node_classes[kind](self, creator_i, label).lost_product()
+                self.node_classes[kind](self, creator_i, label).after_lost_product()

@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 # Enforce Workflow's creator-kind, dependency-kind and static-tree-ownership rules at the
 # database level, as a backstop against a bug that writes directly to node/dependency
-# (bypassing Trellis.create()/Node.add_source()/Node.recycle()). These are the only
+# (bypassing Trellis.create()/Node.add_source()/Node.reattach()). These are the only
 # Workflow-level invariants that don't belong to a single node kind's own satellite schema
 # (contrast with STEP_SCHEMA's triggers on dependency/file/node, which all maintain a
 # step-table column -- see the convention comment above STEP_SCHEMA's trigger block), so
@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 # (self) directly in SQL (Trellis.create()), which does not fit this per-kind table.
 #
 # `register_static_tree`'s file <- st hand-over (`UPDATE node SET creator = ...`) is
-# another deliberate direct-SQL write that bypasses `Trellis.create()`/`Node.recycle()`;
+# another deliberate direct-SQL write that bypasses `Trellis.create()`/`Node.reattach()`;
 # it relies on `node_check_creator_kind_upd` below to keep enforcing this same invariant
 # on that path.
 WORKFLOW_SCHEMA = """
@@ -378,7 +378,7 @@ class Workflow(Trellis):
         return Need.DEFAULT if self.targets or self.target_dirs else Need.OPTIONAL
 
     #
-    # Override from base class
+    # Initialization and schema
     #
 
     @staticmethod
@@ -389,15 +389,6 @@ class Workflow(Trellis):
     def schema(cls) -> str:
         """Return the SQL schema for the database, including Workflow's own triggers."""
         return super().schema() + WORKFLOW_SCHEMA
-
-    def clean(self):
-        # Get rid of static tree files that are no longer used.
-        for st in self.nodes(StaticTree):
-            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
-            for file in files:
-                if not any(file.sinks()):
-                    file.detach()
-        super().clean()
 
     def _rebuild_temp_tables(self):
         """Seed `step_need_count` once per fresh connection, then chain to the base class."""
@@ -445,10 +436,6 @@ class Workflow(Trellis):
         # despite being marked succeeded.
         for step in to_mark_pending:
             self.mark_step_pending(step)
-
-    #
-    # Initialization
-    #
 
     def initialize_boot(self) -> bool:
         """Initialize the (new) boot script.
@@ -522,7 +509,7 @@ class Workflow(Trellis):
         # Accepted for now given small typical target counts; revisit if this shows up in
         # profiling.
         for path in sorted(self.targets):
-            file, detached = self.find_detached(File, path)
+            file, detached = self.find_and_detached(File, path)
             if file is None or detached:
                 # Not (yet) in the graph, or detached. Detached rows are deliberately
                 # skipped: they may be garbage from an abandoned plan, and raising on
@@ -627,12 +614,12 @@ class Workflow(Trellis):
 
     def is_regular_output(self, path: str) -> bool:
         """Return whether `path` is currently a regular (non-volatile) output of a step."""
-        node, detached = self.find_detached(File, path)
+        file, detached = self.find_and_detached(File, path)
         return (
-            node is not None
+            file is not None
             and not detached
-            and isinstance(node.creator(), Step)
-            and node.get_state() in REGULAR_OUTPUT_STATES
+            and isinstance(file.creator(), Step)
+            and file.get_state() in REGULAR_OUTPUT_STATES
         )
 
     def dir_has_regular_output(self, path: str) -> bool:
@@ -935,7 +922,7 @@ class Workflow(Trellis):
             When the path is volatile.
             When the path exists while it is expected to be new.
         """
-        file, detached = self.find_detached(File, path)
+        file, detached = self.find_and_detached(File, path)
         if file is None or detached:
             st = self._find_matching_static_tree(path)
             if st is None:
@@ -1125,6 +1112,20 @@ class Workflow(Trellis):
     # Build phase (low-level public API)
     #
 
+    def clean(self):
+        """Delete all detached nodes that can be removed safely.
+
+        This includes a cleanup of static tree files that are no longer used,
+        after which the regular `Trellis.clean()` is called to remove any other detached nodes.
+        """
+        # Get rid of static tree files that are no longer used.
+        for st in self.nodes(StaticTree):
+            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
+            for file in files:
+                if not any(file.sinks()):
+                    file.detach()
+        super().clean()
+
     def declare_unconfirmed(self, creator: Node, paths: Collection[str]) -> dict[str, FileHash]:
         """Declare files as unconfirmed static candidates, to be confirmed shortly after.
 
@@ -1278,7 +1279,7 @@ class Workflow(Trellis):
         # The creator declared these files itself, before declaring the tree that
         # contains them. The tree is their sole owner, so transfer them to it. This is a
         # deliberate bypass of Trellis.create(): going through it would treat the
-        # transfer as a recycle and call Step.lost_product() on the old creator, deleting
+        # transfer as a recycle and call Step.after_lost_product() on the old creator, deleting
         # the hash of the very step that is handing them over and making it permanently
         # unskippable. Nothing is lost here -- the creator re-declares both the files and
         # the tree on its next run -- so the creator column is simply reassigned.
@@ -1436,8 +1437,8 @@ class Workflow(Trellis):
         if creator.is_detached():
             # The creator has moved on without this call (see Step.detach()), so
             # defining a new child step for it is moot.
-            # (This also sidesteps Node.recycle()'s "new creator must not be detached"
-            # check, which Trellis.recycle() below could otherwise hit.)
+            # (This also sidesteps Node.reattach()'s "new creator must not be detached"
+            # check, which Trellis.reattach() below could otherwise hit.)
             return {}
 
         # If it is a boot step, check that there was no boot step yet.
@@ -1665,7 +1666,7 @@ class Workflow(Trellis):
         return any(_compiled(regex).fullmatch(path) for (regex,) in self.db.execute(sql))
 
     def is_relevant(self, path: str) -> bool:
-        file, detached = self.find_detached(File, path)
+        file, detached = self.find_and_detached(File, path)
         if not (file is None or detached):
             return file.get_state() not in (FileState.AWAITED, FileState.VOLATILE)
         return self.matches_any_glob(path)
@@ -1678,7 +1679,7 @@ class Workflow(Trellis):
         is judged by the registered glob patterns, as in `is_relevant`; no step can be
         building it, since a pattern may not match a build product.
         """
-        file, detached = self.find_detached(File, path)
+        file, detached = self.find_and_detached(File, path)
         if not (file is None or detached):
             return file.get_state() in (FileState.STATIC, FileState.MISSING)
         return self.matches_any_glob(path)

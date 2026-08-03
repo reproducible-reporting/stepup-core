@@ -139,8 +139,8 @@ Why this matters:
   not an internal detail. For a tool whose value proposition is persistent provenance,
   determinism of the graph *is* determinism of the outcome.
 - **Avoiding spurious re-execution.**
-  When a node changes creator, `Trellis.create` calls `lost_product()` on the old creator,
-  which for a `Step` deletes its stored hash (`Step.lost_product`), so that step can no
+  When a node changes creator, `Trellis.create` calls `after_lost_product()` on the old creator,
+  which for a `Step` deletes its stored hash (`Step.after_lost_product`), so that step can no
   longer be skipped. A creator assignment that varies between runs therefore causes steps
   to re-run even though their inputs and outputs are unchanged.
 
@@ -167,14 +167,10 @@ to take effect.
 During a pre-release refactor, many commits may change the schema,
 but they all share the single bumped version for the upcoming release;
 do not bump the version again within the same release cycle.
-Record each individual schema change as a comment line in the `schema_version` docstring,
-even when the number itself does not change.
 
 **Claude Code must never bump `schema_version`.**
 Deciding when a release's schema changes are complete is a human judgment call,
 so only a human coder bumps the version number, never Claude Code acting on its own.
-When a schema change is made, add the comment line documenting it (see above),
-but leave the returned integer untouched unless the user explicitly asks for the bump itself.
 
 ### Consistency Checks: SQL First
 

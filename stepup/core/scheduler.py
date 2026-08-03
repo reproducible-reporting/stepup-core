@@ -35,7 +35,7 @@ DELETE FROM safe_update
 # _check_safe-flagged step, AND for the flagged step itself.
 #
 # A product node can be reached through more than one flagged ancestor at once (e.g.
-# Step.detach()/recycle() flags a whole subtree via RECURSIVE_CHECK_WITH_PRODUCTS in step.py), so
+# Step.detach()/reattach() flags a whole subtree via RECURSIVE_CHECK_WITH_PRODUCTS in step.py), so
 # duplicate rows for the same node id are possible and are resolved with MIN(safe)/MIN(safe_nh):
 # the value derived through a longer (more ancestor-inclusive) chain is always <= the value from
 # a shorter chain, so MIN always recovers the correct, fully-chained answer rather than an

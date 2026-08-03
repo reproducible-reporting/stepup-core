@@ -24,9 +24,6 @@ Guidance that applies to only part of the repo lives next to the code it governs
 
 - **Claude Code must never bump `Trellis.schema_version`.**
   Deciding when a release's schema changes are complete is a human judgment call.
-  Document a schema change as a comment line in the `schema_version` docstring,
-  but leave the returned integer untouched unless the user explicitly asks for the bump.
-  Full policy in `stepup/core/CLAUDE.md`.
 - **The workflow graph must be a deterministic function of the source files and the
   plan/step code, never of scheduling order or job count.**
   Running the same project with `-j1` and `-j16` must produce the same graph.
@@ -128,7 +125,8 @@ Some conventions specific to this codebase:
   (e.g., `stdout, stderr`) is allowed when the mkdocs rendering supports it and
   the parameters share the same description.
 
-- In `Returns` sections, use a **semantic name** for the return value, not the type:
+- In `Returns` sections, use a **semantic name** for the return value, not the type,
+  as these are already in the function signature.
 
     ```python
     # correct

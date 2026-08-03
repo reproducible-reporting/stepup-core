@@ -434,7 +434,7 @@ async def test_define_boot_input_detached(wfs: Workflow):
         wfs.define_step(wfs.root, "echo", inp_paths=["foo.txt"])
         foo = wfs.find(File, "foo.txt")
         assert isinstance(foo, File)
-        foo, detached = wfs.find_detached(File, "foo.txt")
+        foo, detached = wfs.find_and_detached(File, "foo.txt")
         assert detached
         assert foo.is_detached()
 
@@ -552,8 +552,8 @@ async def test_detach_marks_is_detached_regardless_of_state(wfp: Workflow):
         assert sub2.is_detached()
 
         # Via reset_for_rerun()'s "detach steps created by this step" loop.
-        sub1.recycle(plan)
-        sub2.recycle(plan)
+        sub1.reattach(plan)
+        sub2.reattach(plan)
         sub1.set_state(StepState.RUNNING)
         sub2.set_state(StepState.SUCCEEDED)
 
@@ -574,7 +574,7 @@ async def test_declare_unconfirmed_detached_creator_is_noop(wfp: Workflow):
         sub = wfp.find(Step, "sub")
         sub.detach()
         assert wfp.declare_unconfirmed(sub, ["ghost.txt"]) == {}
-        assert wfp.find_detached(File, "ghost.txt") == (None, None)
+        assert wfp.find_and_detached(File, "ghost.txt") == (None, None)
 
 
 async def test_register_static_tree_detached_creator_is_noop(wfp: Workflow):
@@ -585,7 +585,7 @@ async def test_register_static_tree_detached_creator_is_noop(wfp: Workflow):
         sub = wfp.find(Step, "sub")
         sub.detach()
         assert wfp.register_static_tree(sub, "ghost_dir") == {}
-        assert wfp.find_detached(StaticTree, "ghost_dir/") == (None, None)
+        assert wfp.find_and_detached(StaticTree, "ghost_dir/") == (None, None)
 
 
 async def test_define_step_detached_creator_is_noop(wfp: Workflow):
@@ -596,7 +596,7 @@ async def test_define_step_detached_creator_is_noop(wfp: Workflow):
         sub = wfp.find(Step, "sub")
         sub.detach()
         assert wfp.define_step(sub, "echo ghost") == {}
-        assert wfp.find_detached(Step, "echo ghost") == (None, None)
+        assert wfp.find_and_detached(Step, "echo ghost") == (None, None)
 
 
 async def test_record_subprocess_detached_step_is_noop(wfp: Workflow):
@@ -652,7 +652,7 @@ async def test_define_step_volatile_input(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "touch given", vol_paths=["given"])
         touch = wfp.find(Step, "touch given")
-        file, detached = wfp.find_detached(File, "given")
+        file, detached = wfp.find_and_detached(File, "given")
         assert not detached
         assert file.get_state() == FileState.VOLATILE
     with pytest.raises(GraphError):
@@ -675,7 +675,7 @@ async def test_define_step_input_volatile(wfp: Workflow):
         wfp.define_step(plan, "cat given", inp_paths=["given"])
         cat = wfp.find(Step, "cat given")
         assert cat.get_state() == StepState.PENDING
-        file, detached = wfp.find_detached(File, "given")
+        file, detached = wfp.find_and_detached(File, "given")
         assert detached
         assert file.get_state() == FileState.AWAITED
     with pytest.raises(GraphError):
@@ -1921,7 +1921,7 @@ async def test_to_be_deleted(wfp: Workflow):
         blub1.completed(StepHash(b"aaa", None, b"zzz", None), False)
         plan.detach()
         assert wfp.to_be_deleted == {}
-        assert wfp.find_detached(Step, "./plan.py") == (plan, True)
+        assert wfp.find_and_detached(Step, "./plan.py") == (plan, True)
         wfp.clean()
         assert wfp.to_be_deleted == {
             "built": built_file_hash,
@@ -1929,7 +1929,7 @@ async def test_to_be_deleted(wfp: Workflow):
             "volatile": None,
             "sub/foo": foo_file_hash,
         }
-        assert wfp.find_detached(Step, "./plan.py") == (None, None)
+        assert wfp.find_and_detached(Step, "./plan.py") == (None, None)
 
 
 async def test_externally_deleted(wfp: Workflow):
@@ -2113,18 +2113,18 @@ async def test_output_clean_nested(wfp: Workflow):
         wfp.define_step(plan, "echo egg > s/foo/bar/egg", out_paths=["s/foo/bar/egg"])
         step = wfp.find(Step, "echo egg > s/foo/bar/egg")
         wfp.clean()
-        f, detached = wfp.find_detached(File, "s/foo/bar/egg")
+        f, detached = wfp.find_and_detached(File, "s/foo/bar/egg")
         assert isinstance(f, File)
         assert not detached
         assert f.creator().i == step.i
 
         step.detach()
-        f, detached = wfp.find_detached(File, "s/foo/bar/egg")
+        f, detached = wfp.find_and_detached(File, "s/foo/bar/egg")
         assert isinstance(f, File)
         assert detached
 
         wfp.clean()
-        assert wfp.find_detached(File, "s/foo/bar/egg") == (None, None)
+        assert wfp.find_and_detached(File, "s/foo/bar/egg") == (None, None)
 
 
 async def test_clean_multiple_sources(wfp: Workflow):
@@ -2147,7 +2147,7 @@ async def test_clean_multiple_sources(wfp: Workflow):
         assert file.is_detached()
         step2.detach()
         wfp.clean()
-        assert wfp.find_detached(File, "common.txt") == (None, None)
+        assert wfp.find_and_detached(File, "common.txt") == (None, None)
 
 
 async def test_env_vars(wfp: Workflow):
@@ -2330,12 +2330,12 @@ async def test_static_tree_clean(wfp: Workflow):
         wfp.clean()
         sr = wfp.find(StaticTree, "static/")
         assert sr.creator().i == plan.i
-        assert not step.is_alive()
-        assert wfp.find_detached(File, "static") == (None, None)
-        assert wfp.find_detached(File, "static/") == (None, None)
-        assert wfp.find_detached(File, "static/foo") == (None, None)
-        assert wfp.find_detached(File, "static/foo/") == (None, None)
-        assert wfp.find_detached(File, "static/foo/bar.txt") == (None, None)
+        assert not step.in_graph()
+        assert wfp.find_and_detached(File, "static") == (None, None)
+        assert wfp.find_and_detached(File, "static/") == (None, None)
+        assert wfp.find_and_detached(File, "static/foo") == (None, None)
+        assert wfp.find_and_detached(File, "static/foo/") == (None, None)
+        assert wfp.find_and_detached(File, "static/foo/bar.txt") == (None, None)
 
         # make the plan pending
         wfp.mark_step_pending(plan)
@@ -2368,9 +2368,9 @@ async def test_clean_cycle_invalidates_hash(wfp: Workflow):
         # Detach the sub plan step and clean up. The cycle survives, the rest does not.
         sub.detach()
         wfp.clean()
-        assert sub.is_alive()
-        assert wfp.find(File, "sub/data.txt").is_alive()
-        assert not copy.is_alive()
+        assert sub.in_graph()
+        assert wfp.find(File, "sub/data.txt").in_graph()
+        assert not copy.in_graph()
 
         # Because the sub plan step lost a product, it must not be skipped when recycled.
         assert sub.get_hash() is None
@@ -2687,7 +2687,7 @@ async def test_define_step_reqdir_out_path(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo", out_paths=["sub/dir/out"])
-        reqdir, detached = wfp.find_detached(File, "sub/dir")
+        reqdir, detached = wfp.find_and_detached(File, "sub/dir")
         assert reqdir is None
         assert detached is None
 
@@ -2696,7 +2696,7 @@ async def test_define_step_reqdir_vol_path(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo", vol_paths=["sub/dir/vol"])
-        reqdir, detached = wfp.find_detached(File, "sub/dir")
+        reqdir, detached = wfp.find_and_detached(File, "sub/dir")
         assert reqdir is None
         assert detached is None
 
@@ -2710,7 +2710,7 @@ async def test_define_step_reqdir_workdir(wfp: Workflow):
         assert command == "echo"
         assert workdir == Path("sub/dir")
         assert isinstance(workdir, Path)
-        reqdir, detached = wfp.find_detached(File, "sub/dir")
+        reqdir, detached = wfp.find_and_detached(File, "sub/dir")
         assert reqdir is None
         assert detached is None
 
@@ -2721,7 +2721,7 @@ async def test_amend_step_reqdir_out_path(wfp: Workflow):
         wfp.define_step(plan, "echo")
         step = wfp.find(Step, "echo")
         amend_step(wfp, step, out_paths=["sub/dir/out"])
-        reqdir, detached = wfp.find_detached(File, "sub/dir")
+        reqdir, detached = wfp.find_and_detached(File, "sub/dir")
         assert reqdir is None
         assert detached is None
 
@@ -2732,7 +2732,7 @@ async def test_amend_step_reqdir_vol_path(wfp: Workflow):
         wfp.define_step(plan, "echo")
         step = wfp.find(Step, "echo")
         amend_step(wfp, step, vol_paths=["sub/dir/vol"])
-        reqdir, detached = wfp.find_detached(File, "sub/dir")
+        reqdir, detached = wfp.find_and_detached(File, "sub/dir")
         assert reqdir is None
         assert detached is None
 
@@ -2850,7 +2850,7 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
 
         # Detach step1
         step.detach()
-        assert step.is_alive()
+        assert step.in_graph()
         assert step.is_detached()
         assert step.get_hash() is not None
 
@@ -2921,11 +2921,11 @@ async def test_step_static_tree(wfp: Workflow):
 
         # Check file nodes
         for path in "test.png", "test.txt", "other.txt":
-            file, detached = wfp.find_detached(File, path)
+            file, detached = wfp.find_and_detached(File, path)
             assert detached
             assert file.get_state() == FileState.AWAITED
         for path in "sub/boom.txt", "sub/README.md":
-            file, detached = wfp.find_detached(File, path)
+            file, detached = wfp.find_and_detached(File, path)
             assert not detached
             assert file.get_state() == FileState.UNCONFIRMED
 
@@ -2956,7 +2956,7 @@ async def test_recycle_preserves_hash_across_rerun(wfp: Workflow):
 
         # Simulate a step rerun: detach the previously declared static file.
         foo.detach()
-        assert wfp.find_detached(File, "foo.txt") == (foo, True)
+        assert wfp.find_and_detached(File, "foo.txt") == (foo, True)
 
         # Redeclare the same path: the recycled node must keep its old hash, not lose it
         # to the file_clear_hash trigger (which only fires for MISSING/AWAITED/VOLATILE).
@@ -3117,7 +3117,7 @@ async def test_reset_for_rerun_detaches_unconfirmed(wfp: Workflow):
         ghost = wfp.find(File, "ghost.txt")
         assert ghost.get_state() == FileState.UNCONFIRMED
         sub.reset_for_rerun()
-        assert wfp.find_detached(File, "ghost.txt") == (ghost, True)
+        assert wfp.find_and_detached(File, "ghost.txt") == (ghost, True)
 
 
 async def test_register_static_tree_rejects_attached_unconfirmed_or_missing(wfp: Workflow):
@@ -3394,7 +3394,7 @@ async def test_step_try_clean(wfp: Workflow):
         # Run try_clean (via clean) and verify that plan has been removed.
         plan.detach()
         wfp.clean()
-        assert not plan.is_alive()
+        assert not plan.in_graph()
 
 
 async def test_step_lost_child(wfp: Workflow):
@@ -3415,14 +3415,14 @@ async def test_step_lost_child(wfp: Workflow):
         # The step of prog is kept for a possible recycle, but it lost data.txt.
         # It must not be skipped anymore, and it can no longer be recycled as the step
         # that declares data.txt, since that output is not one of its declared outputs.
-        assert step.is_alive()
+        assert step.in_graph()
         assert step.get_hash() is None
         assert list(step.out_paths(dynamic=False, include_detached=True)) == []
         assert not step.can_recycle(out_paths=["data.txt"])
 
         # The next cleanup removes it.
         wfp.clean()
-        assert not step.is_alive()
+        assert not step.in_graph()
         assert list(wfp.nodes(Step, include_detached=True)) == [plan]
 
 
@@ -3470,7 +3470,7 @@ async def test_step_lost_recycled_child(wfp: Workflow):
         assert work.get_hash() is not None
 
         # The sub plan lost work and must not be skipped when it is recycled later.
-        assert sub_plan.is_alive()
+        assert sub_plan.in_graph()
         assert sub_plan.get_hash() is None
 
 
@@ -3505,14 +3505,14 @@ async def test_static_tree_lost_child(wfp: Workflow):
 
         # The static tree is kept until the next cleanup, but it is detached and must
         # therefore not claim any new file.
-        assert tree.is_alive()
+        assert tree.in_graph()
         assert tree.is_detached()
         wfp.define_step(plan, "other", inp_paths=["data/bar.txt"])
         assert wfp.find(File, "data/bar.txt").creator() is None
 
         # The next cleanup removes it.
         wfp.clean()
-        assert not tree.is_alive()
+        assert not tree.in_graph()
         assert list(wfp.nodes(StaticTree, include_detached=True)) == []
 
 
@@ -4111,8 +4111,8 @@ SATELLITE_NODE_TABLES = (
 async def test_clean_cascades_satellite_rows(wfs: Workflow):
     """Cleaning a node deletes all its satellite rows via ON DELETE CASCADE.
 
-    No explicit per-table DELETE is issued in `Step.clean()` / `File.clean()` anymore;
-    the cascade fires when `Trellis.clean()` deletes the node row.
+    No explicit per-table DELETE is issued in `Step.before_delete()` and `File.before_delete()`.
+    The cascade fires when `Trellis.clean()` deletes the node row.
     """
     async with wfs.db:
         # Foreign-key enforcement must be active on the connection or the cascades never fire.
@@ -4258,9 +4258,9 @@ async def test_amend_step_target_volatile_output(wfs_target: Workflow):
 async def test_define_step_recycle_target_volatile_output():
     """A target's volatile-output rejection must also fire on `define_step`'s recycle path.
 
-    `Step.recycle()` reattaches a detached VOLATILE product row without going through
+    `Step.reattach()` reattaches a detached VOLATILE product row without going through
     `_declare_file`, so this needs its own guard (checked directly on `vol_paths`,
-    before `self.recycle()` is attempted). To exercise it, the step is first declared
+    before `Trellis.recycle()` is attempted). To exercise it, the step is first declared
     and detached on a *targetless* workflow (simulating a previous director process),
     then redeclared identically on a second `Workflow` instance sharing the same
     database, this time constructed with a matching target.
@@ -4358,7 +4358,7 @@ async def test_node_creator_kind_check_rejects_root_creator_for_static_tree(wfp:
 
 async def test_node_creator_kind_check_rejects_on_update(wfp: Workflow):
     """The `_upd` variant of the trigger fires on a raw creator `UPDATE`, e.g. a detached
-    node reattached by code that bypasses `Node.recycle()`."""
+    node reattached by code that bypasses `Node.reattach()`."""
     async with wfp.db:
         file_plan = wfp.find(File, "plan.py")
         detached_file = wfp.create(File, None, "detached.txt", state=FileState.MISSING)

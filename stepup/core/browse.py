@@ -439,7 +439,7 @@ class GraphServer(BaseHTTPRequestHandler):
         (n_static_trees,) = self.con.execute("SELECT COUNT(*) FROM node WHERE kind='st'").fetchone()
 
         # Get the top-level step plan.py
-        label_entry = Step.create_label("./plan.py")
+        label_entry = Step.adjust_label("./plan.py")
         (i_entry,) = self.con.execute(
             "SELECT i FROM node WHERE kind='step' AND label = ?", (label_entry,)
         ).fetchone()
