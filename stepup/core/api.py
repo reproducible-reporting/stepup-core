@@ -646,7 +646,7 @@ def call(
         )
 
     # Validate the executable is not absolute.
-    if os.path.isabs(executable_):
+    if executable_.isabs():
         raise PathError(f"executable_ must not be an absolute path, got: {executable_!r}")
 
     # Validate the function name. A valid Python identifier that is not a reserved
