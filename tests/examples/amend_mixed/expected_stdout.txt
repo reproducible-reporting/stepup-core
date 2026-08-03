@@ -1,34 +1,34 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./work.py > log.txt
- DEFERRED │ ./work.py > log.txt
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./work.py > log.txt
+DEFERRED │ ./work.py > log.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 tmp1.txt
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp inp1.txt tmp1.txt
-  SUCCESS │ cp inp1.txt tmp1.txt
-    START │ echo Contents of inp2.txt > inp2.txt
-  SUCCESS │ echo Contents of inp2.txt > inp2.txt
-    START │ ./work.py > log.txt
-  SUCCESS │ ./work.py > log.txt
- DIRECTOR │ Ran 5 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
-  DELETED │ inp2.txt
-    PHASE │ build
-   NOSKIP │ echo Contents of inp2.txt > inp2.txt
+   START │ cp inp1.txt tmp1.txt
+ SUCCESS │ cp inp1.txt tmp1.txt
+   START │ echo Contents of inp2.txt > inp2.txt
+ SUCCESS │ echo Contents of inp2.txt > inp2.txt
+   START │ ./work.py > log.txt
+ SUCCESS │ ./work.py > log.txt
+DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+ DELETED │ inp2.txt
+   PHASE │ build
+  NOSKIP │ echo Contents of inp2.txt > inp2.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 3bacd324, out_digest 922bd120 ➜ a992ab96
 Modified out hash    inp2.txt (digest b24d3f94 ➜ UNKNOWN, size 21 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ echo Contents of inp2.txt > inp2.txt
-  SUCCESS │ echo Contents of inp2.txt > inp2.txt
-     SKIP │ ./work.py > log.txt
+   START │ echo Contents of inp2.txt > inp2.txt
+ SUCCESS │ echo Contents of inp2.txt > inp2.txt
+    SKIP │ ./work.py > log.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       explained, inp_digest 37c4f09e, out_digest d0ac0986
 Same inp hash        inp0.txt
@@ -37,21 +37,21 @@ Same inp hash        tmp1.txt
 Same inp hash        work.py
 Same out hash        log.txt
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
-  UPDATED │ inp0.txt
-  UPDATED │ inp1.txt
-    PHASE │ build
-   NOSKIP │ cp inp1.txt tmp1.txt
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+ UPDATED │ inp0.txt
+ UPDATED │ inp1.txt
+   PHASE │ build
+  NOSKIP │ cp inp1.txt tmp1.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 8f40155a ➜ beba626c, out_digest a63be687 ➜ (unset)
 Modified inp hash    inp1.txt (digest b38c4067 ➜ 805fc678, size 15 ➜ 16)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp inp1.txt tmp1.txt
-  SUCCESS │ cp inp1.txt tmp1.txt
-   NOSKIP │ ./work.py > log.txt
+   START │ cp inp1.txt tmp1.txt
+ SUCCESS │ cp inp1.txt tmp1.txt
+  NOSKIP │ ./work.py > log.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 37c4f09e ➜ 95081ef3, out_digest d0ac0986 ➜ (unset)
 Modified inp hash    inp0.txt (digest 0528e490 ➜ 2ddb584b)
@@ -60,10 +60,10 @@ Modified inp hash    tmp1.txt (digest b38c4067 ➜ 805fc678, size 15 ➜ 16)
 Same inp hash        inp2.txt
 Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
-    START │ ./work.py > log.txt
-  SUCCESS │ ./work.py > log.txt
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
- DIRECTOR │ See you!
+   START │ ./work.py > log.txt
+ SUCCESS │ ./work.py > log.txt
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

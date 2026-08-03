@@ -1,9 +1,9 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
- DIRECTOR │ Ran 1 job(s).
-  WARNING │ 1 step(s) remained pending.
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              AWAITED: (first.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
@@ -12,8 +12,8 @@ or add a step that builds them.
 Paths in parentheses are detached: no step in the workflow declares them.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

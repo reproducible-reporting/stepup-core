@@ -1,18 +1,18 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
 MAIN ALL: ['data/a.txt', 'data/b.txt']
 MAIN A: ['data/a.txt']
 ────────────────────────────────────────────────────────────────────────────────
-    START │ ./plan.py  # wd=sub
-  SUCCESS │ ./plan.py  # wd=sub
+   START │ ./plan.py  # wd=sub
+ SUCCESS │ ./plan.py  # wd=sub
 ─────────────────────────────── Standard output ────────────────────────────────
 SUB: ['../data/a.txt', '../data/b.txt']
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 2 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

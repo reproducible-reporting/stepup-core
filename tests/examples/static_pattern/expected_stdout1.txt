@@ -1,26 +1,26 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cp -p inp1.txt out1.txt
-  SUCCESS │ cp -p inp1.txt out1.txt
-    START │ cp -p inp2.txt out2.txt
-  SUCCESS │ cp -p inp2.txt out2.txt
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
-  UPDATED │ inp3.txt
-  DELETED │ inp1.txt
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-     SKIP │ cp -p inp2.txt out2.txt
-    START │ cp -p inp3.txt out3.txt
-  SUCCESS │ cp -p inp3.txt out3.txt
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 1 outdated output(s)
-   REMOVE │ out1.txt
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp -p inp1.txt out1.txt
+ SUCCESS │ cp -p inp1.txt out1.txt
+   START │ cp -p inp2.txt out2.txt
+ SUCCESS │ cp -p inp2.txt out2.txt
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+ UPDATED │ inp3.txt
+ DELETED │ inp1.txt
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+    SKIP │ cp -p inp2.txt out2.txt
+   START │ cp -p inp3.txt out3.txt
+ SUCCESS │ cp -p inp3.txt out3.txt
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 1 outdated output(s)
+  REMOVE │ out1.txt
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

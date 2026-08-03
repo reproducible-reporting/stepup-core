@@ -1,19 +1,18 @@
- DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc8.post10)
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ echo hello > a.txt
-  SUCCESS │ echo hello > a.txt
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ 2 step(s) remained pending.
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo hello > a.txt
+ SUCCESS │ echo hello > a.txt
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ 2 step(s) remained pending.
 ──────────────────────────── Insufficient resources ────────────────────────────
                 gate: 1 unit(s) needed, none available  2 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Increase resources with --resources or lower the step requirements.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
- DIRECTOR │ Wall 0.2s, Director 0.2u/0.0s, Steps 0.0u/0.0s
- DIRECTOR │ See you!
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+DIRECTOR │ See you!

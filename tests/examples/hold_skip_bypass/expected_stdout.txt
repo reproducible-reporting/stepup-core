@@ -1,22 +1,22 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-    START │ ./work.py cached cached.txt
-  SUCCESS │ ./plan.py
-  SUCCESS │ ./work.py cached cached.txt
- DIRECTOR │ Ran 2 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
-  UPDATED │ plan.py
-    PHASE │ build
-    START │ ./plan.py
-     SKIP │ ./work.py cached cached.txt
-    START │ ./work.py --sleep=1.0 rerun rerun.txt
-  SUCCESS │ ./plan.py
-  SUCCESS │ ./work.py --sleep=1.0 rerun rerun.txt
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+   START │ ./work.py cached cached.txt
+ SUCCESS │ ./plan.py
+ SUCCESS │ ./work.py cached cached.txt
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+ UPDATED │ plan.py
+   PHASE │ build
+   START │ ./plan.py
+    SKIP │ ./work.py cached cached.txt
+   START │ ./work.py --sleep=1.0 rerun rerun.txt
+ SUCCESS │ ./plan.py
+ SUCCESS │ ./work.py --sleep=1.0 rerun rerun.txt
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

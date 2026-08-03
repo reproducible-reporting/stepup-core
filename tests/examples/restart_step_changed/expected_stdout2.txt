@@ -1,27 +1,27 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 3 file(s) for changes
-  UPDATED │ plan.py (digest b104d3a9 ➜ d80d3927)
-    PHASE │ build
-   NOSKIP │ ./plan.py
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 3 file(s) for changes
+ UPDATED │ plan.py (digest b104d3a9 ➜ d80d3927)
+   PHASE │ build
+  NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest e6e8d956 ➜ 876d182f, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest b104d3a9 ➜ d80d3927)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ echo 2 > original.txt
-  SUCCESS │ echo 2 > original.txt
-   NOSKIP │ cp -p original.txt copy.txt
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo 2 > original.txt
+ SUCCESS │ echo 2 > original.txt
+  NOSKIP │ cp -p original.txt copy.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 8490bb13 ➜ 0d4f9b14, out_digest a1ae8bce ➜ (unset)
 Modified inp hash    original.txt (digest 4355a46b ➜ 53c234e5)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp -p original.txt copy.txt
-  SUCCESS │ cp -p original.txt copy.txt
- DIRECTOR │ Ran 5 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+   START │ cp -p original.txt copy.txt
+ SUCCESS │ cp -p original.txt copy.txt
+DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

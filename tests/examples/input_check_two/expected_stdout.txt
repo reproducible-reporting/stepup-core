@@ -1,23 +1,23 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./work.py
-  SUCCESS │ ./work.py
-     FAIL │ cat f1.txt f2.txt > f3.txt
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./work.py
+ SUCCESS │ ./work.py
+    FAIL │ cat f1.txt f2.txt > f3.txt
 ──────────────────────────────── Failed command ────────────────────────────────
 cat f1.txt f2.txt > f3.txt  # not executed
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input changed unexpectedly: f1.txt (digest 98ea6e4f ➜ 58ca930f, size 3 ➜ 15)
 ────────────────────────────────────────────────────────────────────────────────
-    ERROR │ The scheduler has been put on hold due to unexpected input changes.
- DIRECTOR │ Ran 3 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ Scheduler is put on hold. Not reporting pending steps.
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-    PHASE │ watch
-  UPDATED │ f1.txt
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+   ERROR │ The scheduler has been put on hold due to unexpected input changes.
+DIRECTOR │ Ran 3 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+ UPDATED │ f1.txt
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
 UNCHANGED │ f1.txt
- DIRECTOR │ See you!
+DIRECTOR │ See you!

@@ -1,17 +1,17 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 5 file(s) for changes
-  UPDATED │ config.txt (digest f66ab398 ➜ 291423c4, size 9 ➜ 11)
-    PHASE │ build
-    START │ ./script.py plan
-  SUCCESS │ ./script.py plan
-    START │ ./script.py run egg
-  SUCCESS │ ./script.py run egg
-    START │ ./script.py run spam
-  SUCCESS │ ./script.py run spam
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 2 outdated output(s)
-   REMOVE │ out_foo.txt
-   REMOVE │ out_bar.txt
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 5 file(s) for changes
+ UPDATED │ config.txt (digest f66ab398 ➜ 291423c4, size 9 ➜ 11)
+   PHASE │ build
+   START │ ./script.py plan
+ SUCCESS │ ./script.py plan
+   START │ ./script.py run egg
+ SUCCESS │ ./script.py run egg
+   START │ ./script.py run spam
+ SUCCESS │ ./script.py run spam
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 2 outdated output(s)
+  REMOVE │ out_foo.txt
+  REMOVE │ out_bar.txt
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

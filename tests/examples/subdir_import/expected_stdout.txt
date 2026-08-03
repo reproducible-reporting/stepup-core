@@ -1,14 +1,14 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./work.py  # wd=sub
-  SUCCESS │ ./work.py  # wd=sub
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./work.py  # wd=sub
+ SUCCESS │ ./work.py  # wd=sub
 ─────────────────────────────── Standard output ────────────────────────────────
 utils.helper: hello world
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 2 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

@@ -1,23 +1,25 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-  DIRECTOR │ Setting available resources: cpu:2,gpu:1
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ sleep 0.1; echo A
-     START │ sleep 0.1; echo B
-   SUCCESS │ sleep 0.1; echo A
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+DIRECTOR │ Setting available resources: cpu:2,gpu:1
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+   START │ sleep 0.1; echo A
+   START │ sleep 0.1; echo B
+ SUCCESS │ ./plan.py
+ SUCCESS │ sleep 0.1; echo A
 ─────────────────────────────── Standard output ────────────────────────────────
 A
 ────────────────────────────────────────────────────────────────────────────────
-   SUCCESS │ sleep 0.1; echo B
+ SUCCESS │ sleep 0.1; echo B
 ─────────────────────────────── Standard output ────────────────────────────────
 B
 ────────────────────────────────────────────────────────────────────────────────
-     START │ sleep 0.1; echo C
-   SUCCESS │ sleep 0.1; echo C
+   START │ sleep 0.1; echo C
+ SUCCESS │ sleep 0.1; echo C
 ─────────────────────────────── Standard output ────────────────────────────────
 C
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s)
-  DIRECTOR │ See you!
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ See you!
+ WARNING │ Errors logged in .stepup/director.log

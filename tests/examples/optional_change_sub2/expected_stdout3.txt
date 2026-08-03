@@ -1,15 +1,15 @@
-  STARTUP │ Watching 2 director(y|ies)
-  STARTUP │ Checking 5 file(s) for changes
-  UPDATED │ plan.py (digest ceb2e927 ➜ 55b3c8a9, size 182 ➜ 143)
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ Marked 1 old optional (volatile) output file(s) for deletion.
- DIRECTOR │ Trying to remove 2 outdated output(s)
-   REMOVE │ sub/hop3.txt
-   REMOVE │ hop2.txt
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Checking 5 file(s) for changes
+ UPDATED │ plan.py (digest ceb2e927 ➜ 55b3c8a9, size 182 ➜ 143)
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ Marked 1 old optional (volatile) output file(s) for deletion.
+DIRECTOR │ Trying to remove 2 outdated output(s)
+  REMOVE │ sub/hop3.txt
+  REMOVE │ hop2.txt
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

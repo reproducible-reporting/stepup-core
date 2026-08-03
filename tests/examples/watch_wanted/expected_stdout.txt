@@ -1,9 +1,9 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
- DIRECTOR │ Ran 1 job(s).
-  WARNING │ 2 step(s) remained pending.
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 2 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              AWAITED: (input1.txt)  1 step(s)
              AWAITED: (input2.txt)  1 step(s)
@@ -13,14 +13,14 @@ or add a step that builds them.
 Paths in parentheses are detached: no step in the workflow declares them.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
-  DELETED │ plan.py
-    PHASE │ build
- DIRECTOR │ Ran 0 job(s).
-  WARNING │ 3 step(s) remained pending.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+ DELETED │ plan.py
+   PHASE │ build
+DIRECTOR │ Ran 0 job(s).
+ WARNING │ 3 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              MISSING: plan.py       3 step(s)
              AWAITED: (input1.txt)  1 step(s)
@@ -31,16 +31,16 @@ or add a step that builds them.
 Paths in parentheses are detached: no step in the workflow declares them.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
-  UPDATED │ plan.py
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
- DIRECTOR │ Ran 2 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
- DIRECTOR │ See you!
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+ UPDATED │ plan.py
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

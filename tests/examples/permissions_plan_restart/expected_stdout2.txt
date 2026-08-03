@@ -1,14 +1,14 @@
-  STARTUP │ Making failed steps pending
-  STARTUP │ Watching 2 director(y|ies)
-  STARTUP │ Checking 2 file(s) for changes
-  UPDATED │ sub/plan.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
-    PHASE │ build
-    START │ ./plan.py  # wd=sub
-  SUCCESS │ ./plan.py  # wd=sub
-    START │ touch done.txt  # wd=sub
-  SUCCESS │ touch done.txt  # wd=sub
- DIRECTOR │ Ran 2 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Making failed steps pending
+ STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Checking 2 file(s) for changes
+ UPDATED │ sub/plan.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
+   PHASE │ build
+   START │ ./plan.py  # wd=sub
+ SUCCESS │ ./plan.py  # wd=sub
+   START │ touch done.txt  # wd=sub
+ SUCCESS │ touch done.txt  # wd=sub
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

@@ -1,35 +1,35 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./work.py
- DEFERRED │ ./work.py
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./work.py
+DEFERRED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 optional1.txt
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp -p data1.txt optional1.txt
-  SUCCESS │ cp -p data1.txt optional1.txt
-    START │ ./work.py
- DEFERRED │ ./work.py
+   START │ cp -p data1.txt optional1.txt
+ SUCCESS │ cp -p data1.txt optional1.txt
+   START │ ./work.py
+DEFERRED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 optional2.txt
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp -p data2.txt optional2.txt
-  SUCCESS │ cp -p data2.txt optional2.txt
-    START │ ./work.py
-  SUCCESS │ ./work.py
- DIRECTOR │ Ran 6 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
-  UPDATED │ data2.txt
-    PHASE │ build
-    START │ cp -p data2.txt optional2.txt
-  SUCCESS │ cp -p data2.txt optional2.txt
-    START │ ./work.py
-  SUCCESS │ ./work.py
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+   START │ cp -p data2.txt optional2.txt
+ SUCCESS │ cp -p data2.txt optional2.txt
+   START │ ./work.py
+ SUCCESS │ ./work.py
+DIRECTOR │ Ran 6 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+ UPDATED │ data2.txt
+   PHASE │ build
+   START │ cp -p data2.txt optional2.txt
+ SUCCESS │ cp -p data2.txt optional2.txt
+   START │ ./work.py
+ SUCCESS │ ./work.py
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

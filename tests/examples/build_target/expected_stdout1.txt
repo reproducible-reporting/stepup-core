@@ -1,16 +1,16 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./gen.py plan '{}'
-  SUCCESS │ ./gen.py plan '{}'
-    START │ cp -p input.txt wanted.txt
-  SUCCESS │ cp -p input.txt wanted.txt
-    START │ cp -p seed.txt dynamic.txt
-  SUCCESS │ cp -p seed.txt dynamic.txt
- DIRECTOR │ Ran 4 job(s).
-  WARNING │ Skipping file cleanup for a build restricted to targets
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./gen.py plan '{}'
+ SUCCESS │ ./gen.py plan '{}'
+   START │ cp -p input.txt wanted.txt
+ SUCCESS │ cp -p input.txt wanted.txt
+   START │ cp -p seed.txt dynamic.txt
+ SUCCESS │ cp -p seed.txt dynamic.txt
+DIRECTOR │ Ran 4 job(s).
+ WARNING │ Skipping file cleanup for a build restricted to targets
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+DIRECTOR │ See you!

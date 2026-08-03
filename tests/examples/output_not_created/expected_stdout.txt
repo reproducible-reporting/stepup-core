@@ -1,21 +1,21 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ touch input.txt
-  SUCCESS │ touch input.txt
-    START │ cp input.txt wrong.txt
-     FAIL │ cp input.txt wrong.txt
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ touch input.txt
+ SUCCESS │ touch input.txt
+   START │ cp input.txt wrong.txt
+    FAIL │ cp input.txt wrong.txt
 ──────────────────────────────── Failed command ────────────────────────────────
 cp input.txt wrong.txt
 ───────────────────────── Expected outputs not created ─────────────────────────
 output.txt
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 3 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ Scheduler is put on hold. Not reporting pending steps.
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+DIRECTOR │ Ran 3 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

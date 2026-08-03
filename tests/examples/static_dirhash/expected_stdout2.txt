@@ -1,16 +1,16 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 3 file(s) for changes
-    ERROR │ Could not hash data.txt: File digests of directories are not supported: data.txt
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 3 file(s) for changes
+   ERROR │ Could not hash data.txt: File digests of directories are not supported: data.txt
 ──────────────────────────── Provenance of data.txt ────────────────────────────
              creator   step:./plan.py
                 sink   step:cp -p data.txt copy.txt
          declared by   step:./plan.py
 ────────────────────────────────────────────────────────────────────────────────
-    PHASE │ build
- DIRECTOR │ Ran 0 job(s).
-  WARNING │ Scheduler is put on hold. Not reporting pending steps.
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+   PHASE │ build
+DIRECTOR │ Ran 0 job(s).
+ WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

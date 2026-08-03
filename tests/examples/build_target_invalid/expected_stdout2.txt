@@ -1,20 +1,20 @@
-  STARTUP │ Making failed steps pending
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 1 file(s) for changes
-  UPDATED │ plan.py (digest fd6521d9 ➜ b584d81b, size 94 ➜ 80)
-    PHASE │ build
-    START │ ./plan.py
-     FAIL │ ./plan.py
+ STARTUP │ Making failed steps pending
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 1 file(s) for changes
+ UPDATED │ plan.py (digest fd6521d9 ➜ b584d81b, size 94 ➜ 80)
+   PHASE │ build
+   START │ ./plan.py
+    FAIL │ ./plan.py
 ──────────────────────────────── Failed command ────────────────────────────────
 ./plan.py  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 1 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ Scheduler is put on hold. Not reporting pending steps.
-  WARNING │ Skipping file cleanup for a build restricted to targets
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Skipping file cleanup for a build restricted to targets
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

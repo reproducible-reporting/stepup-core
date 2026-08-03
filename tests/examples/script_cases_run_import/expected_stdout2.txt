@@ -1,13 +1,13 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 5 file(s) for changes
-  UPDATED │ helper.py (digest 82d6e0c0 ➜ d0a2fa51, size 36 ➜ 38)
-    PHASE │ build
-    START │ ./work.py run first
-  SUCCESS │ ./work.py run first
-    START │ ./work.py run second
-  SUCCESS │ ./work.py run second
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 5 file(s) for changes
+ UPDATED │ helper.py (digest 82d6e0c0 ➜ d0a2fa51, size 36 ➜ 38)
+   PHASE │ build
+   START │ ./work.py run first
+ SUCCESS │ ./work.py run first
+   START │ ./work.py run second
+ SUCCESS │ ./work.py run second
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

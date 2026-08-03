@@ -1,19 +1,19 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cp -p initial.txt input.txt
-  SUCCESS │ cp -p initial.txt input.txt
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ 2 step(s) remained pending.
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp -p initial.txt input.txt
+ SUCCESS │ cp -p initial.txt input.txt
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ 2 step(s) remained pending.
 ──────────────────────────── Insufficient resources ────────────────────────────
              blocked: 1 unit(s) needed, none available  2 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Increase resources with --resources or lower the step requirements.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
- DIRECTOR │ See you!
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+DIRECTOR │ See you!

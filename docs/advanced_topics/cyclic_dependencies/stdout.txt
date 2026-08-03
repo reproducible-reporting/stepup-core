@@ -1,8 +1,8 @@
- DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc8.post10)
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-     FAIL │ ./plan.py
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+    FAIL │ ./plan.py
 ──────────────────────────────── Failed command ────────────────────────────────
 ./plan.py  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
@@ -16,13 +16,13 @@ Traceback (most recent call last):
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 1154, in copy
+  File "stepup/core/api.py", line 1214, in copy
     return step(
         f"cp -p {shq(src)} {shq(dst)}",
     ...<5 lines>...
         duration=duration,
     )
-  File "stepup/core/api.py", line 509, in step
+  File "stepup/core/api.py", line 531, in step
     RPC_CLIENT.call.step(
     ~~~~~~~~~~~~~~~~~~~~^
         get_job_i(),
@@ -48,17 +48,16 @@ Traceback (most recent call last):
     ...<10 lines>...
         duration=duration,
     )
-  File "stepup/core/workflow.py", line 1531, in define_step
+  File "stepup/core/workflow.py", line 1535, in define_step
     file.add_source(step)
     ~~~~~~~~~~~~~~~^^^^^^
   File "stepup/core/trellis.py", line 491, in add_source
     raise CyclicError("New relation introduces a cyclic dependency")
 stepup.core.exceptions.CyclicError: New relation introduces a cyclic dependency
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 1 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ Scheduler is put on hold. Not reporting pending steps.
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
- DIRECTOR │ Wall 0.2s, Director 0.2u/0.0s, Steps 0.0u/0.0s
- DIRECTOR │ See you!
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+DIRECTOR │ See you!

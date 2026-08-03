@@ -1,15 +1,15 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./generate.py plan --step-info=../current_step_info.json  # wd=work
-  SUCCESS │ ./generate.py plan --step-info=../current_step_info.json  # wd=work
-    START │ ./generate.py run  # wd=work
-  SUCCESS │ ./generate.py run  # wd=work
-    START │ cp -p work/test.csv work/copy.csv
-  SUCCESS │ cp -p work/test.csv work/copy.csv
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./generate.py plan --step-info=../current_step_info.json  # wd=work
+ SUCCESS │ ./generate.py plan --step-info=../current_step_info.json  # wd=work
+   START │ ./generate.py run  # wd=work
+ SUCCESS │ ./generate.py run  # wd=work
+   START │ cp -p work/test.csv work/copy.csv
+ SUCCESS │ cp -p work/test.csv work/copy.csv
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

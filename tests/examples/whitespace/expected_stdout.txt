@@ -1,15 +1,15 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ './script is cool.py' plan
-  SUCCESS │ './script is cool.py' plan
-    START │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-  SUCCESS │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-    START │ './script is cool.py' run
-  SUCCESS │ './script is cool.py' run
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ './script is cool.py' plan
+ SUCCESS │ './script is cool.py' plan
+   START │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+ SUCCESS │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+   START │ './script is cool.py' run
+ SUCCESS │ './script is cool.py' run
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

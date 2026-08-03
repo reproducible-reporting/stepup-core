@@ -1,25 +1,25 @@
-  STARTUP │ Watching 2 director(y|ies)
-  STARTUP │ Checking 3 file(s) for changes
-  UPDATED │ plan.py (digest 0391cf2d ➜ ebac6a74, size 162 ➜ 116)
-    PHASE │ build
-   NOSKIP │ ./plan.py
+ STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Checking 3 file(s) for changes
+ UPDATED │ plan.py (digest 0391cf2d ➜ ebac6a74, size 162 ➜ 116)
+   PHASE │ build
+  NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 5a521fb7 ➜ 2026bb59, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 0391cf2d ➜ ebac6a74, size 162 ➜ 116)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-   NOSKIP │ cp -p data/foo.txt result.txt
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+  NOSKIP │ cp -p data/foo.txt result.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 043a35e1 ➜ 8eeca374, out_digest b39909e6 ➜ (unset)
 Modified inp hash    data/foo.txt (digest 5891b5b5 ➜ e258d248)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp -p data/foo.txt result.txt
-  SUCCESS │ cp -p data/foo.txt result.txt
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+   START │ cp -p data/foo.txt result.txt
+ SUCCESS │ cp -p data/foo.txt result.txt
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

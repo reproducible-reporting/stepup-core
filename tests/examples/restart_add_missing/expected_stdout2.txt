@@ -1,17 +1,17 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 2 file(s) for changes
-  UPDATED │ inp.txt (digest UNKNOWN ➜ 5891b5b5, size 0 ➜ 6, mode ?--------- ➜ -rw-r--r--)
-    PHASE │ build
-   NOSKIP │ cp -p inp.txt out.txt
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 2 file(s) for changes
+ UPDATED │ inp.txt (digest UNKNOWN ➜ 5891b5b5, size 0 ➜ 6, mode ?--------- ➜ -rw-r--r--)
+   PHASE │ build
+  NOSKIP │ cp -p inp.txt out.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   compact ➜ explained, inp_digest 7e0d6b72, out_digest b19341b7 ➜ a23c0e47
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp -p inp.txt out.txt
-  SUCCESS │ cp -p inp.txt out.txt
- DIRECTOR │ Ran 2 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
- DIRECTOR │ See you!
+   START │ cp -p inp.txt out.txt
+ SUCCESS │ cp -p inp.txt out.txt
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

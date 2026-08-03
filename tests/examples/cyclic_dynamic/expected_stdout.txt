@@ -1,26 +1,26 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./work1.py
- DEFERRED │ ./work1.py
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./work1.py
+DEFERRED │ ./work1.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
-    START │ ./work2.py
- DEFERRED │ ./work2.py
+   START │ ./work2.py
+DEFERRED │ ./work2.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp1.txt
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 3 job(s).
-  WARNING │ 4 step(s) remained pending.
+DIRECTOR │ Ran 3 job(s).
+ WARNING │ 4 step(s) remained pending.
 ──────────────────────────────── Other reasons ─────────────────────────────────
 4 step(s) are waiting on each other, e.g. ./work1.py.
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

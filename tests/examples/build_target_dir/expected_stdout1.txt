@@ -1,18 +1,18 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cp -p a_input.txt out/a.txt
-  SUCCESS │ cp -p a_input.txt out/a.txt
-    START │ cp -p b_input.txt out/b.txt
-  SUCCESS │ cp -p b_input.txt out/b.txt
-    START │ cp -p c_input.txt out/c.txt
-  SUCCESS │ cp -p c_input.txt out/c.txt
-    START │ ./gen.py run '{"out": ["out/result.txt"]}'
-  SUCCESS │ ./gen.py run '{"out": ["out/result.txt"]}'
- DIRECTOR │ Ran 5 job(s).
-  WARNING │ Skipping file cleanup for a build restricted to targets
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp -p a_input.txt out/a.txt
+ SUCCESS │ cp -p a_input.txt out/a.txt
+   START │ cp -p b_input.txt out/b.txt
+ SUCCESS │ cp -p b_input.txt out/b.txt
+   START │ cp -p c_input.txt out/c.txt
+ SUCCESS │ cp -p c_input.txt out/c.txt
+   START │ ./gen.py run '{"out": ["out/result.txt"]}'
+ SUCCESS │ ./gen.py run '{"out": ["out/result.txt"]}'
+DIRECTOR │ Ran 5 job(s).
+ WARNING │ Skipping file cleanup for a build restricted to targets
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+DIRECTOR │ See you!

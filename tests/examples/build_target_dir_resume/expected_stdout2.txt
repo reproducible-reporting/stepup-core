@@ -1,12 +1,12 @@
-  STARTUP │ Watching 2 director(y|ies)
-  STARTUP │ Checking 6 file(s) for changes
-  UPDATED │ a_input.txt (digest 2c8b08da ➜ f6936912, size 4 ➜ 6)
-    PHASE │ build
-    START │ cp -p a_input.txt out/a.txt
-  SUCCESS │ cp -p a_input.txt out/a.txt
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ Skipping file cleanup for a build restricted to targets
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Checking 6 file(s) for changes
+ UPDATED │ a_input.txt (digest 2c8b08da ➜ f6936912, size 4 ➜ 6)
+   PHASE │ build
+   START │ cp -p a_input.txt out/a.txt
+ SUCCESS │ cp -p a_input.txt out/a.txt
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ Skipping file cleanup for a build restricted to targets
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

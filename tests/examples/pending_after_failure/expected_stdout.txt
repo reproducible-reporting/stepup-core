@@ -1,24 +1,24 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ false
-     FAIL │ false
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ false
+    FAIL │ false
 ──────────────────────────────── Failed command ────────────────────────────────
 false  # exit=1
 ───────────────────────── Expected outputs not created ─────────────────────────
 broken.txt
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ 1 step(s) remained pending.
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ 1 step(s) remained pending.
 ──────────────────────────────── Other reasons ─────────────────────────────────
 1 step(s) are blocked by failed steps, e.g. cp -p broken.txt final.txt.
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

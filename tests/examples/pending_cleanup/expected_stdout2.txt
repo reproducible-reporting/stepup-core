@@ -1,11 +1,11 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 2 file(s) for changes
-  DELETED │ bye.txt
-    PHASE │ build
-    START │ echo soon gone > bye.txt
-  SUCCESS │ echo soon gone > bye.txt
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ 1 step(s) remained pending.
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 2 file(s) for changes
+ DELETED │ bye.txt
+   PHASE │ build
+   START │ echo soon gone > bye.txt
+ SUCCESS │ echo soon gone > bye.txt
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              AWAITED: (missing.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
@@ -14,8 +14,8 @@ or add a step that builds them.
 Paths in parentheses are detached: no step in the workflow declares them.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

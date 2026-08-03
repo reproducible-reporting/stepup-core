@@ -1,18 +1,18 @@
- DIRECTOR │ Setting available resources: token:0
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
- DIRECTOR │ Ran 1 job(s).
-  WARNING │ 2 step(s) remained pending.
+DIRECTOR │ Setting available resources: token:0
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 2 step(s) remained pending.
 ──────────────────────────── Insufficient resources ────────────────────────────
                token: 1 unit(s) needed, 0 available  2 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Increase resources with --resources or lower the step requirements.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

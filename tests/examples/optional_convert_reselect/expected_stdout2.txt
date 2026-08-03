@@ -1,9 +1,9 @@
-  STARTUP │ Watching 1 director(y|ies)
-  UPDATED │ ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
-  STARTUP │ Checking 7 file(s) for changes
-  STARTUP │ Checking 1 nglob(s) for new or deleted matches
-    PHASE │ build
-   NOSKIP │ ./plan.py
+ STARTUP │ Watching 1 director(y|ies)
+ UPDATED │ ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
+ STARTUP │ Checking 7 file(s) for changes
+ STARTUP │ Checking 1 nglob(s) for new or deleted matches
+   PHASE │ build
+  NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest ae1b99db ➜ de0f494a, out_digest e3b0c442 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
@@ -11,17 +11,17 @@ Modified env var     ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
 Same inp hash        plan.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cp -p raw1.txt converted1.txt
-  SUCCESS │ cp -p raw1.txt converted1.txt
-    START │ cp -p converted1.txt used.txt
-  SUCCESS │ cp -p converted1.txt used.txt
- DIRECTOR │ Ran 4 job(s).
-  WARNING │ Marked 1 old optional (volatile) output file(s) for deletion.
- DIRECTOR │ Trying to remove 1 outdated output(s)
-   REMOVE │ converted3.txt
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp -p raw1.txt converted1.txt
+ SUCCESS │ cp -p raw1.txt converted1.txt
+   START │ cp -p converted1.txt used.txt
+ SUCCESS │ cp -p converted1.txt used.txt
+DIRECTOR │ Ran 4 job(s).
+ WARNING │ Marked 1 old optional (volatile) output file(s) for deletion.
+DIRECTOR │ Trying to remove 1 outdated output(s)
+  REMOVE │ converted3.txt
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

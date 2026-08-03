@@ -1,15 +1,15 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 6 file(s) for changes
-  UPDATED │ inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
-    PHASE │ build
-   NOSKIP │ echo word2 > inp2.txt
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 6 file(s) for changes
+ UPDATED │ inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
+   PHASE │ build
+  NOSKIP │ echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 97737b8e, out_digest 91a94667 ➜ e195d556
 Modified out hash    inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ echo word2 > inp2.txt
-  SUCCESS │ echo word2 > inp2.txt
-     SKIP │ ./work.py
+   START │ echo word2 > inp2.txt
+ SUCCESS │ echo word2 > inp2.txt
+    SKIP │ ./work.py
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       explained, inp_digest 20b7d39c, out_digest 29f755b3
 Same inp hash        inp1.txt
@@ -19,8 +19,8 @@ Same env var         STEPUP_PATH_FILTER (unset)
 Same out hash        out1.txt
 Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

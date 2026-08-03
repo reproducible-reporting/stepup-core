@@ -1,13 +1,13 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./plan.py  # wd=sub
-  SUCCESS │ ./plan.py  # wd=sub
-    START │ cp -p ../data/foo.txt foo.txt  # wd=sub
-  SUCCESS │ cp -p ../data/foo.txt foo.txt  # wd=sub
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./plan.py  # wd=sub
+ SUCCESS │ ./plan.py  # wd=sub
+   START │ cp -p ../data/foo.txt foo.txt  # wd=sub
+ SUCCESS │ cp -p ../data/foo.txt foo.txt  # wd=sub
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

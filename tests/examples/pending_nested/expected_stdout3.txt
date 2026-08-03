@@ -1,16 +1,16 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 9 file(s) for changes
-  STARTUP │ Checking 2 nglob(s) for new or deleted matches
-  UPDATED │ inp1.txt
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-     SKIP │ ./work1.py
-     SKIP │ ./work2.py
-    START │ ./work3.py
-  SUCCESS │ ./work3.py
- DIRECTOR │ Ran 5 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 9 file(s) for changes
+ STARTUP │ Checking 2 nglob(s) for new or deleted matches
+ UPDATED │ inp1.txt
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+    SKIP │ ./work1.py
+    SKIP │ ./work2.py
+   START │ ./work3.py
+ SUCCESS │ ./work3.py
+DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

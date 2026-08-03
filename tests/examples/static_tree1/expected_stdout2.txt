@@ -1,13 +1,13 @@
-  STARTUP │ Watching 2 director(y|ies)
-  UPDATED │ ENV_VAR_TEST_STEPUP_INP ='static/sub/foo.txt' ➜ ='static/sub/bar.txt'
-  STARTUP │ Checking 3 file(s) for changes
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cp -p static/sub/bar.txt copy.txt
-  SUCCESS │ cp -p static/sub/bar.txt copy.txt
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 2 director(y|ies)
+ UPDATED │ ENV_VAR_TEST_STEPUP_INP ='static/sub/foo.txt' ➜ ='static/sub/bar.txt'
+ STARTUP │ Checking 3 file(s) for changes
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp -p static/sub/bar.txt copy.txt
+ SUCCESS │ cp -p static/sub/bar.txt copy.txt
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

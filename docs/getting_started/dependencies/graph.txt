@@ -17,7 +17,7 @@ step:./plan.py
              product   step:printf "Monday frown\nCoffee smile\n" > story.txt
 
 step:printf "Monday frown\nCoffee smile\n" > story.txt
-               state = PENDING
+               state = RUNNING
                 need = DEFAULT
              creator   step:./plan.py
              product   file:story.txt

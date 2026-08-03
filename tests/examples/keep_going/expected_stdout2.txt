@@ -1,18 +1,18 @@
-  STARTUP │ Making failed steps pending
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 1 file(s) for changes
-    PHASE │ build
-    START │ false
-     FAIL │ false
+ STARTUP │ Making failed steps pending
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 1 file(s) for changes
+   PHASE │ build
+   START │ false
+    FAIL │ false
 ──────────────────────────────── Failed command ────────────────────────────────
 false  # exit=1
 ────────────────────────────────────────────────────────────────────────────────
-    START │ touch independent.txt
-  SUCCESS │ touch independent.txt
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+   START │ touch independent.txt
+ SUCCESS │ touch independent.txt
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

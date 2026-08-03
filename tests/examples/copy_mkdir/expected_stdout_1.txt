@@ -1,13 +1,13 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ echo hello > hello.txt
-  SUCCESS │ echo hello > hello.txt
-    START │ cp -p hello.txt sub/hello.txt
-  SUCCESS │ cp -p hello.txt sub/hello.txt
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph_1.txt, current_graph_1_provenance.dot and current_graph_1_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo hello > hello.txt
+ SUCCESS │ echo hello > hello.txt
+   START │ cp -p hello.txt sub/hello.txt
+ SUCCESS │ cp -p hello.txt sub/hello.txt
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph_1.txt, current_graph_1_provenance.dot and current_graph_1_dependency.dot
+DIRECTOR │ See you!

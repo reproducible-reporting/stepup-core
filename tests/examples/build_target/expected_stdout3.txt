@@ -1,10 +1,10 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 7 file(s) for changes
-    PHASE │ build
- DIRECTOR │ Ran 0 job(s).
-  WARNING │ 1 target(s) are not produced by any step in the workflow: nope.txt
-  WARNING │ Skipping file cleanup for a build restricted to targets
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 7 file(s) for changes
+   PHASE │ build
+DIRECTOR │ Ran 0 job(s).
+ WARNING │ 1 target(s) are not produced by any step in the workflow: nope.txt
+ WARNING │ Skipping file cleanup for a build restricted to targets
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

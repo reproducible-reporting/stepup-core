@@ -1,19 +1,19 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 4 file(s) for changes
-  UPDATED │ plan.py (digest 3782d76d ➜ cbb8ef85, size 269 ➜ 248)
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-     SKIP │ cp -p initial.txt input.txt
-    START │ ./expensive.py
-  SUCCESS │ ./expensive.py
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 4 file(s) for changes
+ UPDATED │ plan.py (digest 3782d76d ➜ cbb8ef85, size 269 ➜ 248)
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+    SKIP │ cp -p initial.txt input.txt
+   START │ ./expensive.py
+ SUCCESS │ ./expensive.py
 ─────────────────────────────── Standard output ────────────────────────────────
 The initial file.
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp -p output.txt final.txt
-  SUCCESS │ cp -p output.txt final.txt
- DIRECTOR │ Ran 5 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+   START │ cp -p output.txt final.txt
+ SUCCESS │ cp -p output.txt final.txt
+DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

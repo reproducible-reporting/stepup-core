@@ -1,15 +1,15 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ echo something > single.txt
-  SUCCESS │ echo something > single.txt
-    START │ cat single.txt single.txt > double.txt
-  SUCCESS │ cat single.txt single.txt > double.txt
-    START │ cat double.txt double.txt > quadruple.txt
-  SUCCESS │ cat double.txt double.txt > quadruple.txt
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo something > single.txt
+ SUCCESS │ echo something > single.txt
+   START │ cat single.txt single.txt > double.txt
+ SUCCESS │ cat single.txt single.txt > double.txt
+   START │ cat double.txt double.txt > quadruple.txt
+ SUCCESS │ cat double.txt double.txt > quadruple.txt
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+DIRECTOR │ See you!

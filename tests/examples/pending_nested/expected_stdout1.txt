@@ -1,15 +1,15 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./work1.py
-  SUCCESS │ ./work1.py
-    START │ ./work2.py
-  SUCCESS │ ./work2.py
-    START │ ./work3.py
-  SUCCESS │ ./work3.py
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./work1.py
+ SUCCESS │ ./work1.py
+   START │ ./work2.py
+ SUCCESS │ ./work2.py
+   START │ ./work3.py
+ SUCCESS │ ./work3.py
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+DIRECTOR │ See you!

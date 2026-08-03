@@ -1,14 +1,16 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ printf "Monday frown\nCoffee smile\n" > story.txt
-   SUCCESS │ printf "Monday frown\nCoffee smile\n" > story.txt
-     START │ grep Coffee story.txt
-   SUCCESS │ grep Coffee story.txt
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+   START │ printf "Monday frown\nCoffee smile\n" > story.txt
+DIRECTOR │ Wrote graph to graph.txt, graph_provenance.dot and graph_dependency.dot
+ SUCCESS │ printf "Monday frown\nCoffee smile\n" > story.txt
+   START │ grep Coffee story.txt
+ SUCCESS │ grep Coffee story.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 Coffee smile
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s)
-  DIRECTOR │ See you!
+ SUCCESS │ ./plan.py
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ See you!

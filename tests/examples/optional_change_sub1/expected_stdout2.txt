@@ -1,14 +1,14 @@
-  STARTUP │ Watching 2 director(y|ies)
-  STARTUP │ Checking 5 file(s) for changes
-  UPDATED │ plan.py (digest ceb2e927 ➜ 35ccdaf6, size 182 ➜ 183)
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-     SKIP │ ./plan.py  # wd=sub
-     SKIP │ cp -p hop1.txt hop2.txt
-     SKIP │ cp -p ../hop2.txt hop3.txt  # wd=sub
- DIRECTOR │ Ran 5 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Checking 5 file(s) for changes
+ UPDATED │ plan.py (digest ceb2e927 ➜ 35ccdaf6, size 182 ➜ 183)
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+    SKIP │ ./plan.py  # wd=sub
+    SKIP │ cp -p hop1.txt hop2.txt
+    SKIP │ cp -p ../hop2.txt hop3.txt  # wd=sub
+DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

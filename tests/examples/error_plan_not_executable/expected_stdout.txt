@@ -1,4 +1,4 @@
-    ERROR │ The director raised an exception.
+   ERROR │ The director raised an exception.
 ────────────────────────────────── Traceback ───────────────────────────────────
 Traceback (most recent call last):
   File "${PWD}/stepup/core/director.py", line ---, in async_main
@@ -9,4 +9,4 @@ Traceback (most recent call last):
     raise ValueError(f"File is not executable: {PLAN_PY}")
 ValueError: File is not executable: plan.py
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ See you!
+DIRECTOR │ See you!

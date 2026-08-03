@@ -1,29 +1,29 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ echo ping > ping.txt
-  SUCCESS │ echo ping > ping.txt
-    START │ echo pong > pong.txt
-  SUCCESS │ echo pong > pong.txt
-    START │ ./work.py
-  SUCCESS │ ./work.py
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
-  DELETED │ ping.txt
-  DELETED │ pong.txt
-  DELETED │ work.txt
-    PHASE │ build
-    START │ echo ping > ping.txt
-  SUCCESS │ echo ping > ping.txt
-    START │ echo pong > pong.txt
-  SUCCESS │ echo pong > pong.txt
-    START │ ./work.py
-  SUCCESS │ ./work.py
- DIRECTOR │ Ran 6 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo ping > ping.txt
+ SUCCESS │ echo ping > ping.txt
+   START │ echo pong > pong.txt
+ SUCCESS │ echo pong > pong.txt
+   START │ ./work.py
+ SUCCESS │ ./work.py
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+ DELETED │ ping.txt
+ DELETED │ pong.txt
+ DELETED │ work.txt
+   PHASE │ build
+   START │ echo ping > ping.txt
+ SUCCESS │ echo ping > ping.txt
+   START │ echo pong > pong.txt
+ SUCCESS │ echo pong > pong.txt
+   START │ ./work.py
+ SUCCESS │ ./work.py
+DIRECTOR │ Ran 6 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

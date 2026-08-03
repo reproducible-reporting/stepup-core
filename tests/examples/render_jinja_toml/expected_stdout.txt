@@ -1,13 +1,13 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ sc-render-jinja template.txt trip1.toml rendered-trip1.txt
-  SUCCESS │ sc-render-jinja template.txt trip1.toml rendered-trip1.txt
-    START │ sc-render-jinja template.txt trip2.toml rendered-trip2.txt
-  SUCCESS │ sc-render-jinja template.txt trip2.toml rendered-trip2.txt
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ sc-render-jinja template.txt trip1.toml rendered-trip1.txt
+ SUCCESS │ sc-render-jinja template.txt trip1.toml rendered-trip1.txt
+   START │ sc-render-jinja template.txt trip2.toml rendered-trip2.txt
+ SUCCESS │ sc-render-jinja template.txt trip2.toml rendered-trip2.txt
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

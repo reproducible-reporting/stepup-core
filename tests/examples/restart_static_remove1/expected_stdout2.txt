@@ -1,21 +1,21 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 5 file(s) for changes
-  UPDATED │ plan.py (digest 9b42ddbc ➜ 052600b0, size 157 ➜ 119)
-  DELETED │ foo.txt
-    PHASE │ build
-   NOSKIP │ ./plan.py
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 5 file(s) for changes
+ UPDATED │ plan.py (digest 9b42ddbc ➜ 052600b0, size 157 ➜ 119)
+ DELETED │ foo.txt
+   PHASE │ build
+  NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   compact ➜ explained, inp_digest 9beae1cd ➜ 315b8e75, out_digest e3b0c442 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-     SKIP │ cp -p README.txt backup.txt
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+    SKIP │ cp -p README.txt backup.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest 6a185d90, out_digest 463361ab
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 1 outdated output(s)
-   REMOVE │ bar.txt
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 1 outdated output(s)
+  REMOVE │ bar.txt
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

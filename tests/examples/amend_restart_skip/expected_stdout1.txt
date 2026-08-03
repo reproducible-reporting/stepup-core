@@ -1,18 +1,18 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./work.py
- DEFERRED │ ./work.py
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./work.py
+DEFERRED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
-    START │ echo word2 > inp2.txt
-  SUCCESS │ echo word2 > inp2.txt
-    START │ ./work.py
-  SUCCESS │ ./work.py
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
- DIRECTOR │ See you!
+   START │ echo word2 > inp2.txt
+ SUCCESS │ echo word2 > inp2.txt
+   START │ ./work.py
+ SUCCESS │ ./work.py
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+DIRECTOR │ See you!

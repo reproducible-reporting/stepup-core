@@ -1,19 +1,19 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 1 file(s) for changes
-  UPDATED │ plan.py (digest ea4ddb31 ➜ 3d44ed3f, size 126 ➜ 159)
-    PHASE │ build
-   NOSKIP │ ./plan.py
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 1 file(s) for changes
+ UPDATED │ plan.py (digest ea4ddb31 ➜ 3d44ed3f, size 126 ➜ 159)
+   PHASE │ build
+  NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   compact ➜ explained, inp_digest e1ecada0 ➜ e45e1817, out_digest e3b0c442 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ echo hello > foo.txt
-  SUCCESS │ echo hello > foo.txt
-    START │ cp -p foo.txt bar.txt
-  SUCCESS │ cp -p foo.txt bar.txt
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo hello > foo.txt
+ SUCCESS │ echo hello > foo.txt
+   START │ cp -p foo.txt bar.txt
+ SUCCESS │ cp -p foo.txt bar.txt
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

@@ -1,13 +1,13 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 5 file(s) for changes
-  UPDATED │ a_input.txt (digest 0111f755 ➜ 333d36c1)
-  UPDATED │ b_input.txt (digest e10a1287 ➜ 65f653be)
-    PHASE │ build
-    START │ cp -p b_input.txt b.txt
-  SUCCESS │ cp -p b_input.txt b.txt
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ Skipping file cleanup for a build restricted to targets
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 5 file(s) for changes
+ UPDATED │ a_input.txt (digest 0111f755 ➜ 333d36c1)
+ UPDATED │ b_input.txt (digest e10a1287 ➜ 65f653be)
+   PHASE │ build
+   START │ cp -p b_input.txt b.txt
+ SUCCESS │ cp -p b_input.txt b.txt
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ Skipping file cleanup for a build restricted to targets
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

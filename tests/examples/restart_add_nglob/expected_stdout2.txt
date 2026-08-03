@@ -1,14 +1,14 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 1 file(s) for changes
-  STARTUP │ Checking 1 nglob(s) for new or deleted matches
-  UPDATED │ inp2.txt
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cp -p inp2.txt out2.txt
-  SUCCESS │ cp -p inp2.txt out2.txt
- DIRECTOR │ Ran 2 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 1 file(s) for changes
+ STARTUP │ Checking 1 nglob(s) for new or deleted matches
+ UPDATED │ inp2.txt
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp -p inp2.txt out2.txt
+ SUCCESS │ cp -p inp2.txt out2.txt
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

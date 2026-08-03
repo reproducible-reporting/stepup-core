@@ -1,30 +1,30 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cat line.txt >> log.txt; exit 1
-     FAIL │ cat line.txt >> log.txt; exit 1
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cat line.txt >> log.txt; exit 1
+    FAIL │ cat line.txt >> log.txt; exit 1
 ──────────────────────────────── Failed command ────────────────────────────────
 cat line.txt >> log.txt; exit 1  # exit=1
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ Scheduler is put on hold. Not reporting pending steps.
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
-    PHASE │ build
-    START │ cat line.txt >> log.txt; exit 1
-     FAIL │ cat line.txt >> log.txt; exit 1
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+   PHASE │ build
+   START │ cat line.txt >> log.txt; exit 1
+    FAIL │ cat line.txt >> log.txt; exit 1
 ──────────────────────────────── Failed command ────────────────────────────────
 cat line.txt >> log.txt; exit 1  # exit=1
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 1 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ Scheduler is put on hold. Not reporting pending steps.
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

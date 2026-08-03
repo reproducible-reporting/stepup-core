@@ -1,16 +1,16 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cp -p a_input.txt out/a.txt
-  SUCCESS │ cp -p a_input.txt out/a.txt
-    START │ cp -p b_input.txt solo.txt
-  SUCCESS │ cp -p b_input.txt solo.txt
-    START │ cp -p d_input.txt exact_optional.txt
-  SUCCESS │ cp -p d_input.txt exact_optional.txt
- DIRECTOR │ Ran 4 job(s).
-  WARNING │ Skipping file cleanup for a build restricted to targets
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp -p a_input.txt out/a.txt
+ SUCCESS │ cp -p a_input.txt out/a.txt
+   START │ cp -p b_input.txt solo.txt
+ SUCCESS │ cp -p b_input.txt solo.txt
+   START │ cp -p d_input.txt exact_optional.txt
+ SUCCESS │ cp -p d_input.txt exact_optional.txt
+DIRECTOR │ Ran 4 job(s).
+ WARNING │ Skipping file cleanup for a build restricted to targets
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

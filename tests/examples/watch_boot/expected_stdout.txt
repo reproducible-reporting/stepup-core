@@ -1,26 +1,26 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ echo "test 1" > first.txt
-  SUCCESS │ echo "test 1" > first.txt
-    START │ cp first.txt final.txt
-  SUCCESS │ cp first.txt final.txt
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
-  UPDATED │ plan.py
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ echo "test 2" > second.txt
-  SUCCESS │ echo "test 2" > second.txt
-    START │ cp second.txt final.txt
-  SUCCESS │ cp second.txt final.txt
- DIRECTOR │ Ran 4 job(s).
- DIRECTOR │ Trying to remove 1 outdated output(s)
-   REMOVE │ first.txt
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo "test 1" > first.txt
+ SUCCESS │ echo "test 1" > first.txt
+   START │ cp first.txt final.txt
+ SUCCESS │ cp first.txt final.txt
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+ UPDATED │ plan.py
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo "test 2" > second.txt
+ SUCCESS │ echo "test 2" > second.txt
+   START │ cp second.txt final.txt
+ SUCCESS │ cp second.txt final.txt
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 1 outdated output(s)
+  REMOVE │ first.txt
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

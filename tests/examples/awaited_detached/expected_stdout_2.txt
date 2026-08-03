@@ -1,11 +1,11 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 1 file(s) for changes
-  UPDATED │ plan.py (digest 8c3a0a0c ➜ 1a3aa51e, size 132 ➜ 94)
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ 1 step(s) remained pending.
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 1 file(s) for changes
+ UPDATED │ plan.py (digest 8c3a0a0c ➜ 1a3aa51e, size 132 ➜ 94)
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              AWAITED: (src2.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
@@ -14,8 +14,8 @@ or add a step that builds them.
 Paths in parentheses are detached: no step in the workflow declares them.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot
- DIRECTOR │ See you!
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot
+DIRECTOR │ See you!

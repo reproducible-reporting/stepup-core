@@ -1,20 +1,20 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 3 file(s) for changes
-  STARTUP │ Checking 1 nglob(s) for new or deleted matches
-  UPDATED │ inp3.txt
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-     SKIP │ cp -p inp2.txt out2.txt
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 3 file(s) for changes
+ STARTUP │ Checking 1 nglob(s) for new or deleted matches
+ UPDATED │ inp3.txt
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+    SKIP │ cp -p inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       explained, inp_digest ce2b09cd, out_digest 9e7bd348
 Same inp hash        inp2.txt
 Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp -p inp3.txt out3.txt
-  SUCCESS │ cp -p inp3.txt out3.txt
- DIRECTOR │ Ran 3 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
- DIRECTOR │ See you!
+   START │ cp -p inp3.txt out3.txt
+ SUCCESS │ cp -p inp3.txt out3.txt
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

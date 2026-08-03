@@ -1,14 +1,14 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ ./work.py
- DEFERRED │ ./work.py
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./work.py
+DEFERRED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 2 job(s).
-  WARNING │ 1 step(s) remained pending.
+DIRECTOR │ Ran 2 job(s).
+ WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              AWAITED: (never.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
@@ -17,18 +17,18 @@ or add a step that builds them.
 Paths in parentheses are detached: no step in the workflow declares them.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
-  UPDATED │ trigger.txt
-    PHASE │ build
-    START │ ./work.py
- DEFERRED │ ./work.py
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+ UPDATED │ trigger.txt
+   PHASE │ build
+   START │ ./work.py
+DEFERRED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 1 job(s).
-  WARNING │ 1 step(s) remained pending.
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              AWAITED: (never.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
@@ -37,18 +37,18 @@ or add a step that builds them.
 Paths in parentheses are detached: no step in the workflow declares them.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
-  UPDATED │ trigger.txt
-    PHASE │ build
-    START │ ./work.py
- DEFERRED │ ./work.py
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+ UPDATED │ trigger.txt
+   PHASE │ build
+   START │ ./work.py
+DEFERRED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 1 job(s).
-  WARNING │ 1 step(s) remained pending.
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              AWAITED: (never.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
@@ -57,13 +57,13 @@ or add a step that builds them.
 Paths in parentheses are detached: no step in the workflow declares them.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
-    PHASE │ watch
-  UPDATED │ trigger.txt
-    PHASE │ build
-    START │ ./work.py
-     FAIL │ ./work.py
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+ UPDATED │ trigger.txt
+   PHASE │ build
+   START │ ./work.py
+    FAIL │ ./work.py
 ────────────────────────── Deferred more than 3 times ──────────────────────────
 ./work.py  # exit=1
 ────────────────────────── Unavailable amended inputs ──────────────────────────
@@ -71,11 +71,11 @@ never.txt
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
- DIRECTOR │ Ran 1 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ Scheduler is put on hold. Not reporting pending steps.
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
- DIRECTOR │ See you!
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

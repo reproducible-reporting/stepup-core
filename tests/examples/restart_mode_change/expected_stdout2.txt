@@ -1,11 +1,11 @@
-  STARTUP │ Watching 1 director(y|ies)
-  STARTUP │ Checking 3 file(s) for changes
-  UPDATED │ input.txt (mode -rw-r--r-- ➜ -rwxr-xr-x)
-    PHASE │ build
-    START │ cp -p input.txt output.txt
-  SUCCESS │ cp -p input.txt output.txt
- DIRECTOR │ Ran 2 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
- DIRECTOR │ See you!
+ STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Checking 3 file(s) for changes
+ UPDATED │ input.txt (mode -rw-r--r-- ➜ -rwxr-xr-x)
+   PHASE │ build
+   START │ cp -p input.txt output.txt
+ SUCCESS │ cp -p input.txt output.txt
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+DIRECTOR │ See you!

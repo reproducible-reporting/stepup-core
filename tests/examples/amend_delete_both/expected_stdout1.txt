@@ -1,20 +1,20 @@
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cp -p asource1.txt data1.txt
-  SUCCESS │ cp -p asource1.txt data1.txt
-    START │ ./work.py > log.txt
- DEFERRED │ ./work.py > log.txt
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp -p asource1.txt data1.txt
+ SUCCESS │ cp -p asource1.txt data1.txt
+   START │ ./work.py > log.txt
+DEFERRED │ ./work.py > log.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 data2.txt
 ────────────────────────────────────────────────────────────────────────────────
-    START │ cp -p asource2.txt data2.txt
-  SUCCESS │ cp -p asource2.txt data2.txt
-    START │ ./work.py > log.txt
-  SUCCESS │ ./work.py > log.txt
- DIRECTOR │ Ran 5 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
-    PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
- DIRECTOR │ See you!
+   START │ cp -p asource2.txt data2.txt
+ SUCCESS │ cp -p asource2.txt data2.txt
+   START │ ./work.py > log.txt
+ SUCCESS │ ./work.py > log.txt
+DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+DIRECTOR │ See you!
