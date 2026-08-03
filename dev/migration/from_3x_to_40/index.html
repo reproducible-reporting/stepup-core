@@ -1210,14 +1210,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/dynamic_dependencies/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1238,14 +1238,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+      <a href="../../advanced_topics/dynamic_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps with Static Inputs
+    Dynamic Static Inputs
   
 
     
@@ -1816,6 +1816,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
+  <a href="#other-small-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other Small Changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#deprecated-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1906,23 +1917,6 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Changes for Extension Package Developers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#changed-rpc-calls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changed RPC Calls
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2954,6 +2948,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
+  <a href="#other-small-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other Small Changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#deprecated-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3044,23 +3049,6 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Changes for Extension Package Developers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#changed-rpc-calls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changed RPC Calls
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -3560,6 +3548,10 @@ a StepUp 3 test like <code>[ $(($? &amp; 2)) -gt 0 ]</code> still runs under Ste
 but it now tests whether the build was interrupted instead of whether a step failed.
 Revisit every place where your scripts inspect <code>$?</code> after <code>stepup build</code>.
 See <a href="../../reference/returncode/">Return Codes</a> for the current meaning of each bit.</p>
+<h2 id="other-small-changes">Other Small Changes<a class="headerlink" href="#other-small-changes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The <code>getinfo()</code> function has been renamed to <code>get_info()</code>.</li>
+</ul>
 <h2 id="deprecated-features">Deprecated Features<a class="headerlink" href="#deprecated-features" title="Permanent link">&para;</a></h2>
 <p>The following features are still supported but will be removed from StepUp 5.0
 or a future StepUp 4.X release after June 2027, whichever comes first.
@@ -3772,15 +3764,6 @@ the following utilities have moved to the new
 </span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1"># StepUp 4 (current)</span>
 </span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.extapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span><span class="p">,</span> <span class="n">get_rpc_client</span><span class="p">,</span> <span class="n">subs_env_vars</span>
 </span></code></pre></div>
-<h3 id="changed-rpc-calls">Changed RPC Calls<a class="headerlink" href="#changed-rpc-calls" title="Permanent link">&para;</a></h3>
-<p>If you call the director&rsquo;s RPC layer directly, instead of going through
-<a href="../../reference/stepup.core.api/"><code>stepup.core.api</code></a>, note that the
-<code>declare_unconfirmed</code> and <code>static_trees</code> calls have been replaced by a single <code>static</code>
-call.
-It takes the literal files, the static tree roots and the registered patterns together,
-so one <code>static()</code> invocation is always one round trip,
-and the director registers static trees before the files they contain
-within a single transaction.</p>
 
 
 

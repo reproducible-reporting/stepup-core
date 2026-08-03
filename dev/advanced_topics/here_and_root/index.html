@@ -1212,14 +1212,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../amending_steps/" class="md-nav__link">
+      <a href="../dynamic_dependencies/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1240,14 +1240,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../amending_static_inputs/" class="md-nav__link">
+      <a href="../dynamic_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps with Static Inputs
+    Dynamic Static Inputs
   
 
     
@@ -2486,17 +2486,18 @@ and the following <code>source/sub/plan.py</code>:</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   STARTUP │ (Re)initialized boot script
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>     PHASE │ build
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>     START │ ./plan.py
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>   SUCCESS │ ./plan.py
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>     START │ ./plan.py  # wd=sub
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>   SUCCESS │ ./plan.py  # wd=sub
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>     START │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>   SUCCESS │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  DIRECTOR │ See you!
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a> STARTUP │ (Re)initialized boot script
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>   PHASE │ build
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>   START │ ./plan.py
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a> SUCCESS │ ./plan.py
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>   START │ ./plan.py  # wd=sub
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a> SUCCESS │ ./plan.py  # wd=sub
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>   START │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a> SUCCESS │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>DIRECTOR │ Ran 3 job(s).
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <p>The top-level <code>plan.py</code> provides some infrastructure:
 some static files and creating the public directory where the outputs will be created.</p>

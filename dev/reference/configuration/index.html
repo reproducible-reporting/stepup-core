@@ -1210,14 +1210,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/dynamic_dependencies/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1238,14 +1238,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+      <a href="../../advanced_topics/dynamic_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps with Static Inputs
+    Dynamic Static Inputs
   
 
     
@@ -2699,11 +2699,15 @@ separated by slashes, where applicable.</p>
 <dl>
 <dt><code>STEPUP_DEBUG</code></dt>
 <dd>
-<p>Set to <code>1</code> to enable debug output.
+<p>Set to <code>1</code> to enable debugging features and strict consistency checks.
 This implies <code>STEPUP_LOG_LEVEL=DEBUG</code> (if the variable is unset)
 and will require internal consistency checks to pass,
 rather than applying corrections to overcome the inconsistencies.
 (Every such inconsistency is due to a bug, which should be fixed eventually.)
+It also makes the scan of <code>.stepup/director.log</code> at the end of a build fatal:
+a logged error or a coroutine, task or thread left dangling is reported as an error
+and sets the internal error bit of the <a href="../returncode/">return code</a>,
+instead of only being reported as a warning.
 This variable cannot be set through config files or command-line options.</p>
 </dd>
 <dt><code>log_level</code> / <code>STEPUP_LOG_LEVEL</code> / <code>--log-level</code>, <code>-l</code></dt>
@@ -2730,11 +2734,18 @@ by any step in the workflow.</p>
 </dd>
 <dt><code>duration</code> / <code>STEPUP_BUILD_DURATION</code> / <code>--duration</code>, <code>--no-duration</code></dt>
 <dd>
-<p>Set to <code>false</code> to disable recording of step wall times as &ldquo;duration&rdquo; for future runs.
+<p>Set to <code>false</code> to disable recording of step wall times as their <code>duration</code> for future runs.
 StepUp uses the duration information to prioritize the execution
 of steps with the longest critical path (in time units) to any terminal node.
-While this is generally beneficial, it can result in non-deterministic execution order,
+(This is stored in the database as the <code>_tail_time</code> field of each step.)
+While accurate durations are generally beneficial,
+they can result in non-deterministic execution order,
 which can be undesirable in some cases, such as testing.</p>
+<p>When disabled, durations remain unchanged from the previous run
+or stay at their initial value if the step has never been executed before.
+The initial value can be provided when defining the step, or defaults to <code>1.0</code> if not provided.
+With the <code>1.0</code> default, the <code>_tail_time</code> of a step degrades to
+the number of steps in the longest path to any terminal node.</p>
 </dd>
 <dt><code>explain_rerun</code> / <code>STEPUP_BUILD_EXPLAIN_RERUN</code> / <code>--explain-rerun</code>, <code>-e</code>, <code>--no-explain-rerun</code></dt>
 <dd>
@@ -2763,11 +2774,11 @@ as long as their own inputs remain available (like <code>make -k</code>).
 By default (<code>false</code>), the scheduler is put on hold after the first failure:
 steps already running are still allowed to finish, but no new steps are started.</p>
 </dd>
-<dt><code>postpone_cap</code> / <code>STEPUP_BUILD_POSTPONE_CAP</code> / <code>--postpone-cap</code></dt>
+<dt><code>defer_cap</code> / <code>STEPUP_BUILD_DEFER_CAP</code> / <code>--defer-cap</code></dt>
 <dd>
-<p>Maximum number of times a step can be postponed (since it last succeeded)
+<p>Maximum number of times a step can be deferred (since it last succeeded)
 before it is reported as failed instead of parked pending again.
-This guards against livelocks where a step&rsquo;s amended inputs keep flapping.
+This guards against livelocks where a step&rsquo;s dynamic inputs keep flip-flopping.
 The default is <code>100</code>, deliberately generous.</p>
 </dd>
 <dt><code>progress</code> / <code>STEPUP_BUILD_PROGRESS</code> / <code>--progress</code>, <code>--no-progress</code></dt>
@@ -2925,7 +2936,7 @@ the internal environment variables described above.</p>
 <dd>
 <p>A unique integer id for the current job running the step.
 Unlike a step&rsquo;s own (stable) index, this changes every time the step is (re)started,
-e.g. after being postponed.
+e.g. after being deferred.
 This is mainly relevant for StepUp and has little significance for users implementing workflows.</p>
 </dd>
 <dt><code>STEPUP_STEP_INP_DIGEST</code></dt>
@@ -2935,8 +2946,8 @@ This is mainly relevant for StepUp and has little significance for users impleme
 This is useful in special cases.
 For example, it can be used to decide if cached results
 from a previously interrupted run of the step are still valid.
-It can also be useful when actions submit jobs to a scheduler,
-to decide if a running job is still valid.</p>
+It can also be useful when a step submits a job to an external scheduler,
+to decide if a previously submitted job is still valid.</p>
 </dd>
 <dt><code>STEPUP_STEP_NEED</code></dt>
 <dd>

@@ -1210,14 +1210,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/dynamic_dependencies/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1238,14 +1238,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+      <a href="../../advanced_topics/dynamic_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps with Static Inputs
+    Dynamic Static Inputs
   
 
     
@@ -1867,6 +1867,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
+  <a href="#suspending-a-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Suspending a Build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#interacting-with-a-background-stepup-process" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2428,6 +2439,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
+  <a href="#suspending-a-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Suspending a Build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#interacting-with-a-background-stepup-process" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2553,6 +2575,28 @@ and whatever is still running a few seconds later is killed with <code>SIGKILL</
 so a single <code>Ctrl+C</code> is always enough to get your shell prompt back.
 (Pressing <code>Ctrl+C</code> again just skips the waiting.)
 An aborted build sets the <code>2</code> bit in the <a href="../returncode/">return code</a>.</p>
+<h2 id="suspending-a-build">Suspending a Build<a class="headerlink" href="#suspending-a-build" title="Permanent link">&para;</a></h2>
+<p>Pressing <code>Ctrl+Z</code> suspends the build and returns you to the shell prompt,
+and <code>fg</code> resumes it where it left off, with keyboard interaction still working.</p>
+<p>Running steps are suspended along with StepUp itself,
+so nothing keeps using CPU or writing files while the build is stopped.
+This needs StepUp&rsquo;s cooperation:
+steps run in a session of their own (so that a <code>Ctrl+C</code> cannot reach them directly),
+which also means the terminal cannot suspend them.
+The director stops them with <code>SIGSTOP</code> and continues them with <code>SIGCONT</code>.
+The time a step spends suspended is not counted as time it spent working,
+so the durations reported for steps stay meaningful.</p>
+<p>Two caveats:</p>
+<ul>
+<li>Sending a suspended build to the background with <code>bg</code> is not supported.
+  StepUp reads the keyboard, and a background process that reads from the terminal
+  is stopped again by the operating system.
+  If you want to run StepUp in the background,
+  do so from the beginning as explained in the next section.</li>
+<li>A step that calls back into StepUp (with <code>amend()</code>, for instance) at the moment of
+  the suspension gives up after <code>STEPUP_SYNC_RPC_TIMEOUT</code> seconds (600 by default),
+  so a build left suspended for longer than that may report a failed step.</li>
+</ul>
 <h2 id="interacting-with-a-background-stepup-process">Interacting With a Background StepUp Process<a class="headerlink" href="#interacting-with-a-background-stepup-process" title="Permanent link">&para;</a></h2>
 <p>You can run StepUp in the background in several ways:</p>
 <ul>

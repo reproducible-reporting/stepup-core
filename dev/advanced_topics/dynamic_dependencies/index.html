@@ -16,13 +16,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <meta name="author" content="Toon Verstraelen">
       
       
-        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/amending_steps/">
+        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/dynamic_dependencies/">
       
       
         <link rel="prev" href="../volatile_outputs/">
       
       
-        <link rel="next" href="../amending_static_inputs/">
+        <link rel="next" href="../dynamic_static_inputs/">
       
       
         
@@ -33,7 +33,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
     
       
-        <title>Amending Steps - StepUp Core</title>
+        <title>Dynamic Dependencies - StepUp Core</title>
       
     
     
@@ -86,7 +86,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <div data-md-component="skip">
       
         
-        <a href="#amending-steps" class="md-skip">
+        <a href="#dynamic-dependencies" class="md-skip">
           Skip to content
         </a>
       
@@ -137,7 +137,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Amending Steps
+              Dynamic Dependencies
             
           </span>
         </div>
@@ -1228,7 +1228,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1246,7 +1246,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1309,14 +1309,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../amending_static_inputs/" class="md-nav__link">
+      <a href="../dynamic_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps with Static Inputs
+    Dynamic Static Inputs
   
 
     
@@ -2427,7 +2427,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 
   
-    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/advanced_topics/amending_steps.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/advanced_topics/dynamic_dependencies.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2435,7 +2435,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
 
 
-<h1 id="amending-steps">Amending Steps<a class="headerlink" href="#amending-steps" title="Permanent link">&para;</a></h1>
+<h1 id="dynamic-dependencies">Dynamic Dependencies<a class="headerlink" href="#dynamic-dependencies" title="Permanent link">&para;</a></h1>
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
@@ -2443,24 +2443,31 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 <p>Every step in StepUp can inform the director process of additional inputs
 or environment variables it uses, or of additional (volatile) outputs it creates.
-However, amending a step with an input will fail
-when that file is not yet built nor known as a static file.
-In this case, the step will exit early
-and will be postponed by the director process until that input becomes available.</p>
-<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.amend(*, inp=(), env=(), out=(), vol=())" href="../../reference/stepup.core.api/#stepup.core.api.amend"><code>amend()</code></a> function implements this feature
-and is convenient in various scenarios:</p>
+These are generally referred to as <em>dynamic dependencies</em> because they are discovered at runtime.</p>
+<p>A step <em>amends</em> itself with dynamic dependencies by sending them to the director process
+using the <a class="autorefs autorefs-internal" title="stepup.core.api.amend(*, inp=(), env=(), out=(), vol=())" href="../../reference/stepup.core.api/#stepup.core.api.amend"><code>amend()</code></a> function.
+Once registered, the dynamic dependencies are treated on equal footing as the <em>initial</em> ones.
+However, as soon as an initial input file changes and StepUp reruns,
+the dynamic dependencies are discarded and must be rediscovered by running the step.
+(This is needed because the dynamic dependencies typically depend on the contents of the initial inputs.)</p>
+<p>Amending a step with a dynamic input will fail
+if that input is not yet available (built by a step or declared static).
+In this case, the step exits early
+and its execution is <em>deferred</em> by the director process
+until the required inputs become available.</p>
+<p>Dynamic dependencies are convenient in various scenarios:</p>
 <ul>
-<li>This is useful for handling nested dependencies
+<li>
+<p>They are useful for handling nested dependencies
   where an initial input file references secondary inputs that are not yet generated.
   Because these secondary files might, once generated, point to a third tier of inputs,
-  the full chain of dependencies cannot be mapped out in advance.</li>
-</ul>
+  the full chain of dependencies cannot be mapped out in advance.</p>
 <p>This creates a <em>chicken-and-egg</em> scenario where the build system cannot discover
-  what files are needed until it actually runs the steps to generate them.</p>
+what files are needed until it actually runs the steps to generate them.</p>
 <p>A classic example of this is compiling a complex LaTeX document,
-  where the main file pulls in sub-chapters that rely on figures or data plots
-  generated by external scripts.</p>
-<ul>
+where the main file pulls in sub-chapters that rely on figures or data plots
+generated by external scripts.</p>
+</li>
 <li>
 <p>Another use case is that some steps may take their default configuration
   from environment variables if some command-line options are missing.
@@ -2471,16 +2478,16 @@ and is convenient in various scenarios:</p>
   Such volatile outputs can be specified using <code>amend()</code> once they have been created.</p>
 </li>
 </ul>
-<p><code>amend()</code> is safe to call after an input file has already been read
-(or an output file already written):
-if a file turns out to be missing, or to have been built too recently to be trusted
+<p><code>amend()</code> is safe to call after an input file has already been read:
+if a dynamic input has been built too recently to be trusted
 (e.g. a producer step was still writing it while it was being read),
-the step is postponed instead of failing outright.
-Still, use <code>amend()</code> as early as possible,
-before accessing additional input files or creating unforeseen output files,
+the step is still deferred instead of failing outright.</p>
+<p>While correctness is always guaranteed,
+it is the safest and most efficient to call <code>amend()</code> as early as possible,
+before accessing dynamic input files or creating dynamic outputs,
 whenever that is practical.
-Also, try to amend the step with as many additional arguments as possible in a single call.
-This will avoid the following problems:</p>
+In addition, try to amend the step with as many dynamic dependencies as possible in a single call.
+By following these good practices, you can avoid the following problems:</p>
 <ul>
 <li>
 <p>Trying to read from a file that hasn&rsquo;t been created yet.</p>
@@ -2496,8 +2503,8 @@ from trying to read the file and failing.</p>
 <p>Unintentionally overwriting a file by calling <code>amend(out=...)</code> or <code>amend(vol=...)</code>
   only after writing to these outputs.</p>
 <blockquote>
-<p>When you call <code>amend()</code> first and the files are registered as STATIC or outputs of other steps,
-an exception is raised.
+<p>When you call <code>amend()</code> first and the files are registered as STATIC
+or outputs of other steps, an exception is raised.
 This is a safety check to prevent overwriting files that belong to other steps,
 but this only works if you call <code>amend()</code> before writing to the files.</p>
 </blockquote>
@@ -2506,45 +2513,52 @@ but this only works if you call <code>amend()</code> before writing to the files
 <p>Performing unnecessary work.</p>
 <blockquote>
 <p>A call to amend may mean that the step is interrupted and restarted later.
-This is particularly important when the step is time-consuming
+Early calls to <code>amend()</code> are particularly important when the step is time-consuming
 or when it uses <code>stepup.core.api</code> functions to extend the workflow.</p>
 </blockquote>
 </li>
 <li>
-<p>Postponing a step multiple times.</p>
+<p>Deferring a step too many times.</p>
 <blockquote>
-<p>As a safety net, a step that is postponed too many times in a row without
-succeeding will eventually fail instead of being postponed forever.
-The limit is configurable with the <code>--postpone-cap</code> option,
+<p>As a safety net, a step that is deferred too many times in a row without
+succeeding will eventually fail instead of being deferred forever.
+The limit is configurable with the <code>--defer-cap</code> option,
 see <a href="../../reference/configuration/">Configuration</a>.</p>
-<p>Note that there are two different postponing mechanisms in StepUp:
-1. The <code>amend(inp=...)</code> hits a file that has not been built yet.
-   (This is an &ldquo;unavailable input&rdquo;.)
-2. The <code>amend(inp=...)</code> hits a file that has been built by another step
+<p>Note that there are two different deferring mechanisms in StepUp:</p>
+<ol>
+<li>
+<p>The <code>amend(inp=...)</code> hits a file that has not been built yet.
+   (This is an &ldquo;unavailable input&rdquo;.)</p>
+</li>
+<li>
+<p>The <code>amend(inp=...)</code> hits a file that has been built by another step
    that completed after the current step started.
    If the <code>amend()</code> call is made after the file has been read,
-   StepUp cannot guarantee correctness and will therefore postpone the step.</p>
-<p>Both types of postponing are counted towards the postpone cap.</p>
+   StepUp cannot guarantee correctness and will therefore defer the step.</p>
+</li>
+</ol>
+<p>Both types of deferring are counted towards the defer cap.</p>
 </blockquote>
 </li>
 </ul>
 <p>To the best of our knowledge, there is no equivalent of <code>amend()</code> in other build tools.
-Some features in Ninja cover what can be achieved with <code>amend()</code>.</p>
+Some features in <a href="https://ninja-build.org/manual.html">Ninja&rsquo;s generator rule</a>
+cover what can be achieved with <code>amend()</code>.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/amending_steps"><code>docs/advanced_topics/amending_steps/</code></a></p>
+<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/dynamic_dependencies"><code>docs/advanced_topics/dynamic_dependencies/</code></a></p>
 <p>This example intentionally creates a simple scenario in which a step is amended with an extra input.
 This is a somewhat silly example to illustrate the concept.
 You may achieve the same result without amending,
 because you have full control over all scripts in the example.</p>
 <p>Create the following <code>plan.py</code>,
-where the first step is a script that will discover it needs an additional input.</p>
+where the first step is a script that discovers that it needs an additional input.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">run</span><span class="p">,</span> <span class="n">static</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;step.py&quot;</span><span class="p">)</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./step.py&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;step.py&quot;</span><span class="p">,</span> <span class="s2">&quot;sources.txt&quot;</span><span class="p">])</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo input.txt &gt; sources.txt&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;sources.txt&quot;</span><span class="p">)</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo You better read this. &gt; input.txt&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;input.txt&quot;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo Abracadabra! &gt; input.txt&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;input.txt&quot;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </span></code></pre></div>
 <p>In addition, create a file <code>input.txt</code>
 with some arbitrary contents and the following <code>step.py</code> script:</p>
@@ -2570,29 +2584,29 @@ with some arbitrary contents and the following <code>step.py</code> script:</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   STARTUP │ (Re)initialized boot script
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>     PHASE │ build
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>     START │ ./plan.py
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>   SUCCESS │ ./plan.py
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>     START │ echo input.txt &gt; sources.txt
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>   SUCCESS │ echo input.txt &gt; sources.txt
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>     START │ ./step.py
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>RESCHEDULE │ ./step.py
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>────────────────────────── Unavailable amended inputs ──────────────────────────
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a> STARTUP │ (Re)initialized boot script
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>   PHASE │ build
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>   START │ ./plan.py
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a> SUCCESS │ ./plan.py
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>   START │ echo input.txt &gt; sources.txt
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a> SUCCESS │ echo input.txt &gt; sources.txt
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>   START │ ./step.py
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>DEFERRED │ ./step.py
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>────────────────────────── Unavailable dynamic inputs ──────────────────────────
 </span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>input.txt
 </span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>────────────────────────────────────────────────────────────────────────────────
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>     START │ echo You better read this. &gt; input.txt
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>   SUCCESS │ echo You better read this. &gt; input.txt
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>     START │ ./step.py
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>   SUCCESS │ ./step.py
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>   START │ echo Abracadabra! &gt; input.txt
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a> SUCCESS │ echo Abracadabra! &gt; input.txt
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>   START │ ./step.py
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a> SUCCESS │ ./step.py
 </span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>─────────────────────────────── Standard output ────────────────────────────────
 </span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>Contents of input.txt:
-</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>You better read this.
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>Abracadabra!
 </span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>────────────────────────────────────────────────────────────────────────────────
-</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>   WARNING │ Check logs: .stepup/warning.log
-</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>  DIRECTOR │ See you!
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>DIRECTOR │ Ran 5 job(s).
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <p>The output shows that <code>./step.py</code> first stops early due to the missing file <code>input.txt</code>.
 As a result, it becomes clear that <code>input.txt</code> is required,
@@ -2603,7 +2617,7 @@ After <code>input.txt</code> has been created, StepUp runs <code>./step.py</code
 <li>
 <p>Run StepUp again without making any changes.
   As expected, all steps are skipped.
-  The <code>.stepup/graph.db</code> file also stores the amended information,
+  The <code>.stepup/graph.db</code> file also stores the dynamic dependencies,
   so these don&rsquo;t need to be rediscovered later.</p>
 </li>
 <li>
@@ -2611,7 +2625,7 @@ After <code>input.txt</code> has been created, StepUp runs <code>./step.py</code
   for example, <code>other.txt</code>.
   Run StepUp with these changes.
   Because <code>sources.txt</code> contains a new file, StepUp will try re-running
-  <code>./step.py</code>, which will amend the step with new inputs that require the step to be postponed again.</p>
+  <code>./step.py</code>, which will amend the step with new inputs that require the step to be deferred again.</p>
 </li>
 </ul>
 

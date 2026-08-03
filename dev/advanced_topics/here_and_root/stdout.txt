@@ -1,11 +1,12 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./plan.py  # wd=sub
-   SUCCESS │ ./plan.py  # wd=sub
-     START │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
-   SUCCESS │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
-  DIRECTOR │ Trying to delete 0 outdated output(s)
-  DIRECTOR │ See you!
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./plan.py  # wd=sub
+ SUCCESS │ ./plan.py  # wd=sub
+   START │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
+ SUCCESS │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ See you!

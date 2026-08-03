@@ -1,10 +1,11 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
 This is a config file.
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s)
-  DIRECTOR │ See you!
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ See you!

@@ -1,17 +1,16 @@
- DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc8.post10)
-  STARTUP │ (Re)initialized boot script
-    PHASE │ build
-    START │ ./plan.py
-  SUCCESS │ ./plan.py
-    START │ cp -p src/intro.txt dst/intro.txt
-  SUCCESS │ cp -p src/intro.txt dst/intro.txt
-    START │ cp -p src/method_notes.txt dst/method_notes.txt
-  SUCCESS │ cp -p src/method_notes.txt dst/method_notes.txt
-    START │ cp -p src/result_notes.txt dst/result_notes.txt
-  SUCCESS │ cp -p src/result_notes.txt dst/result_notes.txt
-    START │ cat src/method_notes.txt src/result_notes.txt > notes.txt
-  SUCCESS │ cat src/method_notes.txt src/result_notes.txt > notes.txt
- DIRECTOR │ Ran 5 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
- DIRECTOR │ Wall 0.2s, Director 0.2u/0.0s, Steps 0.0u/0.0s
- DIRECTOR │ See you!
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp -p src/intro.txt dst/intro.txt
+ SUCCESS │ cp -p src/intro.txt dst/intro.txt
+   START │ cp -p src/method_notes.txt dst/method_notes.txt
+ SUCCESS │ cp -p src/method_notes.txt dst/method_notes.txt
+   START │ cp -p src/result_notes.txt dst/result_notes.txt
+ SUCCESS │ cp -p src/result_notes.txt dst/result_notes.txt
+   START │ cat src/method_notes.txt src/result_notes.txt > notes.txt
+ SUCCESS │ cat src/method_notes.txt src/result_notes.txt > notes.txt
+DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ See you!

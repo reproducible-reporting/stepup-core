@@ -33,7 +33,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
     out
         A list of output paths, deduced from output redirection.
     """
-    inp = []
+    inp = ["clean_stdout.sed"]
     workdir = Path(path_main).parent
     root = workdir
     out = []
@@ -53,11 +53,11 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
 def main():
     """Main program."""
     static("run_example.py")
+    static("clean_stdout.sed")
     paths_main = static("*/*/main.sh")
     for path_main in paths_main:
         inp, root, out = scan_main(path_main)
         static(inp)
-        inp.append(Path("run_example.py"))
         inp.append(path_main)
         run(f"./run_example.py {path_main} {root}", inp=inp, out=out)
 

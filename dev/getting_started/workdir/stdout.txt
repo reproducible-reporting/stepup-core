@@ -1,9 +1,10 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo 'a friendly file' > hello.txt  # wd=out
-   SUCCESS │ echo 'a friendly file' > hello.txt  # wd=out
-  DIRECTOR │ Trying to delete 0 outdated output(s)
-  DIRECTOR │ See you!
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo 'a friendly file' > hello.txt  # wd=out
+ SUCCESS │ echo 'a friendly file' > hello.txt  # wd=out
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ See you!

@@ -1310,14 +1310,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="advanced_topics/amending_steps/" class="md-nav__link">
+      <a href="advanced_topics/dynamic_dependencies/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1338,14 +1338,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="advanced_topics/amending_static_inputs/" class="md-nav__link">
+      <a href="advanced_topics/dynamic_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps with Static Inputs
+    Dynamic Static Inputs
   
 
     
@@ -2593,24 +2593,27 @@ while &ldquo;Step&rdquo; reflects how StepUp defines operations as individual <e
 </li>
 <li>
 <p>🕸️ <strong>Partial Directed Acyclic Graph (PDAG) Execution:</strong>
-  StepUp supports PDAG execution, similar to <a href="https://gittup.org/tup">tup</a>.
-  This means it can start steps even when the full workflow is not yet known.
-  For example, at startup, it will begin executing steps
-  before having complete knowledge of the entire build graph.</p>
+  StepUp supports execution of partially known DAGs, similar to <a href="https://gittup.org/tup">tup</a>.
+  Execution can begin before the complete workflow graph is defined.
+  Similarly, the cost of an incremental build is proportional to
+  the number of steps that need to be rebuilt, not the total number of steps in the workflow.</p>
 </li>
 <li>
 <p>🔄 <strong>Dynamic Workflows:</strong>
-  While a step is running, it can inform StepUp that it needs <em>additional inputs</em>,
-  in which case the step will be postponed
-  until the additional inputs have become available.
-  Similarly, a step can define additional outputs during its execution.</p>
+  StepUp makes no distinction between the generation and execution of the workflow.
+  Any step can extend the workflow with new files and steps based on runtime information.
+  Dynamic workflows in StepUp even go a step further:
+  a running step can dynamically register newly discovered dependencies
+  (inputs, outputs, or environment variables) on the fly.
+  If a dynamic input is missing when requested, the step is automatically deferred
+  until its dependencies are built by other steps.</p>
 </li>
 <li>
 <p>🗓️ <strong>Advanced Scheduling:</strong>
   StepUp can schedule steps in parallel to prioritize steps that are on the critical path of the workflow.
   In addition, one can define resources and resource limits for steps,
   which StepUp will respect when scheduling.
-  For instance, this can be used to limit the number of steps using a GPU that can run in parallel.</p>
+  For instance, this can be used to limit the number of concurrent steps using a GPU.</p>
 </li>
 <li>
 <p>🌐 <strong>Graph Visualization Webserver:</strong>
@@ -2634,7 +2637,7 @@ while &ldquo;Step&rdquo; reflects how StepUp defines operations as individual <e
 <p>🧹 <strong>Automatic Cleanup:</strong>
   Old outputs are <em>automatically removed</em>
   when the steps creating those files are removed from the workflow.
-  This cleanup is only performed after a completely successful build.</p>
+  This cleanup is only performed after a complete and successful build.</p>
 </li>
 <li>
 <p>⏳ <strong>Progress Bar:</strong>
@@ -2658,7 +2661,7 @@ while &ldquo;Step&rdquo; reflects how StepUp defines operations as individual <e
 </ul>
 </li>
 <li>
-<p>🌱 <strong>Environment Variable Dependencies:</strong>
+<p>💲 <strong>Environment Variable Dependencies:</strong>
   Steps can have environment variables as dependencies,
   so that they are flagged for re-execution after the variables change.</p>
 </li>
@@ -2667,7 +2670,7 @@ while &ldquo;Step&rdquo; reflects how StepUp defines operations as individual <e
   Rich pattern-matching rules make it easy to multiplex a step over multiple similar inputs.</p>
 </li>
 <li>
-<p>📤 <strong>Optional Outputs:</strong>
+<p>💾 <strong>Optional Outputs:</strong>
   Steps <em>do not need to have output files</em>.
   They will be rerun if inputs have changed since the last run.</p>
 </li>

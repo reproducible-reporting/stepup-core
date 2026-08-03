@@ -1210,14 +1210,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/dynamic_dependencies/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1238,14 +1238,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+      <a href="../../advanced_topics/dynamic_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps with Static Inputs
+    Dynamic Static Inputs
   
 
     
@@ -2366,10 +2366,15 @@ without making it fail, such as a target that no step produces
 or a <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> match that no <code>static()</code> declaration justifies.
 Such a build is still a successful one:
 the <code>FAILED</code> bit is never set on account of a warning.</p>
+<p>The internal error bit (<code>1</code>) is normally the only bit set:
+the director sets it when an exception escapes, and then it has nothing else to report.
+There is one exception, where it is combined with the outcome of a complete build:
+when <code>STEPUP_DEBUG</code> is set and StepUp finds problems in <code>.stepup/director.log</code>
+after the build, see <a href="../configuration/">Configuration</a>.</p>
 <p>A few example combinations are:</p>
 <ul>
 <li><code>0</code> = all steps finished successfully.</li>
-<li><code>1</code> = internal error (never combined with other codes).</li>
+<li><code>1</code> = internal error in the director (never combined with other codes).</li>
 <li><code>8</code> = every step succeeded, but the build reported a warning.</li>
 <li><code>20</code> = at least one step failed and at least one step remained pending.</li>
 <li><code>36</code> = a step failed and the scheduler was put on hold,

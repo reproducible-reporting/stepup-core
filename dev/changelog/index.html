@@ -1210,14 +1210,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../advanced_topics/amending_steps/" class="md-nav__link">
+      <a href="../advanced_topics/dynamic_dependencies/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1238,14 +1238,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../advanced_topics/amending_static_inputs/" class="md-nav__link">
+      <a href="../advanced_topics/dynamic_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps with Static Inputs
+    Dynamic Static Inputs
   
 
     
@@ -5760,12 +5760,11 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>All functions in <code>stepup.core.api</code> now accept <code>os.PathLike</code> objects (i.e. <code>pathlib.Path</code>)
   as path arguments, in addition to <code>str</code> and <code>path.Path</code>.</li>
 <li>When the first word of a <code>run()</code> command is a bare command name matching a <code>console_scripts</code>
-  entry point from the current Python environment, StepUp now automatically selects the
-  <code>runpyep</code> action.
-  When the forkserver is enabled (<code>--forkserver</code>), the entry point function is called
+  entry point from the current Python environment, StepUp now runs it as a Python entry point:
+  when the forkserver is enabled (<code>--forkserver</code>), the entry point function is called
   in-process rather than spawning a new subprocess, reducing overhead.
   If the entry point belongs to a different Python environment, a warning is logged and
-  the command falls back to direct subprocess execution (<code>runexec</code> action).</li>
+  the command falls back to direct subprocess execution.</li>
 <li>A <code>run()</code> or <code>step()</code> command may now start with <code>VAR=value</code> assignments
   (when <code>shell=False</code>), e.g. <code>run("OMP_NUM_THREADS=4 ./work.py")</code>.
   These are applied as step-specific environment variable overrides when the step runs,
@@ -5815,9 +5814,9 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 - A resource usage report is shown ad the end of the file <code>.stepup/director.log</code>.
   Part of the analysis relies on Linux control groups, which are only available on this OS.
 - An SQL debug log option, to check query plans and execution times.
-- Added a <code>--postpone-cap</code> option (default 100) that fails a step
-  once it has been postponed that many times in a row without succeeding.
-  This acts as a livelock guard for <code>amend()</code>-driven postpones.
+- Added a <code>--defer-cap</code> option (default 100) that fails a step
+  once it has been deferred that many times in a row without succeeding.
+  This acts as a livelock guard for <code>amend()</code>-driven defers.
 - Added support for cgroup v2 memory accounting on Linux with <code>systemd-run</code>.
 - Added a <code>--joblog</code> option to <code>sb</code> to log the start and end of each job to a file.</p>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
@@ -5851,7 +5850,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The end-of-build pending report no longer prints one <code>PENDING Step</code> page per pending step.
   Instead, it summarizes the <strong>root causes</strong> as a fixed-size ranked report: the unavailable
   input files and blocked resources that account for the most pending steps, plus a
-  count of steps blocked by failed steps, waiting on each other, postponed, or otherwise
+  count of steps blocked by failed steps, waiting on each other, deferred, or otherwise
   unexplained. Use <code>stepup browse</code> to inspect the individual steps behind any entry.
   See <a href="../advanced_topics/blocked_steps/">Blocked Steps</a> for details on the new format.</li>
 <li>The <code>static()</code> and <code>glob()</code> functions have been redesigned from scratch to permit more use cases
@@ -5862,6 +5861,15 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>Return codes have changed.
   The new return code bits are documented in <a href="../reference/returncode/">StepUp Return Codes</a>.
   The changes compared to StepUp 3 are summarized in the <a href="../migration/from_3x_to_40/#return-codes-have-been-renumbered">migration guide</a>.</li>
+<li>At the end of every build, StepUp scans <code>.stepup/director.log</code> for symptoms of internal
+  problems: logged errors, unawaited coroutines, tasks destroyed while still pending,
+  and exceptions that escaped a callback, a thread or a destructor.
+  None of these make the director exit with a non-zero return code by themselves,
+  so the log is the only place where they can be picked up.
+  The offending lines are now shown with the warning,
+  which previously only mentioned that errors had been logged.
+  With <code>STEPUP_DEBUG</code>, such findings are reported as an error instead
+  and set the internal error bit of the return code.</li>
 <li>The <code>runsh()</code> and <code>runpy()</code> functions have been replaced by the more flexible <code>run()</code> function.
   The new implementation is more efficient and automatically tracks local scripts as dependencies.</li>
 <li>The <code>plan()</code> function has been made maximally similar to <code>run()</code>,
@@ -5871,6 +5879,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   the old inp/out/pickle argument modes are replaced
   by explicit function dispatch and optional <code>args_file</code> support for file-based argument passing.
   See <a href="../getting_started/call/">Function Calls</a> for details.</li>
+<li>The <code>getinfo()</code> function has been renamed to <code>get_info()</code>.</li>
 <li>File hashes are computed in concurrent hash jobs instead of the old serial client-side delegation.
   Similarly, the director uses the same mechanism to compute file hashes in parallel on startup.</li>
 <li>File hashing now runs in threads inside the director process
@@ -5879,7 +5888,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   As a result, the &ldquo;Hashing&rdquo; row is gone from the resource-usage summary;
   that time is now counted under &ldquo;Director&rdquo;.</li>
 <li>A known race condition related to <code>amend(inp=...)</code> has been fixed.
-  It is now safe to call <code>amend(inp=...)</code> after an amended input file has already been read.
+  It is now safe to call <code>amend(inp=...)</code> after a dynamic input file has already been read.
   (It is not the most efficient approach to call <code>amend(inp=...)</code> too late,
   but in some cases it is the only practical one.)</li>
 <li>The scheduler has been replaced by a new and more efficient implementation.
@@ -5895,7 +5904,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The <code>pool</code> feature has been removed and
   is now replaced by the more powerful <code>resources</code> feature.</li>
 <li>The <code>optional</code> feature has become more robust.</li>
-<li>The &ldquo;rescheduling&rdquo; mechanism has been refactored by a simpler &ldquo;postpone&rdquo; mechanism.</li>
+<li>The &ldquo;rescheduling&rdquo; mechanism has been refactored by a simpler &ldquo;defer&rdquo; mechanism.</li>
 </ul>
 </li>
 <li>The &ldquo;deferred glob&rdquo; has been replaced by a simpler &ldquo;static tree&rdquo; concept.
@@ -5999,7 +6008,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The <code>STEPUP_STEP_I</code> environment variable has been replaced by <code>STEPUP_JOB_I</code>.
   Instead of a step&rsquo;s (stable) node index, it now holds a unique id for the current
   job running the step, assigned by the scheduler when the job is created, so a
-  postponed step&rsquo;s earlier attempt cannot be confused with its later one.</li>
+  deferred step&rsquo;s earlier attempt cannot be confused with its later one.</li>
 <li>Order of <code>StepInfo</code> attributes is made consistent with the <code>step()</code> API function.</li>
 <li>The <em>run phase</em> has been renamed to <em>build phase</em> throughout the documentation and source code.</li>
 <li>Runner has been renamed to Builder.</li>
@@ -6091,6 +6100,15 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   no longer matches an empty string, just like <code>*</code> in that position.
   The trailing separator of a matched directory is not part of the captured substring.</li>
 <li>Attempts to use files under <code>.stepup/</code> in a workflow will now raise an exception.</li>
+<li>Pressing <code>Ctrl-Z</code> now suspends the whole build.
+  Steps run in a session of their own, so the terminal never reached them and they kept
+  running (and writing files) while StepUp itself was stopped.
+  The director now stops them with <code>SIGSTOP</code> and continues them on resume,
+  and the time spent suspended is no longer recorded as time a step spent working.</li>
+<li>Resuming StepUp with <code>fg</code> no longer leaves a broken terminal:
+  the cursor stays visible while the build is suspended,
+  and keyboard interaction keeps working after the build is resumed.
+  Previously every keystroke was echoed and then swallowed by the terminal.</li>
 </ul>
 <h2 id="v3.2.3"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3">3.2.3</a> - 2026-04-16<a class="headerlink" href="#v3.2.3" title="Permanent link">&para;</a></h2>
 <p>Bugfix release: support large inodes in SQLite storage</p>
@@ -6173,7 +6191,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 </ul>
 <h3 id="changed_4">Changed<a class="headerlink" href="#changed_4" title="Permanent link">&para;</a></h3>
 <ul>
-<li>The scheduler of StepUp uses job priorities to postpone rescheduled jobs
+<li>The scheduler of StepUp uses job priorities to defer rescheduled jobs
   until all non-rescheduled jobs have been started.
   This lowers the chance that it will be executed again to discover more missing dependencies.</li>
 </ul>
@@ -6555,7 +6573,7 @@ for more fine-grained control over automatic dependency tracking.</p>
 <li><code>--perf</code> option to analyze performance bottlenecks in the director process.</li>
 <li>The &ldquo;call&rdquo; protocol is added as a light alternative to the &ldquo;script&rdquo; protocol.
   It can be used through the new <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> function.</li>
-<li><a class="autorefs autorefs-internal" title="stepup.core.api.getinfo()" href="../reference/stepup.core.api/#stepup.core.api.getinfo"><code>getinfo()</code></a> function to retrieve the
+<li><code>getinfo()</code> function to retrieve the
   <a class="autorefs autorefs-internal" href="../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object of the current step.</li>
 <li>Cleanly exit the director process upon several types of exceptions (instead of hanging).</li>
 <li>Gracefully handle <code>SIGINT</code> and <code>SIGTERM</code>, e.g. pressing <code>ctrl-c</code> in the terminal.</li>

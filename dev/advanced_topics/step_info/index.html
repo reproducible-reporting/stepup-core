@@ -1212,14 +1212,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../amending_steps/" class="md-nav__link">
+      <a href="../dynamic_dependencies/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps
+    Dynamic Dependencies
   
 
     
@@ -1240,14 +1240,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../amending_static_inputs/" class="md-nav__link">
+      <a href="../dynamic_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending Steps with Static Inputs
+    Dynamic Static Inputs
   
 
     
@@ -2442,7 +2442,7 @@ which can be used to get a subset of paths.
 These functions take the same arguments as those of the <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function
 and also return a <a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob"><code>NamedGlob</code></a> instance.</p>
 <p>Note that the <code>StepInfo</code> object will only contain information known at the time the step is defined.
-Amended information (inputs, outputs, &hellip;) cannot be retrieved from <code>StepInfo</code> objects.
+Dynamic dependencies (inputs, outputs, &hellip;) cannot be retrieved from <code>StepInfo</code> objects.
 Also note that relative paths in <code>inp</code>, <code>out</code> and <code>vol</code> are relative to the working directory.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Let&rsquo;s assume you are using a library with an API function <code>create_fancy_pdf</code>,
