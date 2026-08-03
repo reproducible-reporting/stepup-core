@@ -168,10 +168,10 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "In-progress steps always finish regardless of this flag.",
     )
     group.add_argument(
-        "--postpone-cap",
+        "--defer-cap",
         type=positive_int,
         default=100,
-        help="Maximum number of consecutive postpones (since the last success) before "
+        help="Maximum number of consecutive defers (since the last success) before "
         "a step is failed instead of parked. A livelock guard. [default=%(default)s]",
     )
     group.add_argument(
@@ -580,7 +580,7 @@ def _build_director_argv(
             director_socket_path,
             f"--reporter={reporter_socket_path}",
             f"--jobs={args.jobs}",
-            f"--postpone-cap={args.postpone_cap}",
+            f"--defer-cap={args.defer_cap}",
             f"--log-level={args.log_level}",
         ]
     )

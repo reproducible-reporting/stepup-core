@@ -99,7 +99,7 @@ This is convenient when a step consumes the outputs of several other steps
 that it discovers one at a time
 (for example, a document format that resolves included files as it parses them).
 Discovering such dependencies without making them targets can defeat concurrency:
-the build would be postponed once per discovered input,
+the build would be deferred once per discovered input,
 one at a time, instead of building the whole subtree up front.
 To restore concurrency, you can organize your workflow
 so that all outputs of a step live under a single directory,

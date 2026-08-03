@@ -348,7 +348,7 @@ WHERE
 ORDER BY
     step._has_hash DESC,
     (step._implied_need = {Need.PLAN.value}) DESC,
-    step._tail_time / (1 + step.postpone_count) DESC
+    step._tail_time / (1 + step.defer_count) DESC
 LIMIT 1
 """
 

@@ -758,7 +758,7 @@ def amend(
     InputNotFoundError
         When amended inputs are not yet available.
         Let this exception propagate — do not catch it.
-        The director postpones the step once the missing inputs become available.
+        The director defers the step once the missing inputs become available.
         Note this call blocks until any amended input still matching an unconfirmed static
         tree entry is hashed, so it may take a while for large files.
     AmendWhileHoldingError
@@ -784,9 +784,9 @@ def amend(
     it is also safe to call `amend()` afterward.
     A file that is missing, or that was built too recently to be trusted
     (e.g. still being written by its producer step while it was read),
-    causes the step to be postponed rather than to fail outright.
+    causes the step to be deferred rather than to fail outright.
     Calling `amend()` early remains preferable where practical,
-    since it avoids the wasted work of a postponed step.
+    since it avoids the wasted work of a deferred step.
 
     For additional output files, `amend(out=...)` or `amend(vol=...)` is required before writing.
     These will raise an exception if the amended outputs collide with files declared elsewhere
@@ -806,11 +806,11 @@ def amend(
         # below, or an unrelated held step could fail through no fault of its own code.
         return
     if _HOLD_STATE.holding > 0 and len(inp_paths) > 0:
-        # Only `inp` can deadlock a hold(): the director can only postpone an amend() over
+        # Only `inp` can deadlock a hold(): the director can only defer an amend() over
         # unavailable/unfresh *inputs* (see `Workflow.amend_step`), and the input's producer
         # could be a step held back by this same `hold()` block. `env`, `out`, and `vol` are
         # never checked against another step's output, so they can never trigger that
-        # postponement and are safe to amend while holding, e.g. internal callers such as
+        # deferral and are safe to amend while holding, e.g. internal callers such as
         # `getenv()` (env-only) and `dumpns()` (out-only).
         raise AmendWhileHoldingError(
             "amend() cannot be called with `inp` while this step has an open hold() block. "

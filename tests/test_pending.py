@@ -76,7 +76,7 @@ async def test_empty(wfp: Workflow):
         nresources_hidden_blocked=0,
         failed=empty,
         cyclic=empty,
-        postponed=empty,
+        deferred=empty,
         other=empty,
         runnable=empty,
     )
@@ -108,7 +108,7 @@ async def test_missing_input_blocks_chain(wfp: Workflow):
     assert summary.ninputs_hidden_blocked == 0
     assert summary.cyclic.nblocked == 0
     assert summary.failed.nblocked == 0
-    assert summary.postponed.nblocked == 0
+    assert summary.deferred.nblocked == 0
     assert summary.other.nblocked == 0
     assert summary.runnable.nblocked == 0
 
@@ -168,11 +168,11 @@ async def test_diamond_exact_vs_attributed(wfp: Workflow):
 
 
 #
-# Postponed with a detached amended input (the postpone_cap regression)
+# Deferred with a detached amended input (the defer_cap regression)
 #
 
 
-async def test_postponed_detached_amended_input(wfp: Workflow):
+async def test_deferred_detached_amended_input(wfp: Workflow):
     scheduler, plan = await _prepare(wfp)
     async with wfp.db:
         wfp.define_step(plan, "work")
@@ -182,7 +182,7 @@ async def test_postponed_detached_amended_input(wfp: Workflow):
         never = wfp.find(File, "never.txt")
         assert never.get_state() == FileState.AWAITED
         never.detach()
-        work.set_state(StepState.PENDING, postponed=True)
+        work.set_state(StepState.PENDING, deferred=True)
     await _settle(wfp, scheduler)
     async with wfp.db:
         summary = analyze_pending(wfp)
@@ -197,11 +197,11 @@ async def test_postponed_detached_amended_input(wfp: Workflow):
 
 
 #
-# Postponed with no blocking input (a stale postponed flag)
+# Deferred with no blocking input (a stale deferred flag)
 #
 
 
-async def test_postponed_no_blocking_input(wfp: Workflow):
+async def test_deferred_no_blocking_input(wfp: Workflow):
     scheduler, plan = await _prepare(wfp)
     async with wfp.db:
         wfp.define_step(plan, "work")
@@ -209,14 +209,14 @@ async def test_postponed_no_blocking_input(wfp: Workflow):
         work.set_state(StepState.RUNNING)
         amend_step(wfp, work, inp_paths=["side.txt"])
         wfp.update_file_hashes({"side.txt": fake_hash("side.txt")}, HashUpdateCause.SUCCEEDED)
-        work.set_state(StepState.PENDING, postponed=True)
+        work.set_state(StepState.PENDING, deferred=True)
     await _settle(wfp, scheduler)
     async with wfp.db:
         summary = analyze_pending(wfp)
     assert summary.ntotal == 1
     assert summary.inputs == []
-    assert summary.postponed.nblocked == 1
-    assert summary.postponed.example == "work"
+    assert summary.deferred.nblocked == 1
+    assert summary.deferred.example == "work"
     assert summary.runnable.nblocked == 0
 
 
@@ -301,7 +301,7 @@ async def test_dynamic_cycle(wfp: Workflow):
     assert summary.inputs == []
     assert summary.resources == []
     assert summary.failed.nblocked == 0
-    assert summary.postponed.nblocked == 0
+    assert summary.deferred.nblocked == 0
     assert summary.other.nblocked == 0
     assert summary.runnable.nblocked == 0
     assert summary.cyclic.nblocked == 4
@@ -399,13 +399,13 @@ async def test_partition_invariant(wfp: Workflow):
         wfp.define_step(plan, "producer", out_paths=["prod.txt"])
         wfp.find(Step, "producer").set_state(StepState.FAILED)
         wfp.define_step(plan, "consumer", inp_paths=["prod.txt"])
-        # Postponed, no blocking input.
-        wfp.define_step(plan, "postponed_work")
-        postponed_work = wfp.find(Step, "postponed_work")
-        postponed_work.set_state(StepState.RUNNING)
-        amend_step(wfp, postponed_work, inp_paths=["side.txt"])
+        # Deferred, no blocking input.
+        wfp.define_step(plan, "deferred_work")
+        deferred_work = wfp.find(Step, "deferred_work")
+        deferred_work.set_state(StepState.RUNNING)
+        amend_step(wfp, deferred_work, inp_paths=["side.txt"])
         wfp.update_file_hashes({"side.txt": fake_hash("side.txt")}, HashUpdateCause.SUCCEEDED)
-        postponed_work.set_state(StepState.PENDING, postponed=True)
+        deferred_work.set_state(StepState.PENDING, deferred=True)
         # Dynamic cycle (see test_dynamic_cycle for why this needs a child-step indirection).
         wfp.define_step(plan, "cyc1")
         wfp.define_step(plan, "cyc2")

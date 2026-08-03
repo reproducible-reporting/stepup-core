@@ -3,7 +3,7 @@
     START │ ./plan.py
   SUCCESS │ ./plan.py
     START │ ./work.py
-POSTPONED │ ./work.py
+ DEFERRED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ Run `stepup browse` and search for a name above to see the steps involved.
     PHASE │ build
     START │ ./work.py
      FAIL │ ./work.py
-───────────────────────── Postponed more than 1 times ──────────────────────────
+────────────────────────── Deferred more than 1 times ──────────────────────────
 ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt

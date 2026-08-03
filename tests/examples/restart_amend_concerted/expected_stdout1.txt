@@ -5,7 +5,7 @@
     START │ ./prep.py plan
   SUCCESS │ ./prep.py plan
     START │ ./work.py
-POSTPONED │ ./work.py
+ DEFERRED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 out1.txt
 ────────────────────────────────────────────────────────────────────────────────

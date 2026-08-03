@@ -37,7 +37,7 @@ def _insert_step(con, node_id, creator_id):
     )
     con.execute(
         "INSERT INTO step"
-        " (node, state, need, duration, postponed, postpone_count,"
+        " (node, state, need, duration, deferred, defer_count,"
         " subshell, _safe, _check_safe, _implied_need, _tail_time, _check_after)"
         " VALUES (?, ?, ?, 1.0, 0, 0, 0, 0, 0, ?, 1.0, 0)",
         (node_id, StepState.PENDING.value, Need.DEFAULT.value, Need.DEFAULT.value),
@@ -193,9 +193,9 @@ def test_raw_sql_state_update_away_from_running_resets_holding(con):
     assert step_a.is_holding() is False
 
 
-def test_set_state_postponed_rejects_non_pending_state(con):
-    """`postponed=True` combined with a state other than PENDING is rejected by the
-    step table's postponed/state CHECK constraint (see STEP_SCHEMA).
+def test_set_state_deferred_rejects_non_pending_state(con):
+    """`deferred=True` combined with a state other than PENDING is rejected by the
+    step table's deferred/state CHECK constraint (see STEP_SCHEMA).
 
     `Step.set_state()` used to raise `ValueError` for this in Python; it no longer
     duplicates the check, so this is now only caught at the database level.
@@ -203,7 +203,7 @@ def test_set_state_postponed_rejects_non_pending_state(con):
     _insert_step(con, 2, 1)
     step_a = _make_step(con, 2)
     with pytest.raises(sqlite3.IntegrityError):
-        step_a.set_state(StepState.FAILED, postponed=True)
+        step_a.set_state(StepState.FAILED, deferred=True)
 
 
 def test_state_update_to_checking_pending_does_not_disturb_zero_holding(con):

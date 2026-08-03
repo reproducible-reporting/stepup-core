@@ -11,7 +11,7 @@
   DELETED │ inp.txt
     PHASE │ build
     START │ ./work.py
-POSTPONED │ ./work.py
+ DEFERRED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp.txt
 ────────────────────────────────────────────────────────────────────────────────

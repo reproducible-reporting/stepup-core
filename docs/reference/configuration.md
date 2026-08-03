@@ -165,9 +165,9 @@ alphabetically within each group.
     By default (`false`), the scheduler is put on hold after the first failure:
     steps already running are still allowed to finish, but no new steps are started.
 
-`postpone_cap` / `STEPUP_BUILD_POSTPONE_CAP` / `--postpone-cap`
+`defer_cap` / `STEPUP_BUILD_DEFER_CAP` / `--defer-cap`
 
-:   Maximum number of times a step can be postponed (since it last succeeded)
+:   Maximum number of times a step can be deferred (since it last succeeded)
     before it is reported as failed instead of parked pending again.
     This guards against livelocks where a step's amended inputs keep flapping.
     The default is `100`, deliberately generous.
@@ -327,7 +327,7 @@ the internal environment variables described above.
 
 :   A unique integer id for the current job running the step.
     Unlike a step's own (stable) index, this changes every time the step is (re)started,
-    e.g. after being postponed.
+    e.g. after being deferred.
     This is mainly relevant for StepUp and has little significance for users implementing workflows.
 
 `STEPUP_STEP_INP_DIGEST`

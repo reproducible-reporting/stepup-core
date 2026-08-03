@@ -241,7 +241,7 @@ class Run:
     job_i: int = attrs.field()
     """Unique id of this run attempt, assigned by `Scheduler` when the job was created.
 
-    Unlike `step.i`, which stays the same across every (re)attempt of a postponed step, this
+    Unlike `step.i`, which stays the same across every (re)attempt of a deferred step, this
     id is unique per attempt, so RPC calls can be matched to the attempt that made them.
     """
 
@@ -264,13 +264,13 @@ class Run:
     """List of expected output files that were not created."""
 
     unavailable: set[str] = attrs.field(init=False, factory=set)
-    """Amended input paths that were genuinely not built yet, if the step was postponed."""
+    """Amended input paths that were genuinely not built yet, if the step was deferred."""
 
     unfresh: set[str] = attrs.field(init=False, factory=set)
-    """Amended input paths that failed the freshness check, if the step was postponed."""
+    """Amended input paths that failed the freshness check, if the step was deferred."""
 
-    interrupted_postpone: bool = attrs.field(init=False, default=False)
-    """Set to True when the step has reached its postpone cap."""
+    interrupted_defer: bool = attrs.field(init=False, default=False)
+    """Set to True when the step has reached its defer cap."""
 
     detached: bool = attrs.field(init=False, default=False)
     """Set to True when `Step.completed()` found this step had already been detached by

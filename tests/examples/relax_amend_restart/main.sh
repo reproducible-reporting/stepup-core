@@ -4,7 +4,7 @@ source ../example.rc
 echo v0 > trigger.txt
 
 # Phase 1: fresh director. producer.sh and consumer.py are dispatched concurrently
-# (-j 2), so consumer.py's first amend() call is unfresh; it postpones once and then
+# (-j 2), so consumer.py's first amend() call is unfresh; it defers once and then
 # converges.
 sb -j 2 -w & # > current_stdout1.txt &
 
@@ -38,5 +38,5 @@ wait
 
 [[ -f data.txt ]] || exit 1
 grep hello data.txt
-! grep POSTPONED .stepup/success.log || exit 1
+! grep DEFERRED .stepup/success.log || exit 1
 ! grep "Failed command" .stepup/fail.log || exit 1

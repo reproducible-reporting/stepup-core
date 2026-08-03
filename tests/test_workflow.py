@@ -3776,35 +3776,35 @@ async def test_get_file_hashes(wfp: Workflow):
 
 
 @pytest.mark.parametrize("wfs", [3], indirect=True)
-async def test_postpone_cap(wfs: Workflow):
+async def test_defer_cap(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
         wfs.define_step(echo, "sub")
         sub = wfs.find(Step, "sub")
 
-        # Postponed 3 times (== cap): stays PENDING each time, count increments,
-        # and the opportunistically-created child stays attached (accepted postpone).
+        # Deferred 3 times (== cap): stays PENDING each time, count increments,
+        # and the opportunistically-created child stays attached (accepted defer).
         for expected_count in [1, 2, 3]:
-            detached, interrupted_postpone = echo.completed(None, True)
+            detached, interrupted_defer = echo.completed(None, True)
             assert detached is False
-            assert interrupted_postpone is False
+            assert interrupted_defer is False
             assert echo.get_state() == StepState.PENDING
-            assert echo.get_postpone_count() == expected_count
+            assert echo.get_defer_count() == expected_count
             assert not sub.is_detached()
 
-        # 4th postpone (cap + 1): FAILED instead of PENDING, a genuine terminal
+        # 4th defer (cap + 1): FAILED instead of PENDING, a genuine terminal
         # outcome, so the child is now detached too.
-        detached, interrupted_postpone = echo.completed(None, True)
+        detached, interrupted_defer = echo.completed(None, True)
         assert detached is False
-        assert interrupted_postpone is True
+        assert interrupted_defer is True
         assert echo.get_state() == StepState.FAILED
-        assert echo.get_postpone_count() == 4
+        assert echo.get_defer_count() == 4
         assert sub.is_detached()
 
 
 async def test_completed_detaches_child_only_on_genuine_failure(wfs: Workflow):
-    """An accepted postpone leaves opportunistically-created children attached;
+    """An accepted defer leaves opportunistically-created children attached;
     only a genuine terminal failure detaches them."""
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
@@ -3813,57 +3813,57 @@ async def test_completed_detaches_child_only_on_genuine_failure(wfs: Workflow):
         sub = wfs.find(Step, "sub")
         assert not sub.is_detached()
 
-        # Accepted postpone: child must stay attached.
-        detached, interrupted_postpone = echo.completed(None, True)
+        # Accepted defer: child must stay attached.
+        detached, interrupted_defer = echo.completed(None, True)
         assert not detached
-        assert not interrupted_postpone
+        assert not interrupted_defer
         assert echo.get_state() == StepState.PENDING
         assert not sub.is_detached()
 
-        # Genuine terminal failure (no postpone requested): child is detached.
+        # Genuine terminal failure (no defer requested): child is detached.
         echo.set_state(StepState.RUNNING)
-        detached, interrupted_postpone = echo.completed(None, False)
+        detached, interrupted_defer = echo.completed(None, False)
         assert not detached
-        assert not interrupted_postpone
+        assert not interrupted_defer
         assert echo.get_state() == StepState.FAILED
         assert sub.is_detached()
 
 
 @pytest.mark.parametrize("wfs", [3], indirect=True)
-async def test_postpone_count_reset_on_success(wfs: Workflow):
+async def test_defer_count_reset_on_success(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
 
         echo.completed(None, True)
-        assert echo.get_postpone_count() == 1
+        assert echo.get_defer_count() == 1
 
         # A genuine success resets the counter to 0.
         step_hash = StepHash(b"h" * 32, None, b"h" * 32, None)
         echo.completed(step_hash, False)
         assert echo.get_state() == StepState.SUCCEEDED
-        assert echo.get_postpone_count() == 0
+        assert echo.get_defer_count() == 0
 
-        # Next postpone cycle starts back at 1, not 2.
+        # Next defer cycle starts back at 1, not 2.
         echo.set_state(StepState.PENDING)
         echo.completed(None, True)
-        assert echo.get_postpone_count() == 1
+        assert echo.get_defer_count() == 1
 
 
-async def test_postpone_clear_independent_of_count(wfs: Workflow):
-    # Uses the default cap (100): a single genuine (non-postpone) FAILED step
-    # still leaves postpone_count untouched (only SUCCEEDED resets it).
+async def test_defer_clear_independent_of_count(wfs: Workflow):
+    # Uses the default cap (100): a single genuine (non-defer) FAILED step
+    # still leaves defer_count untouched (only SUCCEEDED resets it).
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
         echo.completed(None, True)
-        assert echo.get_postpone_count() == 1
-        # A genuine, unrelated command failure on the next run (no postpone requested).
+        assert echo.get_defer_count() == 1
+        # A genuine, unrelated command failure on the next run (no defer requested).
         echo.set_state(StepState.PENDING)
-        _detached, interrupted_postpone = echo.completed(None, False)
-        assert interrupted_postpone is False  # plain FAILED, not a cap-exceeded postpone
+        _detached, interrupted_defer = echo.completed(None, False)
+        assert interrupted_defer is False  # plain FAILED, not a cap-exceeded defer
         assert echo.get_state() == StepState.FAILED
-        assert echo.get_postpone_count() == 1  # unchanged by a plain FAILED
+        assert echo.get_defer_count() == 1  # unchanged by a plain FAILED
 
 
 async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Workflow):
@@ -3874,7 +3874,7 @@ async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Wo
     the consuming step is still RUNNING: `mark_step_pending()` is then a no-op (see
     `Workflow.mark_step_pending()`), and the file will never transition state again
     through that path. `completed()` must still notice the input is available by
-    re-querying the graph, rather than trusting the caller's stale `wants_postpone`
+    re-querying the graph, rather than trusting the caller's stale `wants_defer`
     judgment.
     """
     async with wfs.db:
@@ -3899,14 +3899,14 @@ async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Wo
         step_hash = step_hash.evolve_out(out_hashes)
         producer.completed(step_hash, False)
 
-        # completed() re-derives availability from the graph, so even though wants_postpone
-        # is stale True, the postponed flag reflects the input's current availability.
+        # completed() re-derives availability from the graph, so even though wants_defer
+        # is stale True, the deferred flag reflects the input's current availability.
         sink.completed(None, True)
         assert sink.get_state() == StepState.PENDING
-        postponed = wfs.db.execute(
-            "SELECT postponed FROM step WHERE node = ?", (sink.i,)
-        ).fetchone()[0]
-        assert not postponed
+        deferred = wfs.db.execute("SELECT deferred FROM step WHERE node = ?", (sink.i,)).fetchone()[
+            0
+        ]
+        assert not deferred
 
 
 async def test_clean_stepup_root_parents(wfs: Workflow):

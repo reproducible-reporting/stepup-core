@@ -123,8 +123,8 @@ class ServeConfig:
     to declare no resources at all (any step that requests a named resource then
     never becomes runnable)."""
 
-    postpone_cap: int = attrs.field(default=100)
-    """Maximum number of consecutive postpones (since a step last succeeded) before
+    defer_cap: int = attrs.field(default=100)
+    """Maximum number of consecutive defers (since a step last succeeded) before
     it is failed instead of parked pending again. A livelock guard."""
 
     targets: list[Path] = attrs.field(factory=list)
@@ -157,7 +157,7 @@ class ServeConfig:
             do_watch=args.watch,
             watch_first=args.watch_first,
             available_resources=args.resources,
-            postpone_cap=args.postpone_cap,
+            defer_cap=args.defer_cap,
             targets=args.targets,
             target_dirs=args.target_dirs,
         )
@@ -280,10 +280,10 @@ def parse_args() -> argparse.Namespace:
         help="Socket to send reporter updates to, if any.",
     )
     parser.add_argument(
-        "--postpone-cap",
+        "--defer-cap",
         type=positive_int,
         default=100,
-        help="Maximum number of consecutive postpones (since the last success) before "
+        help="Maximum number of consecutive defers (since the last success) before "
         "a step is failed instead of parked. A livelock guard. [default=%(default)s]",
     )
     parser.add_argument(
@@ -598,7 +598,7 @@ async def _create_components(
     workflow = Workflow(
         db,
         dir_queue=dir_queue,
-        postpone_cap=config.postpone_cap,
+        defer_cap=config.defer_cap,
         targets=config.targets,
         target_dirs=config.target_dirs,
     )
@@ -983,15 +983,15 @@ class DirectorHandler:
                             unavailable.add(path)
         carry_on = len(unavailable) == 0 and len(unfresh) == 0
         if not carry_on:
-            self.executor.postpone(job_i, unavailable=unavailable, unfresh=unfresh)
+            self.executor.defer(job_i, unavailable=unavailable, unfresh=unfresh)
         if is_detached:
             carry_on = False
         return carry_on
 
     @allow_rpc
-    async def postpone_step(self, job_i: int, missing: list[str]) -> None:
-        """Postpone a step due to unavailable dependencies."""
-        self.executor.postpone(job_i, unavailable=missing)
+    async def defer_step(self, job_i: int, missing: list[str]) -> None:
+        """Defer a step due to unavailable dependencies."""
+        self.executor.defer(job_i, unavailable=missing)
 
     @allow_rpc
     async def record_subprocess(

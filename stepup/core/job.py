@@ -40,7 +40,7 @@ class Job:
     job_i: int = attrs.field(kw_only=True)
     """Unique id of this job, assigned by `Scheduler` when the job is created.
 
-    Unlike `step.i`, which stays the same across every (re)attempt of a postponed step, this
+    Unlike `step.i`, which stays the same across every (re)attempt of a deferred step, this
     id is unique per job, so RPC calls can be matched to the attempt that made them.
     """
 

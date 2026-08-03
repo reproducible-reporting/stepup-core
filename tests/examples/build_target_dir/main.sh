@@ -31,7 +31,7 @@ grep -qx a1b1c1 out/result.txt
 # The flagship claim: the consumer succeeded on its first invocation, because directory-
 # target elevation made all three producers eligible (and, given the deterministic
 # dispatch order above, already built) before the consumer ever ran -- instead of one
-# postponed retry per input discovered through amend().
+# deferred retry per input discovered through amend().
 grep -qx 1 invocations.txt
 
 # Run 2: a directory target that matches no regular output triggers a WARNING (not a build

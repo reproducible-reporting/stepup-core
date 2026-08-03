@@ -346,8 +346,8 @@ class Workflow(Trellis):
     dir_queue: asyncio.Queue | None = attrs.field(kw_only=True)
     """Directories to be (un)watched can be added to this queue."""
 
-    postpone_cap: int = attrs.field(kw_only=True, default=100)
-    """Maximum number of consecutive postpones (since the last SUCCEEDED) before a
+    defer_cap: int = attrs.field(kw_only=True, default=100)
+    """Maximum number of consecutive defers (since the last SUCCEEDED) before a
     step is failed instead of parked in PENDING again. A livelock guard, not expected
     to bind in normal use; see `Step.completed()`."""
 
@@ -814,7 +814,7 @@ class Workflow(Trellis):
         As a side effect, this method is sometimes also called on RUNNING steps,
         in which case the call is ignored.
 
-        This method also clears the postponed flag,
+        This method also clears the deferred flag,
         which makes the step eligible for scheduling again.
         """
         # Note that RUNNING and CHECKING are ignored.

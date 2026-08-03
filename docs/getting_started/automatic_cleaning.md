@@ -10,7 +10,7 @@ StepUp will remove this output.
 This is also similar to [Ninja](https://ninja-build.org/)'s `cleandead` command,
 but it is enabled by default in StepUp.
 
-Sometimes, it can be helpful to postpone the cleanup
+Sometimes, it can be helpful to defer the cleanup
 until you are sure that the output files are no longer needed.
 This can be done in one of three ways:
 

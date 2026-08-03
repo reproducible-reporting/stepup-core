@@ -107,9 +107,9 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
 - A resource usage report is shown ad the end of the file `.stepup/director.log`.
   Part of the analysis relies on Linux control groups, which are only available on this OS.
 - An SQL debug log option, to check query plans and execution times.
-- Added a `--postpone-cap` option (default 100) that fails a step
-  once it has been postponed that many times in a row without succeeding.
-  This acts as a livelock guard for `amend()`-driven postpones.
+- Added a `--defer-cap` option (default 100) that fails a step
+  once it has been deferred that many times in a row without succeeding.
+  This acts as a livelock guard for `amend()`-driven defers.
 - Added support for cgroup v2 memory accounting on Linux with `systemd-run`.
 - Added a `--joblog` option to `sb` to log the start and end of each job to a file.
 
@@ -144,7 +144,7 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
 - The end-of-build pending report no longer prints one `PENDING Step` page per pending step.
   Instead, it summarizes the **root causes** as a fixed-size ranked report: the unavailable
   input files and blocked resources that account for the most pending steps, plus a
-  count of steps blocked by failed steps, waiting on each other, postponed, or otherwise
+  count of steps blocked by failed steps, waiting on each other, deferred, or otherwise
   unexplained. Use `stepup browse` to inspect the individual steps behind any entry.
   See [Blocked Steps](advanced_topics/blocked_steps.md) for details on the new format.
 - The `static()` and `glob()` functions have been redesigned from scratch to permit more use cases
@@ -188,7 +188,7 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
     - The `pool` feature has been removed and
       is now replaced by the more powerful `resources` feature.
     - The `optional` feature has become more robust.
-    - The "rescheduling" mechanism has been refactored by a simpler "postpone" mechanism.
+    - The "rescheduling" mechanism has been refactored by a simpler "defer" mechanism.
 - The "deferred glob" has been replaced by a simpler "static tree" concept.
   Files in a static tree become static only when they are used as inputs.
   This allows for huge static data directories, of which only some are used,
@@ -282,7 +282,7 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
     - The `STEPUP_STEP_I` environment variable has been replaced by `STEPUP_JOB_I`.
       Instead of a step's (stable) node index, it now holds a unique id for the current
       job running the step, assigned by the scheduler when the job is created, so a
-      postponed step's earlier attempt cannot be confused with its later one.
+      deferred step's earlier attempt cannot be confused with its later one.
     - Order of `StepInfo` attributes is made consistent with the `step()` API function.
     - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
     - Runner has been renamed to Builder.
@@ -461,7 +461,7 @@ Tested with Python 3.14 and small performance improvement
 
 ### Changed
 
-- The scheduler of StepUp uses job priorities to postpone rescheduled jobs
+- The scheduler of StepUp uses job priorities to defer rescheduled jobs
   until all non-rescheduled jobs have been started.
   This lowers the chance that it will be executed again to discover more missing dependencies.
 

@@ -19,10 +19,10 @@ with open("counter.txt", "w") as f:
 # and recycles a completed step when counter == 1.
 run("./work.py")
 
-# The plan will be postponed as long as the counter is positive.
+# The plan will be deferred as long as the counter is positive.
 if counter > 0:
     job_i = int(os.getenv("STEPUP_JOB_I"))
-    RPC_CLIENT.call.postpone_step(job_i, ["never.txt"])
+    RPC_CLIENT.call.defer_step(job_i, ["never.txt"])
 else:
     # The work script is waiting for this trigger.
     with open("trigger_plan.txt", "w") as f:

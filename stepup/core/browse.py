@@ -261,7 +261,7 @@ HTML_TEMPLATE = """\
     .failed { color: var(--red); }
     .yes { color: var(--green); }
     .no { color: var(--red); }
-    .postponed { color: var(--orange); }
+    .deferred { color: var(--orange); }
     .clean { color: var(--green); }
     .required { color: var(--blue); }
     table.nglob {
@@ -473,8 +473,8 @@ class GraphServer(BaseHTTPRequestHandler):
         # Format the state (if a file or a step)
         if kind == "step":
             sql_props = (
-                "SELECT state, need, duration, postponed,"
-                "postpone_count, subshell,"
+                "SELECT state, need, duration, deferred,"
+                "defer_count, subshell,"
                 "env_overrides, _safe, _check_safe, _holding, "
                 "_implied_need, _check_after "
                 "FROM step WHERE node = ?"
@@ -483,8 +483,8 @@ class GraphServer(BaseHTTPRequestHandler):
                 state_i,
                 need_id,
                 duration,
-                postponed,
-                postpone_count,
+                deferred,
+                defer_count,
                 subshell,
                 env_overrides,
                 safe,
@@ -496,10 +496,10 @@ class GraphServer(BaseHTTPRequestHandler):
             state = StepState(state_i)
             yield f"<p><b>Subshell:</b> {'yes' if subshell else 'no'}</p>"
             yield f'<p><b>State:</b> <span class="{state.name.lower()}">{state.name}</span></p>'
-            if postponed:
-                yield ('<p><b>Postponed:</b> <span class="postponed">yes</span></p>')
-            if postpone_count > 0:
-                yield f"<p><b>Postpone count:</b> {postpone_count}</p>"
+            if deferred:
+                yield ('<p><b>Deferred:</b> <span class="deferred">yes</span></p>')
+            if defer_count > 0:
+                yield f"<p><b>Defer count:</b> {defer_count}</p>"
             need = Need(need_id)
             implied_need = Need(implied_need_id)
             if need == implied_need:

@@ -2,9 +2,9 @@
 source ../example.rc
 
 # Run the example. A single "stepup wait" with no intervening watch-update/run cycle
-# must be enough to converge to SUCCESS: the postponed step here is unfresh-only, which
+# must be enough to converge to SUCCESS: the deferred step here is unfresh-only, which
 # self-resolves on the step's own next dispatch, unlike the pre-existing
-# unavailable-input postponed path, which needs an external push (mark_pending()).
+# unavailable-input deferred path, which needs an external push (mark_pending()).
 sb -j 2 -w & # > current_stdout.txt &
 
 stepup wait
@@ -17,8 +17,8 @@ wait
 [[ -f data.txt ]] || exit 1
 grep hello data.txt
 
-# Exactly one unfresh postpone, and --- crucially --- none of the pre-existing
-# unavailable-input postponed: this build converges purely via the new,
+# Exactly one unfresh defer, and --- crucially --- none of the pre-existing
+# unavailable-input deferred: this build converges purely via the new,
 # self-resolving mechanism, without ever touching the old push-based one.
 grep "Unfresh amended inputs" .stepup/success.log || exit 1
 ! grep "Unavailable amended inputs" .stepup/success.log || exit 1

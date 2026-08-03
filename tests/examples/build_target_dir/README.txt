@@ -5,5 +5,5 @@ dependencies as it parses): three independent producers and the consumer all wri
 `out/`, so a single directory target elevates all of them up front. The producers are
 declared before the consumer and durations are disabled in tests, so they run to
 completion before the consumer's first invocation -- which therefore succeeds immediately,
-instead of needing one postponed retry per discovered input. `other.txt`, outside `out/`,
+instead of needing one deferred retry per discovered input. `other.txt`, outside `out/`,
 is left unbuilt, showing that the directory target still scopes the rest of the build.

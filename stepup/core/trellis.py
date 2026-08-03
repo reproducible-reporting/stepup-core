@@ -597,9 +597,9 @@ class Trellis:
         #   blob, and labels now store the raw command line instead of an
         #   action-name-prefixed one. The QUEUED state was removed and CHECKING was added
         #   (hash-checking a step for a possible skip without consuming a resource slot).
-        # - Step readiness/safety/postponement bookkeeping (previously read-branch-write in
-        #   Python) moved into triggers and CHECK constraints: the postponed/state CHECK,
-        #   `step_clear_postponed`, `step_flag_check_safe`/`step_flag_check_after_duration`,
+        # - Step readiness/safety/deferral bookkeeping (previously read-branch-write in
+        #   Python) moved into triggers and CHECK constraints: the deferred/state CHECK,
+        #   `step_clear_deferred`, `step_flag_check_safe`/`step_flag_check_after_duration`,
         #   and the `_has_hash`/`_ready`/`_check_ready` columns with their maintaining
         #   triggers and the `step_dispatch`/`step_check_ready` indexes. New
         #   `step_need_count`/`path_list`/`node_list` temp tables avoid full-table scans for

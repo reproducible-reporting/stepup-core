@@ -107,7 +107,7 @@ def _insert_step(
     )
     con.execute(
         "INSERT INTO step"
-        " (node, state, need, duration, postpone_count,"
+        " (node, state, need, duration, defer_count,"
         " subshell, _safe, _check_safe, _safe_ignoring_hold, _holding, _implied_need,"
         " _tail_time, _check_after, _ready, _check_ready)"
         " VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1076,10 +1076,10 @@ def test_optional_step_not_runnable(con):
     assert _get_runnable_ids(con) == []
 
 
-def test_postponed_step_not_runnable(con):
-    """A PENDING step with postponed=1 is excluded."""
+def test_deferred_step_not_runnable(con):
+    """A PENDING step with deferred=1 is excluded."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
-    con.execute("UPDATE step SET postponed = 1 WHERE node = 2")
+    con.execute("UPDATE step SET deferred = 1 WHERE node = 2")
     assert _get_runnable_ids(con) == []
 
 

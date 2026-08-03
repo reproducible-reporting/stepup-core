@@ -59,7 +59,7 @@ RESERVED_ENV_VARS = frozenset(
 # _has_hash back to 0 and is therefore gated normally by _safe (including hold) from then on.
 STEP_DISPATCH_WHERE = f"""step.state = {StepState.PENDING.value} AND
     (step._safe OR (step._has_hash AND step._safe_ignoring_hold)) AND
-    NOT step.postponed AND
+    NOT step.deferred AND
     step._implied_need > {Need.OPTIONAL.value} AND
     step._ready"""
 
@@ -135,12 +135,12 @@ CREATE TABLE IF NOT EXISTS step (
     -- exclusively in _implied_need, never persisted here.
     duration REAL NOT NULL CHECK(duration >= 0) DEFAULT 1.0,
     -- An estimate of the wall time of the step in seconds.
-    postponed INTEGER NOT NULL CHECK(postponed IN (0, 1)) DEFAULT 0,
-    -- Whether the step is postponed due to missing inputs (see StepState.PENDING).
-    postpone_count INTEGER NOT NULL CHECK(postpone_count >= 0) DEFAULT 0,
-    -- Number of consecutive postpones since the last SUCCEEDED state.
-    -- Reset to 0 only on SUCCEEDED (see step_reset_postpone_count below);
-    -- NOT reset by FAILED or by postponed being cleared via mark_pending().
+    deferred INTEGER NOT NULL CHECK(deferred IN (0, 1)) DEFAULT 0,
+    -- Whether the step is deferred due to missing inputs (see StepState.PENDING).
+    defer_count INTEGER NOT NULL CHECK(defer_count >= 0) DEFAULT 0,
+    -- Number of consecutive defers since the last SUCCEEDED state.
+    -- Reset to 0 only on SUCCEEDED (see step_reset_defer_count below);
+    -- NOT reset by FAILED or by deferred being cleared via mark_pending().
     subshell INTEGER NOT NULL CHECK(subshell IN (0, 1)),
     -- Whether the step command is executed via a subshell (shell=True).
     env_overrides TEXT,
@@ -195,12 +195,12 @@ CREATE TABLE IF NOT EXISTS step (
     -- silently diverge in the wrong direction, e.g. if a future third hold-bypass condition is
     -- added and one of the (then six-plus) sub-expressions is miscopied.
     CHECK (_safe_ignoring_hold >= _safe),
-    -- A step can only be postponed while it is PENDING (see StepState.PENDING). This is the
+    -- A step can only be deferred while it is PENDING (see StepState.PENDING). This is the
     -- sole enforcement of that rule: Step.set_state() no longer duplicates it in Python.
-    -- Every write path that changes state also writes postponed in the same statement
+    -- Every write path that changes state also writes deferred in the same statement
     -- (Step.set_state defaults it to False; the trigger-driven clears below only ever move
     -- it to False), so this never goes transiently false mid-statement.
-    CHECK (NOT postponed OR state = {StepState.PENDING.value})
+    CHECK (NOT deferred OR state = {StepState.PENDING.value})
 ) WITHOUT ROWID;
 
 -- Indexes for efficient querying
@@ -220,7 +220,7 @@ CREATE INDEX IF NOT EXISTS step_check_ready ON step(node) WHERE _check_ready;
 CREATE INDEX IF NOT EXISTS step_dispatch ON step(
     _has_hash DESC,
     (_implied_need = {Need.PLAN.value}) DESC,
-    (_tail_time / (1 + postpone_count)) DESC
+    (_tail_time / (1 + defer_count)) DESC
 ) WHERE {STEP_DISPATCH_WHERE};
 
 -- Convention for this trigger block: single-row, same-table consequences of a column
@@ -306,22 +306,22 @@ BEGIN
     UPDATE step SET _holding = 0 WHERE node = NEW.node;
 END;
 
--- Clear postponed once a step reaches a completed state, so a
--- stale postpone note from a previous run does not keep gating schedulability after
+-- Clear deferred once a step reaches a completed state, so a
+-- stale defer note from a previous run does not keep gating schedulability after
 -- it settles again.
-CREATE TRIGGER IF NOT EXISTS step_clear_postponed AFTER UPDATE OF state ON step
+CREATE TRIGGER IF NOT EXISTS step_clear_deferred AFTER UPDATE OF state ON step
 WHEN NEW.state IN ({StepState.SUCCEEDED.value}, {StepState.FAILED.value})
 BEGIN
-    UPDATE step SET postponed = FALSE WHERE node = NEW.node;
+    UPDATE step SET deferred = FALSE WHERE node = NEW.node;
 END;
 
--- Reset postpone_count only on SUCCEEDED (not FAILED), so the cap measures
--- consecutive postpone attempts since the last convergence, independent of
--- (broader) postponed SUCCEEDED-or-FAILED clearing above.
-CREATE TRIGGER IF NOT EXISTS step_reset_postpone_count AFTER UPDATE OF state ON step
+-- Reset defer_count only on SUCCEEDED (not FAILED), so the cap measures
+-- consecutive defer attempts since the last convergence, independent of
+-- (broader) deferred SUCCEEDED-or-FAILED clearing above.
+CREATE TRIGGER IF NOT EXISTS step_reset_defer_count AFTER UPDATE OF state ON step
 WHEN NEW.state = {StepState.SUCCEEDED.value}
 BEGIN
-    UPDATE step SET postpone_count = 0 WHERE node = NEW.node;
+    UPDATE step SET defer_count = 0 WHERE node = NEW.node;
 END;
 
 -- Bucketed counts of non-detached steps by (_implied_need, succeeded), maintained
@@ -919,13 +919,13 @@ class Step(Node):
         row = self.db.execute("SELECT state FROM step WHERE node = ?", (self.i,)).fetchone()
         return StepState(row[0])
 
-    def set_state(self, state: StepState, postponed: bool = False) -> None:
+    def set_state(self, state: StepState, deferred: bool = False) -> None:
         """Set the state of this step."""
-        # postponed=True combined with a state other than PENDING is rejected by the
-        # step table's postponed/state CHECK constraint (see STEP_SCHEMA).
+        # deferred=True combined with a state other than PENDING is rejected by the
+        # step table's deferred/state CHECK constraint (see STEP_SCHEMA).
         self.db.execute(
-            "UPDATE step SET state = ?, postponed = ? WHERE node = ?",
-            (state.value, postponed, self.i),
+            "UPDATE step SET state = ?, deferred = ? WHERE node = ?",
+            (state.value, deferred, self.i),
         )
 
     def has_unavailable_amended_input(self) -> bool:
@@ -941,9 +941,9 @@ class Step(Node):
         """
         return bool(self.db.execute(sql, (self.i,)).fetchone()[0])
 
-    def get_postpone_count(self) -> int:
-        """Return the number of consecutive postpones since the last SUCCEEDED state."""
-        sql = "SELECT postpone_count FROM step WHERE node = ?"
+    def get_defer_count(self) -> int:
+        """Return the number of consecutive defers since the last SUCCEEDED state."""
+        sql = "SELECT defer_count FROM step WHERE node = ?"
         return self.db.execute(sql, (self.i,)).fetchone()[0]
 
     def set_duration(self, duration: float) -> None:
@@ -1175,7 +1175,7 @@ class Step(Node):
         This method discards everything that was produced dynamically by the step's
         previous run (if any), so that a future (re)run starts from a clean slate.
         It is called both right before actually re-executing a step, and whenever
-        a step is postponed and won't run again immediately.
+        a step is deferred and won't run again immediately.
 
         The following are dropped:
 
@@ -1274,10 +1274,10 @@ class Step(Node):
         """Detach steps created by this step (e.g. via `run()`/`step()`).
 
         Called unconditionally by `reset_for_rerun()`, and by `completed()` only when a
-        step reaches a genuine terminal `FAILED` state (not on an accepted postpone):
+        step reaches a genuine terminal `FAILED` state (not on an accepted defer):
         the discarded run's children must not keep running (or linger attached) even
         before the creator's actual rerun happens, which may be much later. Unlike
-        `reset_for_rerun()`, this does not touch amended dependencies, so a postpone
+        `reset_for_rerun()`, this does not touch amended dependencies, so a defer
         triggered by an unavailable amended input does not sever the dependency edge
         that `mark_pending()` relies on to wake the step up again once that input
         becomes available.
@@ -1293,24 +1293,23 @@ class Step(Node):
             step = Step(self.graph, i, label)
             step.detach()
 
-    def _increment_postpone_count(self) -> int:
-        """Increment postpone_count and return the new value."""
+    def _increment_defer_count(self) -> int:
+        """Increment defer_count and return the new value."""
         row = self.db.execute(
-            "UPDATE step SET postpone_count = postpone_count + 1 WHERE node = ? "
-            "RETURNING postpone_count",
+            "UPDATE step SET defer_count = defer_count + 1 WHERE node = ? RETURNING defer_count",
             (self.i,),
         ).fetchone()
         return row[0]
 
-    def completed(self, new_hash: StepHash | None, wants_postpone: bool) -> tuple[bool, bool]:
+    def completed(self, new_hash: StepHash | None, wants_defer: bool) -> tuple[bool, bool]:
         """Set a step as completed (succeeded or failed) and trigger the consequences.
 
         Parameters
         ----------
         new_hash
             The new digest of the completed step if the step was successful, `None` otherwise.
-        wants_postpone
-            True if the step wants to be postponed, False otherwise.
+        wants_defer
+            True if the step wants to be deferred, False otherwise.
 
         Returns
         -------
@@ -1318,8 +1317,8 @@ class Step(Node):
             True if the step had already been detached by its creator (see `Step.detach()`)
             before this call, in which case the outcome below was not applied: the step is
             superseded, not failed or succeeded.
-        interrupted_postpone
-            True if postponement has been interrupted due to cap being exceeded, False otherwise.
+        interrupted_defer
+            True if deferral has been interrupted due to cap being exceeded, False otherwise.
         """
         if self.is_detached():
             # This step's creator has moved on without it. It is superseded, not failed:
@@ -1329,43 +1328,43 @@ class Step(Node):
             self.set_state(StepState.PENDING)
             return True, False
 
-        interrupted_postpone = False
+        interrupted_defer = False
         if new_hash is None:
             # Update states, needed for files that have not changed since previous run.
             for file in self.products(File):
                 if file.get_state() == FileState.BUILT:
                     file.set_state(FileState.OUTDATED)
-            if wants_postpone:
-                postpone_count = self._increment_postpone_count()
-                if postpone_count <= self.graph.postpone_cap:
+            if wants_defer:
+                defer_count = self._increment_defer_count()
+                if defer_count <= self.graph.defer_cap:
                     logger.info(
-                        "Postponed step (%d/%d): %s",
-                        postpone_count,
-                        self.graph.postpone_cap,
+                        "Deferred step (%d/%d): %s",
+                        defer_count,
+                        self.graph.defer_cap,
                         self.label,
                     )
                     # We just set the state to PENDING.
-                    # However, it will not be scheduled as long as `postponed` is set to True.
+                    # However, it will not be scheduled as long as `deferred` is set to True.
                     # Any later file changes relevant to the step will result in
-                    # a call to mark_pending(), which will clear the postponed flag.
+                    # a call to mark_pending(), which will clear the deferred flag.
                     # This makes the step eligible for scheduling again.
-                    postponed = self.has_unavailable_amended_input()
-                    self.set_state(StepState.PENDING, postponed)
+                    deferred = self.has_unavailable_amended_input()
+                    self.set_state(StepState.PENDING, deferred)
                 else:
                     logger.info(
-                        "Postpone cap (%d) exceeded, failed step: %s",
-                        self.graph.postpone_cap,
+                        "Defer cap (%d) exceeded, failed step: %s",
+                        self.graph.defer_cap,
                         self.label,
                     )
                     self.set_state(StepState.FAILED)
-                    interrupted_postpone = True
+                    interrupted_defer = True
             else:
                 logger.info("Failed step: %s", self.label)
                 self.set_state(StepState.FAILED)
             if self.get_state() == StepState.FAILED:
                 # The step may have created product steps that are already running
                 # opportunistically. A genuine terminal failure detaches all of them;
-                # an accepted postpone (state stays PENDING) does not, since this step
+                # an accepted defer (state stays PENDING) does not, since this step
                 # will run again soon and its children should stay attached until then.
                 self._detach_created_steps()
             # An unsuccessful step is not skippable, so we're removing its hash.
@@ -1379,7 +1378,7 @@ class Step(Node):
                     file.set_state(FileState.BUILT)
                     self.graph.mark_sinks_pending(file)
             self.set_hash(new_hash)
-        return False, interrupted_postpone
+        return False, interrupted_defer
 
     def get_hash(self) -> StepHash | None:
         """Return the stored step hash, or `None` if none is stored."""

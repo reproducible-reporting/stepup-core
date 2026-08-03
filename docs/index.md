@@ -112,7 +112,7 @@ while "Step" reflects how StepUp defines operations as individual *steps*.
 
 - 🔄 **Dynamic Workflows:**
   While a step is running, it can inform StepUp that it needs *additional inputs*,
-  in which case the step will be postponed
+  in which case the step will be deferred
   until the additional inputs have become available.
   Similarly, a step can define additional outputs during its execution.
 

@@ -44,7 +44,7 @@ ACTION_COLORS = {
     "DETACHED": "cyan",
     "DROPAMEND": "cyan",
     "NOSKIP": "cyan",
-    "POSTPONED": "cyan",
+    "DEFERRED": "cyan",
     "REMOVE": "cyan",
     "SKIP": "cyan",
     "UNCHANGED": "cyan",

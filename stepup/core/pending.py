@@ -48,7 +48,7 @@ still has a chance to surface once its *exact* count is known.
 # over a step->step edge (BLOCK_STEP), so a step directly blocked by (say) a dead-end file
 # is attributed to that file rather than to whichever sibling pending step sorts first.
 ROOT_FILE, ROOT_RESOURCE, ROOT_FAILED = 0, 1, 2
-ROOT_POSTPONED, ROOT_OTHER, ROOT_RUNNABLE = 3, 4, 5
+ROOT_DEFERRED, ROOT_OTHER, ROOT_RUNNABLE = 3, 4, 5
 BLOCK_STEP = 6
 
 
@@ -135,9 +135,9 @@ class PendingSummary:
     cyclic: PendingOther
     """Steps stuck in (or downstream of) a dynamic cycle: no root blocker reaches them."""
 
-    postponed: PendingOther
-    """Steps postponed on an unavailable amended input, but with no blocking input found
-    at report time (a stale `postponed` flag; see `Step.has_unavailable_amended_input`).
+    deferred: PendingOther
+    """Steps deferred on an unavailable amended input, but with no blocking input found
+    at report time (a stale `deferred` flag; see `Step.has_unavailable_amended_input`).
     """
 
     other: PendingOther
@@ -184,11 +184,11 @@ _CREATE_PEND_TABLES = (
         i INTEGER PRIMARY KEY,
         label TEXT NOT NULL,
         unsafe INTEGER NOT NULL,
-        postponed INTEGER NOT NULL
+        deferred INTEGER NOT NULL
     ) WITHOUT ROWID
     """,
     # Blocking (file -> step) edges: dep.source is an input file that blocks dep.sink from
-    # running, i.e. UNAVAILABLE_INPUT_WHERE holds, or the postponed-with-unavailable-
+    # running, i.e. UNAVAILABLE_INPUT_WHERE holds, or the deferred-with-unavailable-
     # amended-input test does. One row per (file, step) pair; a file can block many steps
     # and a step can have many blocking files.
     """
@@ -239,7 +239,7 @@ _CREATE_PEND_TABLES = (
     "CREATE INDEX pend_step_block_src ON pend_step_block(src_step)",
     # Direct root -> step edges, populated only for the two root kinds that ever need an
     # exact (non-attributed) transitive count: FILE and RESOURCE (see _build_inputs/
-    # _build_resources). FAILED/POSTPONED/OTHER/RUNNABLE buckets only ever report
+    # _build_resources). FAILED/DEFERRED/OTHER/RUNNABLE buckets only ever report
     # attributed counts (from pend_attributed), so they need no entry here.
     """
     CREATE TEMP TABLE pend_seed (
@@ -294,10 +294,10 @@ WHERE step.state = {StepState.PENDING.value}
 # silently produce a wrong bucket; `_safe` is read from the column, matching
 # STEP_DISPATCH_WHERE (recomputing it would mean duplicating SELECT_SAFE_UPDATE).
 _INSERT_PEND_STEP = f"""
-INSERT INTO pend_step(i, label, unsafe, postponed)
+INSERT INTO pend_step(i, label, unsafe, deferred)
 SELECT node.i, node.label,
        NOT (step._safe OR (step._has_hash AND step._safe_ignoring_hold)),
-       step.postponed
+       step.deferred
 FROM node JOIN step ON node.i = step.node
 WHERE step.state = {StepState.PENDING.value}
   AND step._implied_need > ?
@@ -306,10 +306,10 @@ WHERE step.state = {StepState.PENDING.value}
 
 
 # Blocking inputs of every step in U: UNAVAILABLE_INPUT_WHERE's ordinary dispatch test, or
-# (only for a postponed step) the has_unavailable_amended_input test that set `postponed`
-# in the first place -- a postponed step's amended inputs are not otherwise covered by
+# (only for a deferred step) the has_unavailable_amended_input test that set `deferred`
+# in the first place -- a deferred step's amended inputs are not otherwise covered by
 # UNAVAILABLE_INPUT_WHERE once they are no longer AWAITED/OUTDATED (e.g. detached or
-# MISSING), which is exactly the gap postpone_cap-shaped workflows fall into.
+# MISSING), which is exactly the gap defer_cap-shaped workflows fall into.
 _INSERT_PEND_FILE_BLOCK = f"""
 INSERT INTO pend_file_block(src_file, dst_step)
 SELECT DISTINCT dep.source, pend_step.i
@@ -320,7 +320,7 @@ JOIN node AS input_node ON input_node.i = dep.source
 LEFT JOIN amended_dep ON amended_dep.i = dep.i
 WHERE ({UNAVAILABLE_INPUT_WHERE})
    OR (
-       pend_step.postponed AND amended_dep.i IS NOT NULL
+       pend_step.deferred AND amended_dep.i IS NOT NULL
        AND input_file.state NOT IN ({FileState.STATIC.value}, {FileState.BUILT.value})
    )
 """
@@ -439,7 +439,7 @@ WHERE req.node IN (SELECT i FROM pend_step)
 # only the top-ranked candidate per dst_step (ROW_NUMBER, partitioned by dst_step, ordered
 # by kind then a deterministic tie-break). Root kinds win over BLOCK_STEP by construction
 # of the ROOT_*/BLOCK_STEP integer values (see their definitions above). `src_label` is the
-# empty string for ROOT_POSTPONED/ROOT_OTHER, which have at most one candidate row per
+# empty string for ROOT_DEFERRED/ROOT_OTHER, which have at most one candidate row per
 # dst_step already (no tie to break); ROOT_RESOURCE uses the resource name so multiple
 # unsatisfiable resources on the same step still sort deterministically.
 _INSERT_PEND_BLOCKER = f"""
@@ -490,11 +490,11 @@ SELECT dst_step, kind, src FROM (
 
         UNION ALL
 
-        -- POSTPONED: postponed, but no blocking input found (a stale postponed flag).
+        -- DEFERRED: deferred, but no blocking input found (a stale deferred flag).
         SELECT
-            pend_step.i AS dst_step, {ROOT_POSTPONED} AS kind, pend_step.i AS src, '' AS src_label
+            pend_step.i AS dst_step, {ROOT_DEFERRED} AS kind, pend_step.i AS src, '' AS src_label
         FROM pend_step
-        WHERE pend_step.postponed
+        WHERE pend_step.deferred
           AND NOT EXISTS (
               SELECT 1 FROM pend_file_block WHERE pend_file_block.dst_step = pend_step.i
           )
@@ -605,7 +605,7 @@ def _analyze_pending(workflow: Workflow) -> tuple[PendingSummary, dict[int, int]
             nresources_hidden_blocked=0,
             failed=empty,
             cyclic=empty,
-            postponed=empty,
+            deferred=empty,
             other=empty,
             runnable=empty,
         )
@@ -642,7 +642,7 @@ def _analyze_pending(workflow: Workflow) -> tuple[PendingSummary, dict[int, int]
             nresources_hidden_blocked=nresources_hidden_blocked,
             failed=_bucket(db, ROOT_FAILED),
             cyclic=_cyclic_bucket(db),
-            postponed=_bucket(db, ROOT_POSTPONED),
+            deferred=_bucket(db, ROOT_DEFERRED),
             other=_bucket(db, ROOT_OTHER),
             runnable=_bucket(db, ROOT_RUNNABLE),
         )
@@ -785,7 +785,7 @@ def _build_resources(db: DBSession) -> tuple[list[PendingResource], int, int]:
 
 
 def _bucket(db: DBSession, root_kind: int) -> PendingOther:
-    """Build one attributed-count bucket (`failed`/`postponed`/`other`/`runnable`)."""
+    """Build one attributed-count bucket (`failed`/`deferred`/`other`/`runnable`)."""
     nblocked, example = db.execute(
         "SELECT COUNT(*), MIN(pend_step.label) FROM pend_attributed "
         "JOIN pend_step ON pend_step.i = pend_attributed.dst_step "

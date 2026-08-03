@@ -80,7 +80,7 @@ class Executor:
 
     - The methods `validate_amended_job`, `try_skip_job` and `execute_job`
       are the coroutines created by the builder for each job.
-    - `postpone` is called from `director.py`
+    - `defer` is called from `director.py`
     - `interrupt` is called from `builder.py`.
     """
 
@@ -167,10 +167,10 @@ class Executor:
     # External control entry points
     #
 
-    def postpone(
+    def defer(
         self, job_i: int, *, unavailable: set[str] | None = None, unfresh: set[str] | None = None
     ):
-        """Mark a step as postponed for later execution due to unavailable or unfresh inputs."""
+        """Mark a step as deferred for later execution due to unavailable or unfresh inputs."""
         run = self.running.get(job_i)
         if run is None:
             raise ValueError(f"No running step found for job_i={job_i}.")
@@ -272,8 +272,8 @@ class Executor:
     ):
         """Execute a step (no skipping).
 
-        The command always runs. If it wants to be postponed (unavailable or unfresh
-        amended inputs) but the postpone cap has been exceeded, the step is marked as
+        The command always runs. If it wants to be deferred (unavailable or unfresh
+        amended inputs) but the defer cap has been exceeded, the step is marked as
         failed instead of being scheduled for another execution attempt.
         """
         run, new_hash = await self._new_run(job_i, step, inp_hashes, env_deps)
@@ -294,21 +294,21 @@ class Executor:
         unexpected_input_changes = len(new_inp_hashes) > 0
 
         async with self.db:
-            new_hash, wants_postpone = self._classify_execution(
+            new_hash, wants_defer = self._classify_execution(
                 run, new_hash, new_inp_hashes, unexpected_input_changes
             )
             self.workflow.update_file_hashes(
                 new_out_hashes,
                 HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
             )
-            run.detached, run.interrupted_postpone = step.completed(new_hash, wants_postpone)
+            run.detached, run.interrupted_defer = step.completed(new_hash, wants_defer)
             self.scheduler.record_stop_time(step.i, succeeded=new_hash is not None)
             if run.detached:
                 # The step's creator moved on without it before/when it finished (see
                 # Step.detach()): the raw result is moot, report() shows a dedicated
                 # explanatory page instead of the raw error/success info.
                 run.outcome = None
-            elif wants_postpone and not run.interrupted_postpone:
+            elif wants_defer and not run.interrupted_defer:
                 # Erase error info to keep the screen output concise.
                 run.outcome = None
             if run.outcome is not None:
@@ -340,7 +340,7 @@ class Executor:
         new_inp_hashes: Mapping[str, FileHash],
         unexpected_input_changes: bool,
     ) -> tuple[StepHash | None, bool]:
-        """Decide success/failure/postpone for a just-executed step, updating `run` in place.
+        """Decide success/failure/defer for a just-executed step, updating `run` in place.
 
         Must be called inside the database transaction that persists the step's completion,
         since it calls `update_file_hashes` when inputs changed unexpectedly.
@@ -361,10 +361,10 @@ class Executor:
         -------
         new_hash
             The step hash to record, or `None` if the step must not be marked succeeded.
-        wants_postpone
-            Whether the step should be postponed instead of completed.
+        wants_defer
+            Whether the step should be deferred instead of completed.
         """
-        wants_postpone = len(run.unavailable) > 0 or len(run.unfresh) > 0
+        wants_defer = len(run.unavailable) > 0 or len(run.unfresh) > 0
 
         if unexpected_input_changes:
             # This is the worst case: inputs should never change while a step is running.
@@ -375,9 +375,9 @@ class Executor:
             # Clear the amended inputs to mark the step as failed instead of pending.
             run.unavailable.clear()
             run.unfresh.clear()
-            wants_postpone = False
+            wants_defer = False
             self.workflow.update_file_hashes(new_inp_hashes, HashUpdateCause.FAILED)
-        elif wants_postpone:
+        elif wants_defer:
             # Rescheduling in the completed() method needs the new hash to be None,
             # so the step is not marked as succeeded.
             run.success = False
@@ -386,7 +386,7 @@ class Executor:
             # Some other failure occurred (command failed, output missing, etc.)
             new_hash = None
 
-        return new_hash, wants_postpone
+        return new_hash, wants_defer
 
     def _report_step_counts(self) -> None:
         """Request a step-state counts report, coalescing with any already pending.
@@ -802,8 +802,8 @@ class Executor:
         """Build the report pages describing what happened during a step's execution."""
         command, workdir = run.step.command_workdir
         pages = []
-        needs_postpone = not (
-            (len(run.unavailable) == 0 and len(run.unfresh) == 0) or run.interrupted_postpone
+        needs_defer = not (
+            (len(run.unavailable) == 0 and len(run.unfresh) == 0) or run.interrupted_defer
         )
         if run.detached:
             pages.append(
@@ -813,15 +813,15 @@ class Executor:
                     "Its result has been discarded, and it will be executed again if recreated.",
                 )
             )
-        elif not (run.success or needs_postpone):
+        elif not (run.success or needs_defer):
             # Format command for display (can be copied and pasted into a shell); a non-zero
             # return code is appended as a trailing `# exit=N` comment by format_subprocess.
             async with self.db:
                 subshell = run.step.get_subshell()
             pages.append(
                 (
-                    f"Postponed more than {self.workflow.postpone_cap} times"
-                    if run.interrupted_postpone
+                    f"Deferred more than {self.workflow.defer_cap} times"
+                    if run.interrupted_defer
                     else "Failed command",
                     format_subprocess(
                         command,
@@ -839,9 +839,9 @@ class Executor:
         if len(run.inp_messages) > 0:
             run.inp_messages.sort()
             pages.append(("Invalid inputs", "\n".join(run.inp_messages)))
-        if not (needs_postpone or run.detached) and len(run.out_missing) > 0:
+        if not (needs_defer or run.detached) and len(run.out_missing) > 0:
             # Do not show missing outputs, as they are fairly normal and harmless when
-            # postponing, or when the step was detached.
+            # deferring, or when the step was detached.
             run.out_missing.sort()
             pages.append(("Expected outputs not created", "\n".join(run.out_missing)))
         if run.outcome is not None:
@@ -857,10 +857,10 @@ class Executor:
         """Derive the reporter action string (`SUCCESS`, `FAIL`, ...) for a finished step."""
         if run.detached:
             return "DETACHED"
-        if run.interrupted_postpone:
+        if run.interrupted_defer:
             return "FAIL"
         if len(run.unavailable) > 0 or len(run.unfresh) > 0:
-            return "POSTPONED"
+            return "DEFERRED"
         if run.success:
             return "SUCCESS"
         return "FAIL"

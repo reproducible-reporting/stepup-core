@@ -21,7 +21,7 @@ StepUp runs as two process types:
   Manages `Builder`, `Watcher`, and `Scheduler`.
   Steps run *inside* the director's event loop as asyncio tasks.
 - **Executor** (`executor.py`):
-  Runs each step as an asyncio task, tying the step lifecycle (skip/run/postpone decisions,
+  Runs each step as an asyncio task, tying the step lifecycle (skip/run/defer decisions,
   hash bookkeeping, reporting) together.
   A single `Executor` instance serves all concurrent steps; `--jobs` is the
   concurrency limit. Step child processes call back into the director over its RPC socket
@@ -172,7 +172,7 @@ fall back to Python only when SQL cannot express the check or cannot repair a vi
 
 - A **single-row invariant** (what a column may hold given the other columns in the same row)
   is a `CHECK` constraint on the table,
-  e.g. the `step` table's `CHECK (NOT postponed OR state = PENDING)`.
+  e.g. the `step` table's `CHECK (NOT deferred OR state = PENDING)`.
 - An invariant spanning **multiple rows** (e.g. a node's creator must have a compatible `kind`)
   cannot be a `CHECK` constraint —
   SQLite does not re-evaluate a `CHECK` when a *different* row changes.
