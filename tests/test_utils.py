@@ -16,6 +16,7 @@ from stepup.core.utils import (
     merge_resources,
     parse_resources,
     query_director_log,
+    scan_director_log,
 )
 
 
@@ -186,6 +187,36 @@ def test_query_director_log_without_socket_line(path_tmp: Path, content: str):
     assert path_socket is None
     assert pid is None
     assert "does not start with SOCKET line" in message
+
+
+def test_scan_director_log_missing_file(path_tmp: Path):
+    """A build that never started a director leaves no log to complain about."""
+    assert scan_director_log(path_tmp / "director.log") == []
+
+
+def test_scan_director_log_clean(path_tmp: Path):
+    path_log = path_tmp / "director.log"
+    path_log.write_text("SOCKET /tmp/stepup-abcd1234/director\nPID 12345\nLOG_LEVEL DEBUG\n")
+    assert scan_director_log(path_log) == []
+
+
+def test_scan_director_log_order_and_labels(path_tmp: Path):
+    """All findings are collected, in the order of the log."""
+    path_log = path_tmp / "director.log"
+    path_log.write_text(
+        "2026-07-27 12:34:56     ERROR                   asyncio  ::  "
+        "Task exception was never retrieved\n"
+        "future: <Task finished coro=<Watcher.loop() done>>\n"
+        "2026-07-27 12:34:57     ERROR      stepup.core.sqlite3  ::  Database is locked\n"
+        "sys:1: RuntimeWarning: coroutine 'Watcher.loop' was never awaited\n"
+    )
+    assert scan_director_log(path_log) == [
+        "Unretrieved exception: 2026-07-27 12:34:56     ERROR                   asyncio  ::  "
+        "Task exception was never retrieved",
+        "Logged error: 2026-07-27 12:34:57     ERROR      stepup.core.sqlite3  ::  "
+        "Database is locked",
+        "Unawaited coroutine: sys:1: RuntimeWarning: coroutine 'Watcher.loop' was never awaited",
+    ]
 
 
 @pytest.mark.parametrize(

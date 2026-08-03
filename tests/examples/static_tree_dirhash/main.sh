@@ -16,9 +16,6 @@ stepup join
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
 
-# There should be no unawaited futures.
-! grep -q "Future exception was never retrieved" .stepup/director.log
-
 # The error must point at the offending call in plan.py.
 grep -q "Directories are not allowed: foo/bar" .stepup/fail.log
 grep -q 'run("echo foo/bar", inp="foo/bar")' .stepup/fail.log
@@ -42,9 +39,6 @@ stepup join
 # The build fails and the director is on hold: 2 + 32 = 34
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
-
-# There should be no unawaited futures.
-! grep -q "Future exception was never retrieved" .stepup/director.log
 
 # The error must point at the offending call in plan.py.
 grep -q "Directories are not allowed: foo/bar" .stepup/fail.log

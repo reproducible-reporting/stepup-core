@@ -12,6 +12,7 @@ import sys
 from path import Path
 
 from .constants import DIRECTOR_LOG, STEPUP_DIR
+from .utils import scan_director_log
 
 __all__ = ("remove_hashes", "run_example")
 
@@ -133,14 +134,12 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
     assert stepup_proc.returncode == 0
 
-    director_log = workdir / DIRECTOR_LOG
-    if director_log.is_file():
-        with open(director_log) as fh:
-            log_text = fh.read()
-        unawaited = re.findall(r"RuntimeWarning: coroutine '(\w+)' was never awaited", log_text)
-        assert not unawaited, "Unawaited coroutines detected in director.log: " + ", ".join(
-            unawaited
-        )
+    # `stepup build` scans its own log when it exits and fails the build over any finding,
+    # because `STEPUP_DEBUG` is set above. This second scan is the safety net for the runs
+    # that never got that far, e.g. because the example killed StepUp.
+    # It only covers the last `stepup build` of the example: each one truncates the log.
+    findings = scan_director_log(workdir / DIRECTOR_LOG)
+    assert not findings, "Problems in director.log:\n" + "\n".join(findings)
 
 
 async def run_plan(srcdir: Path, tmpdir: Path):

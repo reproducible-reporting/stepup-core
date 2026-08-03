@@ -20,10 +20,16 @@ or a [`glob()`][stepup.core.api.glob] match that no `static()` declaration justi
 Such a build is still a successful one:
 the `FAILED` bit is never set on account of a warning.
 
+The internal error bit (`1`) is normally the only bit set:
+the director sets it when an exception escapes, and then it has nothing else to report.
+There is one exception, where it is combined with the outcome of a complete build:
+when `STEPUP_DEBUG` is set and StepUp finds problems in `.stepup/director.log`
+after the build, see [Configuration](configuration.md).
+
 A few example combinations are:
 
 - `0` = all steps finished successfully.
-- `1` = internal error (never combined with other codes).
+- `1` = internal error in the director (never combined with other codes).
 - `8` = every step succeeded, but the build reported a warning.
 - `20` = at least one step failed and at least one step remained pending.
 - `36` = a step failed and the scheduler was put on hold,

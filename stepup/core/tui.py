@@ -13,7 +13,6 @@ import asyncio
 import contextlib
 import decimal
 import os
-import re
 import signal
 import subprocess
 import sys
@@ -42,7 +41,14 @@ from .enums import ReturnCode
 from .exceptions import RPCError, TUIError
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
-from .utils import is_process_running, merge_resources, positive_int, query_director_log
+from .utils import (
+    is_process_running,
+    merge_resources,
+    positive_int,
+    query_director_log,
+    scan_director_log,
+    string_to_bool,
+)
 from .watcher import WATCHER_AVAILABLE
 
 # The subcommands are referenced by string in `pyproject.toml`'s `stepup.tools` entry points.
@@ -377,7 +383,8 @@ async def _async_build(args: argparse.Namespace) -> int:
     -------
     returncode
         The exit code for the `stepup build` process, combining what the director
-        reported with `ReturnCode.INTERRUPTED` when a terminal signal was received.
+        reported with `ReturnCode.INTERRUPTED` when a terminal signal was received
+        and `ReturnCode.INTERNAL` when a debug build found problems in the director log.
 
     Raises
     ------
@@ -437,8 +444,7 @@ async def _async_build(args: argparse.Namespace) -> int:
             stop_event.set()
             await task_reporter
 
-    _warn_on_logged_errors(reporter_handler)
-    return returncode
+    return returncode | _report_director_log_problems(reporter_handler)
 
 
 def _normalize_targets(raw_targets: list[str], stepup_root: Path) -> tuple[list[Path], list[Path]]:
@@ -757,28 +763,37 @@ async def _wait_for_director_socket(
     return director_socket_path.exists()
 
 
-_LOGGED_ERROR = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\s+(ERROR|CRITICAL)\s")
-"""Matches a log record at level `ERROR` or `CRITICAL` in `DIRECTOR_LOG`.
+def _report_director_log_problems(reporter_handler: ReporterHandler) -> int:
+    """Report the symptoms of internal problems that the director left in its log.
 
-The pattern follows the `format`/`datefmt` that `async_main` (`director.py`) hands to
-`logging.basicConfig`, i.e. a timestamp followed by the right-aligned level name.
-Matching the level *field* rather than the word anywhere in the line is what keeps the
-director's own header lines out of it: `LOG_LEVEL ERROR` is not an error, it is a build
-started with `--log-level=ERROR`.
-"""
-
-
-def _warn_on_logged_errors(reporter_handler: ReporterHandler) -> None:
-    """Warn when the director logged an error or a critical message.
+    The director exits with a zero return code after a successful build,
+    even when it logged an error or abandoned a coroutine, task or thread along the way,
+    so its log is the only place where such problems surface.
+    It is scanned once, after the director has exited and written everything it had to say.
 
     Parameters
     ----------
     reporter_handler
-        The reporter used to show the warning.
+        The reporter used to show the findings.
+
+    Returns
+    -------
+    returncode
+        `ReturnCode.INTERNAL` when problems were found and `STEPUP_DEBUG` is set,
+        zero otherwise. The caller combines it with the director's own return code.
     """
-    with open(DIRECTOR_LOG) as fh:
-        if any(_LOGGED_ERROR.match(line) for line in fh):
-            reporter_handler.report("WARNING", f"Errors logged in {DIRECTOR_LOG}", [])
+    findings = scan_director_log(DIRECTOR_LOG)
+    if len(findings) == 0:
+        return 0
+    pages = [("Director log", "\n".join(findings))]
+    description = f"Problems logged in {DIRECTOR_LOG}"
+    if string_to_bool(os.getenv("STEPUP_DEBUG", "0")):
+        # Every finding is due to a bug in StepUp, so a debug build must not pass silently.
+        # The report is an error (not a warning) to also get it into `FAIL_LOG`.
+        reporter_handler.report("ERROR", description, pages)
+        return ReturnCode.INTERNAL.value
+    reporter_handler.report("WARNING", description, pages)
+    return 0
 
 
 #

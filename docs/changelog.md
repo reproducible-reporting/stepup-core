@@ -154,6 +154,15 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
 - Return codes have changed.
   The new return code bits are documented in [StepUp Return Codes](reference/returncode.md).
   The changes compared to StepUp 3 are summarized in the [migration guide](migration/from_3x_to_40.md#return-codes-have-been-renumbered).
+- At the end of every build, StepUp scans `.stepup/director.log` for symptoms of internal
+  problems: logged errors, unawaited coroutines, tasks destroyed while still pending,
+  and exceptions that escaped a callback, a thread or a destructor.
+  None of these make the director exit with a non-zero return code by themselves,
+  so the log is the only place where they can be picked up.
+  The offending lines are now shown with the warning,
+  which previously only mentioned that errors had been logged.
+  With `STEPUP_DEBUG`, such findings are reported as an error instead
+  and set the internal error bit of the return code.
 - The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
   The new implementation is more efficient and automatically tracks local scripts as dependencies.
 - The `plan()` function has been made maximally similar to `run()`,

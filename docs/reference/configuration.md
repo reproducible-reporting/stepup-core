@@ -100,11 +100,15 @@ separated by slashes, where applicable.
 
 `STEPUP_DEBUG`
 
-:   Set to `1` to enable debug output.
+:   Set to `1` to enable debugging features and strict consistency checks.
     This implies `STEPUP_LOG_LEVEL=DEBUG` (if the variable is unset)
     and will require internal consistency checks to pass,
     rather than applying corrections to overcome the inconsistencies.
     (Every such inconsistency is due to a bug, which should be fixed eventually.)
+    It also makes the scan of `.stepup/director.log` at the end of a build fatal:
+    a logged error or a coroutine, task or thread left dangling is reported as an error
+    and sets the internal error bit of the [return code](returncode.md),
+    instead of only being reported as a warning.
     This variable cannot be set through config files or command-line options.
 
 `log_level` / `STEPUP_LOG_LEVEL` / `--log-level`, `-l`

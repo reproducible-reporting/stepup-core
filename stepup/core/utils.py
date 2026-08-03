@@ -18,6 +18,7 @@ from .constants import JOBLOG_CSV
 from .exceptions import PathError, StepUpError
 
 __all__ = (
+    "DIRECTOR_LOG_CHECKS",
     "JOBLOG_COLUMNS",
     "CaseSensitiveTemplate",
     "escape_command_display",
@@ -31,6 +32,7 @@ __all__ = (
     "positive_int",
     "query_director_log",
     "reset_joblog",
+    "scan_director_log",
     "string_to_bool",
     "string_to_list",
     "write_joblog_record",
@@ -353,6 +355,72 @@ def query_director_log(path_director_log: Path) -> tuple[Path | None, int | None
         f"Socket {path_socket} read from {path_director_log} does not exist. StepUp not running?"
     )
     return None, pid, message
+
+
+DIRECTOR_LOG_CHECKS = (
+    # The name is a `__qualname__`, so it contains dots for methods and nested functions.
+    (re.compile(r"coroutine '[^']+' was never awaited"), "Unawaited coroutine"),
+    (re.compile(r"\w+ exception was never retrieved"), "Unretrieved exception"),
+    (re.compile("Task was destroyed but it is pending!"), "Abandoned pending task"),
+    (re.compile("Exception in callback"), "Exception in callback"),
+    (re.compile("Exception in thread"), "Exception in thread"),
+    (re.compile("Exception ignored"), "Ignored exception"),
+    (
+        re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\s+(?:ERROR|CRITICAL)\s"),
+        "Logged error",
+    ),
+)
+"""Patterns for lines in `DIRECTOR_LOG` that betray an internal problem, each with a label.
+
+All but the last are verbatim CPython wordings for work that was left dangling:
+a coroutine that was never awaited, a `Future` or `Task` collected while holding an
+unhandled exception, a task destroyed while still pending, and an exception that escaped
+a callback, a thread or a `__del__` (the unraisable hook prints `Exception ignored ...`).
+None of these make the director exit with a non-zero return code,
+which is precisely why the log must be scanned for them after the fact.
+They are matched case-sensitively, since they are copied from CPython's sources.
+
+The last pattern is of a different nature: it matches any log record at level `ERROR` or
+`CRITICAL`, following the `format`/`datefmt` that `async_main` (`director.py`) hands to
+`logging.basicConfig`. Matching the level *field* rather than the word anywhere in the line
+is what keeps the director's own header lines out of it: `LOG_LEVEL ERROR` is not an error,
+it is a build started with `--log-level=ERROR`.
+It comes last because `scan_director_log` labels a line with the first check that matches,
+and the messages above are also logged at `ERROR` level when `asyncio` reports them,
+in which case the specific label is the more informative one.
+
+Warning categories that any third-party module can raise
+(`DeprecationWarning`, `ResourceWarning`, ...) are deliberately absent:
+they are ignored by Python's default filters,
+so a match would say more about the warning filter than about StepUp.
+"""
+
+
+def scan_director_log(path_director_log: Path) -> list[str]:
+    """Collect the lines in the director log that match one of `DIRECTOR_LOG_CHECKS`.
+
+    Parameters
+    ----------
+    path_director_log
+        The path of the director log to read from.
+        A non-existing log yields no findings.
+
+    Returns
+    -------
+    findings
+        One `"{label}: {line}"` string per matching line, in the order of the log.
+        Empty when the director log is clean, i.e. the expected outcome of every build.
+    """
+    if not os.path.isfile(path_director_log):
+        return []
+    findings = []
+    with open(path_director_log) as fh:
+        for line in fh:
+            for pattern, label in DIRECTOR_LOG_CHECKS:
+                if pattern.search(line) is not None:
+                    findings.append(f"{label}: {line.strip()}")
+                    break
+    return findings
 
 
 JOBLOG_COLUMNS = (

@@ -37,9 +37,9 @@ from stepup.core.tui import (
     _iter_keystrokes,
     _normalize_targets,
     _raw_terminal,
+    _report_director_log_problems,
     _reset_stepup_dir,
     _terminal_broadcasts,
-    _warn_on_logged_errors,
     keyboard,
 )
 
@@ -583,10 +583,12 @@ class FakeReporterHandler:
 
     live_progress: bool = attrs.field(init=False, default=False)
     reports: list[tuple[str, str]] = attrs.field(init=False, factory=list)
+    pages: list[tuple[str, str]] = attrs.field(init=False, factory=list)
     shutdown_calls: int = attrs.field(init=False, default=0)
 
     def report(self, action: str, description: str, pages: list) -> None:
         self.reports.append((action, description))
+        self.pages.extend(pages)
 
     def shutdown(self) -> None:
         self.shutdown_calls += 1
@@ -597,37 +599,93 @@ def _log_record(level: str, message: str) -> str:
     return f"2026-07-27 12:34:56  {level:>8s}  {'stepup.core.director':>24s}  ::  {message}\n"
 
 
+def _report_problems(
+    director_log: Path, text: str, monkeypatch: pytest.MonkeyPatch, debug: bool = False
+) -> tuple[FakeReporterHandler, int]:
+    """Let `_report_director_log_problems` loose on a director log with the given contents."""
+    director_log.write_text(text)
+    monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)
+    monkeypatch.setenv("STEPUP_DEBUG", "1" if debug else "0")
+    reporter_handler = FakeReporterHandler()
+    returncode = _report_director_log_problems(reporter_handler)
+    return reporter_handler, returncode
+
+
 @pytest.mark.parametrize("level", ["ERROR", "CRITICAL"])
-def test_warn_on_logged_errors_reports(
+def test_report_director_log_problems_logged_error(
     level: str, path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A logged error deserves a warning, even when the director exited successfully."""
     director_log = path_tmp / "director.log"
-    director_log.write_text(
-        _log_record("INFO", "Something happened") + _log_record(level, "Something broke")
+    record = _log_record(level, "Something broke")
+    reporter_handler, returncode = _report_problems(
+        director_log, _log_record("INFO", "Something happened") + record, monkeypatch
     )
-    monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)
-    reporter_handler = FakeReporterHandler()
-    _warn_on_logged_errors(reporter_handler)
-    assert reporter_handler.reports == [("WARNING", f"Errors logged in {director_log}")]
+    assert reporter_handler.reports == [("WARNING", f"Problems logged in {director_log}")]
+    assert reporter_handler.pages == [("Director log", f"Logged error: {record.strip()}")]
+    assert returncode == 0
 
 
-def test_warn_on_logged_errors_silent_without_errors(
+@pytest.mark.parametrize(
+    ("line", "label"),
+    [
+        (
+            "sys:1: RuntimeWarning: coroutine 'Watcher.loop' was never awaited",
+            "Unawaited coroutine",
+        ),
+        ("Task exception was never retrieved", "Unretrieved exception"),
+        ("Future exception was never retrieved", "Unretrieved exception"),
+        ("Task was destroyed but it is pending!", "Abandoned pending task"),
+        ("Exception in callback <TaskWakeupMethWrapper object>", "Exception in callback"),
+        ("Exception in thread hash-worker-3:", "Exception in thread"),
+        ("Exception ignored in: <function DBSession.__del__>", "Ignored exception"),
+    ],
+)
+def test_report_director_log_problems_symptoms(
+    line: str, label: str, path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dangling work is reported, also when Python wrote it straight to stderr.
+
+    None of these make the director exit with a non-zero return code,
+    so the log is the only place where they can be picked up.
+    """
+    director_log = path_tmp / "director.log"
+    reporter_handler, returncode = _report_problems(director_log, line + "\n", monkeypatch)
+    assert reporter_handler.reports == [("WARNING", f"Problems logged in {director_log}")]
+    assert reporter_handler.pages == [("Director log", f"{label}: {line}")]
+    assert returncode == 0
+
+
+def test_report_director_log_problems_debug_is_fatal(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With `STEPUP_DEBUG`, a finding is an error that fails the build."""
+    director_log = path_tmp / "director.log"
+    reporter_handler, returncode = _report_problems(
+        director_log, _log_record("ERROR", "Something broke"), monkeypatch, debug=True
+    )
+    assert reporter_handler.reports == [("ERROR", f"Problems logged in {director_log}")]
+    assert returncode == ReturnCode.INTERNAL.value
+
+
+def test_report_director_log_problems_silent_without_errors(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A log without errors must not warn, not even about the word `error` in lower case."""
     director_log = path_tmp / "director.log"
-    director_log.write_text(
-        _log_record("INFO", "Something happened") + _log_record("WARNING", "error handling is fine")
+    reporter_handler, returncode = _report_problems(
+        director_log,
+        _log_record("INFO", "Something happened")
+        + _log_record("WARNING", "error handling is fine"),
+        monkeypatch,
+        debug=True,
     )
-    monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)
-    reporter_handler = FakeReporterHandler()
-    _warn_on_logged_errors(reporter_handler)
     assert reporter_handler.reports == []
+    assert returncode == 0
 
 
 @pytest.mark.parametrize("level", ["ERROR", "CRITICAL"])
-def test_warn_on_logged_errors_ignores_header_lines(
+def test_report_director_log_problems_ignores_header_lines(
     level: str, path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """`--log-level=ERROR` must not make every successful build end with a warning.
@@ -637,23 +695,25 @@ def test_warn_on_logged_errors_ignores_header_lines(
     clean build reported `Errors logged in .stepup/director.log`.
     """
     director_log = path_tmp / "director.log"
-    director_log.write_text(f"SOCKET /tmp/stepup-abcd1234/director\nPID 12345\nLOG_LEVEL {level}\n")
-    monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)
-    reporter_handler = FakeReporterHandler()
-    _warn_on_logged_errors(reporter_handler)
+    reporter_handler, returncode = _report_problems(
+        director_log,
+        f"SOCKET /tmp/stepup-abcd1234/director\nPID 12345\nLOG_LEVEL {level}\n",
+        monkeypatch,
+    )
     assert reporter_handler.reports == []
+    assert returncode == 0
 
 
-def test_warn_on_logged_errors_ignores_error_inside_message(
+def test_report_director_log_problems_ignores_error_inside_message(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Only the level field counts, not the word `ERROR` somewhere in a message."""
     director_log = path_tmp / "director.log"
-    director_log.write_text(_log_record("INFO", "Retrying after a transient ERROR"))
-    monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)
-    reporter_handler = FakeReporterHandler()
-    _warn_on_logged_errors(reporter_handler)
+    reporter_handler, returncode = _report_problems(
+        director_log, _log_record("INFO", "Retrying after a transient ERROR"), monkeypatch
+    )
     assert reporter_handler.reports == []
+    assert returncode == 0
 
 
 @attrs.define

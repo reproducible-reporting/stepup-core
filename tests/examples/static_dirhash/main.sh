@@ -36,9 +36,6 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 # Check that the error message was logged.
 grep "Could not hash data.txt" .stepup/fail.log || exit 1
 
-# The hash job is nobody's to await, so its error must not resurface as a stray future.
-! grep -q "Future exception was never retrieved" .stepup/director.log
-
 # Check files that are expected to be present and/or missing.
 [[ -d data.txt ]] || exit 1
 [[ -f copy.txt ]] || exit 1
