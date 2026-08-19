@@ -110,7 +110,7 @@ def test_tool_return_value_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     parser = argparse.ArgumentParser(prog="stepup")
     subparsers = parser.add_subparsers(dest="tool", required=False)
     subparsers.add_parser("faketool").set_defaults(tool_func=fake_tool)
-    monkeypatch.setattr(cli, "setup_cli", lambda: (parser, FakeLoader()))
+    monkeypatch.setattr(cli, "_setup_cli", lambda: (parser, FakeLoader()))
     monkeypatch.setattr(sys, "argv", ["stepup", "faketool"])
     cli.main()
     assert len(calls) == 1

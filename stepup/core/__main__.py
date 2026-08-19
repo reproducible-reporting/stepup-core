@@ -70,7 +70,7 @@ def sb_main():
 
 def _main():
     """Parse the command line and run the requested subcommand if the configuration allows it."""
-    parser, loader = setup_cli()
+    parser, loader = _setup_cli()
     args = parser.parse_args()
     if args.tool is None:
         parser.print_help()
@@ -98,7 +98,7 @@ def _exit_on_config_problems(loader: ConfigLoader) -> None:
         sys.exit(ReturnCode.INTERNAL.value)
 
 
-def setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
+def _setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
     """Create the StepUp parser, with all subcommands registered and configured.
 
     Returns
@@ -133,7 +133,7 @@ def setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
         description="General purpose dynamic build tool.",
     )
     version = get_version("stepup")
-    parser.add_argument("--version", "-V", action="version", version="%(prog)s " + version)
+    parser.add_argument("-V", "--version", action="version", version="%(prog)s " + version)
     loader.patch_parser(parser, use_section=False)
 
     # Load tool entry points

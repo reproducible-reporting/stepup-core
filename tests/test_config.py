@@ -11,7 +11,7 @@ from decimal import Decimal
 import pytest
 from path import Path
 
-from stepup.core.__main__ import main, setup_cli
+from stepup.core.__main__ import _setup_cli, main
 from stepup.core.config import CORE_ENV_VARS, ConfigLoader
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import ConfigError
@@ -837,7 +837,7 @@ def test_cli_section_per_subcommand(
     # interferes with the environment variable under test.
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
     monkeypatch.setenv(env_var, env_value)
-    parser, _ = setup_cli()
+    parser, _ = _setup_cli()
     assert getattr(parser.parse_args(argv), dest) == expected
 
 
@@ -951,7 +951,7 @@ def test_cli_config_groups_env_vars(monkeypatch, path_tmp, capsys, clean_env):
 def test_core_env_vars_are_not_settings(monkeypatch, path_tmp, clean_env):
     """A variable listed as core would never be shown as such once it becomes a setting."""
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
-    _, loader = setup_cli()
+    _, loader = _setup_cli()
     assert CORE_ENV_VARS.isdisjoint(loader.known_env_vars())
 
 

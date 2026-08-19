@@ -148,8 +148,8 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         help="Use the duration of steps to optimize the execution order.",
     )
     group.add_argument(
-        "--explain-rerun",
         "-e",
+        "--explain-rerun",
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Explain for every step with recorded info why it cannot be skipped.",
@@ -163,8 +163,8 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "(If the variable is already set, it will be used as-is.) ",
     )
     group.add_argument(
-        "--jobs",
         "-j",
+        "--jobs",
         type=positive_decimal,
         default=Decimal("1.0"),
         help="Number of jobs running in parallel. "
@@ -172,8 +172,8 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
     group.add_argument(
-        "--keep-going",
         "-k",
+        "--keep-going",
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Keep building steps whose inputs remain available after another step fails, "
@@ -195,8 +195,8 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "(This can be useful to simplify and reduce the output.)",
     )
     group.add_argument(
-        "--resources",
         "-r",
+        "--resources",
         default=None,
         action=MergeResourcesAction,
         help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'. "
@@ -205,8 +205,8 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
     )
     if WATCHER_AVAILABLE:
         group.add_argument(
-            "--watch",
             "-w",
+            "--watch",
             default=False,
             action=argparse.BooleanOptionalAction,
             help="StepUp will watch for file changes after all runnable steps have been executed. "
@@ -214,8 +214,8 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
             "(Only supported on Linux.)",
         )
         group.add_argument(
-            "--watch-first",
             "-W",
+            "--watch-first",
             default=False,
             action=argparse.BooleanOptionalAction,
             help="Start the builder after observing the first file change in watch mode. "
@@ -254,8 +254,8 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         f"{JOBLOG_CSV}, for diagnosing scheduler/executor dispatch overhead.",
     )
     group.add_argument(
-        "--log-level",
         "-l",
+        "--log-level",
         default="DEBUG" if is_debug() else "WARNING",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help=f"Set the level of the messages that the director writes to {DIRECTOR_LOG}. "
