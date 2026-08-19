@@ -23,9 +23,6 @@ logger = logging.getLogger(__name__)
 #    (This contains the creator -> product edges of the provenance graph.)
 # 2. The `dependency` table, which stores all source-sink relations of the dependency graph.
 TRELLIS_SCHEMA = """
-PRAGMA application_id={application_id};
-PRAGMA user_version={schema_version};
-
 CREATE TABLE IF NOT EXISTS node (
     i INTEGER PRIMARY KEY,
     -- Unique integer identifier of the node.
@@ -633,11 +630,18 @@ class Trellis:
 
     async def initialize(self):
         """Create a new database or check an existing one."""
-        schema_blobs = [self.schema()]
-        schema_blobs.extend(node_class.schema() for node_class in self.node_classes.values())
-        empty = await self.db.initialize(self.application_id, self.schema_version, schema_blobs)
+        schema_scripts = [self.schema()]
+        # `Node.schema()` returns `None` for node classes that add no tables of their own.
+        schema_scripts.extend(
+            script
+            for node_class in self.node_classes.values()
+            if (script := node_class.schema()) is not None
+        )
+        is_fresh = await self.db.apply_schema(
+            self.application_id, self.schema_version, schema_scripts
+        )
         async with self.db:
-            if empty:
+            if is_fresh:
                 self._root = self.create(Root, None)
             else:
                 self._root = self.find(Root, "")

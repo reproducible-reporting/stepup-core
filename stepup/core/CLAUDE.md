@@ -193,9 +193,9 @@ which step first referenced them, so its identity is order-independent by constr
 
 The schema version is `Trellis.schema_version` (in `trellis.py`), written to the database via
 `PRAGMA user_version`. On a version mismatch, the database is **wiped and recreated** from
-scratch (`_wipe_database`) — there is no `ALTER TABLE` migration path.
+scratch (`DBSession._wipe_database`) — there is no `ALTER TABLE` migration path.
 
-Note that `DBSession.initialize()` re-executes the full schema (`CREATE TABLE IF NOT EXISTS`,
+Note that `DBSession.apply_schema()` re-executes the full schema (`CREATE TABLE IF NOT EXISTS`,
 `CREATE INDEX IF NOT EXISTS`, ...) via `executescript` on **every** database open, regardless of
 whether `user_version` matched. A purely additive change (e.g. a new index) is therefore applied
 lazily even to a database whose `schema_version` didn't change — bumping the version is a

@@ -38,6 +38,33 @@ async def test_from_scratch(trellis):
         assert list(trellis.nodes()) == [Root(trellis, 1, "")]
 
 
+@attrs.define
+class Bare(Node):
+    """A node that keeps no data of its own, so it inherits `Node.schema()` returning `None`."""
+
+    @classmethod
+    def kind(cls) -> str:
+        """Lower-case prefix of the key string representing a node."""
+        return "b"
+
+
+@attrs.define(eq=False)
+class BareTrellis(Trellis):
+    @staticmethod
+    def default_node_classes() -> list[type[Node]]:
+        return [*Trellis.default_node_classes(), Bare]
+
+
+async def test_node_class_without_schema():
+    """A node class without a schema of its own does not break the initialization."""
+    with DBSession.open(":memory:") as db:
+        bt = BareTrellis(db)
+        await bt.initialize()
+        async with bt.db:
+            bare = bt.create(Bare, bt.root, "one")
+            assert bt.find(Bare, "one") == bare
+
+
 async def test_supply_missing_nodes(trellis):
     async with trellis.db:
         fake3 = Node(trellis, 3, "fake3")

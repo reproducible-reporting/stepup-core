@@ -14,7 +14,7 @@ from .config_loader import ConfigLoader
 from .enums import FileState
 from .hash import FileHash
 from .path import translate, translate_back
-from .sqlite3 import escape_like_pattern
+from .sqlite3 import prefix_clause
 from .tool import SubParsers, ToolFunc, connect_graph_db
 
 __all__ = ("add_clean_subcommand",)
@@ -178,11 +178,15 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
 
 SQL_MATCH_PATH = """
 SELECT label FROM node JOIN file ON node.i = file.node
-WHERE label = ? OR label LIKE ? ESCAPE '\\'
+WHERE label = ? OR {clause}
+"""
+
+SQL_MATCH_ALL_PATHS = """
+SELECT label FROM node JOIN file ON node.i = file.node
 """
 
 
-def search_matching_paths(con: sqlite3.Connection, tr_paths: set[str]) -> set[str]:
+def search_matching_paths(con: sqlite3.Connection, tr_paths: set[Path]) -> set[str]:
     """Find all paths that match the given paths.
 
     Parameters
@@ -201,8 +205,13 @@ def search_matching_paths(con: sqlite3.Connection, tr_paths: set[str]) -> set[st
     """
     tr_matching_paths = set()
     for tr_path in tr_paths:
-        pattern = "%" if tr_path == "." else escape_like_pattern(tr_path / "") + "%"
-        tr_matching_paths.update(row[0] for row in con.execute(SQL_MATCH_PATH, (tr_path, pattern)))
+        if tr_path == ".":
+            # Every file in the project is under the root, so no filter is needed.
+            sql, args = SQL_MATCH_ALL_PATHS, ()
+        else:
+            clause, pattern = prefix_clause("label", tr_path / "")
+            sql, args = SQL_MATCH_PATH.format(clause=clause), (tr_path, pattern)
+        tr_matching_paths.update(row[0] for row in con.execute(sql, args))
     return tr_matching_paths
 
 

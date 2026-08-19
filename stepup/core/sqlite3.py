@@ -1,6 +1,18 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Wrapper for SQLite3 functionality."""
+"""Wrapper for SQLite3 functionality.
+
+The module holds four parts.
+`prefix_clause()` builds a LIKE predicate that matches a column against a literal prefix.
+`connect()` collects the connection settings that every StepUp database is opened with.
+`DBSession` serializes all access to one such connection,
+with a lock and explicit transactions.
+`SQLLog` records query plans and execution timings for a session.
+
+Some pragmas take an argument that cannot be a placeholder,
+so those arguments are interpolated into the SQL text.
+All of them are integers in this module, so there is nothing to escape.
+"""
 
 import asyncio
 import contextlib
@@ -8,12 +20,11 @@ import csv
 import inspect
 import json
 import logging
-import os
 import sqlite3
 import time
-from collections.abc import Generator, Iterable, Mapping, Sequence
-from contextlib import contextmanager
-from contextvars import ContextVar
+import urllib.parse
+from collections.abc import AsyncGenerator, Generator, Iterable, Mapping, Sequence
+from types import FrameType, TracebackType
 from typing import Any, Self
 
 import attrs
@@ -23,17 +34,197 @@ from .path import StrPath, coerce_path
 
 __all__ = (
     "DBSession",
+    "SQLArgs",
+    "SQLLog",
     "connect",
-    "escape_like_pattern",
+    "prefix_clause",
 )
 
 
 logger = logging.getLogger(__name__)
 
+SQLArgs = Sequence[Any] | Mapping[str, Any]
+"""Arguments bound to the placeholders of one SQL statement."""
 
-def escape_like_pattern(pattern: str) -> str:
-    """Escape a string for use in a LIKE pattern."""
-    return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+#
+# LIKE pattern helpers
+#
+
+
+def prefix_clause(column: str, prefix: str) -> tuple[str, str]:
+    """Build a LIKE predicate and its argument for matching a column against a prefix.
+
+    Parameters
+    ----------
+    column
+        The column to match, interpolated into the SQL text.
+        This must be a literal from the calling code, never user input.
+    prefix
+        The literal prefix to match.
+        Characters with a special meaning in LIKE patterns are escaped.
+
+    Returns
+    -------
+    clause
+        An SQL predicate containing a single placeholder.
+    pattern
+        The value to bind to that placeholder.
+
+    Notes
+    -----
+    SQLite only honors the escape character when the query carries an `ESCAPE` clause,
+    so the predicate and its argument are built together and must be used together.
+    """
+    escaped = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"{column} LIKE ? ESCAPE '\\'", f"{escaped}%"
+
+
+#
+# Connection layer
+#
+
+
+def connect(path: StrPath, *, read_only: bool = False, **kwargs: Any) -> sqlite3.Connection:
+    """Connect to a SQLite database, with the appropriate settings for StepUp.
+
+    Parameters
+    ----------
+    path
+        The path to the SQLite database file.
+    read_only
+        If True, open the database in read-only mode.
+        Otherwise, open it in read-write mode (creating it if it doesn't exist).
+    kwargs
+        Additional keyword arguments to pass to `sqlite3.connect()`.
+
+    Returns
+    -------
+    con
+        The SQLite connection object.
+
+    Notes
+    -----
+    The following deviations from the default settings are used.
+    The statement cache, autocommit mode and foreign key enforcement
+    are applied to every connection.
+    The pragmas below them only affect how the database is modified,
+    so they are applied to read-write connections only.
+
+    - The `cached_statements` parameter is set to a large value
+      to improve performance when executing many similar statements.
+    - Autocommit mode is enabled,
+      so that transactions start and end only where the code says so,
+      with an explicit `BEGIN` and `commit()`.
+      Without it, the legacy transaction control of the `sqlite3` module
+      opens and commits transactions of its own,
+      which fights with the explicit transaction boundaries.
+    - Foreign key enforcement is enabled,
+      which is required for the `ON DELETE CASCADE` cleanup of satellite rows.
+      This is a per-connection setting (not stored in the database file),
+      so it must be set on every connection.
+    - The auto_vacuum mode is set to INCREMENTAL to allow incremental vacuuming of the database.
+    - The journal mode is set to WAL (Write-Ahead Logging) to allow concurrent reads and writes.
+    - The synchronous mode is set to OFF to improve performance,
+      at the cost of potential data loss in the event of a hard crash.
+      This is ok because a few lost transactions are not critical for StepUp,
+      as long as the database is not fully corrupted.
+    - Recursive triggers are explicitly kept OFF (SQLite's default).
+      Several triggers in `step.py`'s `STEP_SCHEMA` (e.g. `step_flag_check_safe`)
+      `UPDATE` the same table they fire on;
+      turning this `ON` would go against that design
+      and cause them to re-fire on their own writes.
+    """
+    kwargs = kwargs.copy()
+    kwargs.setdefault("cached_statements", 1024)
+    path = coerce_path(path)
+    if read_only:
+        # Use URI mode to open the database in read-only mode,
+        # because SQLite does not have a separate read-only flag.
+        # The path is percent-encoded, because a `?` or `#` in a file name would otherwise
+        # start the query or fragment part of the URI.
+        # SQLite ignores the unknown parameters that result from this,
+        # and silently opens (or creates) a different database read-write.
+        path = f"file:{urllib.parse.quote(str(path))}?mode=ro"
+        kwargs["uri"] = True
+    con = sqlite3.connect(path, **kwargs)
+    con.isolation_level = None
+    con.execute("PRAGMA foreign_keys = ON")
+    if not read_only:
+        # The auto_vacuum pragma must come first.
+        # As of SQLite 3.51, setting the journal mode of a new database writes its header,
+        # after which auto_vacuum can only be changed by a full `VACUUM`,
+        # and a plain `PRAGMA auto_vacuum` assignment is silently ignored.
+        con.execute("PRAGMA auto_vacuum = INCREMENTAL")
+        con.execute("PRAGMA journal_mode = WAL")
+        con.execute("PRAGMA synchronous = OFF")
+        con.execute("PRAGMA recursive_triggers = OFF")
+    return con
+
+
+#
+# Query logging
+#
+
+
+@attrs.define(frozen=True)
+class QueryKey:
+    """Identifies a distinct SQL query by its text and call site.
+
+    Combining the query text with its call site allows the same query text,
+    executed from two unrelated places in the code, to be tracked separately.
+    """
+
+    query: str = attrs.field()
+    """The SQL query text."""
+
+    module_name: str = attrs.field()
+    """The `__name__` of the module that called `db.execute()` / `db.executemany()`."""
+
+    line: int = attrs.field()
+    """The line number of the call to `db.execute()` / `db.executemany()`."""
+
+    @classmethod
+    def from_frame(cls, query: str, frame: FrameType) -> Self:
+        """Build the key of a query executed at the call site of a stack frame.
+
+        Parameters
+        ----------
+        query
+            The SQL query text.
+        frame
+            The stack frame of the call site.
+
+        Returns
+        -------
+        key
+            The key identifying `query` as executed from that call site.
+        """
+        return cls(
+            query=query,
+            module_name=frame.f_globals.get("__name__", "?"),
+            line=frame.f_lineno,
+        )
+
+
+@attrs.define
+class QueryInfo:
+    """Properties associated with a single SQL query for logging purposes.
+
+    The query and its call site are not stored here,
+    as they make up the `QueryKey` used in a dictionary mapping queries to their info.
+    """
+
+    plan: str = attrs.field()
+    """The formatted query plan as returned by `EXPLAIN QUERY PLAN`."""
+
+    query_i: int = attrs.field()
+    """A unique integer id assigned to this `QueryKey`, referenced by rows in the CSV file.
+
+    This must equal the position of the `QueryKey` in the insertion order of the dictionary
+    holding these records,
+    because `SQLLog._write_query_index()` writes that dictionary out as a list in that order.
+    """
 
 
 def _format_query_plan(rows: Iterable[tuple[int, int, int, str]]) -> str:
@@ -67,103 +258,6 @@ def _format_query_plan(rows: Iterable[tuple[int, int, int, str]]) -> str:
     return "\n".join(lines)
 
 
-def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Connection:
-    """Connect to a SQLite database, with the appropriate settings for StepUp.
-
-    Parameters
-    ----------
-    path
-        The path to the SQLite database file.
-    read_only
-        If True, open the database in read-only mode.
-        Otherwise, open it in read-write mode (creating it if it doesn't exist).
-    kwargs
-        Additional keyword arguments to pass to `sqlite3.connect()`.
-
-    Returns
-    -------
-    con
-        The SQLite connection object.
-
-    Notes
-    -----
-    The following deviations from the default settings are used.
-    Only foreign key enforcement is applied to read-only connections.
-    The remaining pragmas are set on read-write connections.
-
-    - The `cached_statements` parameter is set to a large value
-      to improve performance when executing many similar statements.
-    - Foreign key enforcement is enabled,
-      which is required for the `ON DELETE CASCADE` cleanup of satellite rows.
-      This is a per-connection setting (not stored in the database file),
-      so it must be set on every connection.
-    - The journal mode is set to WAL (Write-Ahead Logging) to allow concurrent reads and writes.
-    - The synchronous mode is set to OFF to improve performance,
-      at the cost of potential data loss in the event of a hard crash.
-      This is ok because a few lost transactions are not critical for StepUp,
-      as long as the database is not fully corrupted.
-    - The auto_vacuum mode is set to INCREMENTAL to allow incremental vacuuming of the database.
-    - Recursive triggers are explicitly kept OFF (SQLite's default).
-      Several triggers in `step.py`'s `STEP_SCHEMA` (e.g. `step_flag_check_safe`)
-      `UPDATE` the same table they fire on;
-      turning this `ON` would go against that design
-      and cause them to re-fire on their own writes.
-    """
-    kwargs = kwargs.copy()
-    kwargs.setdefault("cached_statements", 1024)
-    path = coerce_path(path)
-    if read_only:
-        # Use URI mode to open the database in read-only mode.
-        # This is necessary because SQLite does not have a separate read-only flag.
-        path = f"file:{path}?mode=ro"
-        kwargs["uri"] = True
-        con = sqlite3.connect(path, **kwargs)
-        con.isolation_level = None
-        con.execute("PRAGMA foreign_keys = ON")
-    else:
-        con = sqlite3.connect(path, **kwargs)
-        con.isolation_level = None
-        con.execute("PRAGMA foreign_keys = ON")
-        con.execute("PRAGMA journal_mode = WAL")
-        con.execute("PRAGMA synchronous = OFF")
-        con.execute("PRAGMA auto_vacuum = INCREMENTAL")
-        con.execute("PRAGMA recursive_triggers = OFF")
-    return con
-
-
-@attrs.define(frozen=True)
-class QueryKey:
-    """Identifies a distinct SQL query by its text and call site.
-
-    Combining the query text with its call site allows the same query text,
-    executed from two unrelated places in the code, to be tracked separately.
-    """
-
-    query: str = attrs.field()
-    """The SQL query text."""
-
-    module_name: str = attrs.field()
-    """The `__name__` of the module that called `db.execute()` / `db.executemany()`."""
-
-    line: int = attrs.field()
-    """The line number of the call to `db.execute()` / `db.executemany()`."""
-
-
-@attrs.define
-class QueryLog:
-    """Properties associated with a single SQL query for logging purposes.
-
-    The query and its call site are not stored here,
-    as they make up the `QueryKey` used in a dictionary mapping queries to their logs.
-    """
-
-    plan: str = attrs.field()
-    """The formatted query plan as returned by `EXPLAIN QUERY PLAN`."""
-
-    query_i: int = attrs.field()
-    """A unique integer id assigned to this `QueryKey`, referenced by rows in `SQLLOG_CSV`."""
-
-
 _SQLLOG_CSV_COLUMNS = (
     "transaction_i",
     "execute_i",
@@ -175,249 +269,84 @@ _SQLLOG_CSV_COLUMNS = (
 """Column names of the `--sqllog` CSV file, in on-disk order."""
 
 
-def _init_sqllog_csv(path: StrPath) -> None:
-    """(Re)create the SQL query log CSV file at `path` and write its header."""
-    with open(path, "w", newline="") as fh:
-        csv.writer(fh).writerow(_SQLLOG_CSV_COLUMNS)
-
-
-def _append_sqllog_row(
-    path: StrPath,
-    transaction_i: int,
-    execute_i: int,
-    query_i: int,
-    start_ns: int,
-    duration_ns: int,
-    nrecords: int,
-) -> None:
-    """Append one query-execution row to the SQL query log CSV file at `path`.
-
-    The file is opened and closed for every call, so the write reaches disk synchronously
-    and rows stay correctly ordered, mirroring `write_joblog_record()` in `utils.py`.
-    """
-    with open(path, "a", newline="") as fh:
-        csv.writer(fh).writerow(
-            (transaction_i, execute_i, query_i, start_ns, duration_ns, nrecords)
-        )
-
-
 @attrs.define
-class DBSession:
-    """Manages SQLite lifetime (via sync context) and exclusive access (via async context).
+class SQLLog:
+    """Records query plans and per-execution timings for a `DBSession`.
 
-    Note that logging and counting is only active when `record` is True.
-    Even then, `executemany()` call with an empty parameter sequences are not logged or counted.
+    This is a synchronous context manager owning both files it writes,
+    and it must be entered before anything is recorded.
+    Entering creates the timings file and writes its header,
+    leaving writes the query index.
+    Constructing a recorder has no effect on disk.
+
+    The query plans are collected in memory and written out in one go when the context is left,
+    while the timing rows are appended to the timings file as the executions happen.
     """
 
-    path_db: str | os.PathLike[str] = attrs.field()
-    """Path to the SQLite database file.
+    path_queries: StrPath = attrs.field(kw_only=True)
+    """Destination of the query index, written when the context is left."""
 
-    The connection is opened and kept private when creating a `DBSession` instance.
-    """
+    path_timings: StrPath = attrs.field(kw_only=True)
+    """Destination of the per-execution timing rows, appended as they happen."""
 
-    connect_kwargs: dict[str, Any] = attrs.field(factory=dict)
-    """Connection parameters to pass to `sqlite3`."""
-
-    record: bool = attrs.field(default=False)
-    """If True, record SQL debug information for later inspection with `write_log()`."""
-
-    path_sqlcsv: StrPath | None = attrs.field(default=None)
-    """Each `execute()` / `executemany()` call appends a timing row to this CSV file."""
-
-    _con: sqlite3.Connection | None = attrs.field(init=False, default=None)
-    """The SQLite connection, or None if closed."""
-
-    _lock: asyncio.Lock = attrs.field(factory=asyncio.Lock, init=False)
-    """Asyncio lock to ensure exclusive access to the database connection."""
-
-    _cv: ContextVar[sqlite3.Connection | None] = attrs.field(
-        factory=lambda: ContextVar("con_cv", default=None), init=False
-    )
-    """Context variable holding the connection for the current asyncio task.
-
-    It is None when the lock is not acquired.
-    """
-
-    _log: dict[QueryKey, QueryLog] = attrs.field(factory=dict, init=False)
-    """Mapping of distinct SQL queries to their associated log information."""
-
-    _transaction_i: int = attrs.field(init=False, default=0)
-    """Incremented once per transaction (each `BEGIN IMMEDIATE` in `__aenter__`)."""
+    _queries: dict[QueryKey, QueryInfo] = attrs.field(factory=dict, init=False)
+    """Distinct queries seen so far, in first-seen order."""
 
     _execute_i: int = attrs.field(init=False, default=0)
-    """Counter for the number of `execute()` / `executemany()` calls."""
+    """Number of recorded executions so far, used as the row id in the CSV file."""
 
-    #
-    # Application lifecycle (Synchronous Context Manager)
-    #
+    def __enter__(self) -> Self:
+        """Create the timings file and write its header."""
+        with open(self.path_timings, "w", newline="") as fh:
+            csv.DictWriter(fh, _SQLLOG_CSV_COLUMNS).writeheader()
+        return self
 
-    def __attrs_post_init__(self) -> None:
-        """Open the database connection and create the SQL query log CSV file when configured."""
-        self._con = connect(self.path_db, **self.connect_kwargs)
-        if self.path_sqlcsv is not None:
-            _init_sqllog_csv(self.path_sqlcsv)
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        """Write the recorded query index to the JSON file.
 
-    def _close(self) -> None:
-        """Close the database connection."""
-        if self._con:
-            # This close should flush any pending transactions to disk.
-            self._con.close()
-            self._con = None
+        The index is written whether or not an exception is propagating,
+        because the rows already in the CSV file are useless without it.
+        """
+        self._write_query_index()
 
-    @classmethod
-    @contextmanager
-    def open(
-        cls,
-        path_db: str | os.PathLike[str],
+    @contextlib.contextmanager
+    def time_execute(
+        self,
+        con: sqlite3.Connection,
+        key: QueryKey,
         *,
-        path_sqllog: StrPath | None = None,
-        path_sqlcsv: StrPath | None = None,
-        **connect_kwargs: Any,
-    ) -> Generator[Self, None, None]:
-        """Open a database connection and yield a `DBSession` instance for exclusive access.
-
-        Parameters
-        ----------
-        path_sqllog
-            When given, `record` is set to `True`
-            and `write_log()` is called with this path when the session is closed.
-        path_sqlcsv
-            When given, `record` is set to `True`
-            and a timing row is appended to this CSV file
-            on every `execute()` / `executemany()` call.
-        connect_kwargs
-            Additional keyword arguments to pass to `sqlite3.connect()`.
-        """
-        record = path_sqllog is not None or path_sqlcsv is not None
-        db = cls(path_db, connect_kwargs, record=record, path_sqlcsv=path_sqlcsv)
-        with contextlib.ExitStack() as stack:
-            stack.callback(db._close)
-            if path_sqllog is not None:
-                stack.callback(db.write_log, path_sqllog)
-            yield db
-
-    def write_log(self, path: StrPath) -> None:
-        """Write the recorded SQL debug log to a JSON file.
-
-        The file contains a list of records, one per distinct `QueryKey`,
-        each merging the key fields (`query`, `module_name`, `line`)
-        with the log fields (`plan`, `query_i`).
-        A list is used instead of a mapping keyed by query text,
-        because a `QueryKey` cannot be represented as a single JSON object key.
-        `query_i` is the id referenced by the `query_i` column of `SQLLOG_CSV`.
-
-        Parameters
-        ----------
-        path
-            The destination for the JSON log file.
-        """
-        records = [
-            json_converter.unstructure(key) | json_converter.unstructure(log)
-            for key, log in self._log.items()
-        ]
-        with open(path, "w") as f:
-            json.dump(records, f)
-
-    #
-    # Transaction locking (Asynchronous Context Manager)
-    #
-
-    async def __aenter__(self) -> None:
-        if self._con is None:
-            raise RuntimeError("Database connection has already been closed.")
-        if self._cv.get() is not None:
-            raise RuntimeError("Nested DBSession request detected within the same task.")
-        await self._lock.acquire()
-        try:
-            self._con.execute("BEGIN IMMEDIATE")
-            self._transaction_i += 1
-            self._cv.set(self._con)
-        except Exception:
-            self._lock.release()
-            raise
-
-    async def __aexit__(self, exc_type, exc, tb) -> None:
-        self._cv.set(None)
-        try:
-            if exc is None:
-                if not self._con.in_transaction:
-                    raise RuntimeError(
-                        "Transaction was closed mid-context (executescript or manual COMMIT?)."
-                    )
-                self._con.commit()
-            else:
-                self._con.rollback()
-        finally:
-            self._lock.release()
-
-    #
-    # SQL Execution wrappers
-    #
-
-    def _take_con(self) -> sqlite3.Connection:
-        """Return the connection.
-
-        It is only accessible while the calling asyncio task holds the lock.
-        """
-        con = self._cv.get()
-        if con is None:
-            raise RuntimeError(
-                "No active database connection. You must acquire the DBSession first."
-            )
-        return con
-
-    def execute(self, sql: str, args: Iterable[Any] = ()) -> sqlite3.Cursor:
-        """Execute an SQL statement with the given arguments."""
-        con = self._take_con()
-        if not isinstance(args, (Sequence, Mapping)):
-            args = tuple(args)
-        if self.record:
-            frame = inspect.currentframe().f_back
-            module_name = frame.f_globals.get("__name__", "?")
-            with self._record_execute(sql, module_name, frame.f_lineno, -1, args):
-                return con.execute(sql, args)
-        else:
-            return con.execute(sql, args)
-
-    def executemany(self, sql: str, seq_of_args: Iterable[Iterable[Any]]) -> sqlite3.Cursor:
-        """Execute an SQL statement against all parameter sequences or mappings."""
-        con = self._take_con()
-        seq_of_args = [
-            args if isinstance(args, (Sequence, Mapping)) else tuple(args) for args in seq_of_args
-        ]
-        if len(seq_of_args) > 0 and self.record:
-            frame = inspect.currentframe().f_back
-            module_name = frame.f_globals.get("__name__", "?")
-            with self._record_execute(
-                sql, module_name, frame.f_lineno, len(seq_of_args), seq_of_args[0]
-            ):
-                return con.executemany(sql, seq_of_args)
-        else:
-            return con.executemany(sql, seq_of_args)
-
-    @contextmanager
-    def _record_execute(
-        self, sql: str, module_name: str, line: int, nrecords: int, args: Iterable[Any] = ()
+        transaction_i: int,
+        nrecords: int,
+        plan_args: SQLArgs = (),
     ) -> Generator[None, None, None]:
         """Time one `execute()` / `executemany()` call and log it.
 
         Parameters
         ----------
+        con
+            The connection on which `EXPLAIN QUERY PLAN` is run,
+            the first time this key is seen.
+        key
+            Identifies the query whose execution is being timed.
+        transaction_i
+            The transaction in which the execution takes place.
         nrecords
-            The number of parameter sequences passed to `executemany()`,
-            or -1 for a plain `execute()` call.
-        args
+            The number of records bound by the call:
+            one for `execute()`, the number of parameter sets for `executemany()`.
+        plan_args
             The (first) set of query arguments, used for `EXPLAIN QUERY PLAN`
-            the first time this `QueryKey` is seen.
+            the first time this `key` is seen.
         """
-        key = QueryKey(query=sql, module_name=module_name, line=line)
-        log = self._log.get(key)
-        if log is None:
-            con = self._take_con()
-            plan_rows = list(con.execute(f"EXPLAIN QUERY PLAN {sql}", args))
-            plan = _format_query_plan(plan_rows)
-            log = QueryLog(plan=plan, query_i=len(self._log))
-            self._log[key] = log
+        info = self._queries.get(key)
+        if info is None:
+            plan_rows = list(con.execute(f"EXPLAIN QUERY PLAN {key.query}", plan_args))
+            info = QueryInfo(plan=_format_query_plan(plan_rows), query_i=len(self._queries))
+            self._queries[key] = info
 
         self._execute_i += 1
         execute_i = self._execute_i
@@ -425,22 +354,396 @@ class DBSession:
         try:
             yield
         finally:
-            duration_ns = time.monotonic_ns() - start_ns
-            if self.path_sqlcsv is not None:
-                _append_sqllog_row(
-                    self.path_sqlcsv,
-                    self._transaction_i,
-                    execute_i,
-                    log.query_i,
-                    start_ns,
-                    duration_ns,
-                    nrecords,
-                )
+            self._append_csv_row(
+                {
+                    "transaction_i": transaction_i,
+                    "execute_i": execute_i,
+                    "query_i": info.query_i,
+                    "start_ns": start_ns,
+                    "duration_ns": time.monotonic_ns() - start_ns,
+                    "nrecords": nrecords,
+                }
+            )
 
-    async def initialize(
-        self, application_id: int, schema_version: int, schema_blobs: list[str | None]
+    def _append_csv_row(self, row: Mapping[str, int]) -> None:
+        """Append one query-execution row to the CSV file.
+
+        The row must have exactly the keys in `_SQLLOG_CSV_COLUMNS`.
+
+        The file is opened and closed for every call, so the write reaches disk synchronously
+        and rows stay correctly ordered, mirroring `write_joblog_record()` in `utils.py`.
+        """
+        with open(self.path_timings, "a", newline="") as fh:
+            csv.DictWriter(fh, _SQLLOG_CSV_COLUMNS).writerow(row)
+
+    def _write_query_index(self) -> None:
+        """Write the recorded query index to the JSON file.
+
+        The file contains a list of records, one per distinct `QueryKey`,
+        each merging the key fields (`query`, `module_name`, `line`)
+        with the info fields (`plan`, `query_i`).
+        A list is used instead of a mapping keyed by query text,
+        because a `QueryKey` cannot be represented as a single JSON object key.
+        `query_i` is the id referenced by the `query_i` column of the CSV file.
+        """
+        records = [
+            json_converter.unstructure(key) | json_converter.unstructure(info)
+            for key, info in self._queries.items()
+        ]
+        with open(self.path_queries, "w") as f:
+            json.dump(records, f)
+
+
+#
+# Session helpers
+#
+
+
+def _coerce_args(args: Iterable[Any]) -> SQLArgs:
+    """Put the arguments of one SQL statement in a form that `sqlite3` can bind.
+
+    Returns
+    -------
+    coerced
+        `args` itself when it is already a sequence or a mapping,
+        or a tuple with its items otherwise.
+
+    Raises
+    ------
+    TypeError
+        When `args` is a string.
+        A string is a sequence, so `sqlite3` would bind it character by character,
+        which is never what the caller means.
+    """
+    if isinstance(args, str):
+        raise TypeError("SQL arguments must not be a string.")
+    if isinstance(args, (Sequence, Mapping)):
+        return args
+    return tuple(args)
+
+
+def _wipe_database(con: sqlite3.Connection) -> None:
+    """Remove all tables, indexes and views from an SQLite database.
+
+    This is not to be called inside a transaction,
+    because SQLite silently ignores a `foreign_keys` pragma there,
+    which would leave the constraints in force while the tables are dropped.
+
+    Triggers are not dropped by name,
+    because SQLite drops a trigger along with the table or view it is attached to.
+    """
+    assert not con.in_transaction
+    con.execute("PRAGMA foreign_keys = OFF")
+    try:
+        # Tables come first, because dropping one also drops its indexes and triggers.
+        for kind in "table", "index", "view":
+            names = [
+                name
+                for (name,) in con.execute(
+                    "SELECT name FROM sqlite_master WHERE type = ? AND name NOT LIKE 'sqlite_%'",
+                    (kind,),
+                )
+            ]
+            for name in names:
+                # The kind and the name cannot be placeholders.
+                # The names come from `sqlite_master`, not from user input.
+                con.execute(f"DROP {kind.upper()} IF EXISTS '{name}'")
+    finally:
+        con.execute("PRAGMA foreign_keys = ON")
+
+
+@attrs.frozen
+class _Held:
+    """The exclusive access that one asyncio task holds on the connection."""
+
+    task: asyncio.Task = attrs.field()
+    """The task that acquired the connection."""
+
+    con: sqlite3.Connection = attrs.field()
+    """The connection that was acquired."""
+
+    opened_transaction: bool = attrs.field()
+    """True when a transaction was opened, False when statements run in autocommit mode."""
+
+
+@attrs.define
+class DBSession:
+    """Serialize all access to one SQLite database.
+
+    The synchronous context manager `open()` owns the lifetime of the connection.
+    Within it, a task takes exclusive access through one of two asynchronous contexts,
+    which have different rules:
+
+    - `async with db:` opens a transaction.
+      This is the only context in which `execute()` and `executemany()` may be called.
+    - `_autocommit_con()` holds the connection without a transaction,
+      for statements that cannot run inside one, such as `VACUUM` and `executescript`.
+
+    Neither context may be nested within a task, because the lock is not reentrant:
+    a second acquisition by the task that already holds the connection would deadlock,
+    so it raises instead.
+    Every other task, including one that the holder spawned,
+    simply waits for the lock like any independent caller.
+
+    Note that query profiling is only active when `sqllog` is not None.
+    Even then, `executemany()` calls with an empty parameter sequence are not logged or counted.
+    """
+
+    sqllog: SQLLog | None = attrs.field(default=None, kw_only=True)
+    """Profiling recorder, or None when profiling is off."""
+
+    _con: sqlite3.Connection | None = attrs.field(init=False, default=None)
+    """The SQLite connection, or None if closed."""
+
+    _lock: asyncio.Lock = attrs.field(factory=asyncio.Lock, init=False)
+    """Asyncio lock to ensure exclusive access to the database connection."""
+
+    _held: _Held | None = attrs.field(init=False, default=None)
+    """What the task currently holding the connection holds, or None when nobody holds it."""
+
+    _transaction_i: int = attrs.field(init=False, default=0)
+    """Incremented once per transaction (each `BEGIN IMMEDIATE` in `__aenter__`)."""
+
+    #
+    # Lifetime (synchronous context manager)
+    #
+
+    @classmethod
+    @contextlib.contextmanager
+    def open(
+        cls,
+        path: StrPath,
+        *,
+        sqllog: SQLLog | None = None,
+        **connect_kwargs: Any,
+    ) -> Generator[Self, None, None]:
+        """Open a database connection and yield a `DBSession` instance for exclusive access.
+
+        Parameters
+        ----------
+        path
+            The path to the SQLite database file, which is created when it does not exist.
+        sqllog
+            An entered `SQLLog`, when every `execute()` / `executemany()` call
+            must be timed and logged.
+            The recorder writes its own files when its own context is left,
+            which may happen before or after the session closes.
+        connect_kwargs
+            Additional keyword arguments to pass to this module's `connect()`,
+            which accepts `read_only` on top of the arguments of `sqlite3.connect()`.
+        """
+        db = cls(sqllog=sqllog)
+        db._con = connect(path, **connect_kwargs)
+        try:
+            yield db
+        finally:
+            # Closing underneath a task that still holds the connection would cut off
+            # its transaction, so the caller must have let every holder finish first.
+            assert db._held is None
+            # This close should flush any pending transactions to disk.
+            db._con.close()
+            db._con = None
+
+    #
+    # Transaction locking (asynchronous context manager)
+    #
+
+    async def _acquire(self, opened_transaction: bool) -> sqlite3.Connection:
+        """Acquire exclusive access to the connection and return it.
+
+        Parameters
+        ----------
+        opened_transaction
+            True when the caller opens a transaction on the connection,
+            False when it runs statements in autocommit mode.
+
+        Raises
+        ------
+        RuntimeError
+            When the calling task already holds the connection,
+            or when the session was closed.
+        """
+        task = asyncio.current_task()
+        held = self._held
+        if held is not None and held.task is task:
+            raise RuntimeError("Nested DBSession request detected within the same task.")
+        await self._lock.acquire()
+        # The connection is read after the wait,
+        # because the session may have been closed while this task was waiting.
+        if self._con is None:
+            self._lock.release()
+            raise RuntimeError("Database connection has already been closed.")
+        self._held = _Held(task, self._con, opened_transaction)
+        return self._con
+
+    def _release(self) -> None:
+        """Give up the exclusive access acquired by `_acquire()`."""
+        self._held = None
+        self._lock.release()
+
+    def _require_transaction_con(self) -> sqlite3.Connection:
+        """Return the connection of the transaction that the calling asyncio task is inside.
+
+        Raises
+        ------
+        RuntimeError
+            When the calling task is not inside a transaction,
+            which includes the case where it holds the connection in autocommit mode.
+        """
+        held = self._held
+        if held is None or held.task is not asyncio.current_task() or not held.opened_transaction:
+            raise RuntimeError("No open transaction. Use `async with db:` first.")
+        return held.con
+
+    @contextlib.asynccontextmanager
+    async def _autocommit_con(self) -> AsyncGenerator[sqlite3.Connection, None]:
+        """Hold the connection exclusively, without opening a transaction.
+
+        Statements run in autocommit mode on the yielded connection.
+        `execute()` and `executemany()` are unavailable inside this context,
+        because they require a transaction.
+        """
+        con = await self._acquire(opened_transaction=False)
+        try:
+            yield con
+        finally:
+            self._release()
+
+    async def __aenter__(self) -> None:
+        """Take exclusive access to the connection and open a transaction.
+
+        The transaction is opened with `BEGIN IMMEDIATE`,
+        so it takes the write lock right away instead of on the first write.
+        Entering also bumps the transaction counter that labels the rows of the `--sqllog` file.
+
+        Raises
+        ------
+        RuntimeError
+            When the calling task already holds the connection,
+            or when the session is closed.
+        """
+        con = await self._acquire(opened_transaction=True)
+        try:
+            con.execute("BEGIN IMMEDIATE")
+            self._transaction_i += 1
+        except Exception:
+            self._release()
+            raise
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        """Close the transaction and give up the exclusive access.
+
+        The transaction is committed when the context is left without an exception,
+        and rolled back otherwise.
+        The exclusive access is given up in both cases.
+
+        Raises
+        ------
+        RuntimeError
+            When the context is left without an exception
+            while the transaction is no longer open,
+            which is what a stray `COMMIT` or an `executescript` inside the context leaves behind.
+        """
+        try:
+            con = self._require_transaction_con()
+            if exc is None:
+                if not con.in_transaction:
+                    raise RuntimeError(
+                        "Transaction was closed mid-context (executescript or manual COMMIT?)."
+                    )
+                con.commit()
+            else:
+                con.rollback()
+        finally:
+            self._release()
+
+    #
+    # SQL execution
+    #
+
+    def _run(self, query: str, args: SQLArgs | Sequence[SQLArgs], *, many: bool) -> sqlite3.Cursor:
+        """Run one statement on the connection of the current transaction.
+
+        The execution is timed and logged when profiling is on,
+        except when `executemany()` was given nothing to bind.
+
+        Parameters
+        ----------
+        query
+            The SQL statement to run.
+        args
+            The arguments of one execution,
+            or the list of argument sets when `many` is True.
+        many
+            True to run the statement with `executemany()`, False to use `execute()`.
+
+        Returns
+        -------
+        cursor
+            The cursor of the statement that was run.
+        """
+        con = self._require_transaction_con()
+        run = con.executemany if many else con.execute
+        nrecords = len(args) if many else 1
+        if self.sqllog is None or nrecords == 0:
+            return run(query, args)
+        # `execute()` and `executemany()` are the only callers of this method,
+        # so the call site whose identity is logged is always exactly two frames up.
+        key = QueryKey.from_frame(query, inspect.currentframe().f_back.f_back)
+        with self.sqllog.time_execute(
+            con,
+            key,
+            transaction_i=self._transaction_i,
+            nrecords=nrecords,
+            plan_args=args[0] if many else args,
+        ):
+            return run(query, args)
+
+    def execute(self, query: str, args: SQLArgs | Iterable[Any] = ()) -> sqlite3.Cursor:
+        """Execute an SQL statement with the given arguments.
+
+        The arguments are a sequence for positional placeholders (`?`),
+        or a mapping for named ones (`:name`).
+
+        Raises
+        ------
+        RuntimeError
+            When the calling task is not inside the transaction context of this session.
+        TypeError
+            When `args` is a string.
+        """
+        return self._run(query, _coerce_args(args), many=False)
+
+    def executemany(
+        self, query: str, seq_of_args: Iterable[SQLArgs | Iterable[Any]]
+    ) -> sqlite3.Cursor:
+        """Execute an SQL statement against all parameter sequences or mappings.
+
+        Raises
+        ------
+        RuntimeError
+            When the calling task is not inside the transaction context of this session.
+        TypeError
+            When one of the parameter sequences is a string.
+        """
+        return self._run(query, [_coerce_args(args) for args in seq_of_args], many=True)
+
+    #
+    # Schema initialization
+    #
+
+    async def apply_schema(
+        self, application_id: int, schema_version: int, schema_scripts: Sequence[str]
     ) -> bool:
-        """Initialize the database with the given SQL schema.
+        """Bring the database up to the given SQL schema.
+
+        A database that already holds a schema of a different version is wiped first,
+        because the scripts only describe the current version.
 
         Parameters
         ----------
@@ -448,138 +751,108 @@ class DBSession:
             The application ID to set for the database.
         schema_version
             The schema version to set for the database.
-        schema_blobs
-            A list of SQL schema blobs to execute in order to set up the database.
-            `None` entries are skipped.
+        schema_scripts
+            The SQL schema scripts to execute, in order, to set up the database.
 
         Returns
         -------
-        empty
-            True if the database was empty (new or wiped because of schema mismatch).
+        is_fresh
+            True if the database was empty before the scripts ran,
+            either because it was new or because it was wiped over a schema version mismatch.
             False if it already contained the expected schema.
+
+        Raises
+        ------
+        ValueError
+            When the database was written by another application,
+            which is detected through a mismatching application ID.
         """
-        empty = False
-        await self._lock.acquire()
-        try:
-            empty = self._con.execute("SELECT count(*) FROM sqlite_master").fetchone()[0] == 0
-            if not empty:
-                rows = self._con.execute("PRAGMA application_id").fetchone()
-                if len(rows) != 1 or rows[0] != application_id:
+        async with self._autocommit_con() as con:
+            is_fresh = con.execute("SELECT count(*) FROM sqlite_master").fetchone()[0] == 0
+            if not is_fresh:
+                row = con.execute("PRAGMA application_id").fetchone()
+                if row[0] != application_id:
                     raise ValueError("Invalid database application ID")
-                rows = self._con.execute("PRAGMA user_version").fetchone()
-                if len(rows) != 1 or rows[0] != schema_version:
-                    _wipe_database(self._con)
-                    empty = True
-            for blob in schema_blobs:
-                if blob is None:
-                    continue
-                self._con.executescript(
-                    blob.format(
-                        application_id=application_id,
-                        schema_version=schema_version,
-                    )
-                )
-            if empty:
-                # `VACUUM` cannot run inside a transaction.
-                # This method holds the lock but without transaction, so it is fine.
-                self._con.execute("VACUUM")
-        finally:
-            self._lock.release()
-        return empty
+                row = con.execute("PRAGMA user_version").fetchone()
+                if row[0] != schema_version:
+                    _wipe_database(con)
+                    is_fresh = True
+            # The pragmas are written after the emptiness check and after the possible wipe,
+            # because both read the state of the database as it was found on disk.
+            con.execute(f"PRAGMA application_id = {application_id:d}")
+            con.execute(f"PRAGMA user_version = {schema_version:d}")
+            for script in schema_scripts:
+                con.executescript(script)
+            if is_fresh:
+                # `VACUUM` cannot run inside a transaction,
+                # which is why the exclusive mode is used here.
+                con.execute("VACUUM")
+        return is_fresh
 
     #
-    # Database maintenance (incremental vacuuming)
+    # Database maintenance
     #
 
-    def clean_free_space(self, chunk_size: int = 500, max_pages_to_free: int = 5000) -> int:
+    async def reclaim_free_space(
+        self, pages_per_chunk: int = 500, max_pages_to_free: int = 5000
+    ) -> int:
         """Check the freelist and incrementally reclaim dead space on disk.
+
+        This opens a transaction of its own, so it must not be called inside one.
+
+        Parameters
+        ----------
+        pages_per_chunk
+            The number of pages to reclaim per `incremental_vacuum` call.
+            Nothing is reclaimed while the freelist is shorter than one chunk.
+        max_pages_to_free
+            A hard upper bound on the number of pages to reclaim in one call.
+            Whatever is left over is picked up by the next call.
 
         Returns
         -------
         pages_freed
-            An upper bound on the number of pages freed, rounded up to a multiple of `chunk_size`.
+            The number of pages actually released by the incremental vacuum.
         """
-        con = self._take_con()
+        async with self:
+            freelist_before = self.execute("PRAGMA freelist_count").fetchone()[0]
+            # Reclaim in whole chunks, to avoid locking up or spiking disk I/O.
+            for _ in range(min(freelist_before, max_pages_to_free) // pages_per_chunk):
+                # The pragma result must be stepped through exhaustively
+                # for the pages to be freed.
+                self.execute(f"PRAGMA incremental_vacuum({pages_per_chunk:d})").fetchall()
+            freelist_after = self.execute("PRAGMA freelist_count").fetchone()[0]
+        return freelist_before - freelist_after
 
-        # 1. Query how many empty pages SQLite is holding onto
-        freelist_count = con.execute("PRAGMA freelist_count").fetchone()[0]
-
-        # Only clean up when the freelist holds at least one full chunk
-        if freelist_count < chunk_size:
-            return 0
-
-        pages_freed = 0
-        pages_target = min(freelist_count, max_pages_to_free)
-
-        # 2. Vacuum in small chunks so we don't lock up or spike disk I/O
-        while pages_freed < pages_target:
-            # We must exhaustively step through the `incremental_vacuum` pragma result
-            con.execute("PRAGMA incremental_vacuum(?)", (chunk_size,)).fetchall()
-            pages_freed += chunk_size
-
-        return pages_freed
-
-    async def database_maintenance_loop(
+    async def reclaim_loop(
         self, stop_event: asyncio.Event, start_delay: float = 3.0, interval: float = 300.0
     ) -> None:
         """Periodically reclaim free disk space in the background.
 
         The loop exits cleanly when `stop_event` is set.
+        An unexpected error is logged and ends the loop,
+        so a database hiccup does not propagate out of this background task.
+
+        Parameters
+        ----------
+        stop_event
+            The event that ends the loop when it is set.
+        start_delay
+            The waiting time before the first reclamation.
+        interval
+            The waiting time between all later reclamations.
         """
         wait_time = start_delay
-        while not stop_event.is_set():
-            try:
-                # Wait for the next maintenance run, waking up early when the stop event is set
+        try:
+            while True:
                 with contextlib.suppress(asyncio.TimeoutError):
                     await asyncio.wait_for(stop_event.wait(), timeout=wait_time)
-
-                # If the loop woke up because the app is stopping, break out early
                 if stop_event.is_set():
                     break
-
-                # Execute the maintenance routine under an exclusive transaction lock
-                async with self:
-                    self.clean_free_space()
-
-                # After the first run, switch to the regular interval
+                await self.reclaim_free_space()
+                # Only the first waiting time is the start delay.
                 wait_time = interval
-
-            except asyncio.CancelledError:
-                # Let cooperative task cancellation propagate,
-                # so this task completes as cancelled instead of being logged as an error
-                # by the `BaseException` safeguard below.
-                raise
-            except BaseException:
-                # Safeguard: log unexpected errors here,
-                # so a database hiccup does not propagate out of this background task.
-                logger.error("Error during database maintenance loop", exc_info=True)
-                # Exit the loop on error to avoid repeated failures
-                return
-
-
-def _wipe_database(con: sqlite3.Connection):
-    """Remove all tables and indexes from an SQLite database.
-
-    This function is not to be used inside a transaction,
-    because it temporarily disables foreign key constraints.
-    """
-    try:
-        con.execute("PRAGMA foreign_keys = OFF")
-        # Drop all tables
-        rows = list(
-            con.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-            )
-        )
-        for (table,) in rows:
-            con.execute(f"DROP TABLE IF EXISTS '{table}'")
-        # Drop all indexes
-        rows = list(
-            con.execute(
-                "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
-            )
-        )
-        for (index,) in rows:
-            con.execute(f"DROP INDEX IF EXISTS '{index}'")
-    finally:
-        con.execute("PRAGMA foreign_keys = ON")
+        except Exception:
+            # `asyncio.CancelledError` derives from `BaseException`, not from `Exception`,
+            # so cancellation of this background task is not swallowed here.
+            logger.error("Error during database space reclamation", exc_info=True)

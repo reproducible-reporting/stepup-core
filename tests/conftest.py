@@ -80,7 +80,7 @@ async def client(tmpdir) -> AsyncGenerator[SocketAsyncRPCClient, None]:
         os.chmod("plan.py", stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
         reporter = ReporterClient()
         # The DBSession owns the SQLite connection for the lifetime of the director task,
-        # mirroring `with DBSession(GRAPH_DB) as db` in `director.main`.
+        # mirroring `with DBSession.open(GRAPH_DB) as db` in `director.main`.
         with DBSession.open(GRAPH_DB) as db:
             director = asyncio.create_task(
                 serve(

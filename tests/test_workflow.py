@@ -1397,6 +1397,15 @@ async def test_relevant_paths_under_includes_glob_matches(wfp: Workflow):
         assert set(wfp.relevant_paths_under("data/")) == {"data/kept.txt", "data/nomatch.txt"}
 
 
+async def test_relevant_paths_under_directory_with_underscore(wfp: Workflow):
+    """The prefix match must escape LIKE wildcards, so a name with `_` is taken literally."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["a_b/kept.txt", "aXb/other.txt"])
+
+        assert set(wfp.relevant_paths_under("a_b/")) == {"a_b/kept.txt"}
+
+
 async def test_register_glob_rejects_built_match(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")

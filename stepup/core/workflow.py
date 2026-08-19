@@ -31,7 +31,7 @@ from .file import File
 from .hash import FileHash, fmt_digest
 from .nglob import NamedGlob, glob_base_dir, has_any_wildcards
 from .path import dir_range_upper
-from .sqlite3 import escape_like_pattern
+from .sqlite3 import prefix_clause
 from .static_tree import StaticTree
 from .step import RESERVED_ENV_VARS, Step
 from .trellis import Node, Root, Trellis
@@ -1720,8 +1720,8 @@ class Workflow(Trellis):
                     )
                 )
             raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
-        sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"
-        pattern = f"{escape_like_pattern(path)}%"
+        clause, pattern = prefix_clause("node.label", path)
+        sql = f"SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND {clause}"
         if self.db.execute(sql, (pattern,)).fetchone() is not None:
             raise GraphError(
                 f"Static tree is a parent directory of an existing static tree: {path}"
@@ -1735,7 +1735,7 @@ class Workflow(Trellis):
         sql = (
             "SELECT node.i, node.label, node.creator, file.state "
             "FROM node JOIN file ON node.i = file.node "
-            "WHERE NOT node.detached AND node.label LIKE ? ESCAPE '\\' "
+            f"WHERE NOT node.detached AND {clause} "
             "ORDER BY node.label"
         )
         handover = []
@@ -1764,7 +1764,7 @@ class Workflow(Trellis):
         # any other attached node raised.
         sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
-            "WHERE node.detached AND node.label LIKE ? ESCAPE '\\'"
+            f"WHERE node.detached AND {clause}"
         )
         matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
         return self.declare_static_files(st, matching_paths)
@@ -2371,12 +2371,12 @@ class Workflow(Trellis):
         match has no node of its own, so the pattern is the only place it is recorded.
         """
         seen = set()
+        clause, pattern = prefix_clause("node.label", directory)
         sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
             f"WHERE state NOT IN ({FileState.PLANNED.value}, {FileState.VOLATILE.value}) AND "
-            "node.label LIKE ? AND NOT detached"
+            f"{clause} AND NOT detached"
         )
-        pattern = f"{escape_like_pattern(directory)}%"
         for (path,) in self.db.execute(sql, (pattern,)):
             seen.add(path)
             yield path

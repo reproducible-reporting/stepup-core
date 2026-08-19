@@ -46,7 +46,7 @@ from .nglob import NamedGlob
 from .reporter import ReporterClient
 from .rpc import SocketRPCServer, allow_rpc
 from .scheduler import Scheduler
-from .sqlite3 import DBSession
+from .sqlite3 import DBSession, SQLLog
 from .startup import startup_from_db
 from .stepinfo import StepInfo
 from .usage import CgroupMemorySampler, finalize_resource_usage
@@ -183,11 +183,13 @@ def main():
         if args.preload_modules:
             preload.extend(m.strip() for m in args.preload_modules.split(",") if m.strip())
         mp_ctx.set_forkserver_preload(preload)
-    with DBSession.open(
-        GRAPH_DB,
-        path_sqllog=SQLLOG_JSON if args.sqllog else None,
-        path_sqlcsv=SQLLOG_CSV if args.sqllog else None,
-    ) as db:
+    with contextlib.ExitStack() as stack:
+        sqllog = (
+            stack.enter_context(SQLLog(path_queries=SQLLOG_JSON, path_timings=SQLLOG_CSV))
+            if args.sqllog
+            else None
+        )
+        db = stack.enter_context(DBSession.open(GRAPH_DB, sqllog=sqllog))
         returncode = asyncio.run(async_main(args, db, mp_ctx))
     sys.exit(returncode)
 
@@ -658,7 +660,7 @@ async def _run_tasks(
     )
     coroutines = [
         build_loop(handler.builder, handler.watcher, handler.stop_event),
-        handler.db.database_maintenance_loop(handler.stop_event),
+        handler.db.reclaim_loop(handler.stop_event),
     ]
     if memory_sampler is not None:
         coroutines.append(memory_sampler.loop(handler.stop_event))

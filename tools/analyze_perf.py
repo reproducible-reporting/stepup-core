@@ -25,7 +25,7 @@ and `query_i` is the id referenced by rows in `sqllog.csv`.
 `sqllog.csv` has one row per individual `execute()` / `executemany()` call,
 `(transaction_i, execute_i, query_i, start_ns, duration_ns, nrecords)`,
 where `duration_ns` is that single call's wall time and `nrecords` is the number
-of parameter tuples passed to `executemany()`, or -1 for a plain `execute()` call.
+of parameter tuples passed to `executemany()`, or 1 for a plain `execute()` call.
 Per-query mean and median timings are computed from these individual call durations,
 so outlier calls (e.g. one slow `execute()` among many fast ones) remain visible
 even after aggregating by call site.

@@ -43,7 +43,7 @@ UNAVAILABLE_INPUT = unavailable_input_sql("node.i")
 def con():
     """In-memory SQLite connection with trellis + step + file schemas and a root node."""
     c = connect(":memory:")
-    c.executescript(TRELLIS_SCHEMA.format(application_id=0, schema_version=0))
+    c.executescript(TRELLIS_SCHEMA)
     # FILE_SCHEMA must load before STEP_SCHEMA: STEP_SCHEMA's step_file_check_ready_*
     # triggers are declared ON file, which requires the file table to already exist.
     c.executescript(FILE_SCHEMA)
