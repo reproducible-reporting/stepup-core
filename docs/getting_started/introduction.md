@@ -19,7 +19,7 @@ However, StepUp really shines in more complex use cases and when used interactiv
 Once you become familiar with StepUp,
 you'll be able to make workflows that would be difficult to manage with other tools.
 
-## Tutorial source files
+## Tutorial Source Files
 
 Input files for each tutorial are stored in a corresponding subdirectory under
 [`docs/getting_started/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started)
@@ -28,7 +28,7 @@ Each directory contains a script named `main.sh`,
 which simply runs the example in non-interactive mode,
 generating the outputs that are included in the documentation.
 
-## Basic usage
+## Basic Usage
 
 To use StepUp, you need to create a `plan.py` file in the root of your project.
 This file defines the steps and files that make up your workflow.
@@ -49,13 +49,13 @@ The `stepup` command provides several subcommands, of which `build` is the most 
 Run `stepup --help` to see the full list of subcommands and their options.
 Each tool also accepts the `--help` option to see its own options, e.g. `stepup build --help`.
 
-## StepUp architecture
+## StepUp Architecture
 
 The tutorials use terminology defined in the small architecture overview given below.
 This overview summarizes the internals of StepUp, omitting many details for the sake of clarity.
 It provides just enough background to get a basic understanding of its core concepts.
 
-### Workflow (graphs)
+### Workflow (Graphs)
 
 StepUp keeps track of what it needs to do and what it has already done in a workflow data structure.
 This workflow is represented by *two*
@@ -170,7 +170,7 @@ Each type of edge is used to define a graph with its own rules and logic.
 
     ![graph_provenance.svg](dependencies/graph_provenance.svg)
 
-### Software components
+### Software Components
 
 The following diagram illustrates how different components of StepUp interact. Legend:
 
@@ -188,3 +188,27 @@ The following diagram illustrates how different components of StepUp interact. L
 - Green arrows: remote procedure calls to extend the workflow
 
 ![processes](processes.svg)
+
+### Why Two Processes?
+
+The terminal user interface and the director always run together,
+so they could in principle be a single process.
+They are kept apart because they have conflicting responsibilities.
+The interface owns your terminal:
+it draws the progress bar, reads your keystrokes,
+and hands the terminal back to your shell when the build ends.
+The director owns the workflow and never writes to the terminal,
+so its own output goes to `.stepup/director.log` instead
+and can never interleave with what you are reading on screen.
+Because the two are separate processes,
+a director that crashes or gets stuck cannot leave your terminal in an unusable state:
+the interface outlives it, cleans up, and tells you what went wrong.
+
+The separation also keeps interactions and measurements meaningful.
+Drawing on the screen never competes with scheduling steps and hashing files,
+and the resource usage reported at the end of a build covers the director and its steps,
+not the cost of rendering.
+Moreover, the interface controls the director through the same remote procedure calls
+that other subcommands use, such as `stepup shutdown` and `stepup wait`.
+This makes the interface one of several possible clients of a director,
+instead of a layer that every build has to pass through.
