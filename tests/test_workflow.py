@@ -1248,7 +1248,7 @@ async def test_register_glob(wfp: Workflow):
         step.detach()
         assert list(step.nglobs()) == [ng]
         assert list(wfp.nglob_registrations()) == []
-        wfp.clean()
+        wfp.delete_detached()
         assert list(step.nglobs()) == []
         assert list(wfp.nglob_registrations()) == []
 
@@ -1897,7 +1897,7 @@ async def test_directory_usage(wfp: Workflow):
         for path in "sub/bar.txt", "foo.txt":
             wfp.find(File, path).detach()
             assert wfp.dir_queue.empty()
-        wfp.clean()
+        wfp.delete_detached()
         events = []
         while not wfp.dir_queue.empty():
             events.append(wfp.dir_queue.get_nowait())
@@ -1924,7 +1924,7 @@ async def test_to_be_deleted(wfp: Workflow):
         plan.detach()
         assert wfp.to_be_deleted == {}
         assert wfp.find_and_detached(Step, "./plan.py") == (plan, True)
-        wfp.clean()
+        wfp.delete_detached()
         assert wfp.to_be_deleted == {
             "built": built_file_hash,
             "gone": gone_file_hash,
@@ -2114,7 +2114,7 @@ async def test_output_clean_nested(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo egg > s/foo/bar/egg", out_paths=["s/foo/bar/egg"])
         step = wfp.find(Step, "echo egg > s/foo/bar/egg")
-        wfp.clean()
+        wfp.delete_detached()
         f, detached = wfp.find_and_detached(File, "s/foo/bar/egg")
         assert isinstance(f, File)
         assert not detached
@@ -2125,7 +2125,7 @@ async def test_output_clean_nested(wfp: Workflow):
         assert isinstance(f, File)
         assert detached
 
-        wfp.clean()
+        wfp.delete_detached()
         assert wfp.find_and_detached(File, "s/foo/bar/egg") == (None, None)
 
 
@@ -2142,13 +2142,13 @@ async def test_clean_multiple_sources(wfp: Workflow):
         )
         step2 = wfp.find(Step, "prog2 common.txt")
         file.detach()
-        wfp.clean()
+        wfp.delete_detached()
         assert file.is_detached()
         step1.detach()
-        wfp.clean()
+        wfp.delete_detached()
         assert file.is_detached()
         step2.detach()
-        wfp.clean()
+        wfp.delete_detached()
         assert wfp.find_and_detached(File, "common.txt") == (None, None)
 
 
@@ -2329,7 +2329,7 @@ async def test_static_tree_clean(wfp: Workflow):
 
         # Detach the step, manually outdate it, clean and check result
         step.detach()
-        wfp.clean()
+        wfp.delete_detached()
         sr = wfp.find(StaticTree, "static/")
         assert sr.creator().i == plan.i
         assert not step.in_graph()
@@ -2369,7 +2369,7 @@ async def test_clean_cycle_invalidates_hash(wfp: Workflow):
 
         # Detach the sub plan step and clean up. The cycle survives, the rest does not.
         sub.detach()
-        wfp.clean()
+        wfp.delete_detached()
         assert sub.in_graph()
         assert wfp.find(File, "sub/data.txt").in_graph()
         assert not copy.in_graph()
@@ -3399,9 +3399,9 @@ async def test_step_try_clean(wfp: Workflow):
         # Check presence of hash
         assert plan.get_hash() == step_hash
 
-        # Run try_clean (via clean) and verify that plan has been removed.
+        # Run delete_detached() and verify that plan has been removed.
         plan.detach()
-        wfp.clean()
+        wfp.delete_detached()
         assert not plan.in_graph()
 
 
@@ -3429,7 +3429,7 @@ async def test_step_lost_child(wfp: Workflow):
         assert not step.can_recycle(out_paths=["data.txt"])
 
         # The next cleanup removes it.
-        wfp.clean()
+        wfp.delete_detached()
         assert not step.in_graph()
         assert list(wfp.nodes(Step, include_detached=True)) == [plan]
 
@@ -3519,7 +3519,7 @@ async def test_static_tree_lost_child(wfp: Workflow):
         assert wfp.find(File, "data/bar.txt").creator() is None
 
         # The next cleanup removes it.
-        wfp.clean()
+        wfp.delete_detached()
         assert not tree.in_graph()
         assert list(wfp.nodes(StaticTree, include_detached=True)) == []
 
@@ -3923,7 +3923,7 @@ async def test_clean_stepup_root_parents(wfs: Workflow):
     async with wfs.db:
         declare_static(wfs, wfs.root, ["../foo.txt"])
         assert wfs.find(File, "../foo.txt").get_state() == FileState.STATIC
-        wfs.clean()
+        wfs.delete_detached()
         assert wfs.find(File, "../foo.txt").get_state() == FileState.STATIC
 
 
@@ -3993,7 +3993,7 @@ async def test_step_outcome_truncated_on_store(wfp: Workflow):
 
 
 async def test_step_outcome_clean_no_fk_error(wfp: Workflow):
-    """clean() removes the step row (and implicitly its outcome columns)."""
+    """delete_detached() removes the step row (and implicitly its outcome columns)."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
@@ -4001,8 +4001,8 @@ async def test_step_outcome_clean_no_fk_error(wfp: Workflow):
         step.set_outcome(ChildOutcome(0, "data\n", "oops\n"), 0)
         step_i = step.i
         step.detach()
-        wfp.clean()
-        # After clean() deletes the node row, the step no longer exists in the database.
+        wfp.delete_detached()
+        # After delete_detached() deletes the node row, the step no longer exists in the database.
         assert wfp.db.execute("SELECT 1 FROM step WHERE node = ?", (step_i,)).fetchone() is None
 
 
@@ -4093,16 +4093,17 @@ async def test_step_subprocess_reset_for_rerun(wfp: Workflow):
 
 
 async def test_step_subprocess_clean_no_fk_error(wfp: Workflow):
-    """clean() removes recorded subprocesses of a deleted step, without an FK error."""
+    """delete_detached() removes recorded subprocesses of a deleted step, without an FK error."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
         step.add_subprocess("echo hi", ".", None, 0, False, "in", "out", "err")
-        # clean() deletes the node row, and the step_subprocess rows are removed automatically
-        # by the ON DELETE CASCADE foreign key.
+        # delete_detached() deletes the node row,
+        # and the step_subprocess rows are removed automatically by the ON DELETE CASCADE
+        # foreign key.
         step.detach()
-        wfp.clean()
+        wfp.delete_detached()
         query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY rowid"
         rows = wfp.db.execute(query, (step.i,)).fetchall()
         assert rows == []
@@ -4122,7 +4123,7 @@ async def test_clean_cascades_satellite_rows(wfs: Workflow):
     """Cleaning a node deletes all its satellite rows via ON DELETE CASCADE.
 
     No explicit per-table DELETE is issued in `Step.before_delete()` and `File.before_delete()`.
-    The cascade fires when `Trellis.clean()` deletes the node row.
+    The cascade fires when `Trellis.delete_detached()` deletes the node row.
     """
     async with wfs.db:
         # Foreign-key enforcement must be active on the connection or the cascades never fire.
@@ -4157,7 +4158,7 @@ async def test_clean_cascades_satellite_rows(wfs: Workflow):
 
         # Detach and clean: the step and its output file node are removed, cascading their rows.
         step.detach()
-        wfs.clean()
+        wfs.delete_detached()
 
         assert wfs.db.execute("SELECT count(*) FROM node WHERE i = ?", (step_i,)).fetchone()[0] == 0
         assert wfs.db.execute("SELECT count(*) FROM node WHERE i = ?", (out_i,)).fetchone()[0] == 0
@@ -4272,7 +4273,7 @@ async def test_define_step_recycle_target_volatile_output():
 
     `Step.reattach()` reattaches a detached VOLATILE product row without going through
     `_declare_file`, so this needs its own guard (checked directly on `vol_paths`,
-    before `Trellis.recycle()` is attempted). To exercise it, the step is first declared
+    before `Trellis.try_recycle()` is attempted). To exercise it, the step is first declared
     and detached on a *targetless* workflow (simulating a previous director process),
     then redeclared identically on a second `Workflow` instance sharing the same
     database, this time constructed with a matching target.

@@ -27,5 +27,5 @@ class StaticTree(Node):
 
         A static tree only declares files static;
         it is never skipped and stores nothing that a lost product would invalidate.
-        It is removed by the next `Trellis.clean`, unless a new creator recycles it first.
+        It is removed by the next `Trellis.delete_detached`, unless a new creator recycles it first.
         """

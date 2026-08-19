@@ -210,10 +210,10 @@ class Builder:
             await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean)")
         else:
             async with self.db:
-                self.workflow.clean()
+                self.workflow.delete_detached()
             await remove_outdated_outputs(self.db, self.workflow, self.reporter)
         # Flush the step durations and refresh the derived tail times,
-        # now that clean() has settled the graph.
+        # now that delete_detached() has settled the graph.
         await self.scheduler.build_completed()
         # Finalize the reporter status.
         await self._report_counts()

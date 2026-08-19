@@ -130,7 +130,7 @@ class Foo(Node):
         self.db.execute("INSERT INTO log VALUES(?)", (f"clean {self.key()}",))
 
     def can_recycle(self, value: int | None = None, **kwargs) -> bool:
-        """Decide whether this detached node may be fully recycled by `Trellis.recycle`."""
+        """Decide whether this detached node may be fully recycled by `Trellis.try_recycle`."""
         return value == self.get_value()
 
     def after_recycle(self, **kwargs):
@@ -218,7 +218,7 @@ async def test_singleton(lt):
         foo = lt.create(Foo, lt.root, "one", value=-1)
         assert foo.get_value() == -1
         foo.detach()
-        lt.clean()
+        lt.delete_detached()
         rows = lt.db.execute("SELECT msg FROM log").fetchall()
         msgs = [row[0] for row in rows]
         assert msgs == [
@@ -403,7 +403,7 @@ async def test_chain(lt):
         foo0.detach()
         foo2.reattach(foo1)
         assert lt.format_str() == CHAIN2_FORMAT_STR
-        lt.clean()
+        lt.delete_detached()
         rows = lt.db.execute("SELECT msg FROM log").fetchall()
         msgs = [row[0] for row in rows]
         assert msgs == [
@@ -456,11 +456,11 @@ async def test_clean_sinks(lt):
         foo3.add_source(foo2)
         foo0.detach()
         assert lt.format_str() == CLEAN_SINK1_FORMAT_STR
-        lt.clean()
+        lt.delete_detached()
         assert list(lt.nodes(Foo, include_detached=True)) == [foo0, foo1, foo2, foo3]
         assert lt.format_str() == CLEAN_SINK1_FORMAT_STR
         foo3.detach()
-        lt.clean()
+        lt.delete_detached()
         assert len(list(lt.nodes(Foo, include_detached=True))) == 0
         assert lt.format_str() == FROM_SCRATCH_FORMAT_STR
 
@@ -496,7 +496,7 @@ async def test_clean_nested(lt):
         foo1.add_source(foo0)
         foo2.add_source(foo1)
         foo3.add_source(foo2)
-        lt.clean()
+        lt.delete_detached()
         assert lt.find(Foo, "3") == foo3
         assert lt.find_and_detached(Foo, "3") == (foo3, False)
         assert lt.find(Foo, "0") == foo0
@@ -506,7 +506,7 @@ async def test_clean_nested(lt):
         assert lt.find_and_detached(Foo, "3") == (foo3, True)
         assert lt.find(Foo, "0") == foo0
         assert lt.find_and_detached(Foo, "0") == (foo0, True)
-        lt.clean()
+        lt.delete_detached()
         assert lt.find(Foo, "3") is None
         assert lt.find_and_detached(Foo, "3") == (None, None)
         assert lt.find(Foo, "0") is None
@@ -608,7 +608,7 @@ async def test_cyclic3(lt):
             foo0.add_source(foo2)
 
 
-async def test_check_no_cycle_batch(lt):
+async def test_check_sources_acyclic(lt):
     async with lt.db:
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         foo1 = lt.create(Foo, lt.root, "1", value=1)
@@ -620,10 +620,10 @@ async def test_check_no_cycle_batch(lt):
         with pytest.raises(CyclicError):
             # foo2 in the batch would close a cycle; the whole batch must be rejected
             # before any edge is inserted.
-            foo0.check_no_cycle_batch([foo3.i, foo2.i])
+            foo0.check_sources_acyclic([foo3.i, foo2.i])
         assert list(foo0.sources()) == []
         # An all-acyclic batch does not raise.
-        foo0.check_no_cycle_batch([foo3.i])
+        foo0.check_sources_acyclic([foo3.i])
 
 
 async def test_add_source_skip_cycle_check(lt):
@@ -792,7 +792,7 @@ async def test_relocate_nested_detached(lt):
         print(lt.format_str())
         assert lt.format_str() == RELOCATE_NESTED_FORMAT_STR
 
-        lt.clean()
+        lt.delete_detached()
         rows = lt.db.execute("SELECT msg FROM log").fetchall()
         msgs = [row[0] for row in rows]
         assert msgs == [
@@ -822,21 +822,21 @@ async def test_trellis_recycle(lt):
         foo1.add_source(foo3)
 
         # No detached node with this label.
-        assert lt.recycle(Foo, lt.root, "9", value=9) is None
+        assert lt.try_recycle(Foo, lt.root, "9", value=9) is None
         # The node exists but is not detached.
-        assert lt.recycle(Foo, lt.root, "1", value=1) is None
+        assert lt.try_recycle(Foo, lt.root, "1", value=1) is None
 
         foo1.detach()
         assert foo1.is_detached()
         assert foo2.is_detached()
 
         # The node is detached but the arguments are incompatible: can_recycle refuses.
-        assert lt.recycle(Foo, lt.root, "1", value=42) is None
+        assert lt.try_recycle(Foo, lt.root, "1", value=42) is None
         assert foo1.is_detached()
 
         # Compatible arguments: the node is fully recycled with a new creator,
         # keeping its sources, products and satellite data.
-        assert lt.recycle(Foo, lt.root, "1", value=1) == foo1
+        assert lt.try_recycle(Foo, lt.root, "1", value=1) == foo1
         assert not foo1.is_detached()
         assert not foo2.is_detached()
         assert foo1.creator() == lt.root

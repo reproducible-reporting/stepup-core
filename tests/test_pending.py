@@ -276,7 +276,7 @@ async def test_dynamic_cycle(wfp: Workflow):
     """Reproduce `tests/examples/cyclic_dynamic`'s shape.
 
     A literal 2-step mutual-output cycle (`work1` depends on `work2`'s own output and vice
-    versa) is rejected outright by `check_no_cycle_batch` (`CyclicError`): the dependency
+    versa) is rejected outright by `check_sources_acyclic` (`CyclicError`): the dependency
     graph itself must stay a DAG. The example instead has each step create a *child*
     step that produces the file the other depends on -- the creator edge to that child is
     provenance, not a `dependency` edge, so the cycle check (which only walks

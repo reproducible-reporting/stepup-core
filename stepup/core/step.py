@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from collections.abc import Collection, Iterator
-from typing import Literal, Self
+from typing import Literal
 
 import attrs
 from path import Path
@@ -779,7 +779,7 @@ class Step(Node):
     def after_lost_product(self):
         """Invalidate the step hash because a product of this detached step was lost.
 
-        A product is lost when `Trellis.clean` deletes it
+        A product is lost when `Trellis.delete_detached` deletes it
         or when another creator takes it over.
         The step itself stays recyclable, but its stored hash no longer describes
         a complete run: skipping the step would leave the lost products unbuilt.
@@ -796,7 +796,7 @@ class Step(Node):
         vol_paths: Collection[str] = (),
         **kwargs,
     ) -> bool:
-        """Decide whether this detached step may be fully recycled by `Trellis.recycle`.
+        """Decide whether this detached step may be fully recycled by `Trellis.try_recycle`.
 
         A detached step can only be recycled when the initial (non-dynamic) inputs,
         environment variables and (volatile) outputs of the new declaration
@@ -855,7 +855,7 @@ class Step(Node):
 
     def _dependency_keys(
         self,
-        node_type: type[NodeType] = Self,
+        node_type: type[NodeType] | None = None,
         *,
         upstream: bool,
     ) -> Iterator[str]:
@@ -869,7 +869,7 @@ class Step(Node):
             "FROM node JOIN dependency ON node.i = "
         ) + ("source WHERE sink = ?" if upstream else "sink WHERE source = ?")
         data = [self.i]
-        if node_type is not Self:
+        if node_type is not None:
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
@@ -1207,9 +1207,7 @@ class Step(Node):
             )
         )
         self.db.executemany("DELETE FROM dynamic_dep WHERE i = ?", ((row[0],) for row in rows))
-        self.del_sources(
-            [self.graph.node_classes[kind](self.graph, i, label) for _, i, label, kind in rows]
-        )
+        self.del_sources([self.graph.node_from_row(i, kind, label) for _, i, label, kind in rows])
 
         # Drop dynamic environment variables
         self.db.execute("DELETE FROM env_var WHERE node = ? AND dynamic = 1", (self.i,))
@@ -1230,7 +1228,7 @@ class Step(Node):
         ideps_sink = [(row[0],) for row in records_sink]
         self.db.executemany("DELETE FROM dynamic_dep WHERE i = ?", ideps_sink)
         for _, i, label, kind in records_sink:
-            node = self.graph.node_classes[kind](self.graph, i, label)
+            node = self.graph.node_from_row(i, kind, label)
             node.del_sources([self])
             node.detach()
 

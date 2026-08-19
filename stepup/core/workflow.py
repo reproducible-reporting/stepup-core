@@ -353,7 +353,7 @@ class Workflow(Trellis):
 
     Maps a path to its file hash. This dict contains BUILT/OUTDATED file nodes
     (with their file hash) and VOLATILE file nodes (hash always `None`)
-    that were removed from the graph by the `Workflow.clean()` method.
+    that were removed from the graph by the `Workflow.delete_detached()` method.
     """
 
     #
@@ -425,11 +425,12 @@ class Workflow(Trellis):
         for step in to_mark_pending:
             self.mark_step_pending(step)
 
-    def clean(self):
+    def delete_detached(self):
         """Delete all detached nodes that can be removed safely.
 
         This includes a cleanup of static tree files that are no longer used,
-        after which the regular `Trellis.clean()` is called to remove any other detached nodes.
+        after which the regular `Trellis.delete_detached()` is called
+        to remove any other detached nodes.
         """
         # Get rid of static tree files that are no longer used.
         for st in self.nodes(StaticTree):
@@ -437,7 +438,7 @@ class Workflow(Trellis):
             for file in files:
                 if not any(file.sinks()):
                     file.detach()
-        super().clean()
+        super().delete_detached()
 
     def initialize_boot(self) -> bool:
         """Initialize the (new) boot script.
@@ -1056,7 +1057,7 @@ class Workflow(Trellis):
         -----
         Since `step` is the sink of every new edge in this batch,
         the cyclic-dependency check is performed once for the whole batch
-        (via `Node.check_no_cycle_batch`) instead of once per path.
+        (via `Node.check_sources_acyclic`) instead of once per path.
         Note that if `paths` contains a duplicate, it is caught later than before:
         as a `GraphError("Relation already exists")` from `add_source` instead of
         `GraphError("Supplying file already exists")`.
@@ -1065,7 +1066,7 @@ class Workflow(Trellis):
         resolved = [self._resolve_supply_file(step, path, require_new_edge) for path in paths]
         new_file_is = [file.i for file, _, new_relation in resolved if new_relation]
         if len(new_file_is) > 0:
-            step.check_no_cycle_batch(new_file_is)
+            step.check_sources_acyclic(new_file_is)
         return [
             SupplyInfo(
                 file,
@@ -1429,7 +1430,7 @@ class Workflow(Trellis):
         # If a compatible detached step is found, fully recycle it, instead of creating a new one.
         # This restores the step and its products (recursively), preserving its edges,
         # state and stored hash.
-        old_step = self.recycle(
+        old_step = self.try_recycle(
             Step,
             creator,
             command,

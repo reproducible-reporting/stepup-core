@@ -192,7 +192,7 @@ async def test_static_registers_tree_before_file(client: AsyncRPCClient, path_tm
     before files within a single call, so the tree is always registered first and
     hands the file over to itself, regardless of argument order.
 
-    A consuming step is added for `sub/data.txt` so it has a sink: `Workflow.clean()`
+    A consuming step is added for `sub/data.txt` so it has a sink: `Workflow.delete_detached()`
     detaches an unused static-tree file at the end of every build (see
     `test_static_tree_clean` in `test_workflow.py`), which would otherwise sweep away
     the very node this test means to inspect, hand-over or not.
