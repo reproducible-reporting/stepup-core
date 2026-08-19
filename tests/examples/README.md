@@ -49,8 +49,8 @@ When writing new examples, the following conventions ensure that they are proper
   # Add any other expected outputs here
   ```
 
-- All scripts that StepUp will execute as steps — including `main.sh`, `plan.py`, and any
-  worker scripts like `work.py` — must have the executable bit set.
+- All scripts that StepUp will execute as steps must have the executable bit set,
+  including `main.sh`, `plan.py`, and any worker scripts like `work.py`.
   Without it, the test runner fails immediately with "Permission denied".
   Run `chmod +x` on each such file after creating it.
 
@@ -71,17 +71,18 @@ When writing new examples, the following conventions ensure that they are proper
 
 - The following `stepup` subcommands are used to interact with the running director
   and to verify the workflow state at well-defined points in time:
-    - `stepup wait` — waits until the builder has finished all pending steps.
+    - `stepup wait` waits until the builder has finished all pending steps.
       `stepup wait -u <file>` / `--update <file>` waits for an update (or creation)
       of `<file>` instead, and `stepup wait -d <file>` / `--delete <file>` waits
       for the deletion of `<file>` instead.
-    - `stepup rebuild` — signals the director to start another build phase (used after file changes).
-    - `stepup graph <prefix>` — writes the current workflow graph to `<prefix>.txt`,
+    - `stepup rebuild` signals the director to start another build phase
+      (used after file changes).
+    - `stepup graph <prefix>` writes the current workflow graph to `<prefix>.txt`,
       which is compared against the corresponding `expected_<prefix>.txt`.
       `stepup wait` or file-update commands are called first to reach a stable state.
-    - `stepup join` — waits for the director to shut down and collects its exit code.
-    - `stepup shutdown` — asks the director to shut down immediately.
-    - `stepup clean ...` — removes StepUp-managed outputs; its output is captured in
+    - `stepup join` waits for the director to shut down and collects its exit code.
+    - `stepup shutdown` asks the director to shut down immediately.
+    - `stepup clean ...` removes StepUp-managed outputs; its output is captured in
       `current_cleanup.txt` and compared against `expected_cleanup.txt`.
 
 - **Simulating file changes between phases** without modifying tracked source files:
@@ -96,7 +97,7 @@ When writing new examples, the following conventions ensure that they are proper
   stepup wait
   ...
 
-  cp plan2.py plan.py        # second phase — triggers a rerun
+  cp plan2.py plan.py        # second phase, triggers a rerun
   stepup wait -u plan.py
   stepup rebuild
   stepup wait
@@ -156,8 +157,8 @@ When writing new examples, the following conventions ensure that they are proper
 - The **"Standard error" page is not compared verbatim**: the test builder
   (`stepup/core/pytest.py`) replaces its body with `(stripped)` in the captured stdout before
   comparison, because stderr varies across OS and Python versions. To assert specific stderr
-  (or stdout) text, grep `.stepup/success.log` from within `main.sh` — it keeps the full,
-  un-stripped reporter output, including the standard-error page.
+  (or stdout) text, grep `.stepup/success.log` from within `main.sh`.
+  It keeps the full, un-stripped reporter output, including the standard-error page.
 
 The test builder in `tests/test_examples.py` copies each example to a temporary directory,
 applies the `sed` rewrite to `main.sh`, runs it, and compares all `current_*` files against

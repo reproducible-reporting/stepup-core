@@ -3611,8 +3611,8 @@ async def test_static_file_then_static_tree_hands_over(wfp: Workflow):
     """The file-first order hands the file over to the tree, for the same creator.
 
     Four things must survive the hand-over: the new creator, the consuming step's
-    dependency edge, the stored hash, and — the one a `Trellis.create()`-based
-    implementation would get wrong — the declaring step's own hash, since the tree
+    dependency edge, the stored hash, and the declaring step's own hash,
+    which is the one a `Trellis.create()`-based implementation would get wrong, since the tree
     registration must not look like a recycle of the file's previous creator
     (see the "bypassing `Trellis.create()`" note at `register_static_tree`).
     """

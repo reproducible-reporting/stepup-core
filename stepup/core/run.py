@@ -210,10 +210,11 @@ def _signal_process_group(pid: int, sig: int) -> None:
     It also detaches the step from the terminal's session, so a Ctrl-C reaches only the
     director, which is then the only thing that decides when to stop a running step.
     The same holds for a Ctrl-Z: the director suspends a step with `SIGSTOP` rather than
-    `SIGTSTP` (see `Worker.suspend`), because every step's process group is orphaned by
-    construction — its leader's parent (the director) lives in another session — and the
-    kernel discards `SIGTSTP` for an orphaned process group whose members have the default
-    disposition.
+    `SIGTSTP` (see `Worker.suspend`).
+    Every step's process group is orphaned by construction,
+    because its leader's parent (the director) lives in another session,
+    and the kernel discards `SIGTSTP` for an orphaned process group whose members have the
+    default disposition.
 
     The fallback to signalling `pid` directly covers the short window in which a forkserver
     child has been forked but has not called `os.setsid` yet, so its group does not exist yet.

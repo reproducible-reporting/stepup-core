@@ -1,6 +1,6 @@
 A variant of the defer_cap example where the step catches and swallows
 amend()'s InputNotFoundError instead of letting it propagate, violating the
-documented contract ("let this exception propagate — do not catch it"), and
+documented contract ("let this exception propagate; do not catch it"), and
 exits 0 anyway.
 
 Regression test for the diagnostic page that must still explain why a

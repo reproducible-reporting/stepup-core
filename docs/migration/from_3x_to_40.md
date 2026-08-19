@@ -75,7 +75,7 @@ because the command is a plain executable with arguments and does not rely on sh
 # StepUp 3
 runsh("./process.sh input.txt output.txt", inp=["process.sh", "input.txt"], out="output.txt")
 
-# StepUp 4 — no shell=True needed for plain commands
+# StepUp 4: no shell=True needed for plain commands
 run("./process.sh input.txt output.txt", inp="input.txt", out="output.txt")
 ```
 
@@ -87,7 +87,7 @@ such as pipes, redirections, globbing, or variable expansion:
 # StepUp 3
 runsh("grep -c foo input.txt > count.txt", inp="input.txt", out="count.txt")
 
-# StepUp 4 — shell=True required for redirection
+# StepUp 4: shell=True required for redirection
 run("grep -c foo input.txt > count.txt", shell=True, inp="input.txt", out="count.txt")
 ```
 
@@ -379,7 +379,8 @@ The advantages of the new `plan()` function are:
 
 - The `pool()` function has been removed, and pools can no longer be defined in `plan.py`.
   Instead, you can declare the resources available on the host via an environment variable,
-  e.g. `STEPUP_RESOURCES="gpu:2,cpu:16"` to indicate that the host has two GPUs and 16 CPU cores.
+  e.g. `STEPUP_BUILD_RESOURCES="gpu:2,cpu:16"`
+  to indicate that the host has two GPUs and 16 CPU cores.
   When defining steps, you can then specify the required resources, e.g., `resources="gpu:1,cpu:4"`,
   and StepUp will ensure that the available resources are not over-committed.
   You can override the available resources with the
@@ -422,10 +423,14 @@ The following environment variables have been renamed to have a `STEPUP_BUILD_` 
 | `STEPUP_NUM_WORKERS` | `STEPUP_BUILD_JOBS` |
 | `STEPUP_PERF` | `STEPUP_BUILD_PERF` |
 | `STEPUP_PROGRESS` | `STEPUP_BUILD_PROGRESS` |
-| `STEPUP_SHOW_PERF` | `STEPUP_BUILD_SHOW_PERF` |
 | `STEPUP_WATCH` | `STEPUP_BUILD_WATCH` |
 | `STEPUP_WATCH_FIRST` | `STEPUP_BUILD_WATCH_FIRST` |
 | `STEPUP_YAPPI` | `STEPUP_BUILD_YAPPI` |
+
+The variable `STEPUP_SHOW_PERF` has no counterpart in StepUp 4,
+because the `--show-perf` option it configured was removed.
+The resource usage of each step is stored in the workflow database
+and can be inspected with `stepup browse`.
 
 ## Return Codes Have Been Renumbered
 
@@ -437,12 +442,12 @@ and the "runnable" flag was dropped because nothing ever set it.
 | Meaning | StepUp 3 | StepUp 4 |
 | --- | --- | --- |
 | Internal error (Python exception). | `1` | `1` |
-| Build aborted by Ctrl-C or `SIGTERM`. | — | `2` |
+| Build aborted by Ctrl-C or `SIGTERM`. | *new* | `2` |
 | At least one step failed. | `2` | `4` |
-| The build reported a warning (other than the ones below). | — | `8` |
+| The build reported a warning (other than the ones below). | *new* | `8` |
 | At least one (non-optional) step remained pending. | `4` | `16` |
 | At least one step was still runnable. | `8` | *removed* |
-| The scheduler was draining. | — | `32` |
+| The scheduler was draining. | *new* | `32` |
 
 This is a silent change for scripts:
 a StepUp 3 test like `[ $(($? & 2)) -gt 0 ]` still runs under StepUp 4,
@@ -486,7 +491,7 @@ The translation is mechanical:
 In StepUp 3, a single-case script returned its planning data from `info()`:
 
 ```python
-# StepUp 3 — generate.py
+# StepUp 3: generate.py
 from stepup.core.script import driver
 
 
@@ -503,7 +508,7 @@ if __name__ == "__main__":
 ```
 
 ```python
-# StepUp 3 — plan.py
+# StepUp 3: plan.py
 from stepup.core.api import script, static
 
 static("generate.py", "config.json")
@@ -513,7 +518,7 @@ script("generate.py")
 In StepUp 4, the `info()` function becomes a `plan()` function that registers the run step:
 
 ```python
-# StepUp 4 — generate.py
+# StepUp 4: generate.py
 from stepup.core.api import call
 from stepup.core.call import driver
 
@@ -531,7 +536,7 @@ if __name__ == "__main__":
 ```
 
 ```python
-# StepUp 4 — plan.py
+# StepUp 4: plan.py
 from stepup.core.api import call, static
 
 static("generate.py", "config.json")
@@ -544,7 +549,7 @@ In StepUp 3, running the same script for several cases required the `cases()` ge
 a `CASE_FMT` template, and a `case_info()` function:
 
 ```python
-# StepUp 3 — plot.py
+# StepUp 3: plot.py
 from stepup.core.script import driver
 
 
@@ -580,7 +585,7 @@ so there is no longer any `CASE_FMT`/[`parse`](https://github.com/r1chardj0n3s/p
 string round-trip to keep consistent:
 
 ```python
-# StepUp 4 — plot.py
+# StepUp 4: plot.py
 from stepup.core.api import call
 from stepup.core.call import driver
 

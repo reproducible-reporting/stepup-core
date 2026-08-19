@@ -1035,13 +1035,13 @@ def test_runnable_step_with_no_inputs(con):
 
 
 def test_running_step_not_runnable(con):
-    """A RUNNING step is excluded — only PENDING steps are candidates."""
+    """A RUNNING step is excluded, because only PENDING steps are candidates."""
     _insert_step(con, 2, 1, StepState.RUNNING, safe=True, implied_need=Need.DEFAULT)
     assert _get_runnable_ids(con) == []
 
 
 def test_checking_step_not_runnable(con):
-    """A CHECKING step is excluded — only PENDING steps are candidates."""
+    """A CHECKING step is excluded, because only PENDING steps are candidates."""
     _insert_step(con, 2, 1, StepState.CHECKING, safe=True, implied_need=Need.DEFAULT)
     assert _get_runnable_ids(con) == []
 
@@ -1451,9 +1451,9 @@ def test_select_inputs_only_returns_inputs_for_queried_sink(con):
 # directly against a known sink step.
 #
 # The three blocking branches are:
-#   VOLATILE      – any dep type, any detach state
-#   Case 1        – dynamic AND NOT detached AND state IN (PLANNED, OUTDATED)
-#   Case 2        – initial (not dynamic) AND (detached OR state not in {BUILT, CONFIRMED})
+#   VOLATILE      : any dep type, any detach state
+#   Case 1        : dynamic AND NOT detached AND state IN (PLANNED, OUTDATED)
+#   Case 2        : initial (not dynamic) AND (detached OR state not in {BUILT, CONFIRMED})
 # -----------------------------------------------------------------------
 
 
@@ -1737,14 +1737,14 @@ def test_runjob_stays_gated_by_hold_despite_checkable_sibling(con):
 
 
 def test_running_step_not_checkable(con):
-    """A RUNNING step is excluded — only PENDING steps are candidates."""
+    """A RUNNING step is excluded, because only PENDING steps are candidates."""
     _insert_step(con, 2, 1, StepState.RUNNING, safe=True, implied_need=Need.DEFAULT)
     _insert_step_hash(con, 2)
     assert _get_checkable_ids(con) == []
 
 
 def test_checking_step_not_checkable(con):
-    """A CHECKING step is excluded — only PENDING steps are candidates."""
+    """A CHECKING step is excluded, because only PENDING steps are candidates."""
     _insert_step(con, 2, 1, StepState.CHECKING, safe=True, implied_need=Need.DEFAULT)
     _insert_step_hash(con, 2)
     assert _get_checkable_ids(con) == []
@@ -1771,7 +1771,7 @@ def test_checkable_step_with_ready_initial_and_unready_dynamic_input(con):
     # Ready initial input
     _insert_input_file(con, 3, 1, FileState.CONFIRMED)
     _add_dep(con, 3, 2)
-    # Unready dynamic input (MISSING — case 1 of UNAVAILABLE_INPUT blocks but not INITIAL)
+    # Unready dynamic input (MISSING, case 1 of UNAVAILABLE_INPUT blocks but not INITIAL)
     _insert_input_file(con, 4, 1, FileState.MISSING)
     dep_id = _add_dep_returning_id(con, 4, 2)
     _mark_dep_dynamic(con, dep_id)

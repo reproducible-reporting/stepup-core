@@ -179,9 +179,9 @@ while "Step" reflects how StepUp defines operations as individual *steps*.
 Many build and workflow tools overlap with StepUp, so whether it fits depends on what you need.
 StepUp sits between the two categories, and is a good fit if you want either:
 
-- a **build tool** with features more typical of workflow tools —
+- a **build tool** with features more typical of workflow tools, such as
   dynamic workflows, advanced scheduling, file hashing, rich metadata, or automatic cleanup; or
-- a **workflow tool** with features more typical of build tools —
+- a **workflow tool** with features more typical of build tools, such as
   complex dependencies, pattern matching, or incremental building.
 
 A few use cases are out of scope by design:

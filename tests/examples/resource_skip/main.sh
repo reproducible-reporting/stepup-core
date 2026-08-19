@@ -31,7 +31,7 @@ echo "content" > input.txt
 
 # Second run: no resource available. The step is PENDING with a stored hash
 # whose inp_digest matches the current input (both "content"). It should be
-# SKIPPED via the CHECKING state — no resource slot is needed for the hash check.
+# SKIPPED via the CHECKING state, since no resource slot is needed for the hash check.
 unset STEPUP_BUILD_RESOURCES
 rm -f .stepup/director.log .stepup/success.log
 sb -j 1 -w & # > current_stdout2.txt &

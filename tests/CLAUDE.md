@@ -23,11 +23,11 @@ unless it can only ever apply to StepUp Core.
 each with `plan.py`, `main.sh`, and `expected_stdout*.txt` / `expected_graph*.txt`.
 These are run by `tests/test_examples.py`.
 
-The conventions for **writing** an example — the `main.sh` boilerplate, the `& #` redirect
-trick, the executable-bit requirement, and how `expected_*` files are regenerated
-(which needs empty placeholder files to exist first, or nothing is written) —
-live in `tests/examples/README.md`
-and are loaded automatically via `tests/examples/CLAUDE.md` when editing an example.
+The conventions for **writing** an example live in `tests/examples/README.md`:
+the `main.sh` boilerplate, the `& #` redirect trick, the executable-bit requirement,
+and how `expected_*` files are regenerated
+(which needs empty placeholder files to exist first, or nothing is written).
+They are loaded automatically via `tests/examples/CLAUDE.md` when editing an example.
 Keep that README the single source of truth: do not restate its rules here.
 
 What belongs here instead, because it concerns `tests/test_examples.py` itself:

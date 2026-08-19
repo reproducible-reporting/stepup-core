@@ -117,8 +117,8 @@ The nodes of the graph can be instances of the following two main classes:
       They are only registered so that they can be removed when appropriate.
       This role has a single state of the same name, `VOLATILE`.
 
-    Finally, a file that a step uses as an input but that nothing declares
-    — neither a static file nor the output of a step — has no role
+    Finally, a file that a step uses as an input but that nothing declares,
+    neither as a static file nor as the output of a step, has no role
     and is in the `UNDECLARED` state.
     It may exist on disk, but StepUp does not know where it came from,
     so the step that needs it cannot run.

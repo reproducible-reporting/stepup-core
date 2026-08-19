@@ -21,19 +21,19 @@ in cases where full parallelization would be counterproductive:
 
 3. Some software licenses may limit the number of instances running in parallel.
 
-Available resources are declared via the `STEPUP_RESOURCES` environment variable
+Available resources are declared via the `STEPUP_BUILD_RESOURCES` environment variable
 or the `--resources` CLI argument (CLI values take precedence).
 Both accept a comma-separated list of `name:quantity` pairs,
-e.g. `STEPUP_RESOURCES="cpu:4,gpu:1,memgb:16"`.
+e.g. `STEPUP_BUILD_RESOURCES="cpu:4,gpu:1,memgb:16"`.
 
 Steps declare which resources they need with the `resources` keyword argument,
 which accepts either a dict (e.g. `{"gpu": 1}`) or a shorthand string (e.g. `"gpu:1"` or `"gpu"`).
-Resources not listed in `STEPUP_RESOURCES` or `--resources` are treated as unavailable,
+Resources not listed in `STEPUP_BUILD_RESOURCES` or `--resources` are treated as unavailable,
 so any step requiring them will never run.
 Requesting non-positive quantity of a resource (e.g. `resources={"gpu": 0}`)
 is not allowed and will raise an error,
-but one can specify a resource with zero quantity in `STEPUP_RESOURCES`
-to make it unavailable (e.g. `STEPUP_RESOURCES="gpu:0"`).
+but one can specify a resource with zero quantity in `STEPUP_BUILD_RESOURCES`
+to make it unavailable (e.g. `STEPUP_BUILD_RESOURCES="gpu:0"`).
 More details can be found in the [`step()`][stepup.core.api.step] API documentation.
 
 ## Example
@@ -57,7 +57,7 @@ once both A (which holds 1 CPU) and B (which holds 1 GPU) have finished.
 Set the environment variable and run StepUp with four parallel jobs:
 
 ```bash
-export STEPUP_RESOURCES="cpu:2,gpu:1"
+export STEPUP_BUILD_RESOURCES="cpu:2,gpu:1"
 chmod +x plan.py
 sb -j 4
 ```
@@ -78,10 +78,10 @@ because it needs 2 CPUs and 1 GPU at the same time.
   Skipping steps requires hash computations, which are done by dedicated hashing threads
   and are never subject to resource restrictions.
 
-- Change `STEPUP_RESOURCES` to `"cpu:4,gpu:2"` and verify that all three steps
+- Change `STEPUP_BUILD_RESOURCES` to `"cpu:4,gpu:2"` and verify that all three steps
   can now run in parallel.
   When you try this, StepUp will continue skipping steps.
   To forcibly re-execute steps, remove the file `.stepup/graph.db` and restart StepUp.
 
-- Remove a resource from `STEPUP_RESOURCES` (e.g. set it to `"cpu:2"`) and observe
+- Remove a resource from `STEPUP_BUILD_RESOURCES` (e.g. set it to `"cpu:2"`) and observe
   that steps requiring the missing resource are never started and remain pending.

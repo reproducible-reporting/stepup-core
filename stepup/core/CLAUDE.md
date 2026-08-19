@@ -16,8 +16,8 @@ StepUp runs as two process types:
 - **Director** (`director.py`):
   An asyncio process that owns the workflow graph and SQLite database.
   It exposes an RPC server over a Unix socket, whose path is handed to it by the TUI
-  (a per-run temp directory, e.g. `tempfile.TemporaryDirectory(prefix="stepup-")` — not under
-  `.stepup/`).
+  (a per-run temp directory, e.g. `tempfile.TemporaryDirectory(prefix="stepup-")`,
+  not under `.stepup/`).
   Manages `Builder`, `Watcher`, and `Scheduler`.
   Steps run *inside* the director's event loop as asyncio tasks.
 - **Executor** (`executor.py`):
@@ -29,7 +29,7 @@ StepUp runs as two process types:
   Launching the step's command and hashing its files are delegated to `run.py` and
   `hash.py` respectively (see below).
 - **Hashing** (`hash.py`):
-  File/step hashing — the only blocking work — runs in a dedicated `ThreadWorker`,
+  File/step hashing, which is the only blocking work, runs in a dedicated `ThreadWorker`,
   one thread per hash computation inside the director process, see `run.py`.
   The chunked digest loop releases the GIL and checks a cancel event between 256 KiB chunks,
   so hashes are concurrent and promptly interruptible.
@@ -37,15 +37,15 @@ StepUp runs as two process types:
   what actually runs inside a `ThreadWorker`; `Executor` wraps them via `_run_work_thread`.
 - **TUI** (`tui.py`):
   Spawns the director as a subprocess and connects to its RPC socket as a client
-  (e.g. to forward keyboard commands). It also serves the reporter RPC socket itself —
-  the director connects to *that* as a client to report progress.
+  (e.g. to forward keyboard commands). It also serves the reporter RPC socket itself,
+  to which the director connects as a client to report progress.
   Renders progress to the terminal.
 
 The entry point `stepup build` (in `tui.py`) is what users run.
 It spawns the director and connects to it.
 (`stepup boot` still exists as a deprecated alias of `stepup build`.)
 
-Naming gotcha — two similar flags with different meanings:
+Naming gotcha, two similar flags with different meanings:
 
 - `keep_going` (CLI `-k` / `--keep-going`, env `STEPUP_BUILD_KEEP_GOING`):
   keep building unrelated steps after a step has failed.
@@ -194,14 +194,14 @@ which step first referenced them, so its identity is order-independent by constr
 
 The schema version is `Trellis.schema_version` (in `trellis.py`), written to the database via
 `PRAGMA user_version`. On a version mismatch, the database is **wiped and recreated** from
-scratch (`DBSession._wipe_database`) — there is no `ALTER TABLE` migration path.
+scratch (`DBSession._wipe_database`), because there is no `ALTER TABLE` migration path.
 
 Note that `DBSession.apply_schema()` re-executes the full schema (`CREATE TABLE IF NOT EXISTS`,
 `CREATE INDEX IF NOT EXISTS`, ...) via `executescript` on **every** database open, regardless of
 whether `user_version` matched. A purely additive change (e.g. a new index) is therefore applied
-lazily even to a database whose `schema_version` didn't change — bumping the version is a
-documentation/consistency convention for this project, not strictly required for such a change
-to take effect.
+lazily even to a database whose `schema_version` didn't change.
+Bumping the version is a documentation/consistency convention for this project,
+not strictly required for such a change to take effect.
 
 **Policy: bump `schema_version` at most once per release.**
 During a pre-release refactor, many commits may change the schema,
@@ -221,13 +221,13 @@ fall back to Python only when SQL cannot express the check or cannot repair a vi
   is a `CHECK` constraint on the table,
   e.g. the `step` table's `CHECK (NOT deferred OR state = PENDING)`.
 - An invariant spanning **multiple rows** (e.g. a node's creator must have a compatible `kind`)
-  cannot be a `CHECK` constraint —
-  SQLite does not re-evaluate a `CHECK` when a *different* row changes.
+  cannot be a `CHECK` constraint,
+  because SQLite does not re-evaluate a `CHECK` when a *different* row changes.
   Use a `RAISE(ABORT, ...)` trigger instead (see [Triggers](#triggers) below).
 - A **graph-wide** invariant (e.g. every attached node must be reachable from the root via
   creator edges) can require recursing over an unbounded number of rows,
-  which a trigger cannot do either — a trigger only sees the row(s) touched by the statement
-  that fired it.
+  which a trigger cannot do either,
+  since a trigger only sees the row(s) touched by the statement that fired it.
   Check these in Python via a recursive SQL query,
   run once at startup after opening an existing database (`Trellis._check_consistency()`),
   not on every mutation:
@@ -241,7 +241,7 @@ fall back to Python only when SQL cannot express the check or cannot repair a vi
   back to `PENDING`) belongs in Python regardless,
   since a `CHECK`/trigger can only reject a write, not fix one up.
 - Remove a Python-side check once a `CHECK` constraint or trigger already covers the same write
-  path — it can no longer fire, so keeping it "for safety" just adds dead code
+  path, because it can no longer fire, so keeping it "for safety" just adds dead code
   (e.g. the file-hash-missing check dropped from `Workflow._check_consistency()` once the
   `file` table's own `CHECK (state NOT IN (...) OR hash IS NOT NULL)` made it unreachable).
 

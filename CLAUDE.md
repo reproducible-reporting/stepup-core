@@ -16,10 +16,10 @@ and reacts to file system changes (via inotify) to re-run only outdated steps.
 
 Guidance that applies to only part of the repo lives next to the code it governs:
 
-- `stepup/core/CLAUDE.md` — process model, workflow-graph invariants, database conventions.
-- `tests/CLAUDE.md` — test layout and the integration-example suite.
-- `docs/CLAUDE.md` — regenerating the tutorial output.
-- `.claude/skills/release/SKILL.md` — the release procedure.
+- `stepup/core/CLAUDE.md`: process model, workflow-graph invariants, database conventions.
+- `tests/CLAUDE.md`: test layout and the integration-example suite.
+- `docs/CLAUDE.md`: regenerating the tutorial output.
+- `.claude/skills/release/SKILL.md`: the release procedure.
 
 ## Non-Negotiables
 
@@ -99,9 +99,10 @@ Run `pytest` invocations one after another instead.
 
 ### Semantic Line Breaks
 
-All English text in this repo — comments (including SQL comments), docstrings,
-Markdown documentation, commit messages, etc. — is wrapped using **semantic line breaks**:
+All English text in this repo is wrapped using **semantic line breaks**:
 break after sentences or logical units, not at a fixed character count.
+This covers comments (including SQL comments), docstrings,
+Markdown documentation, commit messages, and so on.
 See <https://sembr.org/>.
 Sentences always start on a new line,
 but multiple clauses within one sentence can be on the same line if they fit.
@@ -145,8 +146,9 @@ Stale prose is worse than no prose. When writing comments, docstrings, or other 
 ### Linting (ruff)
 
 Do not add `# noqa` comments unless the violation is a genuine false positive that cannot
-be resolved by restructuring the code — the project's rule set already excludes rules
-that would fire spuriously in this codebase.
+be resolved by restructuring the code,
+because the project's rule set already excludes rules that would fire spuriously
+in this codebase.
 
 ### Docstrings
 
@@ -164,7 +166,8 @@ Some conventions specific to this codebase:
   (e.g., "Compute the hash of a file."),
   except for `@property` getters where the description should be a noun phrase
   (e.g., "The parent directory path.").
-- Do not repeat type annotations in the docstring — they are already in the function signature.
+- Do not repeat type annotations in the docstring,
+  because they are already in the function signature.
 - In `Parameters` sections, use the **parameter name** as the heading for each parameter.
   Grouping closely related parameters under a combined heading
   (e.g., `stdout, stderr`) is allowed when parameters are better described together.
@@ -179,7 +182,7 @@ Some conventions specific to this codebase:
     parent
         The parent directory path.
 
-    # wrong — the type is already in the signature
+    # wrong, because the type is already in the signature
     Returns
     -------
     Path
@@ -210,7 +213,7 @@ is meant to import.
   part of the contract.
 - Do not re-export: a name in `__all__` must be defined in that same module.
   Import a name from the module that defines it, not from a module that happens to import it.
-- `__all__ = ()` is a real claim — nothing outside the module may import from it —
+- `__all__ = ()` is a real claim that nothing outside the module may import from it,
   and is correct only for leaf modules.
 
 Consequence, enforced by `ConventionTests` in `stepup/core/pytest.py`

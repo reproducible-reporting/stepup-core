@@ -155,7 +155,8 @@ are worth spelling out:
 
 - **`static()` accepts the return value of `glob()` directly.**
   The call `static(ng)` declares exactly what `ng` matched,
-  without registering the pattern a second time — [`glob()`](glob.md) already did that.
+  without registering the pattern a second time,
+  because [`glob()`](glob.md) already did that.
   This is the composition used in the example plan above,
   and it is what makes query-then-declare, and the
   [probe-then-declare](glob_conditional.md) idiom, cheap.

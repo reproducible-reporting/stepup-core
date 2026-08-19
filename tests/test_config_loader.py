@@ -208,7 +208,7 @@ def test_section_views_section_holding_a_value(path_tmp: Path):
 
 
 # ---------------------------------------------------------------------------
-# patch_parser — basic injection
+# patch_parser: basic injection
 # ---------------------------------------------------------------------------
 
 
@@ -247,7 +247,7 @@ def test_patch_parser_unsupported_config_key(path_tmp, parser):
 
 
 # ---------------------------------------------------------------------------
-# patch_parser — section navigation
+# patch_parser: section navigation
 # ---------------------------------------------------------------------------
 
 
@@ -315,7 +315,7 @@ def test_patch_parser_section_of_alias_subparser(path_tmp):
 
 
 # ---------------------------------------------------------------------------
-# patch_parser — environment variable overlay
+# patch_parser: environment variable overlay
 # ---------------------------------------------------------------------------
 
 
@@ -443,7 +443,7 @@ def test_patch_parser_env_hyphen_section(render_jinja_parser):
 
 
 # ---------------------------------------------------------------------------
-# patch_parser — merge handlers
+# patch_parser: merge handlers
 # ---------------------------------------------------------------------------
 
 
@@ -494,7 +494,7 @@ def test_patch_parser_merge_handler_only_file(path_tmp, parser):
 
 
 # ---------------------------------------------------------------------------
-# patch_parser — multiple parsers
+# patch_parser: multiple parsers
 # ---------------------------------------------------------------------------
 
 
@@ -510,7 +510,7 @@ def test_patch_parser_section_isolates_parsers(path_tmp, parser, plugin_parser):
 
 
 # ---------------------------------------------------------------------------
-# patch_parser — choices validation
+# patch_parser: choices validation
 # ---------------------------------------------------------------------------
 
 

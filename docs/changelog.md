@@ -15,86 +15,137 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [4.0.0rc12][] - 2026-08-19 {: #v4.0.0rc12 }
 
-This is release candidate 12 of the upcoming StepUp Core 4.0 release.
+StepUp 4 is a major redesign to make workflows more expressive to write,
+cheaper to run and more transparent to debug and analyze:
 
-Note that all changes of the release candidates are included below.
+- **Writing the Workflow:**
+    - A single `run()` replaces `runsh()` and `runpy()`.
+    - Only `static()` declares *static* files.
+    - `glob()` merely queries static files, which can be repeated safely.
+    - `call()` has been simplified and made more powerful than the old `call()` and `script()` functions.
+    - Directories are no longer tracked explicitly.
+    - Static trees cover large data directories efficiently.
+- **Running it.**
+    - A critical path scheduler optimizes workflow execution
+      by prioritizing steps with the longest tail time.
+    - `resources` and `hold()` control which steps run simultaneously.
+    - Hashes of static files are computed in parallel by the same scheduler.
+    - `SOURCE_DATE_EPOCH` is fixed by default for reproducible outputs.
+    - A build can be restricted to targets, and steps can be optional.
+    - Layered config files control StepUp's runtime behavior,
+      and `stepup config` shows the merged configuration.
+- **Dealing with errors.**
+    - A mistake the user can fix is a short `ERROR:` message instead of a traceback.
+    - Pending steps are summarized by root cause.
+    - The output and subprocess invocations of every step are stored for `stepup browse`.
+    - `Ctrl-C`, `Ctrl-Z` and `SIGTERM` just work, without leaving orphaned processes behind.
+
+Two architectural shifts underpin these improvements.
+
+1. The director no longer starts worker processes:
+   each step is a highly optimized asyncio task
+   that cannot be outlived by the child process it executes,
+   so the startup cost no longer grows with the degree of parallelism
+   and no step can affect a later one through leftover process state.
+2. Much of the bookkeeping moved from Python into SQLite:
+   triggers maintain the derived columns that the scheduler reads,
+   cascades and constraints enforce the graph invariants,
+   and selecting the next step to dispatch is a single query.
+   Database transaction locking rules out entire classes of race conditions.
+   The whole redesign is backed by a test suite with more than four times as many unit tests
+   and over 1.5 times as many integration examples.
+
+A [migration guide](migration/from_3x_to_40.md) shows the way up from StepUp 3,
+
+(This is release candidate 12 of the upcoming StepUp Core 4.0 release.
+Note that all changes of the release candidates are combined below.
 This section is treated as a draft of the changelog for the final 4.0.0 release,
-and will be updated with any further changes before the final release.
+and will be updated with any further changes before the final release.)
 
 ### Added
+
+#### Command Line and Configuration
 
 - StepUp can now also be configured through configuration files,
   in addition to environment variables and command-line arguments.
   See [Configuration files](reference/configuration.md) for details.
+
 - The `stepup config` command shows the current configuration,
   as the result of merging all config files and environment variables.
   It also lists the `STEPUP_*` environment variables in three groups,
   separating the ones it recognizes as settings from the ones used internally
   and from the ones without any effect,
   because the name of an environment variable cannot be checked the way a config key is.
+
 - Mistakes in a config file or a `STEPUP_*` environment variable are reported as a list of
-  short messages instead of a Python traceback, and stop the subcommand with return code `1`.
-  All problems are listed at once, each naming the file or variable to fix.
-  Unknown sections and keys are now also detected, with a suggestion where a key belongs
+  short messages, so all problems are shown at once, each naming the file or variable to fix.
+  Unknown sections and keys are also detected, with a suggestion where a key belongs
   or how it is spelled correctly.
   The `stepup config` command is the exception that still runs,
   so the configuration can be inspected precisely when it is broken.
   It shows each problem on the line of the setting, section or config file it concerns.
   Problems are shown in red when the terminal supports color.
+
 - `stepup build [targets...]` restricts the build to the steps needed to produce
   the given output files (and their dependencies), instead of the full default workflow.
   A target cannot name a volatile output or a static file, and a target that is never
   produced by any step is reported as a warning at the end of the build.
-  Targets may now also name a directory (a path ending in `/`),
-  which elevates every step whose declared need is `DEFAULT`
+  A target may also name a directory (a path ending in `/`),
+  which elevates every step whose declared need is `Need.DEFAULT`
   and whose output falls under that directory, best-effort (never raises).
   Automatic cleaning is disabled when targets are specified.
   See [Build Targets](advanced_topics/build_targets.md) for details.
-- StepUp can use a forkserver for Python step execution and file hashing,
+
+#### Build Execution and Process Control
+
+- StepUp can use a forkserver for Python step execution,
   which reduces startup overhead.
   This can be controlled with the `--forkserver` flag,
   which is enabled by default on Linux.
+
 - Added `--preload-modules` option to `sb` to specify a comma-separated list of Python
   modules to be pre-loaded into the forkserver.
   This only has an effect when `--forkserver` is active and can speed up workflows
   that repeatedly import large modules.
-- StepUp now stores the captured stdout and stderr of each step in the workflow database,
-  so they can be inspected after the build.
-  Output from subprocesses launched by a forked Python step is captured properly.
-  The amount stored per stream can be capped with the new `STEPUP_MAX_OUTPUT_SIZE`
-  environment variable (`0` = unlimited, the default).
-  These outputs can later be viewed with `stepup browse`.
-- All functions in `stepup.core.api` now accept `os.PathLike` objects (i.e. `pathlib.Path`)
-  as path arguments, in addition to `str` and `path.Path`.
+
 - When the first word of a `run()` command is a bare command name matching a `console_scripts`
   entry point from the current Python environment, StepUp now runs it as a Python entry point:
   when the forkserver is enabled (`--forkserver`), the entry point function is called
   in-process rather than spawning a new subprocess, reducing overhead.
-  If the entry point belongs to a different Python environment, a warning is logged and
+  If the entry point belongs to a different Python environment,
+  a warning is written to the step's standard error and
   the command falls back to direct subprocess execution.
-- A `run()` or `step()` command may now start with `VAR=value` assignments
+
+- A `run()` or `step()` command may start with `VAR=value` assignments
   (when `shell=False`), e.g. `run("OMP_NUM_THREADS=4 ./work.py")`.
   These are applied as step-specific environment variable overrides when the step runs,
   which is otherwise impossible without a shell.
   The overrides are part of the step hash, so changing a value reruns the step.
   A variable cannot be both an override and an `env` dependency.
+  The `step()` function also accepts the overrides directly,
+  as a dictionary passed to its new `env_overrides` argument.
+
+- Added a `--fix-epoch` option to `sb` (on by default)
+  to set the `SOURCE_DATE_EPOCH` environment variable to a fixed value for all step executions.
+  This is useful for ensuring reproducible builds.
+  See [Configuration files](reference/configuration.md) for details.
+
+- Added a `--cgroup` option to `sb` (off by default) that launches the director
+  in a `systemd-run --scope` cgroup of its own,
+  so the peak memory of the director and all its step processes together is measured
+  and included in the resource usage report at the end of `.stepup/director.log`.
+  This requires Linux with cgroup v2 and `systemd-run`,
+  and fails when they are not available.
+
+#### Scheduling
+
 - `step()` accepts a new `duration` argument:
   an initial estimate (in seconds) of the step's wall time,
-  used by the scheduler (when `--duration` is enabled) to prioritize execution order
-  before any measurement is available.
+  used by the scheduler (when `--duration` is enabled) to prioritize execution order.
   All step-generating API functions (`run()`, `script()`, `call()`, `render_jinja()`, etc.)
   also accept a `duration` argument.
-- The `command` argument of `step()`, `run()` and `plan()` may now be a callable
-  that builds the command from the step's own paths,
-  so a path list no longer has to be named twice:
+  See [Duration and Hold](advanced_topics/duration_and_hold.md) for details.
 
-  ```python
-  run(lambda out: f"./gen.py {shq(out)}", out=["out1.txt", "out2.txt"])
-  ```
-
-  The callable may declare any subset of the parameters `inp`, `out` and `vol`,
-  matched by name, and receives the paths after environment variable substitution
-  and normalization.
 - New `hold()` context manager in `stepup.core.api`, for a step (typically a `plan.py`) to
   wrap a batch of declarations so the steps declared inside are held back from dispatch
   until the block closes, instead of each being dispatched as soon as it is declared.
@@ -103,133 +154,241 @@ and will be updated with any further changes before the final release.
   fast steps declared early. `hold()` is re-entrant: nested `with hold():` blocks for the
   same step (e.g. through a shared helper function) compose correctly, with steps staying
   held back until the outermost block exits.
+  See [Duration and Hold](advanced_topics/duration_and_hold.md) for details.
+
+- New `resources` argument of `step()` and all step-generating API functions,
+  which limits how many steps run concurrently
+  when full parallelization would be counterproductive,
+  e.g. because a program misbehaves when several instances run at once,
+  because steps compete for memory or GPUs,
+  or because a license caps the number of instances.
+  The available quantities are declared with the new `--resources` option of `sb`
+  or the `STEPUP_BUILD_RESOURCES` environment variable.
+  See [Resources](advanced_topics/resources.md) for details.
+
+- The "rescheduling" mechanism of StepUp 3 has been replaced by a simpler "defer" mechanism,
+  with a new `--defer-cap` option (default 100) that fails a step
+  once it has been deferred that many times in a row without succeeding.
+  This acts as a livelock guard for `amend()`-driven defers.
+
+#### Workflow API
+
+- All functions in `stepup.core.api` now accept `os.PathLike` objects (i.e. `pathlib.Path`)
+  as path arguments, in addition to `str` and `path.Path`.
+
+- The `command` argument of `step()`, `run()` and `plan()` may now be a callable
+  that builds the command from the step's own paths,
+  so a path list no longer has to be named twice:
+
+    ```python
+    run(lambda out: f"./gen.py {shq(out)}", out=["out1.txt", "out2.txt"])
+    ```
+
+    The callable may declare any subset of the parameters `inp`, `out` and `vol`,
+    matched by name, and receives the paths after environment variable substitution
+    and normalization.
+    The new `shq()` function in `stepup.core.api` quotes one or more paths for safe shell usage.
+    The type of the argument, a path or such a callable,
+    is the new public alias `CommandArg` in `stepup.core.api`.
+
+- New `dumpns()` function in `stepup.core.api`, the counterpart of `loadns()`.
+  It writes a `dict` or `SimpleNamespace` to a JSON or YAML file
+  and amends the file as an output of the calling step by default.
+  Values of types that `cattrs` understands (`attrs` classes and dataclasses)
+  are unstructured automatically.
+
+#### Terminal Output and Inspection
+
+- StepUp now stores the captured stdout and stderr of each step in the workflow database,
+  so they can be inspected after the build.
+  Output from subprocesses launched by a forked Python step is captured properly.
+  The amount stored per stream can be capped with the new `STEPUP_MAX_OUTPUT_SIZE`
+  environment variable (`0` = unlimited, the default).
+  These outputs can later be viewed with `stepup browse`.
+
+- The `stepup browse` command takes two new options:
+  `--browser` to pick a browser and `--no-open-browser` to only print the URL.
+  Its existing `--port` option now defaults to `7837` instead of `8000`
+  and can also be set with `STEPUP_BROWSE_PORT` or the `[browse]` section of a config file.
+  It now also opens the browser for you, and works with text-mode browsers:
+  a graphical browser gets a new tab while the server keeps serving until `Ctrl-C`,
+  and a text-mode browser (such as `lynx` or `w3m`) runs cleanly in the terminal,
+  after which the server stops as soon as the user closes it.
+  Its pages also show more information about a step:
+  the step digests, the tail time used by the scheduler,
+  the named glob patterns of a step and the static trees in the workflow.
+
+- A resource usage report is shown at the end of the file `.stepup/director.log`.
+  Its peak memory line for the director and its children relies on Linux control groups,
+  so it is only filled in when `sb --cgroup` is used on a supported system.
+
+- Each build phase ends with a `Ran N job(s).` message,
+  counting only the jobs that executed a step's command.
+  Skipped steps and internal validation jobs are not included.
+
+- Added a `--sqllog` option to `sb` that appends per-query timings to a file
+  and writes a query, call site and query plan index when the director exits,
+  to check query plans and execution times.
+
+- Added a `--joblog` option to `sb` to log the start and end of each job to a file.
+
+#### Extensions and Internals
+
+- New `stepup.core.exceptions` module collecting the exceptions raised by StepUp,
+  organized in a hierarchy that separates a mistake the user can fix
+  (`UsageError`, with `ConfigError`, `ToolError`, `GraphError` and `StepUpError` below it)
+  from a bug in StepUp (`ConsistencyError` and the other internal errors).
+  See [stepup.core.exceptions](reference/stepup.core.exceptions.md) for the full reference.
+
 - New `stepup.core.extapi` module for StepUp extension developers,
   collecting utilities previously buried in `stepup.core.utils`.
   See [stepup.core.extapi](reference/stepup.core.extapi.md) for the full reference
   and [Custom API Functions](extending/api.md) for usage guidance.
   One utility aimed at extension developers stays in `stepup.core.api`,
   because `stepup.core.extapi` is built on top of it: `subs_env_vars`.
+
 - Extension wrapper steps can now record the exact subprocess invocations they make,
   using `run_subprocess` in `stepup.core.extapi`,
   which executes the subprocess and records its invocation.
   Alternatively, `record_subprocess()` can be used to record a subprocess that was already executed,
   e.g. using the built-in `subprocess` module.
-  The command line, working directory, environment overlay and return code are stored in a
+  The command line, working directory, environment overlay, shell flag, return code
+  and captured standard input, output and error are stored in a
   new `step_subprocess` table for debugging and archival.
   Recorded invocations are shown in `stepup browse`, formatted as shell-pasteable command lines.
   See [Custom API Functions](extending/api.md) for implementation guidance.
-- Added a `--fix-epoch` option to `sb` (on by default)
-  to set the `SOURCE_DATE_EPOCH` environment variable to a fixed value for all step executions.
-  This is useful for ensuring reproducible builds.
-  See [Configuration files](reference/configuration.md) for details.
-- A resource usage report is shown ad the end of the file `.stepup/director.log`.
-  Part of the analysis relies on Linux control groups, which are only available on this OS.
-- An SQL debug log option, to check query plans and execution times.
-- Added a `--defer-cap` option (default 100) that fails a step
-  once it has been deferred that many times in a row without succeeding.
-  This acts as a livelock guard for `amend()`-driven defers.
-- Added support for cgroup v2 memory accounting on Linux with `systemd-run`.
-- Added a `--joblog` option to `sb` to log the start and end of each job to a file.
 
 ### Changed
+
+#### Project and Documentation
 
 - Relicense the StepUp Core source code under `LGPL-3.0-or-later`.
   This clarifies that users of StepUp can assign any license of their choice
   to the workflows they create with StepUp (e.g., `plan.py` and related files).
   This has always been the intention, but with this change, it becomes legally explicit.
+  The repository is now also [REUSE](https://reuse.software/) compliant:
+  every file carries an SPDX copyright and license header,
+  with the documentation under `CC-BY-SA-4.0` and the logo under a license of its own.
+
+- A `CITATION.cff` file was added,
+  so StepUp Core can be cited with the metadata that GitHub and reference managers read from it.
+
+- Documentation has been updated to reflect the API changes and to clarify some other points:
+    - All tutorials have been updated to reflect the new API and workflow.
+    - A [migration guide](migration/from_3x_to_40.md) has been added
+      to help users migrate from StepUp 3 to StepUp 4.
+
+- `cattrs` was added as a runtime dependency.
+  It is used to convert hashes, named globs, configuration values and the arguments
+  of `call()` to and from JSON or YAML.
+  The minimal version of `attrs` was raised to 23.1.0 for the same reason.
+
+#### Command Line and Configuration
+
 - `stepup boot` has been renamed to `stepup build`
   and can be called conveniently with the `sb` shortcut.
   The `boot` command will be removed in a future release.
+
 - The `--num-workers` / `-n` option of `sb` has been renamed to `--jobs` / `-j`,
   in line with the convention used by `make` and similar tools.
-  The config-file key changes from `num_workers` to `jobs`,
-  and the environment variable changes from `STEPUP_NUM_WORKERS` to `STEPUP_BUILD_JOBS`.
+  The environment variable changes from `STEPUP_NUM_WORKERS` to `STEPUP_BUILD_JOBS`,
+  and the config-file key is `jobs` in the `[build]` section.
+  Because StepUp 4 no longer launches worker processes,
+  the option caps how many steps run concurrently.
   The default value is now `1.0` (one job per CPU core) instead of `1.2`.
-  (The old values is common for I/O-bound build workflows,
+  (The old value is common for I/O-bound build workflows,
   but StepUp is more commonly applied to CPU-bound workflows,
   for which the new default is more suitable.)
-- The CPU detection (when `-j` is given as a float) has been extended.
-  It now tries, in order:
-  1. The number of cores available within the current cgroup (cgroup v2 only).
-  2. Job-scheduler CPU-related environment variables (SLURM, PBS).
-  3. The CPU affinity mask reported by the operating system.
-  4. The total number of CPUs reported by the operating system.
-  The first source that yields a usable value is used.
-- After a step fails, the scheduler now drains by default, like `make` without
-  `-k` (steps already running still finish; no new steps are started).
-  Use the new `--keep-going` / `-k` flag (or `STEPUP_BUILD_KEEP_GOING`) to restore the
-  previous behavior of continuing to build every step whose inputs remain available.
+
 - The `stepup run` subcommand is renamed to `stepup rebuild`,
   because the *run phase* it referred to is now called the *build phase*.
   The keyboard shortcut in the terminal user interface is still `r`.
+
 - The `stepup watch-update <path>` and `stepup watch-delete <path>` subcommands
   have been merged into `stepup wait`, as `stepup wait -u <path>` / `--update <path>`
   and `stepup wait -d <path>` / `--delete <path>` respectively.
   Bare `stepup wait` still waits for the builder to become idle.
-- The end-of-build pending report no longer prints one `PENDING Step` page per pending step.
-  Instead, it summarizes the **root causes** as a fixed-size ranked report: the unavailable
-  input files and blocked resources that account for the most pending steps, plus a
-  count of steps blocked by failed steps, waiting on each other, deferred, or otherwise
-  unexplained. Use `stepup browse` to inspect the individual steps behind any entry.
-  See [Blocked Steps](advanced_topics/blocked_steps.md) for details on the new format.
-- The `static()` and `glob()` functions have been redesigned from scratch to permit more use cases
-  while still imposing the same safety and correctness guarantees as in StepUp 3.
-  See [`static()` and `glob()` Have New Roles](migration/from_3x_to_40.md#static-and-glob-have-new-roles)
-  and [Directory Handling](migration/from_3x_to_40.md#directory-handling)
-  in the migration guide for details.
+
+- The `stepup status` subcommand reads the workflow database directly
+  instead of asking the director over remote procedure calls,
+  so it also works when no build is running.
+  Besides the step and file counts, it now also lists the resources
+  held by the running steps.
+
 - Return codes have changed.
   The new return code bits are documented in [StepUp Return Codes](reference/returncode.md).
   The changes compared to StepUp 3 are summarized in the [migration guide](migration/from_3x_to_40.md#return-codes-have-been-renumbered).
-- When a step fails because of incorrect use of `stepup.core.api`,
-  the error is now reported concisely instead of as a long traceback.
-  Errors that indicate a bug in StepUp keep their full traceback.
-  Run `sb` with the environment variable `STEPUP_DEBUG=1` to see the complete traceback.
-- Two declarations claiming the same file are now reported in terms of the plan
-  instead of the internal graph representation.
-  The message names both declarations and how to resolve the conflict, e.g.
-  `File (b.txt) cannot be both declared static by step (./plan.py) and built by
-  step (cp -p a.txt b.txt).`
-  This covers every combination of a `static()` declaration, a step output and a
-  volatile output, and the message does not depend on which declaration came first.
-  Defining the same command twice in the same working directory is reported likewise,
-  as is registering the same static tree from two different steps.
-- At the end of every build, StepUp scans `.stepup/director.log` for symptoms of internal
-  problems: logged errors, unawaited coroutines, tasks destroyed while still pending,
-  and exceptions that escaped a callback, a thread or a destructor.
-  None of these make the director exit with a non-zero return code by themselves,
-  so the log is the only place where they can be picked up.
-  The offending lines are now shown with the warning,
-  which previously only mentioned that errors had been logged.
-  With `STEPUP_DEBUG`, such findings are reported as an error instead
-  and set the internal error bit of the return code.
-- The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
-  The new implementation is more efficient and automatically tracks local scripts as dependencies.
-- The `plan()` function has been made maximally similar to `run()`,
-  and now accepts arbitrary local Python scripts,
-  not just a directory that must contain a `plan.py` script.
-- Redesigned `call()` interface:
-  the old inp/out/pickle argument modes are replaced
-  by explicit function dispatch and optional `args_file` support for file-based argument passing.
-  The executable and function name are positional-only parameters, `executable` and `function`,
-  so that keyword arguments with those names can be forwarded to the called function.
-  See [Function Calls](getting_started/call.md) for details.
-- `subs_env_vars()` yields an `EnvSubstitutor` instead of a plain function.
-  It is still called the same way, but it now also normalizes the substituted path.
-  Use its `keep_affixes()` method when a leading `./` or a trailing `/` is significant.
-- The `getinfo()` function has been renamed to `get_info()`.
-- File hashes are computed in concurrent hash jobs instead of the old serial client-side delegation.
-  Similarly, the director uses the same mechanism to compute file hashes in parallel on startup.
-- File hashing now runs in threads inside the director process
-  instead of subprocesses or forkserver children,
-  which lowers overhead while remaining promptly interruptible.
-  As a result, the "Hashing" row is gone from the resource-usage summary;
-  that time is now counted under "Director".
-- A known race condition related to `amend(inp=...)` has been fixed.
-  It is now safe to call `amend(inp=...)` after a dynamic input file has already been read.
-  (It is not the most efficient approach to call `amend(inp=...)` too late,
-  but in some cases it is the only practical one.)
-- The scheduler has been replaced by a new and more efficient implementation.
-  This change also comes with several improved features:
+
+- The `--log-level` / `-l` option has moved from the `stepup` command to its `build`
+  subcommand, which is the only one acting on it:
+  write `sb -l INFO` or `stepup build -l INFO` instead of `stepup -l INFO build`.
+  The environment variable changes from `STEPUP_LOG_LEVEL` to `STEPUP_BUILD_LOG_LEVEL`,
+  and the config-file key is `log_level` in the `[build]` section.
+  The director exports the level to its steps under the new name as well.
+
+- The default of `${STEPUP_PATH_FILTER}` is broadened from `-venv` to
+  `-.venv:-venv:-.tox:-.nox:-.direnv:-.pixi:-node_modules`,
+  so the directories in which common tools install dependencies
+  are ignored without having to configure the filter.
+
+- Several environment variables have been renamed for consistency.
+  See [Configuration files](reference/configuration.md) for the current names
+  and [Changed Environment Variable Names](migration/from_3x_to_40.md#changed-environment-variable-names)
+  in the migration guide for the full mapping.
+
+#### Build Execution and Process Control
+
+- Steps no longer run in worker processes that are launched up front.
+  In StepUp 3, `--num-workers` decided how many workers were started at the beginning of a build,
+  each of which stayed alive to execute one step after another.
+  In StepUp 4, the director runs every step as an asyncio task of its own,
+  and a child process is created only for the duration of the step's command.
+  The `--jobs` option is therefore a limit on the number of concurrent steps,
+  no longer a number of processes to start.
+  This has three practical consequences:
+
+    - The startup cost of a build no longer grows with the degree of parallelism.
+      A high setting, such as `-j 128` on a large HPC node,
+      no longer pays the launch time and the memory of that many long-lived processes.
+    - A step can no longer affect a later step through state left behind in a process.
+      An action in StepUp 3 was executed inside the worker,
+      so one that imported modules, changed globals or installed signal handlers
+      could corrupt the worker and interfere with every step that worker ran afterwards.
+      Each step now starts from a clean process,
+      which is what made it possible to remove the action abstraction layer.
+    - The efficiency that the in-process actions of StepUp 3 offered is retained by
+      the forkserver, from which a Python step or a console script entry point is forked,
+      instead of paying for a full interpreter startup.
+
+- The CPU detection (when `-j` is given as a float) has been extended.
+  It now tries, in order:
+
+    1. The number of cores available within the current cgroup (cgroup v2 only).
+    2. Job-scheduler CPU-related environment variables (SLURM, PBS).
+    3. The CPU affinity mask reported by the operating system.
+    4. The total number of CPUs reported by the operating system.
+
+    The first source that yields a usable value is used.
+
+- Every step now runs in a session of its own,
+  so a `Ctrl-C` in the terminal no longer reaches step processes directly.
+  The director is the only thing that stops them, on every route.
+  As a result, aborting a build also stops the actual work of a shell step
+  that is a pipeline or an `&&`-chain,
+  which previously kept running because only its surrounding `sh` was signalled.
+
+#### Scheduling
+
+- After a step fails, the scheduler now drains by default, like `make` without
+  `-k` (steps already running still finish; no new steps are started).
+  Use the new `--keep-going` / `-k` flag (or `STEPUP_BUILD_KEEP_GOING`) to restore the
+  previous behavior of continuing to build every step whose inputs remain available.
+  A drained build sets a [return code](reference/returncode.md) bit of its own,
+  because it does not report the steps left pending.
+
+- The scheduler has been replaced by a new and more efficient implementation,
+  which also improves how steps are prioritized:
+
     - Steps are prioritized using the *tail time*, which results in the shortest overall
       execution time of the workflow.
       This is also known as critical path scheduling.
@@ -238,49 +397,101 @@ and will be updated with any further changes before the final release.
     - A new step that has not been executed before is assigned a duration of 1 second.
       When restarting StepUp, the duration of steps from previous runs is used,
       even if inputs changed, so that the scheduler can make better tail time estimates.
-    - The `pool` feature has been removed and
-      is now replaced by the more powerful `resources` feature.
-    - The `optional` feature has become more robust.
-    - The "rescheduling" mechanism has been refactored by a simpler "defer" mechanism.
+
+#### Workflow API
+
+- The `static()` and `glob()` functions have been redesigned from scratch to permit more use cases
+  while still imposing the same safety and correctness guarantees as in StepUp 3.
+  The two roles are now cleanly separated:
+  `static()` declares and owns, while `glob()` only queries.
+  Two consequences of the redesign are worth stating here:
+
+    - `static()` also accepts glob patterns (e.g. `static("data/*")`)
+      and `NamedGlob` objects returned by `glob()`,
+      next to the literal paths it took in StepUp 3.
+    - `static()` returns a sorted list of the files it declared
+      and the static tree roots it registered, where it used to return nothing.
+
+    See [`static()` and `glob()` Have New Roles](migration/from_3x_to_40.md#static-and-glob-have-new-roles)
+    and [Directory Handling](migration/from_3x_to_40.md#directory-handling)
+    in the migration guide for details.
+
+- The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
+  The new implementation is more efficient and automatically tracks local scripts as dependencies.
+
+- The `plan()` function has been made maximally similar to `run()`,
+  and now accepts arbitrary local Python scripts,
+  not just a directory that must contain a `plan.py` script.
+
+- Redesigned `call()` interface:
+  the old inp/out/pickle argument modes are replaced
+  by explicit function dispatch and optional `args_file` support for file-based argument passing.
+  The executable and function name are positional-only parameters, `executable` and `function`,
+  so that keyword arguments with those names can be forwarded to the called function.
+
+    A function called through `call()` receives its keyword arguments
+    converted to the types in its signature, using `cattrs`.
+    An argument that cannot be converted is reported as a `TypeError`
+    that names the argument and the expected type.
+    A script that uses `stepup.core.call.driver()` as main function is self-documenting:
+    running it without a function name prints one suggested command line
+    for every function it exposes.
+
+    See [Function Calls](getting_started/call.md) for details.
+
+- The `step()` function takes a `need` argument instead of the boolean `optional` argument,
+  with the levels `Need.OPTIONAL`, `Need.DEFAULT`, `Need.TARGET` and `Need.PLAN`.
+  The level `Need.TARGET` cannot be declared:
+  StepUp derives it for the steps needed to produce the given
+  [build targets](advanced_topics/build_targets.md).
+  The higher-level API functions still take `optional=True` and translate it.
+  The need level of the running step is exported as `STEPUP_STEP_NEED`,
+  which lets StepUp warn on standard error when a planning step is registered
+  by a step that is not a planning step itself, which is usually an authoring mistake.
+
+- The `getinfo()` function has been renamed to `get_info()`.
+
+- `loadns()` returns a `SimpleNamespace` instead of an `argparse.Namespace`.
+
+- `amend()` now silently ignores information that the step's plan already declared for it,
+  just like it ignores information from an earlier `amend()` call of the same step.
+  This lets a plan declare up front what a step also discovers while it runs,
+  which improves scheduling (the step is not dispatched before its inputs are available)
+  without the step having to know what was declared for it.
+  Each argument is matched against its own kind only:
+  amending an `out` path that was declared as `vol`, or vice versa, is still an error.
+
+#### File Tracking and the Workflow Graph
+
+- File hashes are computed in concurrent hash threads instead of the old serial client-side delegation.
+  Similarly, the director uses the same mechanism to compute file hashes in parallel on startup.
+
 - The "deferred glob" has been replaced by a simpler "static tree" concept.
   Files in a static tree become static only when they are used as inputs.
   This allows for huge static data directories, of which only some are used,
   without having to glob the entire directory recursively.
   To declare a static tree directory, just pass it as an argument to the `static()` function.
-  `static()` will treat all directory arguments are static trees.
   Static trees interact with `static()` and `glob()` as follows:
-    - `static()` on a path already covered by a static tree is now a no-op,
-      instead of raising an error.
-      A static tree must still be declared before any file it contains;
-      the reverse order still raises.
-    - `glob()` no longer declares file matches already covered by a static tree,
-      since the tree already owns them.
+
+    - A tree is the sole owner of the files under it,
+      so declaring both a tree and a file it contains is decided by who declares them,
+      not by the order in which they are declared.
+      One step declaring both is a no-op in either order:
+      the file is handed over to the tree, which becomes its creator.
+      Doing so from two different steps raises in either order.
+    - `glob()` declares nothing at all,
+      so it never competes with a static tree for ownership of a match.
       This makes overlapping `glob()` calls over the same static tree work:
       declare the tree once with `static()`, then `glob()` it as often as needed.
-    - Declaring a static tree that already contains previously declared files raises an error.
-    - A directory match of a `glob()` pattern is only accepted when the
-      directory lies inside a static tree.
-      Outside a static tree, StepUp has no evidence that the directory is source material
-      rather than a step's build product, so the set of matches could depend on build progress.
-- `glob()` and `StepInfo.filter_inp()`/`filter_out()`/`filter_vol()` now take a single
-  pattern instead of `*patterns`.
-- The `render-jinja` feature is now a standalone Python console script, `sc-render-jinja`
-  instead of a `stepup` subcommand (tool).
-  Steps created by [`render_jinja()`][stepup.core.api.render_jinja] now run `sc-render-jinja ...`
-  instead of `stepup render-jinja ...`.
-  This matches the recommended pattern for extensions that do not need low-level access to
-  StepUp internals.
-- Every step now runs in a session of its own,
-  so a `Ctrl-C` in the terminal no longer reaches step processes directly.
-  The director is the only thing that stops them, on every route.
-  As a result, aborting a build now also stops the actual work of a shell step
-  that is a pipeline or an `&&`-chain,
-  which previously kept running because only its surrounding `sh` was signalled.
+    - A `glob()` match that no `static()` declaration justifies, directories included,
+      is reported as a warning at the end of the build phase, not as an error,
+      because the plan that would declare it may not have run yet.
+
 - The database schema version has been incremented to 5 because:
+
     - Directories are no longer stored in the database
       (except for static trees, which are stored as special nodes in the graph.)
-    - Deferred globs have been retired and replaced by static trees.
-    - the Blake2B hash has been replaced by the more common SHA-256
+    - The BLAKE2b hash has been replaced by the more common SHA-256.
     - The `step` table and all its satellite tables have been redesigned
       to support and optimize the new scheduling algorithm.
     - Step labels no longer carry an action-name prefix.
@@ -299,37 +510,112 @@ and will be updated with any further changes before the final release.
           so that state names no longer overlap with role names.
     - `step_outcome` and `step_subprocess` tables were added.
     - The `step` table now tracks re-entrant `hold()`/`release()` calls,
-      needed for the new `hold()` context manager (see above).
-    - SQLite's `ON DELETE CASCADE` feature is now used for all satellite tables of the `step` table.
-    - SQLite triggers are used to replace some of the Python logic by lower-level database logic.
+      needed for the new `hold()` context manager.
     - All hashes are stored as human-readable JSON blobs.
-    - `nglob_multi` data is now stored as JSON instead of a pickle blob,
+    - Named-glob data is stored as JSON in the new `nglob` table,
+      instead of as a pickle blob in `nglob_multi`,
       for consistency and readability.
-    - Removed the now-unused UInt64 adapter/converter,
-      no longer needed because of the previous points.
+
+- Other changes to the workflow database, which do not alter what it stores:
+
+    - A substantial part of the bookkeeping moved from Python into the database itself.
+      The schema defines twenty triggers, where StepUp 3 had none.
+      Some maintain the derived columns that the scheduler queries,
+      such as the flags marking which steps must have their readiness recomputed
+      after a file state, dependency or hash changed.
+      Others abort the transaction when a write would violate a graph invariant,
+      where Python used to check the same condition after the fact.
+    - SQLite's `ON DELETE CASCADE` feature is now used for all satellite tables of the `step` table,
+      so removing a step cannot leave rows of its own behind.
+    - `CHECK` constraints reject an inconsistent row at the point where it is written.
+    - Selecting the next step to dispatch is a single query over these columns,
+      instead of Python-side bookkeeping of ready steps.
+    - The UInt64 adapter and converter were removed,
+      since no value is stored as a raw integer blob any more.
     - Indexes were tuned.
     - The auto_vacuum mode was set to INCREMENTAL,
       which is paired with a database vacuum worker to reclaim space from deleted nodes.
-- `amend()` now silently ignores information that the step's plan already declared for it,
-  just like it ignores information from an earlier `amend()` call of the same step.
-  This lets a plan declare up front what a step also discovers while it runs,
-  which improves scheduling (the step is not dispatched before its inputs are available)
-  without the step having to know what was declared for it.
-  Each argument is matched against its own kind only:
-  amending an `out` path that was declared as `vol`, or vice versa, is still an error.
-- Several environment variables have been renamed for consistency.
-  See [Configuration files](reference/configuration.md) for details.
-- A new returncode was added to indicate that the scheduler was draining
-  and not reporting pending steps.
-  See [StepUp Return Codes](reference/returncode.md) for details.
-- Documentation has been updated to reflect the API changes and to clarify some other points:
-    - All tutorials have been updated to reflect the new API and workflow.
-    - A [migration guide](migration/from_3x_to_40.md) has been added
-      to help users migrate from StepUp 3 to StepUp 4.
-- The `stepup browse` command has become easier to use:
-    - When a graphical browser is the default, it opens a browser tab automatically.
-    - When a terminal browser is the default, it runs it cleanly in the terminal and exits
-      when the terminal browser is closed by the user.
+
+- The text output of the workflow graph, written by `stepup graph` or the `g` key,
+  has changed in several ways:
+  the relations are labeled `creator`, `product`, `source` and `sink`
+  instead of `created by`, `creates`, `consumes` and `supplies`,
+  there are no more directory nodes,
+  static trees appear as nodes of their own,
+  the glob patterns of a step are labeled `nglob`,
+  the environment variables of a step are labeled `using_env` instead of `env_var`,
+  a dynamic dependency or environment variable is marked `[dynamic]` instead of `[amended]`,
+  a step also shows its `need` level,
+  and the relations of a node are always written in the same order.
+  Test suites of extension packages that compare this output must regenerate their
+  expected files.
+
+#### Error Reporting
+
+- A mistake that the user can fix is reported as a short `ERROR:` message
+  with return code `1`, instead of a Python traceback.
+  This covers every `stepup` subcommand, a step that uses `stepup.core.api` incorrectly,
+  and a tool that raises `ToolError`,
+  including before the director has started, e.g. for an invalid `stepup build` target.
+  It used to be implemented separately by a few subcommands,
+  so `stepup status`, `stepup browse` and `stepup clean` still ended with a traceback
+  in a directory where StepUp had never run.
+  Errors that indicate a bug in StepUp keep their full traceback,
+  and `STEPUP_DEBUG=1` shows the complete traceback of any error.
+  Stopping a subcommand with `Ctrl-C` is also reported as a message now,
+  and sets the `2` bit of the [return code](reference/returncode.md).
+
+- Two declarations claiming the same file are now reported in terms of the plan
+  instead of the internal graph representation.
+  The message names both declarations and how to resolve the conflict, e.g.
+  `File (b.txt) cannot be both declared static by step (./plan.py) and built by
+  step (cp -p a.txt b.txt).`
+  This covers every combination of a `static()` declaration, a step output and a
+  volatile output, and the message does not depend on which declaration came first.
+  Defining the same command twice in the same working directory is reported likewise,
+  as is registering the same static tree from two different steps.
+
+- At the end of every build, StepUp scans `.stepup/director.log` for symptoms of internal
+  problems: logged errors, unawaited coroutines, tasks destroyed while still pending,
+  and exceptions that escaped a callback, a thread or a destructor.
+  None of these make the director exit with a non-zero return code by themselves,
+  so the log is the only place where they can be picked up.
+  The offending lines are now shown with the warning,
+  which previously only mentioned that errors had been logged.
+  With `STEPUP_DEBUG`, such findings are reported as an error instead
+  and set the internal error bit of the return code.
+
+#### Terminal Output and Inspection
+
+- The end-of-build pending report no longer prints one `PENDING Step` page per pending step.
+  Instead, it summarizes the **root causes** as a fixed-size ranked report: the unavailable
+  input files and blocked resources that account for the most pending steps, plus a
+  count of steps blocked by failed steps, waiting on each other, deferred, or otherwise
+  unexplained. Use `stepup browse` to inspect the individual steps behind any entry.
+  See [Blocked Steps](advanced_topics/blocked_steps.md) for details on the new format.
+
+- A step command is escaped when it is printed to the terminal:
+  a control character, such as a newline in a shell command, is written as a
+  `$'\n'`-style escape.
+  The reporter therefore uses one line per step,
+  and the command can be copied from the terminal and pasted into a shell as is.
+
+- The keys of the terminal user interface are listed one per line with a short description
+  of what they do, instead of on a single line with only the key names.
+
+#### Extensions and Internals
+
+- `subs_env_vars()` yields an `EnvSubstitutor` instead of a plain function.
+  It is still called the same way, but it now also normalizes the substituted path.
+  Use its `keep_affixes()` method when a leading `./` or a trailing `/` is significant.
+
+- The `render-jinja` feature is now a standalone Python console script, `sc-render-jinja`
+  instead of a `stepup` subcommand (tool).
+  Steps created by [`render_jinja()`][stepup.core.api.render_jinja] now run `sc-render-jinja ...`
+  instead of `stepup render-jinja ...`.
+  This matches the recommended pattern for extensions that do not need low-level access to
+  StepUp internals.
+
 - The helper function `stepup.core.render_jinja.render_jinja()` is replaced by two functions:
   `render_jinja_file()` renders a template file
   and `render_jinja_str()` renders a template string.
@@ -338,57 +624,55 @@ and will be updated with any further changes before the final release.
   because `render_jinja_str()` takes the template as its first argument,
   with an optional `name` for error messages.
   (The `render_jinja()` function in `stepup.core.api` is unaffected.)
-- Updates of many internals, including:
-    - Renamed "orphan" and related names to "detached", which is more intuitive.
-      The new terminology is applied more consistently with consistent distinction between
-      "detach" (verb, state change) and "detached" (state).
-    - The "action" abstraction layer introduced in StepUp 3 has been completely removed,
-      as it was no longer needed after the introduction of the forkserver.
-    - Worker subprocesses have been replaced by asyncio tasks launching subprocesses,
-      optionally through a forkserver for reduced overhead.
-      File hashing is offloaded to dedicated threads.
-    - Strict database sessions management and transaction correctness has been implemented
-      to avoid database corruption, e.g. due to race conditions.
-    - When a step is detached while it is running (and not recreated before it ends),
-      it is still skippable upon a rerun of the build if it gets recreated again.
-    - The `STEPUP_STEP_I` environment variable has been replaced by `STEPUP_JOB_I`.
-      Instead of a step's (stable) node index, it now holds a unique id for the current
+
+- Changes that matter when importing from `stepup.core`,
+  e.g. in an extension package, a custom tool or a `plan.py`:
+
+    - New `stepup.core.path` module with the path utilities used throughout StepUp,
+      including the `StrPath` type alias that appears in all public signatures.
+      See [stepup.core.path](reference/stepup.core.path.md) for the full reference.
+    - The grab bag in `stepup.core.utils` is reduced to what is genuinely generic.
+      Digest formatting moved to `stepup.core.hash`,
+      where `format_digest` became `fmt_short_digest`, joined by `fmt_full_digest`.
+      Local executable formatting moved to `stepup.core.path`,
+      where `format_command` became `format_local_executable`.
+      The path helpers (`mynormpath`, `myrelpath`, `translate`, ...)
+      moved to `stepup.core.path` as well.
+      What stays is renamed to say what it does:
+      `string_to_bool` became `to_bool` and `string_to_list` became `as_list`.
+      New helpers live in the module they belong to rather than in the grab bag:
+      `escape_control_chars` and `format_subprocess` in `stepup.core.utils`,
+      `init_joblog` and `append_joblog_record` for the `--joblog` records
+      in `stepup.core.job`,
+      and the argparse converters `positive_int` and `positive_decimal`
+      in `stepup.core.tool`.
+    - The pytest helpers in `stepup.core.pytest` have been extended.
+      Next to `run_example`, the module now also provides `run_plan`,
+      which runs a `plan.py` as an ordinary Python script to check that it does not raise,
+      and `ConventionTests`, a base class whose tests check the `__all__` conventions
+      for every top-level module of a package in the `stepup` namespace.
+      The shell boilerplate of the integration examples was factored out into
+      `tests/examples/example.rc`, which also defines the return code bits by name,
+      so extension packages can source it in their own examples.
+    - The argument of `get_rpc_client()` is renamed from `socket` to `path`.
+    - The `STEPUP_STEP_I` environment variable has been replaced by `STEPUP_JOB_I`,
+      whose value is also returned by the new `get_job_i()` function in `stepup.core.api`.
+      Instead of a step's (stable) node index, it holds a unique id for the current
       job running the step, assigned by the scheduler when the job is created, so a
       deferred step's earlier attempt cannot be confused with its later one.
-    - Order of `StepInfo` attributes is made consistent with the `step()` API function.
-    - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
-    - Runner has been renamed to Builder.
-    - Cascade has been renamed to Trellis.
-    - Supplier has been renamed to Source.
-    - Consumer has been renamed to Sink.
-    - The grab bag in `stepup.core.utils` is reduced to what is genuinely generic.
-      Digest formatting moved to `stepup.core.hash` (`fmt_full_digest`,
-      next to `fmt_digest`, which is renamed to `fmt_short_digest`),
-      local executable formatting to `stepup.core.path` (`format_local_executable`),
-      the `--joblog` record format to `stepup.core.job`
-      (`init_joblog` and `append_joblog_record`),
-      and the argparse converters to `stepup.core.tool`
-      (`positive_int`, joined there by `positive_decimal`).
-      What stays is renamed to say what it does:
-      `escape_command_display` became `escape_control_chars`,
-      `string_to_bool` became `to_bool`, and `string_to_list` became `as_list`.
-      The `env` and `returncode` arguments of `format_subprocess` became keyword arguments.
-    - The `SOCKET` and `PID` header lines of `.stepup/director.log` are defined once,
-      in `stepup.core.constants`, instead of being written and parsed with
-      literal prefixes and hardcoded offsets in two different modules.
-- The `Ran N job(s).` message at the end of a build phase now counts only the jobs
-  that executed a step's command.
-  Skipped steps and internal validation jobs are no longer included,
-  which used to make the number confusingly large for builds with many skipped steps.
-- Every `stepup` subcommand now reports a mistake that the user can fix
-  as a short `ERROR:` message with return code `1`, instead of a Python traceback.
-  This used to be implemented separately by a few subcommands,
-  so `stepup status`, `stepup browse` and `stepup clean` still ended with a traceback
-  in a directory where StepUp had never run.
-  Setting `STEPUP_DEBUG` shows the traceback of such an error,
-  as it already did for a configuration error.
-  Stopping a subcommand with Ctrl-C is also reported as a message now,
-  and sets the `2` bit of the [return code](reference/returncode.md).
+    - The order of the `StepInfo` attributes is made consistent with the `step()` API function.
+    - Several concepts were renamed, which is also visible in the graph output:
+      Runner became Builder, Cascade became Trellis,
+      Supplier became Source, Consumer became Sink,
+      and orphan became detached, with a consistent distinction between
+      "detach" (the verb, a state change) and "detached" (the state).
+      An amended input, output or environment variable is now called a dynamic one,
+      as opposed to an initial one declared by the plan.
+      The `amend()` function keeps its name,
+      because it is still the call that adds a dependency while the step runs.
+    - The *run phase* has been renamed to *build phase*
+      throughout the documentation and source code.
+
 - Tools no longer return a return code:
   the signature of `ToolFunc` is now `Callable[[argparse.Namespace], None]`.
   A tool raises `ToolError` to report a mistake the user can fix,
@@ -396,51 +680,86 @@ and will be updated with any further changes before the final release.
   The alias has moved from `stepup.core.utils` to the new `stepup.core.tool` module,
   which collects what the subcommands have in common.
   See [Custom Tools](extending/tool.md) for how to write one.
-- The `--log-level` / `-l` option has moved from the `stepup` command to its `build`
-  subcommand, which is the only one acting on it:
-  write `sb -l INFO` or `stepup build -l INFO` instead of `stepup -l INFO build`.
-  The config-file key moves from the top level to the `[build]` section,
-  and the environment variable changes from `STEPUP_LOG_LEVEL` to `STEPUP_BUILD_LOG_LEVEL`.
-  The director exports the level to its steps under the new name as well.
-- The default of `${STEPUP_PATH_FILTER}` is broadened from `-venv` to
-  `-.venv:-venv:-.tox:-.nox:-.direnv:-.pixi:-node_modules`,
-  so the directories in which common tools install dependencies
-  are ignored without having to configure the filter.
+
+- A tool entry point in the `stepup.tools` group is called with two arguments,
+  `(subparsers, loader)`, instead of only the subparsers.
+  The `loader` is a `ConfigLoader` instance,
+  which the tool uses to patch its parser with the defaults from the config files.
+  The functions registered as entry points are named `add_<name>_subcommand` by convention,
+  instead of `<name>_subcommand`.
+  See [Custom Tools](extending/tool.md) for a complete example.
 
 ### Deprecated
 
 - The `stepup boot` command has been deprecated in favor of `sb` or alternatively `stepup build`.
+
 - The script interface for calling user Python scripts from `plan.py` has been deprecated
   in favor of the new [Call](getting_started/call.md) interface.
   You are encouraged to migrate your `plan.py` files to the new API.
 
 ### Removed
 
+#### Command Line and Configuration
+
+- `--show-perf` has been removed.
+  Per-step usage information is stored in the workflow database instead
+  and can be viewed with `stepup browse`.
+
+- The `STEPUP_SHOW_PERF` environment variable is gone together with the `--show-perf` option.
+  (It was not renamed to `STEPUP_BUILD_SHOW_PERF`.)
+
+- The `--root` option of the `stepup` command has been removed.
+  Use the `STEPUP_ROOT` environment variable to work on a project
+  from outside its root directory.
+
+#### Scheduling
+
+- The `pool` feature has been removed,
+  replaced by the more powerful `resources` feature.
+  See [Resources](advanced_topics/resources.md)
+  and [Resource Constraints](migration/from_3x_to_40.md#resource-constraints-replacement-for-pools-and-blocked-steps)
+  in the migration guide for details.
+
+#### Workflow API
+
+- The `${inp}` and `${out}` placeholders have been removed from the `run()` and `step()` functions.
+  Use the `shq()` helper function instead, together with Python's built-in f-strings.
+
+- The `glob()` function no longer accepts `_defer` and `_required` keyword arguments.
+
+- Removed the environment variable substitution in the executable passed to `script()` and `call()`.
+
+- The `block=True` argument of `step()` and all step-generating API functions has been removed.
+  A step is blocked by requiring a resource that the host does not have,
+  e.g. `resources="gate"`, which keeps it pending for the whole build.
+  See [Blocked Steps](advanced_topics/blocked_steps.md) for details.
+
+#### File Tracking and the Workflow Graph
+
 - StepUp no longer tracks directories.
   They are either assumed to be present (for static files)
   or created transparently right before a step needs it as a workdir or writes an output into them.
   This has some consequences:
+
     - The `mkdir()` command has been removed.
     - Input and output files can no longer be directories.
-  Some of the internal logic that relied on directories being tracked,
-  has been refactored to work without them:
+
+    Some of the internal logic that relied on directories being tracked
+    has been refactored to work without them:
+
     - The watcher uses some simple heuristics to determine which directories to watch.
       It also handles renaming and moving of directories.
     - The cleanup script (`stepup clean`) and the automatic cleanup at the end of a successful run
       will remove empty directories after having removed outdated output files they contained.
     - StepUp now limits its insistence on path affixes (like trailing slashes)
       to only those cases where it is absolutely necessary to avoid ambiguity.
-- `--show-perf` has been removed.
-  Per-step usage information is stored in the workflow database instead
-  and can be viewed with `stepup browse`.
-- The `${inp}` and `${out}` placeholders have been removed from the `run()` and `step()` functions.
-  Use the `shq()` helper function instead, together with Python's built-in f-strings.
-- The `glob()` function no longer accepts `_defer` and `_required` keyword arguments.
-- Removed the environment variable substitution in the executable passed to `script()` and `call()`.
+
 - Cross-pattern named-glob consistency (matching several patterns jointly, e.g.
   `glob("feedback_${*idx}.md", "report_${*idx}.pdf")`) is no longer supported.
   It was rarely, if ever, used in practice, and its removal significantly simplifies
   `stepup.core.nglob` and every module that consumes it.
+  As a result, `glob()` and `StepInfo.filter_inp()`/`filter_out()`/`filter_vol()` take a
+  single pattern instead of `*patterns`.
   `NGlobMulti` is removed; `NamedGlob` (unchanged for single-pattern use, and now with
   the convenience methods `NGlobMulti` used to provide) is the only named-glob class.
   It was previously named `NGlobSingle`, a name that only made sense next to a "multi"
@@ -448,60 +767,114 @@ and will be updated with any further changes before the final release.
   Consistency *within* one pattern (the same `${*name}` reused twice in a single pattern
   string) is unaffected.
 
+#### Extensions and Internals
+
+- The `stepup act` subcommand and the `stepup.actions` entry point group have been removed,
+  together with the action abstraction layer they exposed.
+  An extension that used to register an action now installs a console script instead,
+  as described in [Console Scripts](extending/console_scripts.md).
+
+- The `stepup.core.worker` module is gone with the worker processes it implemented,
+  including the `WorkThread` object that was handed to every action function.
+  An extension that used its `runsh()` and related methods
+  can call `run_subprocess()` from `stepup.core.extapi` instead,
+  which also records the invocation for later inspection.
+
+- The per-worker log files, `.stepup/worker0.log`, `.stepup/worker1.log` and so on,
+  are no longer written, because there are no worker processes to log.
+  What a step wrote to standard output and standard error is stored in the workflow database
+  and can be inspected with `stepup browse`,
+  while the director writes everything else to `.stepup/director.log`.
+
 ### Fixed
 
-- Previously computed file hashes of static files are now reused instead of recomputing them.
-- Simple user mistakes no longer dump a full Python traceback:
-    - A `ToolError` raised before the director starts
-      (e.g. an invalid `stepup build` target) now prints a short `ERROR: ...` message.
-    - A build target that resolves to a static file or a volatile output
-      on a resumed database (invalid on a fresh database too, but previously only
-      contained there) now reports a clean `ERROR` and a `FAILED` exit code,
-      instead of crashing the director.
-- The progress bar now excludes optional (not rewquired) steps
-  correctly from the total count of steps to be executed.
+The redesign of StepUp 4 also removed a long tail of latent bugs,
+most of which were rarely or never observed in StepUp 3:
+race conditions between the director and its steps,
+graph inconsistencies left behind by an interrupted build,
+and edge cases in the remote procedure calls between the director and the steps.
+These are not listed individually,
+because they are entangled with the redesign of the components in which they were found.
+An entire class of them was ruled out by strict database session
+and transaction management, which keeps the workflow database consistent
+when several parts of StepUp write to it at the same time.
+The others surfaced because the test suite grew considerably:
+more than four times as many unit tests and over 1.5 times as many integration examples.
+
+#### Build Execution and Process Control
+
 - `Ctrl-C` and `SIGTERM` now abort the build in an orderly fashion.
   The director interrupts all running steps with `SIGINT`,
   kills whatever is still running after a few seconds with `SIGKILL`,
   and only then exits, after writing its logs and final report.
   Previously, the terminal user interface exited immediately,
   which cut the director's shutdown short.
+
 - Sending `SIGTERM` to StepUp no longer leaves running steps behind as orphaned processes.
+
 - The third `q` key press kills running steps with `SIGKILL` again, as documented.
-  It escalated to `SIGTERM` instead since version 3.0.0.
+  It had escalated to `SIGTERM` instead since version 3.0.0.
+
 - The terminal user interface cleanly exits when the director process fails to start unexpectedly.
+
 - Starting a build no longer refuses to run just because a previous director's socket file
   is still on disk after the process that created it was killed.
   The check now asks the operating system whether the pid advertised in `.stepup/director.log`
   is still alive, and only refuses when it is (or when the pid cannot be determined).
+
 - A keystroke whose command fails inside the director (e.g. `g` when `graph.txt` cannot be
   written) is now reported as an error, and the build carries on.
   Previously this ended `stepup build` with a traceback and discarded the director's return code.
-- Running with `--log-level=ERROR` or `--log-level=CRITICAL` no longer ends every successful
-  build with a spurious `Errors logged in .stepup/director.log` warning.
+
+- Pressing `Ctrl-Z` now suspends the whole build, including the running steps.
+  Previously they kept running, and writing files, while StepUp itself was stopped.
+  The director stops them with `SIGSTOP` and continues them on resume,
+  and the time spent suspended is no longer recorded as time a step spent working.
+
+- Resuming StepUp with `fg` no longer leaves a broken terminal:
+  the cursor stays visible while the build is suspended,
+  and keyboard interaction keeps working after the build is resumed.
+  Previously every keystroke was echoed and then swallowed by the terminal.
+
+#### Workflow API
+
+- A known race condition related to `amend(inp=...)` has been fixed.
+  It is now safe to call `amend(inp=...)` after a dynamic input file has already been read.
+  (It is not the most efficient approach to call `amend(inp=...)` too late,
+  but in some cases it is the only practical one.)
+
+#### File Tracking and the Workflow Graph
+
+- Previously computed file hashes of static files are now reused instead of recomputing them.
+
 - A named wildcard (`${*name}`) now matches the same paths as the anonymous `*` it replaces.
   Previously, `glob("data/${*name}")` silently skipped directory matches,
   while `glob("data/*")` included them.
   Consequently, a named wildcard directly following a separator
   no longer matches an empty string, just like `*` in that position.
   The trailing separator of a matched directory is not part of the captured substring.
+
 - Attempts to use files under `.stepup/` in a workflow will now raise an exception.
-- Pressing `Ctrl-Z` now suspends the whole build.
-  Steps run in a session of their own, so the terminal never reached them and they kept
-  running (and writing files) while StepUp itself was stopped.
-  The director now stops them with `SIGSTOP` and continues them on resume,
-  and the time spent suspended is no longer recorded as time a step spent working.
-- Resuming StepUp with `fg` no longer leaves a broken terminal:
-  the cursor stays visible while the build is suspended,
-  and keyboard interaction keeps working after the build is resumed.
-  Previously every keystroke was echoed and then swallowed by the terminal.
-- When an optional step is reverted to pending because nothing needs its output anymore,
-  its volatile outputs keep the `VOLATILE` file state.
+
 - A step whose input is changed or deleted while the step is temporarily detached
   from the workflow now runs again once it is recycled.
   Previously it was recycled in its succeeded state and silently kept its stale output.
   This could be observed after an incomplete build (or one run with `--no-clean`),
   which leaves detached steps in the graph for the next build to pick up.
+
+#### Terminal Output and Inspection
+
+- The pages of `stepup browse` escape the labels of the nodes,
+  so a command containing `<`, `>` or `&` no longer breaks the layout of the page.
+
+- The progress bar now excludes optional (not required) steps
+  correctly from the total count of steps to be executed.
+
+- Running with `--log-level=ERROR` or `--log-level=CRITICAL` no longer ends every successful
+  build with a spurious `Errors logged in .stepup/director.log` warning.
+
+#### Extensions and Internals
+
 - The RPC receive loops no longer leave a pending task behind
   when the connection to the other end is closed.
   Such a task ended up in the director log as `Task was destroyed but it is pending!`,

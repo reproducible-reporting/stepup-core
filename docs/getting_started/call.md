@@ -89,7 +89,7 @@ The only exceptions are `inp` and `out`, which are silently dropped when absent
 from the function's signature, since many functions do not need both.
 
 ```python
-# plan.py — pass a threshold to the run function
+# plan.py: pass a threshold to the run function
 call("./work.py", "run", inp=["data.txt"], out=["result.txt"], threshold=0.5)
 ```
 

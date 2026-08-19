@@ -906,7 +906,7 @@ def amend(
         When `inp`, `out`, or `vol` contain a directory.
     InputNotFoundError
         When dynamic inputs are not yet available.
-        Let this exception propagate — do not catch it.
+        Let this exception propagate; do not catch it.
         The director defers the step until the missing inputs become available.
         Note that this call blocks until any dynamic input matching an unconfirmed file is hashed,
         so it may take a while for large files.

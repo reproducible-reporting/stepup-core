@@ -271,7 +271,7 @@ def parse_args() -> argparse.Namespace:
         "--forkserver",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Use a forkserver for Python step execution and file hashing "
+        help="Use a forkserver for Python step execution "
         "to reduce startup overhead. [default=%(default)s]",
     )
     parser.add_argument(
@@ -485,7 +485,7 @@ async def serve(
     db
         The database session backing the workflow graph.
     mp_ctx
-        A `multiprocessing` forkserver context for Python step execution and file hashing,
+        A `multiprocessing` forkserver context for Python step execution,
         or `None` to use plain subprocesses.
     handle_signals
         Whether to install handlers for `SIGINT` and `SIGTERM` that abort the build.

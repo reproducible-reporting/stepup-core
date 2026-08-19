@@ -41,8 +41,8 @@ This means that `data/` may contain a huge number of files without causing any p
 
 Calling `static("data/")` and then `static("data/somefile.txt")` is fine:
 the second call is a no-op, since the tree already owns the file.
-The reverse order — `static("data/somefile.txt")` first, `static("data/")` second — is
-also fine: the tree takes ownership of the file that was already declared.
+The reverse order, `static("data/somefile.txt")` first and `static("data/")` second,
+is also fine: the tree takes ownership of the file that was already declared.
 Both orders are no-ops because they come from the same step; the point of the rule is
 that a single owner exists regardless of which declaration happened to run first.
 Within a single `static()` call, directory arguments are always registered before

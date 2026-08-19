@@ -219,7 +219,7 @@ def _add_build_parser(
         "--forkserver",
         default=(sys.platform == "linux"),
         action=argparse.BooleanOptionalAction,
-        help="Use a forkserver for Python step execution and file hashing "
+        help="Use a forkserver for Python step execution "
         "to reduce startup overhead. [default: True on Linux, False elsewhere]",
     )
     group.add_argument(
