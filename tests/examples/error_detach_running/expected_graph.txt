@@ -21,6 +21,7 @@ file:work.py
                 sink   (step:./work.py)
 
 (step:./work.py)
-               state = PENDING
+               state = SUCCEEDED
                 need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
               source   file:work.py

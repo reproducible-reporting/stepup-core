@@ -352,14 +352,9 @@ class Executor:
                 new_out_hashes,
                 cause=HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
             )
-            run.detached, run.interrupted_defer = step.mark_completed(new_hash, wants_defer)
+            run.interrupted_defer = step.mark_completed(new_hash, wants_defer)
             self.scheduler.record_stop_time(step.i, succeeded=new_hash is not None)
-            if run.detached:
-                # The step's creator moved on without it before/when it finished (see
-                # Step.detach()): the raw result is moot, report() shows a dedicated
-                # explanatory page instead of the raw error/success info.
-                run.outcome = None
-            elif wants_defer and not run.interrupted_defer:
+            if wants_defer and not run.interrupted_defer:
                 # Erase error info to keep the screen output concise.
                 run.outcome = None
             if run.outcome is not None:
@@ -866,15 +861,7 @@ class Executor:
         needs_defer = not (
             (len(run.unavailable) == 0 and len(run.unfresh) == 0) or run.interrupted_defer
         )
-        if run.detached:
-            pages.append(
-                (
-                    "Step detached",
-                    "This step's creator did not recreate it before it finished.\n"
-                    "Its result has been discarded, and it will be executed again if recreated.",
-                )
-            )
-        elif not (run.success or needs_defer):
+        if not (run.success or needs_defer):
             # Format command for display (can be copied and pasted into a shell); a non-zero
             # return code is appended as a trailing `# exit=N` comment by format_subprocess.
             async with self.db:
@@ -900,9 +887,8 @@ class Executor:
         if len(run.inp_messages) > 0:
             run.inp_messages.sort()
             pages.append(("Invalid inputs", "\n".join(run.inp_messages)))
-        if not (needs_defer or run.detached) and len(run.out_missing) > 0:
-            # Do not show missing outputs, as they are fairly normal and harmless when
-            # deferring, or when the step was detached.
+        if not needs_defer and len(run.out_missing) > 0:
+            # Do not show missing outputs, as they are fairly normal and harmless when deferring.
             run.out_missing.sort()
             pages.append(("Expected outputs not created", "\n".join(run.out_missing)))
         if run.outcome is not None:
@@ -916,8 +902,6 @@ class Executor:
 
     def _determine_action(self, run: Run) -> str:
         """Derive the reporter action string (`SUCCESS`, `FAIL`, ...) for a finished step."""
-        if run.detached:
-            return "DETACHED"
         if run.interrupted_defer:
             return "FAIL"
         if len(run.unavailable) > 0 or len(run.unfresh) > 0:

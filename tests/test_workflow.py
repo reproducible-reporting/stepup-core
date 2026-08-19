@@ -42,8 +42,8 @@ def _amend(wfx: Workflow, step: Step, **kwargs) -> tuple[bool, list]:
 
     Mirrors `DirectorHandler.handle_amend` in `stepup/core/director.py`.
     """
-    is_detached, unavailable, unfresh, to_check = amend_step(wfx, step, **kwargs)
-    carry_on = not is_detached and not unavailable and not unfresh
+    unavailable, unfresh, to_check = amend_step(wfx, step, **kwargs)
+    carry_on = not unavailable and not unfresh
     return carry_on, to_check
 
 
@@ -164,7 +164,7 @@ async def test_step(wfs: Workflow):
         assert isinstance(workdir, Path)
         assert wfs.format_str() == TEST_STEP_GRAPH
         assert list(wfs.nodes(Step)) == [step]
-        assert {(r.path, r.detached) for r in step.inp_paths(include_detached=True)} == {
+        assert {(r.path, r.detached) for r in step._paths("source", raw=True)} == {
             ("foo.txt", True)
         }
         assert {r.path for r in step.out_paths()} == {"sub/bar.txt"}
@@ -184,15 +184,14 @@ async def test_step(wfs: Workflow):
         step.set_state(StepState.RUNNING)
         assert not step.has_unavailable_dynamic_input()
     async with wfs.db:
-        is_detached, unavailable, unfresh, to_check = amend_step(
+        unavailable, unfresh, to_check = amend_step(
             wfs, step, inp_paths=["spam.txt"], out_paths=["egg.csv"]
         )
         assert to_check == {}
-        assert not is_detached
         assert unavailable == {"spam.txt"}
         assert not unfresh
         assert step.has_unavailable_dynamic_input()
-        assert {(r.path, r.detached) for r in step.inp_paths(include_detached=True)} == {
+        assert {(r.path, r.detached) for r in step._paths("source", raw=True)} == {
             ("foo.txt", True),
             ("spam.txt", True),
         }
@@ -459,7 +458,7 @@ async def test_redefine_step(wfp: Workflow):
 
 
 async def test_rerun_creator_detaches_running_child(wfp: Workflow):
-    """A detached, still-`RUNNING` step's RPC calls must be harmless no-ops, not crash it.
+    """A detached, still-`RUNNING` step's RPC calls must be recorded like any other step's.
 
     This models a race that can occur in a real build: a step (`plan`) creates a
     child step (`sub`), e.g. via a `step()` call in a `plan.py` script:
@@ -472,10 +471,9 @@ async def test_rerun_creator_detaches_running_child(wfp: Workflow):
     - `sub`'s (still running, but doomed) child process may still call `amend()`, e.g.
       via `getenv()`, before its own command terminates on its own.
 
-    `amend_step` silently no-ops instead of raising, so a stray RPC call from `sub`'s
-    still-alive child does not crash anything; `sub` itself keeps running until its
-    command terminates, at which point `Step.mark_completed()`'s `is_detached()` branch
-    discovers it and reports it as `DETACHED` (see `Executor.report()`).
+    Detachment is about provenance, not liveness, so such a call is carried out as usual.
+    The amended input becomes a detached node, because a detached creator only ever
+    creates detached products.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -502,9 +500,16 @@ async def test_rerun_creator_detaches_running_child(wfp: Workflow):
         assert sub.is_detached()
         assert sub.get_state() == StepState.RUNNING
 
-        # The next RPC call made by `sub`'s still-alive child process is a harmless
-        # no-op instead of a crash.
-        assert amend_step(wfp, sub, inp_paths=["some_new_input"]) == (True, set(), set(), {})
+        # The next RPC call made by `sub`'s still-alive child process is carried out,
+        # recording a detached input node.
+        assert amend_step(wfp, sub, inp_paths=["some_new_input"]) == (
+            {"some_new_input"},
+            set(),
+            {},
+        )
+        new_inp, detached = wfp.find_and_detached(File, "some_new_input")
+        assert new_inp is not None
+        assert detached
 
 
 async def test_mark_pending_noop_when_running(wfs: Workflow):
@@ -565,41 +570,51 @@ async def test_detach_marks_is_detached_regardless_of_state(wfp: Workflow):
         assert sub2.is_detached()
 
 
-async def test_declare_static_files_detached_creator_is_noop(wfp: Workflow):
-    """A detached creator's `declare_static_files()` call must be a silent no-op."""
+async def test_declare_static_files_detached_creator_creates_detached_file(wfp: Workflow):
+    """A detached creator's `declare_static_files()` call creates a detached file."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "sub")
         sub = wfp.find(Step, "sub")
         sub.detach()
-        assert wfp.declare_static_files(sub, ["ghost.txt"]) == {}
-        assert wfp.find_and_detached(File, "ghost.txt") == (None, None)
+        assert list(wfp.declare_static_files(sub, ["ghost.txt"])) == ["ghost.txt"]
+        ghost, detached = wfp.find_and_detached(File, "ghost.txt")
+        assert ghost is not None
+        assert detached
 
 
-async def test_register_static_tree_detached_creator_is_noop(wfp: Workflow):
-    """A detached creator's `register_static_tree()` call must be a silent no-op."""
+async def test_register_static_tree_detached_creator_creates_detached_tree(wfp: Workflow):
+    """A detached creator's `register_static_tree()` call creates a detached tree."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "sub")
         sub = wfp.find(Step, "sub")
         sub.detach()
-        assert wfp.register_static_tree(sub, "ghost_dir") == {}
-        assert wfp.find_and_detached(StaticTree, "ghost_dir/") == (None, None)
+        wfp.register_static_tree(sub, "ghost_dir")
+        tree, detached = wfp.find_and_detached(StaticTree, "ghost_dir/")
+        assert tree is not None
+        assert detached
 
 
-async def test_define_step_detached_creator_is_noop(wfp: Workflow):
-    """A detached creator's `define_step()` call must be a silent no-op."""
+async def test_define_step_detached_creator_creates_detached_step(wfp: Workflow):
+    """A detached creator's `define_step()` call creates a detached step.
+
+    This is what lets a detached creator be skipped when it is recreated identically:
+    it records the full subtree it created, which `Trellis.try_recycle` restores.
+    """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "sub")
         sub = wfp.find(Step, "sub")
         sub.detach()
-        assert wfp.define_step(sub, "echo ghost") == {}
-        assert wfp.find_and_detached(Step, "echo ghost") == (None, None)
+        wfp.define_step(sub, "echo ghost")
+        ghost, detached = wfp.find_and_detached(Step, "echo ghost")
+        assert ghost is not None
+        assert detached
 
 
-async def test_record_subprocess_detached_step_is_noop(wfp: Workflow):
-    """A detached step's `record_subprocess()` call must be a silent no-op."""
+async def test_record_subprocess_detached_step_is_recorded(wfp: Workflow):
+    """A detached step's `record_subprocess()` call is recorded like any other."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "sub")
@@ -609,17 +624,17 @@ async def test_record_subprocess_detached_step_is_noop(wfp: Workflow):
         count = wfp.db.execute(
             "SELECT COUNT(*) FROM step_subprocess WHERE node = ?", (sub.i,)
         ).fetchone()[0]
-        assert count == 0
+        assert count == 1
 
 
-async def test_get_info_detached_step_returns_empty(wfp: Workflow):
-    """A detached step's `get_info()` call must return an empty `StepInfo`."""
+async def test_get_info_detached_step_returns_declaration(wfp: Workflow):
+    """A detached step's `get_info()` call must still describe its own declaration."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
-        wfp.define_step(plan, "sub")
+        wfp.define_step(plan, "sub", inp_paths=["inp.txt"], out_paths=["out.txt"])
         sub = wfp.find(Step, "sub")
         sub.detach()
-        assert sub.get_info() == StepInfo("", [], [], [], [], Path("."))
+        assert sub.get_info() == StepInfo("sub", ["inp.txt"], [], ["out.txt"], [], Path("."))
 
 
 async def test_define_step_input_static(wfp: Workflow):
@@ -996,9 +1011,7 @@ async def test_amend_step(wfp: Workflow):
         )
         assert not carry_on
         assert to_check == {}
-        assert {
-            (r.path, r.detached) for r in step.inp_paths(include_detached=True, dynamic=True)
-        } == {
+        assert {(r.path, r.detached) for r in step._paths("source", raw=True, dynamic=True)} == {
             ("inp1", True),
             ("inp2", True),
         }
@@ -1029,7 +1042,7 @@ async def test_amend_step_already_declared(wfp: Workflow):
         step = wfp.find(Step, "aaa")
         assert amend_step(
             wfp, step, inp_paths=["inp"], env_deps=["VAR"], out_paths=["out"], vol_paths=["vol"]
-        ) == (False, set(), set(), {})
+        ) == (set(), set(), {})
         assert [r.path for r in step.inp_paths(dynamic=True)] == []
         assert list(step.env_deps(dynamic=True)) == []
         assert [r.path for r in step.out_paths(dynamic=True)] == []
@@ -1106,10 +1119,9 @@ async def test_amend_step_never_concurrent_skips_freshness_check(wfs: Workflow):
     accepted, regardless of any race."""
     async with wfs.db:
         _, sink = _build_producer_sink(wfs)
-        is_detached, unavailable, unfresh, _ = amend_step(
+        unavailable, unfresh, _ = amend_step(
             wfs, sink, inp_paths=["data.txt"], ran_concurrently=lambda p, c: False
         )
-        assert not is_detached
         assert not unavailable
         assert not unfresh
 
@@ -1118,10 +1130,9 @@ async def test_amend_step_freshness_fresh(wfs: Workflow):
     """`ran_concurrently` reports no overlap: input accepted as fresh."""
     async with wfs.db:
         _, sink = _build_producer_sink(wfs)
-        is_detached, unavailable, unfresh, _ = amend_step(
+        unavailable, unfresh, _ = amend_step(
             wfs, sink, inp_paths=["data.txt"], ran_concurrently=lambda p, c: False
         )
-        assert not is_detached
         assert not unavailable
         assert not unfresh
 
@@ -1130,10 +1141,9 @@ async def test_amend_step_freshness_unfresh(wfs: Workflow):
     """`ran_concurrently` reports an overlap: input rejected as unfresh."""
     async with wfs.db:
         _, sink = _build_producer_sink(wfs)
-        is_detached, unavailable, unfresh, _ = amend_step(
+        unavailable, unfresh, _ = amend_step(
             wfs, sink, inp_paths=["data.txt"], ran_concurrently=lambda p, c: True
         )
-        assert not is_detached
         assert not unavailable
         assert unfresh == {"data.txt"}
 
@@ -3131,11 +3141,9 @@ async def test_inp_paths(wfp: Workflow):
         wfp.define_step(plan, "script", inp_paths=["foo"])
         step = wfp.find(Step, "script")
         assert {r.path for r in step.inp_paths()} == set()
-        assert {(r.path, r.detached) for r in step.inp_paths(include_detached=True)} == {
-            ("foo", True)
-        }
+        assert {(r.path, r.detached) for r in step._paths("source", raw=True)} == {("foo", True)}
         assert list(step.inp_paths()) == []
-        assert {(r.path, r.state, r.detached) for r in step.inp_paths(include_detached=True)} == {
+        assert {(r.path, r.state, r.detached) for r in step._paths("source", raw=True)} == {
             ("foo", FileState.UNDECLARED, True),
         }
         assert list(step.inp_paths()) == []
@@ -3199,14 +3207,14 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
 
         # Simulate running the step, which amends a few things.
         amend_step(wfp, step, inp_paths=["foo"], env_deps=["AAA"], vol_paths=["bbb"])
-        assert {(r.path, r.detached, r.dynamic) for r in step.inp_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step._paths("source", raw=True)} == {
             ("foo", False, True)
         }
         assert set(step.env_deps()) == {"AAA"}
-        assert {(r.path, r.detached, r.dynamic) for r in step.out_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step.out_paths()} == {
             ("bar", False, False),
         }
-        assert {(r.path, r.detached, r.dynamic) for r in step.vol_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step.vol_paths()} == {
             ("bbb", False, True),
         }
         wfp.update_file_hashes({"bar": fake_hash("bar")}, cause=HashUpdateCause.SUCCEEDED)
@@ -3218,14 +3226,14 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
         foo1.detach()
         assert foo1.is_detached()
         # Dynamic info is not removed
-        assert {(r.path, r.detached, r.dynamic) for r in step.inp_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step._paths("source", raw=True)} == {
             ("foo", True, True)
         }
         assert set(step.env_deps()) == {"AAA"}
-        assert {(r.path, r.detached, r.dynamic) for r in step.out_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step.out_paths()} == {
             ("bar", False, False),
         }
-        assert {(r.path, r.detached, r.dynamic) for r in step.vol_paths(include_detached=True)} == {
+        assert {(r.path, r.detached, r.dynamic) for r in step.vol_paths()} == {
             ("bbb", False, True),
         }
 
@@ -3241,9 +3249,7 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
         wfp.define_step(plan, "prog", out_paths=["bar"])
         assert not step.is_detached()
         assert {r.path for r in step.inp_paths()} == {"foo"}
-        assert {(r.path, r.detached) for r in step.inp_paths(include_detached=True)} == {
-            ("foo", False)
-        }
+        assert {(r.path, r.detached) for r in step._paths("source", raw=True)} == {("foo", False)}
         assert {r.path for r in step.out_paths()} == {"bar"}
         # Note that dynamic info is removed when inputs of a step are detached.
         assert {r.path for r in step.vol_paths()} == {"bbb"}
@@ -3821,7 +3827,7 @@ async def test_step_lost_child(wfp: Workflow):
         # that declares data.txt, since that output is not one of its declared outputs.
         assert step.in_graph()
         assert step.get_hash() is None
-        assert list(step.out_paths(dynamic=False, include_detached=True)) == []
+        assert list(step.out_paths(dynamic=False)) == []
         assert not step.can_recycle(out_paths=["data.txt"])
 
         # The next cleanup removes it.
@@ -4195,8 +4201,7 @@ async def test_defer_cap(wfs: Workflow):
         # Deferred 3 times (== cap): stays PENDING each time, count increments,
         # and the opportunistically-created child stays attached (accepted defer).
         for expected_count in [1, 2, 3]:
-            detached, interrupted_defer = echo.mark_completed(None, True)
-            assert detached is False
+            interrupted_defer = echo.mark_completed(None, True)
             assert interrupted_defer is False
             assert echo.get_state() == StepState.PENDING
             assert echo.get_defer_count() == expected_count
@@ -4204,8 +4209,7 @@ async def test_defer_cap(wfs: Workflow):
 
         # 4th defer (cap + 1): FAILED instead of PENDING, a genuine terminal
         # outcome, so the child is now detached too.
-        detached, interrupted_defer = echo.mark_completed(None, True)
-        assert detached is False
+        interrupted_defer = echo.mark_completed(None, True)
         assert interrupted_defer is True
         assert echo.get_state() == StepState.FAILED
         assert echo.get_defer_count() == 4
@@ -4223,16 +4227,14 @@ async def test_completed_detaches_child_only_on_genuine_failure(wfs: Workflow):
         assert not sub.is_detached()
 
         # Accepted defer: child must stay attached.
-        detached, interrupted_defer = echo.mark_completed(None, True)
-        assert not detached
+        interrupted_defer = echo.mark_completed(None, True)
         assert not interrupted_defer
         assert echo.get_state() == StepState.PENDING
         assert not sub.is_detached()
 
         # Genuine terminal failure (no defer requested): child is detached.
         echo.set_state(StepState.RUNNING)
-        detached, interrupted_defer = echo.mark_completed(None, False)
-        assert not detached
+        interrupted_defer = echo.mark_completed(None, False)
         assert not interrupted_defer
         assert echo.get_state() == StepState.FAILED
         assert sub.is_detached()
@@ -4269,7 +4271,7 @@ async def test_defer_clear_independent_of_count(wfs: Workflow):
         assert echo.get_defer_count() == 1
         # A genuine, unrelated command failure on the next run (no defer requested).
         echo.set_state(StepState.PENDING)
-        _detached, interrupted_defer = echo.mark_completed(None, False)
+        interrupted_defer = echo.mark_completed(None, False)
         assert interrupted_defer is False  # plain FAILED, not a cap-exceeded defer
         assert echo.get_state() == StepState.FAILED
         assert echo.get_defer_count() == 1  # unchanged by a plain FAILED
@@ -4295,8 +4297,7 @@ async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Wo
         sink = wfs.find(Step, "sink")
 
         sink.set_state(StepState.RUNNING)
-        is_detached, unavailable, unfresh, _ = amend_step(wfs, sink, inp_paths=["data.txt"])
-        assert not is_detached
+        unavailable, unfresh, _ = amend_step(wfs, sink, inp_paths=["data.txt"])
         assert unavailable == {"data.txt"}
         assert not unfresh
 

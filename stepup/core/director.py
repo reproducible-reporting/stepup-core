@@ -969,7 +969,7 @@ class DirectorHandler:
         """
         async with self.db:
             step = self.scheduler.get_step(job_i)
-            is_detached, unavailable, unfresh, to_check = self.workflow.amend_step(
+            unavailable, unfresh, to_check = self.workflow.amend_step(
                 step,
                 inp_paths=inp_paths,
                 env_deps=env_deps,
@@ -981,17 +981,13 @@ class DirectorHandler:
             checked_paths = set(to_check)
             await self.builder.run_promoted_hash_jobs(to_check, HashUpdateCause.CONFIRMED)
             async with self.db:
-                is_detached = step.is_detached()
-                if not is_detached:
-                    for path in checked_paths:
-                        file = self.workflow.find(File, path)
-                        if file.get_state() not in (FileState.CONFIRMED, FileState.BUILT):
-                            unavailable.add(path)
+                for path in checked_paths:
+                    file = self.workflow.find(File, path)
+                    if file.get_state() not in (FileState.CONFIRMED, FileState.BUILT):
+                        unavailable.add(path)
         carry_on = len(unavailable) == 0 and len(unfresh) == 0
         if not carry_on:
             self.executor.defer(job_i, unavailable=unavailable, unfresh=unfresh)
-        if is_detached:
-            carry_on = False
         return carry_on
 
     @allow_rpc

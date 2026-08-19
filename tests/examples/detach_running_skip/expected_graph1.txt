@@ -13,13 +13,7 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
-             product   file:extra_input.txt
              product   file:work.py
-
-file:extra_input.txt
-               state = CONFIRMED
-             creator   step:./plan.py
-                sink   (step:./work.py)
 
 file:work.py
                state = CONFIRMED
@@ -30,12 +24,11 @@ file:work.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [dynamic]
-              source   file:extra_input.txt [dynamic]
               source   file:work.py
-             product   (file:late.txt)
-                sink   (file:late.txt)
+             product   (file:out.txt)
+                sink   (file:out.txt)
 
-(file:late.txt)
+(file:out.txt)
                state = BUILT
              creator   (step:./work.py)
               source   (step:./work.py)

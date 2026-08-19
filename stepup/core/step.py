@@ -802,16 +802,16 @@ class Step(Node):
         environment variables and (volatile) outputs of the new declaration
         match those of the detached step exactly.
         """
-        old_inp_paths = sorted(r.path for r in self.inp_paths(dynamic=False, include_detached=True))
+        old_inp_paths = sorted(r.path for r in self.inp_paths(dynamic=False))
         if old_inp_paths != sorted(inp_paths):
             return False
         old_env_vars = sorted(self.env_deps(dynamic=False))
         if old_env_vars != sorted(env_deps):
             return False
-        old_out_paths = sorted(r.path for r in self.out_paths(dynamic=False, include_detached=True))
+        old_out_paths = sorted(r.path for r in self.out_paths(dynamic=False))
         if old_out_paths != sorted(out_paths):
             return False
-        old_vol_paths = sorted(r.path for r in self.vol_paths(dynamic=False, include_detached=True))
+        old_vol_paths = sorted(r.path for r in self.vol_paths(dynamic=False))
         return old_vol_paths == sorted(vol_paths)
 
     def after_recycle(
@@ -839,11 +839,18 @@ class Step(Node):
         `_holding` is always reset to 0: a recycled step cannot still be inside a `hold()`
         block from a previous run, since that block would have released it (or failed)
         before the step could be recycled.
+
+        A FAILED step is the one state that is not carried over: it is made PENDING so the
+        recycled step is retried. A failed step is never skippable anyway (it has no stored
+        hash), so keeping the state would only park it in a state nothing takes it out of
+        within the same build, while `report_completion` still counts it as a failure.
         """
         self.db.execute(
             "UPDATE step SET need = ?, shell = ?, _holding = 0 WHERE node = ?",
             (need.value, int(shell), self.i),
         )
+        if self.get_state() == StepState.FAILED:
+            self.graph.mark_step_pending(self)
         self.set_resources(resources)
         self.set_env_overrides(env_overrides)
         if duration is not None:
@@ -892,11 +899,9 @@ class Step(Node):
 
         Dynamic dependencies are not included for consistency with
         the information that is available when defining a step.
+
+        A detached step still describes its own declaration (see `Step._paths`).
         """
-        if self.is_detached():
-            # This step's creator has moved on without it (see Step.detach()); its real
-            # info is moot.
-            return StepInfo("", [], [], [], [], Path("."))
         command, workdir = self.command_and_workdir
         return StepInfo(
             command,
@@ -1059,11 +1064,42 @@ class Step(Node):
         self,
         relation: Literal["product", "source", "sink"],
         *,
-        include_detached: bool = False,
+        raw: bool = False,
         dynamic: bool | None = None,
         states: Collection[FileState] = (),
     ) -> Iterator[PathRecord]:
-        """Iterate over paths of this step using various criteria."""
+        """Iterate over paths of this step using various criteria.
+
+        A path can carry the `detached` flag for two unrelated reasons:
+
+        1. This step is detached, which detaches everything it created with it
+           (outputs, volatile outputs, static declarations).
+        2. The path's own creator detached it, which says nothing about this step.
+           An input that nothing declares is born detached, and a static declaration is detached
+           when the step that declared it reruns.
+
+        Only the first kind is about this step, so a path is yielded when it is attached or when
+        this step is detached. Always excluding detached paths would hide a detached step's own
+        outputs, and always including them would let an attached step pick up paths that left
+        the graph without it. With this rule, the wrappers of this method all mean the same
+        thing, namely what this step declares, whether or not the step is still attached.
+
+        Only a source can be detached without this step: a product is selected by its creator,
+        and an output is created by this step and only ever detached together with it.
+
+        Parameters
+        ----------
+        relation
+            Which paths to iterate over: those created by this step (`product`),
+            or those connected to it by a dependency edge (`source` or `sink`).
+        raw
+            Yield every path row, whatever its `detached` flag, bypassing the rule above.
+        dynamic
+            Restrict to paths discovered while the step was running (`True`),
+            or to those known when the step was defined (`False`).
+        states
+            Restrict to files in one of these states. All states when empty.
+        """
         # Which relation?
         data = {"node": self.i}
         if relation == "product":
@@ -1095,8 +1131,8 @@ class Step(Node):
         ]
         where = "WHERE kind = 'file'"
 
-        # Exclude detached paths unless requested
-        if not include_detached:
+        # Exclude paths detached without this step (see above).
+        if not (raw or self.is_detached()):
             where += " AND NOT detached"
 
         # Select only the initial files (not dynamic)
@@ -1121,32 +1157,18 @@ class Step(Node):
         for label, state, hash_json, detached, is_dynamic in self.db.execute(sql, data):
             yield PathRecord(label, FileState(state), bool(detached), bool(is_dynamic), hash_json)
 
-    def inp_paths(
-        self, *, include_detached: bool = False, dynamic: bool | None = None
-    ) -> Iterator[PathRecord]:
+    def inp_paths(self, *, dynamic: bool | None = None) -> Iterator[PathRecord]:
         """Iterate over input files of this step."""
-        yield from self._paths("source", include_detached=include_detached, dynamic=dynamic)
+        yield from self._paths("source", dynamic=dynamic)
 
-    def out_paths(
-        self, *, include_detached: bool = False, dynamic: bool | None = None
-    ) -> Iterator[PathRecord]:
+    def out_paths(self, *, dynamic: bool | None = None) -> Iterator[PathRecord]:
         """Iterate over output files of this step."""
-        yield from self._paths(
-            "sink",
-            include_detached=include_detached,
-            dynamic=dynamic,
-            states=FILE_STATES_BY_ROLE[FileRole.OUTPUT],
-        )
+        yield from self._paths("sink", dynamic=dynamic, states=FILE_STATES_BY_ROLE[FileRole.OUTPUT])
 
-    def vol_paths(
-        self, *, include_detached: bool = False, dynamic: bool | None = None
-    ) -> Iterator[PathRecord]:
+    def vol_paths(self, *, dynamic: bool | None = None) -> Iterator[PathRecord]:
         """Iterate over volatile output files of this step."""
         yield from self._paths(
-            "sink",
-            include_detached=include_detached,
-            dynamic=dynamic,
-            states=FILE_STATES_BY_ROLE[FileRole.VOLATILE],
+            "sink", dynamic=dynamic, states=FILE_STATES_BY_ROLE[FileRole.VOLATILE]
         )
 
     def static_paths(self) -> Iterator[PathRecord]:
@@ -1271,18 +1293,17 @@ class Step(Node):
 
         Called unconditionally by `reset_for_rerun()`, and by `completed()` only when a
         step reaches a genuine terminal `FAILED` state (not on an accepted defer):
-        the discarded run's children must not keep running (or linger attached) even
-        before the creator's actual rerun happens, which may be much later. Unlike
+        the failed run's children must not linger attached even before the creator's
+        actual rerun happens, which may be much later. Unlike
         `reset_for_rerun()`, this does not touch dynamic dependencies, so a defer
         triggered by an unavailable dynamic input does not sever the dependency edge
         that `mark_pending()` relies on to wake the step up again once that input
         becomes available.
 
         A still-`RUNNING` detached step is not killed: it keeps running until its
-        command terminates on its own, at which point `completed()`'s `is_detached()`
-        branch discovers this and reports it as `DETACHED` (see `Executor.report()`).
-        If such a command never terminates, the build hangs; this is a deliberate
-        trade-off, not an oversight.
+        command terminates on its own, and is then recorded and reported like any
+        other step. If such a command never terminates, the build hangs;
+        this is a deliberate trade-off, not an oversight.
         """
         sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'step'"
         for i, label in self.db.execute(sql, (self.i,)):
@@ -1297,8 +1318,12 @@ class Step(Node):
         ).fetchone()
         return row[0]
 
-    def mark_completed(self, new_hash: StepHash | None, wants_defer: bool) -> tuple[bool, bool]:
+    def mark_completed(self, new_hash: StepHash | None, wants_defer: bool) -> bool:
         """Set a step as completed (succeeded or failed) and trigger the consequences.
+
+        Whether the step is detached makes no difference here:
+        a detached step is recorded exactly like an attached one,
+        so that it can be skipped when its creator recreates it identically.
 
         Parameters
         ----------
@@ -1309,21 +1334,9 @@ class Step(Node):
 
         Returns
         -------
-        detached
-            True if the step had already been detached by its creator (see `Step.detach()`)
-            before this call, in which case the outcome below was not applied: the step is
-            superseded, not failed or succeeded.
         interrupted_defer
             True if deferral has been interrupted due to cap being exceeded, False otherwise.
         """
-        if self.is_detached():
-            # This step's creator has moved on without it. It is superseded, not failed:
-            # mark it PENDING rather than FAILED so it does not taint the build's outcome.
-            # A detached PENDING step is silently ignored everywhere else (scheduling,
-            # reporting, ...); the executor still reports the fact that it was detached.
-            self.set_state(StepState.PENDING)
-            return True, False
-
         interrupted_defer = False
         if new_hash is None:
             # Update states, needed for files that have not changed since previous run.
@@ -1374,7 +1387,7 @@ class Step(Node):
                     file.set_state(FileState.BUILT)
                     self.graph.mark_consuming_steps_pending(file)
             self.set_hash(new_hash)
-        return False, interrupted_defer
+        return interrupted_defer
 
     def get_hash(self) -> StepHash | None:
         """Return the stored step hash, or `None` if none is stored."""
@@ -1470,10 +1483,6 @@ class Step(Node):
         stdout, stderr
             The captured standard output/error of the subprocess as a string.
         """
-        if self.is_detached():
-            # This step's creator has moved on without it (see Step.detach()); recording
-            # is moot.
-            return
         # Invocation order is preserved by the table's rowid insertion order, so no
         # separate sequence number needs to be looked up or assigned here.
         self.db.execute(

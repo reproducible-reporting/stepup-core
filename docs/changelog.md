@@ -315,7 +315,7 @@ and will be updated with any further changes before the final release.
     - Strict database sessions management and transaction correctness has been implemented
       to avoid database corruption, e.g. due to race conditions.
     - When a step is detached while it is running (and not recreated before it ends),
-      an explicit `DETACHED` warning is shown and its result is discarded.
+      it is still skippable upon a rerun of the build if it gets recreated again.
     - The `STEPUP_STEP_I` environment variable has been replaced by `STEPUP_JOB_I`.
       Instead of a step's (stable) node index, it now holds a unique id for the current
       job running the step, assigned by the scheduler when the job is created, so a

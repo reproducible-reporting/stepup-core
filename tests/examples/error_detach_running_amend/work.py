@@ -13,15 +13,9 @@ with open("trigger_work.txt", "w") as f:
 # before the amend() call below runs.
 time.sleep(2.0)
 
-# The dynamic input must exist on disk, so `api.amend()`'s post-check
-# (`_check_inp_paths`) cannot be the reason for the abort below: only the detached
-# branch of `DirectorHandler.amend()` may cause it.
-Path("extra_input.txt").write_text("extra")
-
 # By now, plan.py has failed and detached this step (see plan.py and README.txt).
-# `DirectorHandler.amend()` forces `carry_on = False` for a detached step, so this
-# call must raise `InputNotFoundError`, aborting the step before it reaches the
-# `late.txt` marker below instead of running to completion.
+# The amendment is carried out all the same, so this step is not aborted and reaches
+# the late.txt marker below.
 amend(inp="extra_input.txt")
 
-Path("late.txt").write_text("this must never be written")
+Path("late.txt").write_text(Path("extra_input.txt").read_text())

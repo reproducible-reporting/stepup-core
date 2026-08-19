@@ -77,6 +77,7 @@ EXAMPLES = [
     "copy_mkdir",
     "cyclic_dynamic",
     "cyclic_static",
+    "detach_running_skip",
     "detach_running_step",
     "drop_dynamic",
     "dynamic_module",

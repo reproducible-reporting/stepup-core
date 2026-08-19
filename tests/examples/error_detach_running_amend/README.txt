@@ -1,4 +1,4 @@
-This example tests the early abort of a detached, still-running step.
+This example tests that a detached, still-running step can still amend itself.
 
 Like error_detach_running, the workflow defines a step (work.py) that is created by
 plan.py. After plan.py has confirmed through a trigger that work.py has started
@@ -7,13 +7,10 @@ it is still running.
 
 Unlike error_detach_running, work.py itself calls amend() after being detached
 (simulating the automatic amend() call every Python step makes, e.g. via getenv() or
-the end-of-run import-tracking amend()). `DirectorHandler.amend()` forces
-`carry_on = False` for a detached step, so this call raises `InputNotFoundError`
-inside work.py, aborting it before it can write late.txt. This confirms that a
-detached-but-running step is made to abort early instead of running to completion
-pointlessly.
+the end-of-run import-tracking amend()). Detachment is about provenance, not liveness,
+so the call is carried out as usual: work.py carries on and writes late.txt.
 
-Note that the traceback itself is not observable in any log: `Executor.report()`
-deliberately blanks a detached run's stderr, since its raw result (success or failure)
-is considered moot once detached. The absence of late.txt is therefore the only
-observable signal that the abort happened.
+The amended dependency on extra_input.txt is recorded in the graph, as is work.py's
+output, both as detached nodes: a detached creator only ever creates detached
+products. This is what allows work.py to be skipped when plan.py is fixed and
+recreates it in exactly the same way.

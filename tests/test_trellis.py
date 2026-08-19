@@ -847,3 +847,34 @@ async def test_trellis_recycle(lt):
         # The after_recycle hook was invoked exactly once.
         rows = lt.db.execute("SELECT msg FROM log WHERE msg LIKE 'after_recycle %'").fetchall()
         assert rows == [("after_recycle f:1",)]
+
+
+async def test_recycle_under_detached_creator_stays_detached(lt):
+    """A node recycled by a detached creator is re-parented without being revived.
+
+    This is what lets a still-running detached step record the steps and files it
+    creates: they join its subtree as detached nodes, and a later `try_recycle` of the
+    creator itself revives the whole subtree at once.
+    """
+    async with lt.db:
+        foo0 = lt.create(Foo, lt.root, "0", value=0)
+        foo1 = lt.create(Foo, foo0, "1", value=1)
+        foo2 = lt.create(Foo, foo1, "2", value=2)
+
+        # foo0 is detached, so its whole subtree is.
+        foo0.detach()
+        assert foo0.is_detached()
+        assert foo1.is_detached()
+        assert foo2.is_detached()
+
+        # foo0 recreates foo1 identically while still detached.
+        assert lt.try_recycle(Foo, foo0, "1", value=1) == foo1
+        assert foo1.creator() == foo0
+        assert foo1.is_detached()
+        assert foo2.is_detached()
+
+        # Reviving foo0 revives the recycled subtree in one go.
+        foo0.reattach(lt.root)
+        assert not foo0.is_detached()
+        assert not foo1.is_detached()
+        assert not foo2.is_detached()

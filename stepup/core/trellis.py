@@ -433,10 +433,14 @@ class Node:
     def reattach(self, new_creator: "Node"):
         """Reattach the node to a new creator node, preserving its properties.
 
+        The node inherits the new creator's `detached` flag, as in `Trellis.create`:
+        a detached creator only ever creates detached products.
+        Reattaching to a detached creator therefore re-parents the node without reviving it.
+
         Raises
         ------
         ValueError
-            If the node is not detached or the new creator is detached.
+            If the node is not detached.
         TypeError
             If the new_creator is not an instance of Node.
         """
@@ -444,11 +448,11 @@ class Node:
             raise ValueError("Node.reattach can only be called on a detached node.")
         if not isinstance(new_creator, Node):
             raise TypeError(f"Argument new_creator must be a Node, got {type(new_creator)}")
-        if new_creator.is_detached():
-            raise ValueError("New creator node must not be detached.")
+        detached = new_creator.is_detached()
         old_creator, old_creator_detached = self.creator_and_detached()
         self.db.execute(
-            "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (new_creator.i, self.i)
+            "UPDATE node SET creator = ?, detached = ? WHERE i = ?",
+            (new_creator.i, detached, self.i),
         )
         # The old creator, if any, no longer records everything it created.
         # It is left in the graph (it may still be recycled), but not as a skippable node.
@@ -456,8 +460,8 @@ class Node:
             if not old_creator_detached:
                 raise ConsistencyError("Old creator of detached node is not detached.")
             old_creator.after_lost_product()
-        # Propagate the detached=FALSE property to all product nodes.
-        self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, False))
+        # Propagate the inherited detached property to all product nodes.
+        self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, detached))
 
     def check_sources_acyclic(self, source_is: Iterable[int]) -> None:
         """Verify that several new source edges can be added without introducing a cycle.

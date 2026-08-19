@@ -17,8 +17,7 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f work.py ]] || exit 1
+[[ -f extra_input.txt ]] || exit 1
 [[ -f trigger_work.txt ]] || exit 1
-# work.py must have aborted on its post-detach amend() call before reaching this line.
-# (The traceback itself is not observable: Executor.report() blanks stderr for detached
-# steps, since a detached step's raw result is considered moot.)
-[[ ! -f late.txt ]] || exit 1
+# work.py's post-detach amend() call was carried out, so it ran to completion.
+[[ -f late.txt ]] || exit 1

@@ -5,8 +5,8 @@ from path import Path
 
 from stepup.core.api import run, static
 
-static("work.py", "extra_input.txt")
-run("./work.py", out="late.txt")
+static("work.py")
+run("./work.py", out="out.txt")
 while not Path("trigger_work.txt").exists():
     time.sleep(0.2)
 raise RuntimeError("The plan intentionally raises an exception.")

@@ -1616,10 +1616,6 @@ class Workflow(Trellis):
         """
         if isinstance(paths, str):
             raise TypeError("The paths argument cannot be a string.")
-        if creator.is_detached():
-            # The creator is detached from its creator.
-            # Declaring more files for it is moot.
-            return {}
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
         # A path inside a static tree belongs to that tree, which is its sole owner,
@@ -1679,10 +1675,6 @@ class Workflow(Trellis):
             raise ValueError(f"Static tree does not support wildcards: {path}")
         if path == STEPUP_DIR or path.startswith(STEPUP_DIR + os.sep):
             raise GraphError(f"Cannot declare a static tree under {STEPUP_DIR}: {path}")
-        if creator.is_detached():
-            # The creator is detached from its creator.
-            # Registering a static tree for it is moot.
-            return {}
         path = Path(path) / ""
         if path in ("./", ""):
             # A root tree would have to own plan.py and every step output, which
@@ -1821,13 +1813,6 @@ class Workflow(Trellis):
         to_check
             The known hashes of the files to check, keyed by path.
         """
-        if creator.is_detached():
-            # The creator is detached from its creator.
-            # Defining a new child step for it is moot.
-            # (This also sidesteps Node.reattach()'s "new creator must not be detached"
-            # check, which Trellis.reattach() below could otherwise hit.)
-            return {}
-
         # If it is a boot step, check that there was no boot step yet.
         if creator.i == self.root.i and any(self.root.products(Step)):
             raise GraphError("Boot step already defined.")
@@ -1950,7 +1935,7 @@ class Workflow(Trellis):
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
         ran_concurrently: Callable[[int, int], bool],
-    ) -> tuple[bool, set[str], set[str], dict[str, FileHash]]:
+    ) -> tuple[set[str], set[str], dict[str, FileHash]]:
         """Amend step information.
 
         Parameters
@@ -1974,8 +1959,6 @@ class Workflow(Trellis):
 
         Returns
         -------
-        is_detached
-            `True` if the step is detached and its amendments are moot.
         unavailable
             A set of input paths that are not available.
         unfresh
@@ -1993,11 +1976,6 @@ class Workflow(Trellis):
         """
         if not isinstance(step, Step):
             raise TypeError(f"step must be a Step instance, got: {step!r}")
-        if step.is_detached():
-            # The step is detached from its creator, e.g. because reset_for_rerun was called on it.
-            # Any amendments to the step are moot.
-            return True, set(), set(), {}
-
         # Normalize arguments
         inp_paths = sorted(set(inp_paths))
         out_paths = sorted(set(out_paths))
@@ -2057,7 +2035,7 @@ class Workflow(Trellis):
             dynamic_ideps.append((new_idep,))
 
         self.db.executemany("INSERT INTO dynamic_dep VALUES (?)", dynamic_ideps)
-        return False, unavailable, unfresh, self._hashes_to_check(unconfirmed)
+        return unavailable, unfresh, self._hashes_to_check(unconfirmed)
 
     #
     # Glob patterns
@@ -2130,10 +2108,6 @@ class Workflow(Trellis):
         """
         if not isinstance(step, Step):
             raise TypeError(f"step must be a Step instance, got: {step!r}")
-        if step.is_detached():
-            # The step is detached from its creator, e.g. because reset_for_rerun was called on it.
-            # Registering more nglobs for this step has become moot.
-            return
 
         paths = ng.files()
 

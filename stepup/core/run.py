@@ -296,11 +296,6 @@ class Run:
     interrupted_defer: bool = attrs.field(init=False, default=False)
     """Set to True when the step has reached its defer cap."""
 
-    detached: bool = attrs.field(init=False, default=False)
-    """Set to True when `Step.mark_completed()` found this step had already been detached by
-    its creator (see `Step.detach()`) when it finished, regardless of success or failure.
-    """
-
     success: bool = attrs.field(init=False, default=True)
     """Flag indicating whether the step was handled successfully.
 

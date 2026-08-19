@@ -41,7 +41,6 @@ ACTION_COLORS = {
     "WARNING": "yellow",
     # cyan
     "DELETED": "cyan",
-    "DETACHED": "cyan",
     "DROPAMEND": "cyan",
     "NOSKIP": "cyan",
     "DEFERRED": "cyan",

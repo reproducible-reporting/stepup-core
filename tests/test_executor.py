@@ -67,14 +67,6 @@ class _NullDB:
         return False
 
 
-def _make_detached_run(*, success: bool) -> Run:
-    step = SimpleNamespace(i=1, label="one", command_and_workdir=("echo hi", "."))
-    run = Run(step, job_i=1)
-    run.success = success
-    run.detached = True
-    return run
-
-
 def _make_failed_run() -> Run:
     step = SimpleNamespace(
         i=1, label="false", command_and_workdir=("false", "."), uses_shell=lambda: None
@@ -83,30 +75,6 @@ def _make_failed_run() -> Run:
     run.success = False
     run.outcome = ChildOutcome(1, "", "")
     return run
-
-
-def test_report_marks_detached_step_that_succeeded_as_detached():
-    reporter = _FakeReporter()
-    executor = _make_executor(reporter=reporter)
-    run = _make_detached_run(success=True)
-
-    asyncio.run(executor._report_run(run))
-
-    action, _label, pages = reporter.calls[0]
-    assert action == "DETACHED"
-    assert pages[0][0] == "Step detached"
-
-
-def test_report_marks_detached_step_that_failed_as_detached():
-    reporter = _FakeReporter()
-    executor = _make_executor(reporter=reporter)
-    run = _make_detached_run(success=False)
-
-    asyncio.run(executor._report_run(run))
-
-    action, _label, pages = reporter.calls[0]
-    assert action == "DETACHED"
-    assert pages[0][0] == "Step detached"
 
 
 def test_report_puts_scheduler_on_hold_after_failure_by_default():
