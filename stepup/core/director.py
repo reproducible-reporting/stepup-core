@@ -514,49 +514,37 @@ async def serve(
     if config.fix_epoch and "SOURCE_DATE_EPOCH" not in os.environ:
         infra_env["SOURCE_DATE_EPOCH"] = "315532800"
 
-    components = await _create_components(
+    memory_sampler = CgroupMemorySampler() if config.use_cgroup else None
+    handler = await _wire_director(
         db=db,
         reporter=reporter,
         config=config,
         infra_env=infra_env,
         mp_ctx=mp_ctx,
     )
-    # The RPC facade over the components, built on top of them instead of being one of them:
-    # it serves remote calls and terminal signals, and nothing in the graph depends on it.
-    handler = DirectorHandler(
-        scheduler=components.scheduler,
-        workflow=components.workflow,
-        db=db,
-        reporter=reporter,
-        executor=components.executor,
-        builder=components.builder,
-        watcher=components.watcher,
-        stop_event=components.stop_event,
-    )
 
     # Define the initial plan.py as a static file and create a step for it.
     async with db:
-        initialized = components.workflow.initialize_boot()
+        initialized = handler.workflow.initialize_boot()
     if initialized:
         await reporter("STARTUP", "(Re)initialized boot script")
-        components.builder.resume.set()
+        handler.builder.resume.set()
     else:
-        await startup_from_db(components.workflow, db, reporter, components.builder)
+        await startup_from_db(handler.workflow, db, reporter, handler.builder)
 
     # Targets must be reconciled after the boot script is defined.
     # See `Workflow.reconcile_targets()` for details.
     async with db:
         try:
-            components.workflow.reconcile_targets()
+            handler.workflow.reconcile_targets()
         except GraphError as exc:
             await reporter("ERROR", f"Invalid build target: {exc}")
             await reporter.warn_about_logs()
             return ServeResult(returncode=ReturnCode.FAILED, usage_report="", usage_summary="")
 
     await _run_tasks(
-        components,
         handler,
-        db=db,
+        memory_sampler,
         director_socket_path=director_socket_path,
         watch_first=config.watch_first,
         handle_signals=handle_signals,
@@ -564,39 +552,32 @@ async def serve(
 
     usage_report, usage_summary = format_resource_usage(
         wtime_start,
-        components.executor.step_accumulator,
-        components.memory_sampler,
+        handler.executor.step_accumulator,
+        memory_sampler,
     )
 
     return ServeResult(
-        returncode=components.builder.returncode,
+        returncode=handler.builder.returncode,
         usage_report=usage_report,
         usage_summary=usage_summary,
     )
 
 
-@attrs.define(frozen=True)
-class _Components:
-    """The long-lived objects that make up a running director."""
-
-    workflow: Workflow = attrs.field()
-    scheduler: Scheduler = attrs.field()
-    executor: Executor = attrs.field()
-    builder: Builder = attrs.field()
-    watcher: Watcher | None = attrs.field()
-    memory_sampler: CgroupMemorySampler | None = attrs.field()
-    stop_event: asyncio.Event = attrs.field()
-
-
-async def _create_components(
+async def _wire_director(
     *,
     db: DBSession,
     reporter: ReporterClient,
     config: ServeConfig,
     infra_env: dict[str, str],
     mp_ctx: multiprocessing.context.BaseContext | None,
-) -> _Components:
-    """Construct and wire the long-lived objects that make up a running director."""
+) -> "DirectorHandler":
+    """Construct and wire the long-lived objects that make up a running director.
+
+    Returns
+    -------
+    handler
+        The RPC handler, through which every wired component is reachable.
+    """
     dir_queue = asyncio.Queue() if config.do_watch else None
     workflow = Workflow(
         db,
@@ -650,23 +631,22 @@ async def _create_components(
         if config.do_watch
         else None
     )
-    memory_sampler = CgroupMemorySampler() if config.use_cgroup else None
-    return _Components(
-        workflow=workflow,
+    return DirectorHandler(
         scheduler=scheduler,
+        workflow=workflow,
+        db=db,
+        reporter=reporter,
         executor=executor,
         builder=builder,
         watcher=watcher,
-        memory_sampler=memory_sampler,
         stop_event=asyncio.Event(),
     )
 
 
 async def _run_tasks(
-    components: _Components,
     handler: "DirectorHandler",
+    memory_sampler: CgroupMemorySampler | None,
     *,
-    db: DBSession,
     director_socket_path: Path,
     watch_first: bool,
     handle_signals: bool,
@@ -675,15 +655,15 @@ async def _run_tasks(
     exit_event = asyncio.Event()
     rpc_server = asyncio.create_task(serve_socket_rpc(handler, director_socket_path, exit_event))
     coroutines = [
-        build_loop(components.builder, components.watcher, components.stop_event),
-        db.database_maintenance_loop(components.stop_event),
+        build_loop(handler.builder, handler.watcher, handler.stop_event),
+        handler.db.database_maintenance_loop(handler.stop_event),
     ]
-    if components.memory_sampler is not None:
-        coroutines.append(components.memory_sampler.loop(components.stop_event))
-    if components.watcher is not None:
-        coroutines.append(components.watcher.loop(components.stop_event))
+    if memory_sampler is not None:
+        coroutines.append(memory_sampler.loop(handler.stop_event))
+    if handler.watcher is not None:
+        coroutines.append(handler.watcher.loop(handler.stop_event))
         if watch_first:
-            coroutines.append(watch_first_loop(components.watcher, handler, components.stop_event))
+            coroutines.append(watch_first_loop(handler.watcher, handler, handler.stop_event))
     # Abort the build on a terminal signal,
     # instead of dying with a KeyboardInterrupt traceback (SIGINT)
     # or instantly and mid-transaction (SIGTERM).
@@ -697,11 +677,11 @@ async def _run_tasks(
         await asyncio.gather(*coroutines)
     finally:
         # In case of an exception, set the stop event, so other parts know they can stop waiting.
-        components.stop_event.set()
+        handler.stop_event.set()
         # Regular shutdown.
         # The signal handlers stay installed for its duration:
         # a step ignoring the first interrupt is killed by a second one during `builder.stop()`.
-        await components.builder.stop()
+        await handler.builder.stop()
         exit_event.set()
         await rpc_server
         director_socket_path.remove_p()
@@ -752,7 +732,12 @@ async def watch_first_loop(watcher: Watcher, handler: "DirectorHandler", stop_ev
 
 @attrs.define
 class DirectorHandler:
-    """A handler for managing the director's RPC interface."""
+    """The director's RPC interface, and the handle on its long-lived components.
+
+    The components are wired to each other, not to this class:
+    it serves remote calls and terminal signals,
+    and nothing in the graph depends on it.
+    """
 
     scheduler: Scheduler = attrs.field(kw_only=True)
     workflow: Workflow = attrs.field(kw_only=True)
@@ -788,7 +773,7 @@ class DirectorHandler:
     (same rationale as `Executor._counts_flush_tasks`)."""
 
     #
-    # Building the workflow
+    # RPC from steps: workflow construction
     #
 
     def _submit_to_check(self, to_check: Mapping[str, FileHash]) -> None:
@@ -916,35 +901,6 @@ class DirectorHandler:
         self.builder.wake_job_loop.set()
 
     @allow_rpc
-    async def hold_dispatch(self, job_i: int) -> None:
-        """Hold back this step's descendant steps from dispatch until a matching `release()`.
-
-        Notes
-        -----
-        This is an RPC wrapper for `Step.hold`, which is re-entrant:
-        nested `hold()` calls increment a counter,
-        and descendants stay held back until the outermost `release()`.
-        No job-loop wake-up is needed here: holding never creates new runnable work.
-        """
-        async with self.db:
-            step = self.scheduler.get_step(job_i)
-            step.hold()
-
-    @allow_rpc
-    async def release_dispatch(self, job_i: int) -> None:
-        """Release one `hold()` on this step, decrementing its open-hold counter.
-
-        Notes
-        -----
-        This is an RPC wrapper for `Step.release`.
-        """
-        async with self.db:
-            step = self.scheduler.get_step(job_i)
-            step.release()
-        # Wake up the scheduler because previously held-back steps may now be runnable.
-        self.builder.wake_job_loop.set()
-
-    @allow_rpc
     async def amend_step(
         self,
         job_i: int,
@@ -997,6 +953,39 @@ class DirectorHandler:
             self.executor.defer(job_i, unavailable=unavailable, unfresh=unfresh)
         return carry_on
 
+    #
+    # RPC from steps: dispatch, provenance and queries
+    #
+
+    @allow_rpc
+    async def hold_dispatch(self, job_i: int) -> None:
+        """Hold back this step's descendant steps from dispatch until a matching `release()`.
+
+        Notes
+        -----
+        This is an RPC wrapper for `Step.hold`, which is re-entrant:
+        nested `hold()` calls increment a counter,
+        and descendants stay held back until the outermost `release()`.
+        No job-loop wake-up is needed here: holding never creates new runnable work.
+        """
+        async with self.db:
+            step = self.scheduler.get_step(job_i)
+            step.hold()
+
+    @allow_rpc
+    async def release_dispatch(self, job_i: int) -> None:
+        """Release one `hold()` on this step, decrementing its open-hold counter.
+
+        Notes
+        -----
+        This is an RPC wrapper for `Step.release`.
+        """
+        async with self.db:
+            step = self.scheduler.get_step(job_i)
+            step.release()
+        # Wake up the scheduler because previously held-back steps may now be runnable.
+        self.builder.wake_job_loop.set()
+
     @allow_rpc
     async def record_subprocess(
         self,
@@ -1041,20 +1030,104 @@ class DirectorHandler:
             return step.get_info()
 
     #
-    # Termination and lifecycle
+    # RPC from steps or the user: diagnostics
     #
 
-    def _stop_scheduling(self) -> None:
-        """Stop dispatching new work and end the watch phase, without touching running steps.
+    @allow_rpc
+    async def write_graph(self, prefix: str) -> None:
+        """Write out the graph in text and dot formats."""
+        async with self.db:
+            with open(f"{prefix}.txt", "w") as fh:
+                print(self.workflow.format_str(), file=fh)
+            with open(f"{prefix}_provenance.dot", "w") as fh:
+                print(self.workflow.format_dot_provenance(), file=fh)
+            with open(f"{prefix}_dependency.dot", "w") as fh:
+                print(self.workflow.format_dot_dependency(), file=fh)
+        await self.reporter(
+            "DIRECTOR",
+            f"Wrote graph to {prefix}.txt, {prefix}_provenance.dot and {prefix}_dependency.dot",
+        )
 
-        Shared by both termination routes:
-        `shutdown` (the `q` key) and `interrupt` (a terminal signal).
-        Whether and how running steps are then signalled is the caller's policy.
+    #
+    # RPC from the user: phase control and shutdown
+    #
+
+    async def _wait_for_end_build_phase(self) -> None:
+        """Block until the build phase ends (or the watch phase starts when using `--watch`)."""
+        events = [self.stop_event]
+        if self.watcher is not None:
+            events.append(self.watcher.active)
+        await wait_for_events(*events, return_when=asyncio.FIRST_COMPLETED)
+
+    async def _wait_for_change(self, path: str, observed: set[Path]) -> None:
+        """Block until `path` shows up in `observed`, a live set owned by the watcher."""
+        path = Path(path).normpath()
+        await self._wait_for_end_build_phase()
+        event = asyncio.Event()
+        self.watcher.files_changed_events.add(event)
+        try:
+            while True:
+                if path in observed:
+                    return
+                await event.wait()
+                event.clear()
+        finally:
+            self.watcher.files_changed_events.discard(event)
+
+    @allow_rpc
+    async def drain(self) -> None:
+        """Stop dispatching new steps, leaving running steps to finish.
+
+        This returns immediately, without waiting for the running steps:
+        a caller that wants to wait uses `wait_for_idle` afterwards.
+        When using the `--watch` option,
+        StepUp switches to the watch phase when there are no more running steps.
         """
         self.scheduler.draining = True
-        self.stop_event.set()
+
+    @allow_rpc
+    async def wait_for_idle(self) -> None:
+        """Block until the builder has completed all (runnable) steps."""
+        await self._wait_for_end_build_phase()
+
+    @allow_rpc
+    async def wait_for_update(self, path: str) -> None:
+        """Block until the watcher has observed an update of the file."""
         if self.watcher is not None:
-            self.watcher.interrupt.set()
+            await self._wait_for_change(path, self.watcher.updated)
+
+    @allow_rpc
+    async def wait_for_delete(self, path: str) -> None:
+        """Block until the watcher has observed the deletion of the file."""
+        if self.watcher is not None:
+            await self._wait_for_change(path, self.watcher.deleted)
+
+    @allow_rpc
+    async def start_build_phase(self) -> None:
+        """Leave the watch phase and build the steps made pending by the observed file changes.
+
+        Notes
+        -----
+        This has no effect during the build phase.
+        """
+        if self.watcher is None or not self.watcher.active.is_set():
+            return
+        async with self.db:
+            # Make all failed steps pending again for rerun.
+            for step in self.workflow.steps(StepState.FAILED):
+                self.workflow.mark_step_pending(step)
+        self.watcher.interrupt.set()
+        await wait_for_events(
+            self.watcher.processed, self.stop_event, return_when=asyncio.FIRST_COMPLETED
+        )
+        self.scheduler.draining = False
+        self.builder.resume.set()
+
+    @allow_rpc
+    async def wait_and_shutdown(self) -> None:
+        """Block until the builder has completed all (runnable) steps, then shut down."""
+        await self._wait_for_end_build_phase()
+        await self.shutdown()
 
     @allow_rpc
     async def shutdown(self) -> None:
@@ -1071,18 +1144,33 @@ class DirectorHandler:
         """
         # Stop dispatching before anything else: the reporter calls below are real awaits,
         # during which the builder's job loop would otherwise still start new steps.
-        self.scheduler.draining = True
-        if self.stop_event.is_set():
+        # The stop event is what tells a first call from an escalating one,
+        # so it must be sampled before `_stop_scheduling` sets it.
+        escalating = self.stop_event.is_set()
+        self._stop_scheduling()
+        if escalating:
             sig = self._next_step_signal
             await self.reporter("DIRECTOR", f"Interrupting running steps ({sig.name}).")
             self.executor.interrupt(sig)
             self._next_step_signal = signal.SIGKILL
-            if self.watcher is not None:
-                self.watcher.interrupt.set()
-        else:
-            if len(self.builder.running_tasks) > 0:
-                await self.reporter("DIRECTOR", "Waiting for steps to complete before shutdown.")
-            self._stop_scheduling()
+        elif len(self.builder.running_tasks) > 0:
+            await self.reporter("DIRECTOR", "Waiting for steps to complete before shutdown.")
+
+    #
+    # Signal handlers: abort and suspend
+    #
+
+    def _stop_scheduling(self) -> None:
+        """Stop dispatching new work and end the watch phase, without touching running steps.
+
+        Every effect is a set-only operation, so this is idempotent:
+        a termination route may call it whether or not another one already did.
+        Whether and how running steps are then signalled is the caller's policy.
+        """
+        self.scheduler.draining = True
+        self.stop_event.set()
+        if self.watcher is not None:
+            self.watcher.interrupt.set()
 
     def interrupt(self, sig: signal.Signals) -> None:
         """Abort the build because a terminal signal was received.
@@ -1129,6 +1217,14 @@ class DirectorHandler:
             await self.reporter("DIRECTOR", "Killing unresponsive steps (SIGKILL).")
             self.executor.interrupt(signal.SIGKILL)
 
+    async def cancel_interrupt(self) -> None:
+        """Cancel the pending grace period of `interrupt`, e.g. when the build ended in time."""
+        if self._interrupt_task is not None and not self._interrupt_task.done():
+            self._interrupt_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._interrupt_task
+        self._interrupt_task = None
+
     def suspend(self) -> None:
         """Suspend the whole build after a `SIGTSTP`, and resume it when continued.
 
@@ -1173,110 +1269,6 @@ class DirectorHandler:
                 )
                 self._resume_tasks.add(task)
                 task.add_done_callback(self._resume_tasks.discard)
-
-    async def cancel_interrupt(self) -> None:
-        """Cancel the pending grace period of `interrupt`, e.g. when the build ended in time."""
-        if self._interrupt_task is not None and not self._interrupt_task.done():
-            self._interrupt_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._interrupt_task
-        self._interrupt_task = None
-
-    #
-    # Interactive use
-    #
-
-    async def _wait_for_end_build_phase(self) -> None:
-        """Block until the build phase ends (or the watch phase starts when using `--watch`)."""
-        events = [self.stop_event]
-        if self.watcher is not None:
-            events.append(self.watcher.active)
-        await wait_for_events(*events, return_when=asyncio.FIRST_COMPLETED)
-
-    async def _watch_change(self, path: str, observed: set[Path]) -> None:
-        """Block until `path` shows up in `observed`, a live set owned by the watcher."""
-        path = Path(path).normpath()
-        await self._wait_for_end_build_phase()
-        event = asyncio.Event()
-        self.watcher.files_changed_events.add(event)
-        try:
-            while True:
-                if path in observed:
-                    return
-                await event.wait()
-                event.clear()
-        finally:
-            self.watcher.files_changed_events.discard(event)
-
-    @allow_rpc
-    async def drain(self) -> None:
-        """Stop dispatching new steps, leaving running steps to finish.
-
-        This returns immediately, without waiting for the running steps:
-        a caller that wants to wait uses `wait_for_idle` afterwards.
-        When using the `--watch` option,
-        StepUp switches to the watch phase when there are no more running steps.
-        """
-        self.scheduler.draining = True
-
-    @allow_rpc
-    async def wait_and_shutdown(self) -> None:
-        """Block until the builder has completed all (runnable) steps, then shut down."""
-        await self._wait_for_end_build_phase()
-        await self.shutdown()
-
-    @allow_rpc
-    async def write_graph(self, prefix: str) -> None:
-        """Write out the graph in text and dot formats."""
-        async with self.db:
-            with open(f"{prefix}.txt", "w") as fh:
-                print(self.workflow.format_str(), file=fh)
-            with open(f"{prefix}_provenance.dot", "w") as fh:
-                print(self.workflow.format_dot_provenance(), file=fh)
-            with open(f"{prefix}_dependency.dot", "w") as fh:
-                print(self.workflow.format_dot_dependency(), file=fh)
-        await self.reporter(
-            "DIRECTOR",
-            f"Wrote graph to {prefix}.txt, {prefix}_provenance.dot and {prefix}_dependency.dot",
-        )
-
-    @allow_rpc
-    async def start_build_phase(self) -> None:
-        """Leave the watch phase and build the steps made pending by the observed file changes.
-
-        Notes
-        -----
-        This has no effect during the build phase.
-        """
-        if self.watcher is None or not self.watcher.active.is_set():
-            return
-        async with self.db:
-            # Make all failed steps pending again for rerun.
-            for step in self.workflow.steps(StepState.FAILED):
-                self.workflow.mark_step_pending(step)
-        self.watcher.interrupt.set()
-        await wait_for_events(
-            self.watcher.processed, self.stop_event, return_when=asyncio.FIRST_COMPLETED
-        )
-        self.scheduler.draining = False
-        self.builder.resume.set()
-
-    @allow_rpc
-    async def wait_for_update(self, path: str) -> None:
-        """Block until the watcher has observed an update of the file."""
-        if self.watcher is not None:
-            await self._watch_change(path, self.watcher.updated)
-
-    @allow_rpc
-    async def wait_for_delete(self, path: str) -> None:
-        """Block until the watcher has observed the deletion of the file."""
-        if self.watcher is not None:
-            await self._watch_change(path, self.watcher.deleted)
-
-    @allow_rpc
-    async def wait_for_idle(self) -> None:
-        """Block until the builder has completed all (runnable) steps."""
-        await self._wait_for_end_build_phase()
 
 
 if __name__ == "__main__":
