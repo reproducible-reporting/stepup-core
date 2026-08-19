@@ -15,7 +15,7 @@ from conftest import amend_step, declare_static, fake_hash
 from path import Path
 
 from stepup.core.constants import STEPUP_DIR
-from stepup.core.enums import FileState, HashUpdateCause, Need, StepState
+from stepup.core.enums import FILE_ROLE_BY_STATE, FileState, HashUpdateCause, Need, StepState
 from stepup.core.exceptions import ConsistencyError, GraphError
 from stepup.core.file import File
 from stepup.core.hash import FileHash, StepHash
@@ -27,6 +27,7 @@ from stepup.core.static_tree import StaticTree
 from stepup.core.step import Step
 from stepup.core.stepinfo import StepInfo
 from stepup.core.workflow import (
+    _HASH_TRANSITIONS,
     UNCONFIRMED_INPUTS,
     GlobViolation,
     Workflow,
@@ -50,7 +51,7 @@ root:
              product   file:script.sh
 
 file:script.sh
-               state = STATIC
+               state = CONFIRMED
               digest = 116b4e2b ac3e35be fdfae3f3 b6eb8891 1689c30b fe6696d9 e6b0139d a8cb5e72
              creator   root:
 """
@@ -64,7 +65,7 @@ async def test_file(wfs: Workflow):
         assert isinstance(file3, File)
         assert file3.path == "script.sh"
         assert file3.key() == "file:script.sh"
-        assert file3.get_state() == FileState.STATIC
+        assert file3.get_state() == FileState.CONFIRMED
         assert set(wfs.nodes(File)) == {file3}
         # We can declare static files without making their parents static.
         declare_static(wfs, wfs.root, ["unknown/foo.txt"])
@@ -102,11 +103,11 @@ step:cp foo.txt sub/bar.txt
                 sink   file:sub/bar.txt
 
 (file:foo.txt)
-               state = AWAITED
+               state = UNDECLARED
                 sink   step:cp foo.txt sub/bar.txt
 
 file:sub/bar.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp foo.txt sub/bar.txt
               source   step:cp foo.txt sub/bar.txt
 """
@@ -128,20 +129,20 @@ step:cp foo.txt sub/bar.txt
                 sink   file:sub/bar.txt
 
 (file:foo.txt)
-               state = AWAITED
+               state = UNDECLARED
                 sink   step:cp foo.txt sub/bar.txt
 
 file:sub/bar.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp foo.txt sub/bar.txt
               source   step:cp foo.txt sub/bar.txt
 
 (file:spam.txt)
-               state = AWAITED
+               state = UNDECLARED
                 sink   step:cp foo.txt sub/bar.txt
 
 file:egg.csv
-               state = AWAITED
+               state = PLANNED
              creator   step:cp foo.txt sub/bar.txt
               source   step:cp foo.txt sub/bar.txt
 """
@@ -227,11 +228,11 @@ step:cp foo.txt bar.txt
                 sink   file:bar.txt
 
 (file:foo.txt)
-               state = AWAITED
+               state = UNDECLARED
                 sink   step:cp foo.txt bar.txt
 
 file:bar.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp foo.txt bar.txt
               source   step:cp foo.txt bar.txt
 """
@@ -250,13 +251,13 @@ step:cp foo.txt bar.txt
                 sink   file:bar.txt
 
 file:foo.txt
-               state = STATIC
+               state = CONFIRMED
               digest = ddab29ff 2c393ee5 2855d21a 240eb05f 775df88e 3ce347df 759f0c4b 80356c35
              creator   root:
                 sink   step:cp foo.txt bar.txt
 
 file:bar.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp foo.txt bar.txt
               source   step:cp foo.txt bar.txt
 """
@@ -278,7 +279,7 @@ step:cp foo.txt bar.txt
                 sink   file:bar.txt
 
 file:foo.txt
-               state = STATIC
+               state = CONFIRMED
               digest = ddab29ff 2c393ee5 2855d21a 240eb05f 775df88e 3ce347df 759f0c4b 80356c35
              creator   root:
                 sink   step:cp foo.txt bar.txt
@@ -307,7 +308,7 @@ step:cp foo.txt bar.txt
                 sink   file:bar.txt
 
 file:foo.txt
-               state = STATIC
+               state = CONFIRMED
               digest = ddab29ff 2c393ee5 2855d21a 240eb05f 775df88e 3ce347df 759f0c4b 80356c35
              creator   root:
                 sink   step:cp foo.txt bar.txt
@@ -362,7 +363,7 @@ async def test_simple_example(wfs: Workflow):
     # Re-declaring foo.txt as static is now a no-op: same creator, same file.
     async with wfs.db:
         assert wfs.declare_static_files(wfs.root, ["foo.txt"]) == {}
-        assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+        assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
     # bar.txt is a build product of another creator, so declaring it static still raises.
     with pytest.raises(GraphError):
         async with wfs.db:
@@ -628,9 +629,9 @@ async def test_define_step_input_static(wfp: Workflow):
         cat = wfp.find(Step, "cat given")
         assert cat.get_state() == StepState.PENDING
         given = wfp.find(File, "given")
-        assert given.get_state() == FileState.AWAITED
+        assert given.get_state() == FileState.UNDECLARED
         declare_static(wfp, plan, ["given"])
-        assert given.get_state() == FileState.STATIC
+        assert given.get_state() == FileState.CONFIRMED
 
 
 async def test_define_step_static_input(wfp: Workflow):
@@ -641,7 +642,7 @@ async def test_define_step_static_input(wfp: Workflow):
         cat = wfp.find(Step, "cat given")
         assert cat.get_state() == StepState.PENDING
         given = wfp.find(File, "given")
-        assert given.get_state() == FileState.STATIC
+        assert given.get_state() == FileState.CONFIRMED
 
 
 async def test_define_step_volatile_input(wfp: Workflow):
@@ -674,7 +675,7 @@ async def test_define_step_input_volatile(wfp: Workflow):
         assert cat.get_state() == StepState.PENDING
         file, detached = wfp.find_and_detached(File, "given")
         assert detached
-        assert file.get_state() == FileState.AWAITED
+        assert file.get_state() == FileState.UNDECLARED
     with pytest.raises(GraphError):
         async with wfp.db:
             wfp.define_step(plan, "touch given", vol_paths=["given"])
@@ -772,7 +773,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
               digest = 4e929dac d83345e7 26c42517 5f6089aa 9b9513af 07615728 a82225e3 1383ff4f
              creator   root:
                 sink   step:./plan.py
@@ -786,7 +787,7 @@ step:./plan.py
              product   step:cat < inp > out
 
 file:inp
-               state = STATIC
+               state = CONFIRMED
               digest = 29a9e775 80ac85ad 896542d4 5ae52e21 8428bbe9 b0c752bc 2785ed22 a6eca01a
              creator   step:./plan.py
                 sink   step:cat < inp > out
@@ -1063,7 +1064,7 @@ async def test_amend_step_already_declared_out_built(wfp: Workflow):
     """A repeated `out` amendment is also a no-op once the output has been built.
 
     A step that reruns amends an output whose file node is OUTDATED (or BUILT when the
-    rerun was triggered without resetting), not AWAITED, so the tolerance must be about
+    rerun was triggered without resetting), not PLANNED, so the tolerance must be about
     the file's role, not its state.
     """
     async with wfp.db:
@@ -1142,7 +1143,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
               digest = 4e929dac d83345e7 26c42517 5f6089aa 9b9513af 07615728 a82225e3 1383ff4f
              creator   root:
                 sink   step:./plan.py
@@ -1157,13 +1158,13 @@ step:./plan.py
              product   step:cat < inp > out 2> vol
 
 file:ainp
-               state = STATIC
+               state = CONFIRMED
               digest = c0a3760b 3f6ad19a 940952bc 5e60a7e3 e6554d97 f19114b7 765e21e0 a14cf4d6
              creator   step:./plan.py
                 sink   step:cat < inp > out 2> vol
 
 file:inp
-               state = STATIC
+               state = CONFIRMED
               digest = 29a9e775 80ac85ad 896542d4 5ae52e21 8428bbe9 b0c752bc 2785ed22 a6eca01a
              creator   step:./plan.py
                 sink   step:cat < inp > out 2> vol
@@ -1269,7 +1270,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
               digest = 4e929dac d83345e7 26c42517 5f6089aa 9b9513af 07615728 a82225e3 1383ff4f
              creator   root:
                 sink   step:./plan.py
@@ -1401,11 +1402,11 @@ async def test_register_glob_rejects_built_match(wfp: Workflow):
             wfp.register_nglob(plan, ng)
 
 
-async def test_register_glob_rejects_awaited_match(wfp: Workflow):
+async def test_register_glob_rejects_planned_match(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "producer", out_paths=["out.txt"])
-        assert wfp.find(File, "out.txt").get_state() == FileState.AWAITED
+        assert wfp.find(File, "out.txt").get_state() == FileState.PLANNED
 
         ng = NamedGlob("*.txt")
         ng.extend(["out.txt"])
@@ -1445,7 +1446,7 @@ async def test_register_glob_rejects_outdated_match(wfp: Workflow):
             wfp.register_nglob(plan, ng)
 
 
-async def test_register_glob_ignores_detached_awaited_match(wfp: Workflow):
+async def test_register_glob_ignores_detached_undeclared_match(wfp: Workflow):
     """An unresolved input created by `_resolve_supply_file` (creator=None, forced
     detached by `Trellis.create`) is not a claim that some step builds it, unlike an
     output declared by `define_step`/`amend_step`.
@@ -1454,7 +1455,7 @@ async def test_register_glob_ignores_detached_awaited_match(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "consumer", inp_paths=["missing.txt"])
         missing = wfp.find(File, "missing.txt")
-        assert missing.get_state() == FileState.AWAITED
+        assert missing.get_state() == FileState.UNDECLARED
         assert missing.is_detached()
 
         ng = NamedGlob("*.txt")
@@ -1467,7 +1468,7 @@ async def test_register_glob_accepts_static_and_missing_and_unconfirmed(wfp: Wor
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         declare_static(wfp, plan, ["static.txt"])
-        assert wfp.find(File, "static.txt").get_state() == FileState.STATIC
+        assert wfp.find(File, "static.txt").get_state() == FileState.CONFIRMED
 
         wfp.declare_static_files(plan, ["unconfirmed.txt"])
         assert wfp.find(File, "unconfirmed.txt").get_state() == FileState.UNCONFIRMED
@@ -1596,22 +1597,23 @@ async def test_find_glob_violations_no_node_on_disk_violation(wfp: Workflow, tmp
             assert not violations[0].is_error
 
 
-async def test_find_glob_violations_awaited_violation(wfp: Workflow):
+async def test_find_glob_violations_planned_violation(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "producer", out_paths=["out.txt"])
-        assert wfp.find(File, "out.txt").get_state() == FileState.AWAITED
+        assert wfp.find(File, "out.txt").get_state() == FileState.PLANNED
 
         ng = NamedGlob("*.txt")
         ng.extend(["out.txt"])
-        # Workflow.register_nglob's eager check (workflow.py:1317-1344) would reject this
-        # match; the AWAITED arm in find_glob_violations is defensive, covering a gap in
-        # that check rather than something reachable through it. Register directly via
-        # Step.add_nglob to bypass the eager check and exercise the defensive arm.
+        # Workflow.register_nglob's eager check would reject this match, so the PLANNED arm in
+        # find_glob_violations is defensive with respect to that check, covering a gap in it
+        # rather than something reachable through it. It is not a hedge about what the state
+        # means: an attached PLANNED node is a declared output, which the two checks now agree
+        # is an error. Register directly via Step.add_nglob to bypass the eager check.
         plan.add_nglob(ng)
         violations = wfp.find_glob_violations()
-        assert violations == [GlobViolation(plan.label, ng.pattern, "out.txt", FileState.AWAITED)]
-        assert not violations[0].is_error
+        assert violations == [GlobViolation(plan.label, ng.pattern, "out.txt", FileState.PLANNED)]
+        assert violations[0].is_error
 
 
 async def test_find_glob_violations_built_violation(wfp: Workflow):
@@ -1625,7 +1627,7 @@ async def test_find_glob_violations_built_violation(wfp: Workflow):
 
         ng = NamedGlob("*.txt")
         ng.extend(["out.txt"])
-        plan.add_nglob(ng)  # bypass the eager check; see test_..._awaited_violation
+        plan.add_nglob(ng)  # bypass the eager check; see test_..._planned_violation
         violations = wfp.find_glob_violations()
         assert violations == [GlobViolation(plan.label, ng.pattern, "out.txt", FileState.BUILT)]
         assert violations[0].is_error
@@ -1644,9 +1646,9 @@ async def test_find_glob_violations_outdated_violation(wfp: Workflow):
 
         ng = NamedGlob("*.txt")
         ng.extend(["out.txt", "inp.txt"])
-        plan.add_nglob(ng)  # bypass the eager check; see test_..._awaited_violation
+        plan.add_nglob(ng)  # bypass the eager check; see test_..._planned_violation
         violations = wfp.find_glob_violations()
-        # inp.txt is still STATIC (an EXTERNAL update that still hashes keeps it STATIC),
+        # inp.txt is still CONFIRMED (an EXTERNAL update that still hashes keeps it CONFIRMED),
         # so only out.txt is unjustified.
         assert violations == [GlobViolation(plan.label, ng.pattern, "out.txt", FileState.OUTDATED)]
         assert violations[0].is_error
@@ -1660,7 +1662,7 @@ async def test_find_glob_violations_volatile_violation(wfp: Workflow):
 
         ng = NamedGlob("*.txt")
         ng.extend(["out.txt"])
-        plan.add_nglob(ng)  # bypass the eager check; see test_..._awaited_violation
+        plan.add_nglob(ng)  # bypass the eager check; see test_..._planned_violation
         violations = wfp.find_glob_violations()
         assert violations == [GlobViolation(plan.label, ng.pattern, "out.txt", FileState.VOLATILE)]
         assert violations[0].is_error
@@ -1694,7 +1696,7 @@ async def test_find_glob_violations_detached_node_still_violation(wfp: Workflow,
             plan = wfp.find(Step, "./plan.py")
             wfp.define_step(plan, "consumer", inp_paths=["detached.txt"])
             detached = wfp.find(File, "detached.txt")
-            assert detached.get_state() == FileState.AWAITED
+            assert detached.get_state() == FileState.UNDECLARED
             assert detached.is_detached()
 
             ng = NamedGlob("*.txt")
@@ -1824,7 +1826,7 @@ async def test_externally_updated1(wfp: Workflow):
         plan.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
         aa1_out = wfp.find(File, "aa1_out.txt")
         assert aa1_out.creator() == work
-        assert aa1_out.get_state() == FileState.AWAITED
+        assert aa1_out.get_state() == FileState.PLANNED
         assert work.get_state() == StepState.PENDING
         wfp.update_file_hashes({"aa1_out.txt": fake_hash("ok")}, cause=HashUpdateCause.SUCCEEDED)
         work.mark_completed(None, False)
@@ -1834,7 +1836,7 @@ async def test_externally_updated1(wfp: Workflow):
         assert list(wfp.steps(StepState.FAILED)) == [work]
         cc5_foo = wfp.find(File, "cc5_foo.txt")
         assert cc5_foo is not None
-        assert cc5_foo.get_state() == FileState.STATIC
+        assert cc5_foo.get_state() == FileState.CONFIRMED
         print(cc5_foo.i)
 
     # Simulate external changes.
@@ -1853,7 +1855,7 @@ async def test_externally_updated1(wfp: Workflow):
         assert work.get_state() == StepState.PENDING
         assert not work.is_detached()
         assert not aa1_out.is_detached()
-        assert aa1_out.get_state() == FileState.AWAITED
+        assert aa1_out.get_state() == FileState.PLANNED
         assert cc5_foo is not None
         assert cc5_foo.get_state() == FileState.MISSING
         assert wfp.find(File, "bb7_bar.txt") is None
@@ -1884,7 +1886,7 @@ async def test_externally_updated_static_detached(wfp: Workflow):
         foo.set_state(FileState.MISSING)
         wfp.update_file_hashes({"foo.txt": fake_hash("foo.txt")}, cause=HashUpdateCause.EXTERNAL)
         assert foo.is_detached()
-        assert foo.get_state() == FileState.STATIC
+        assert foo.get_state() == FileState.CONFIRMED
 
 
 async def test_externally_updated_static_missing(wfp: Workflow):
@@ -1895,7 +1897,7 @@ async def test_externally_updated_static_missing(wfp: Workflow):
         foo.set_state(FileState.MISSING)
         wfp.update_file_hashes({"foo.txt": fake_hash("foo.txt")}, cause=HashUpdateCause.EXTERNAL)
         assert foo.creator().i == plan.i
-        assert foo.get_state() == FileState.STATIC
+        assert foo.get_state() == FileState.CONFIRMED
 
 
 async def test_externally_deleted_static_detached(wfp: Workflow):
@@ -2009,18 +2011,18 @@ async def test_externally_deleted(wfp: Workflow):
     async with wfp.db:
         # Built
         prr = wfp.find(File, "prr")
-        assert prr.get_state() == FileState.AWAITED
+        assert prr.get_state() == FileState.PLANNED
     with pytest.raises(AssertionError):
         async with wfp.db:
             wfp.update_file_hashes({"prr": FileHash.unknown()}, cause=HashUpdateCause.EXTERNAL)
     async with wfp.db:
-        assert prr.get_state() == FileState.AWAITED
+        assert prr.get_state() == FileState.PLANNED
         wfp.update_file_hashes({"prr": fake_hash("prr")}, cause=HashUpdateCause.SUCCEEDED)
         step1.mark_completed(StepHash(b"11", None, b"zzz", None), False)
         step2.mark_completed(None, False)
         assert prr.get_state() == FileState.BUILT
         wfp.update_file_hashes({"prr": FileHash.unknown()}, cause=HashUpdateCause.EXTERNAL)
-        assert prr.get_state() == FileState.AWAITED
+        assert prr.get_state() == FileState.PLANNED
         assert step1.get_state() == StepState.PENDING
         assert step2.get_state() == StepState.PENDING
 
@@ -2042,19 +2044,19 @@ async def test_externally_updated2(wfp: Workflow):
         assert tst.get_state() == FileState.MISSING
         assert cat.get_state() == StepState.PENDING
         wfp.update_file_hashes({"tst": fake_hash("tst")}, cause=HashUpdateCause.EXTERNAL)
-        assert tst.get_state() == FileState.STATIC
+        assert tst.get_state() == FileState.CONFIRMED
         assert cat.get_state() == StepState.PENDING
 
         # Built
         prr = wfp.find(File, "prr")
-        assert prr.get_state() == FileState.AWAITED
+        assert prr.get_state() == FileState.PLANNED
         wfp.update_file_hashes({"prr": fake_hash("prr")}, cause=HashUpdateCause.SUCCEEDED)
         step1.mark_completed(StepHash(b"11", None, b"zzz", None), False)
         step2.mark_completed(None, False)
         assert prr.get_state() == FileState.BUILT
         assert step2.get_state() == StepState.FAILED
         wfp.update_file_hashes({"prr": FileHash.unknown()}, cause=HashUpdateCause.EXTERNAL)
-        assert prr.get_state() == FileState.AWAITED
+        assert prr.get_state() == FileState.PLANNED
         assert step1.get_state() == StepState.PENDING
         assert step2.get_state() == StepState.PENDING
 
@@ -2069,9 +2071,9 @@ async def test_hash_update_failed(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "bla1", out_paths=["out1"])
         out1 = wfp.find(File, "out1")
-        assert out1.get_state() == FileState.AWAITED
+        assert out1.get_state() == FileState.PLANNED
 
-        # FAILED, AWAITED, known -> OUTDATED
+        # FAILED, PLANNED, known -> OUTDATED
         h = fake_hash("out1")
         wfp.update_file_hashes({"out1": h}, cause=HashUpdateCause.FAILED)
         assert out1.get_state() == FileState.OUTDATED
@@ -2082,13 +2084,50 @@ async def test_hash_update_failed(wfp: Workflow):
         assert out1.get_state() == FileState.OUTDATED
         assert out1.get_hash() == h
 
-        # FAILED, OUTDATED, unknown -> AWAITED
+        # FAILED, OUTDATED, unknown -> PLANNED
         wfp.update_file_hashes({"out1": FileHash.unknown()}, cause=HashUpdateCause.FAILED)
-        assert out1.get_state() == FileState.AWAITED
+        assert out1.get_state() == FileState.PLANNED
 
-        # FAILED, AWAITED, unknown -> AWAITED
+        # FAILED, PLANNED, unknown -> PLANNED
         wfp.update_file_hashes({"out1": FileHash.unknown()}, cause=HashUpdateCause.FAILED)
-        assert out1.get_state() == FileState.AWAITED
+        assert out1.get_state() == FileState.PLANNED
+
+
+def test_hash_transitions_invariants():
+    """Pin the structural rules stated in the `_HASH_TRANSITIONS` docstring.
+
+    A new row that breaks one of them is not necessarily wrong,
+    but it does invalidate the docstring, so it should fail here first.
+    """
+    available = frozenset([FileState.CONFIRMED, FileState.BUILT])
+    updating_causes = (HashUpdateCause.EXTERNAL, HashUpdateCause.FAILED)
+
+    def expected_action(cause, old_state, new_state, hash_known):
+        """Derive the action from the cause, the old state and whether the file is on disk."""
+        if cause == HashUpdateCause.FAILED and old_state not in available:
+            return None
+        if cause == HashUpdateCause.CONFIRMED and new_state == old_state:
+            return None
+        if not hash_known:
+            return "deleted"
+        return "updated" if cause in updating_causes else "completed"
+
+    new_state_by_role = {}
+    for (cause, old_state, hash_known), (new_state, action) in _HASH_TRANSITIONS.items():
+        row = f"({cause.name}, {old_state.name}, {hash_known})"
+        role = FILE_ROLE_BY_STATE[old_state]
+
+        # Rule 1: the new state depends on the old one only through its role.
+        first = new_state_by_role.setdefault((cause, role, hash_known), new_state)
+        assert new_state == first, (
+            f"{row} -> {new_state.name} disagrees with the other {role.name} rows "
+            f"of this cause, which give {first.name}"
+        )
+
+        # Rules 2 and 3: no action when nothing relevant changed, and otherwise
+        # "deleted" if and only if the file is not on disk.
+        assert action == expected_action(cause, old_state, new_state, hash_known), row
+        assert (action == "deleted") == (not hash_known and action is not None), row
 
 
 async def test_step_recycle(wfp: Workflow):
@@ -2109,6 +2148,35 @@ async def test_step_recycle(wfp: Workflow):
         assert hash2 is not None
         assert hash1.inp_digest == hash2.inp_digest
         assert hash1.out_digest == hash2.out_digest
+
+
+@pytest.mark.parametrize("new_hash", [None, "changed"])
+async def test_detached_step_input_changed_externally(wfp: Workflow, new_hash: str | None):
+    """A detached step whose input changes externally must not be recycled as up-to-date.
+
+    `Step.after_recycle` keeps the state and hash of a recycled step,
+    and only PENDING steps are ever hash-checked,
+    so the step has to be marked pending while it is still detached.
+    Both an external update and an external delete of the input must do this.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["inp.txt"])
+        wfp.define_step(plan, "use inp", inp_paths=["inp.txt"], out_paths=["out.txt"])
+        step = wfp.find(Step, "use inp")
+        wfp.update_file_hashes({"out.txt": fake_hash("out.txt")}, cause=HashUpdateCause.SUCCEEDED)
+        step.mark_completed(StepHash(b"i" * 20, None, b"o" * 20, None), False)
+        assert step.get_state() == StepState.SUCCEEDED
+
+        # The plan re-runs and lets go of the step, then the input changes on disk.
+        step.detach()
+        file_hash = FileHash.unknown() if new_hash is None else fake_hash(new_hash)
+        wfp.update_file_hashes({"inp.txt": file_hash}, cause=HashUpdateCause.EXTERNAL)
+        assert step.get_state() == StepState.PENDING
+
+        # The plan re-declares the same step, which recycles the detached one.
+        wfp.define_step(plan, "use inp", inp_paths=["inp.txt"], out_paths=["out.txt"])
+        assert wfp.find(Step, "use inp").get_state() == StepState.PENDING
 
 
 def _get_duration(wfx: Workflow, step: Step) -> float:
@@ -2339,7 +2407,7 @@ async def test_static_tree_basic(wfp: Workflow):
         wfp.update_file_hashes(
             {"head/one.txt": fake_hash("head/one.txt")}, cause=HashUpdateCause.CONFIRMED
         )
-        assert head1.get_state() == FileState.STATIC
+        assert head1.get_state() == FileState.CONFIRMED
 
         # Use static tree after it is added
         to_check = wfp.define_step(plan, "cat tail/one.txt", inp_paths=["tail/one.txt"])
@@ -2355,7 +2423,7 @@ async def test_static_tree_basic(wfp: Workflow):
         wfp.update_file_hashes(
             {"tail/one.txt": fake_hash("tail/one.txt")}, cause=HashUpdateCause.EXTERNAL
         )
-        assert tail1.get_state() == FileState.STATIC
+        assert tail1.get_state() == FileState.CONFIRMED
 
 
 async def test_static_tree_clean(wfp: Workflow):
@@ -2373,7 +2441,7 @@ async def test_static_tree_clean(wfp: Workflow):
         step = wfp.find(Step, "cat static/foo/bar.txt")
 
         # Check effect of defining the step on the static tree
-        assert wfp.find(File, "static/foo/bar.txt").get_state() == FileState.STATIC
+        assert wfp.find(File, "static/foo/bar.txt").get_state() == FileState.CONFIRMED
 
         # Simulate the execution of the steps
         plan.mark_completed(StepHash(b"sthp", None, b"zzz", None), False)
@@ -2466,7 +2534,7 @@ async def test_static_tree_then_static_file_hands_over(wfp: Workflow):
         wfp.update_file_hashes(
             {"static/README.md": fake_hash("static/README.md")}, cause=HashUpdateCause.CONFIRMED
         )
-        assert readme.get_state() == FileState.STATIC
+        assert readme.get_state() == FileState.CONFIRMED
 
         to_check = wfp.define_step(plan, "cat static/README.md", inp_paths=["static/README.md"])
         assert to_check == {}
@@ -2823,7 +2891,7 @@ async def test_static_tree_output_same_creator_still_raises(wfp: Workflow):
         wfp.register_static_tree(plan, "static")
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp._declare_file(plan, "static/out.txt", FileState.AWAITED)
+            wfp._declare_file(plan, "static/out.txt", FileState.PLANNED)
 
 
 async def test_static_tree_product_message_both_orders(wfp: Workflow):
@@ -2915,7 +2983,7 @@ async def test_static_tree_race_condition(wfp: Workflow):
 
     Both `define_step` calls happen before either confirmation is processed, so both
     are told to check and confirm the file. The second confirmation to arrive used to
-    crash with `Unexpected file hash update: cause=CONFIRMED ... state=FileState.STATIC`.
+    crash with `Unexpected file hash update: cause=CONFIRMED ... state=FileState.CONFIRMED`.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -2925,18 +2993,18 @@ async def test_static_tree_race_condition(wfp: Workflow):
         assert to_check_a == {"data/foo.txt": FileHash.unknown()}
         assert to_check_b == {"data/foo.txt": FileHash.unknown()}
 
-        # Client A confirms first: UNCONFIRMED -> STATIC.
+        # Client A confirms first: UNCONFIRMED -> CONFIRMED.
         wfp.update_file_hashes(
             {"data/foo.txt": fake_hash("data/foo.txt")}, cause=HashUpdateCause.CONFIRMED
         )
         foo = wfp.find(File, "data/foo.txt")
-        assert foo.get_state() == FileState.STATIC
+        assert foo.get_state() == FileState.CONFIRMED
 
         # Client B's confirmation for the same path arrives second and must not crash.
         wfp.update_file_hashes(
             {"data/foo.txt": fake_hash("data/foo.txt")}, cause=HashUpdateCause.CONFIRMED
         )
-        assert foo.get_state() == FileState.STATIC
+        assert foo.get_state() == FileState.CONFIRMED
 
 
 async def test_static_tree_same_creator_file_and_subdir_both_no_op(wfp: Workflow):
@@ -3047,7 +3115,7 @@ async def test_inp_paths(wfp: Workflow):
         }
         assert list(step.inp_paths()) == []
         assert {(r.path, r.state, r.detached) for r in step.inp_paths(include_detached=True)} == {
-            ("foo", FileState.AWAITED, True),
+            ("foo", FileState.UNDECLARED, True),
         }
         assert list(step.inp_paths()) == []
 
@@ -3061,7 +3129,7 @@ async def test_out_paths(wfp: Workflow):
         assert {r.path for r in step.out_paths()} == {"bar", "foo"}
         assert {(r.path, r.state) for r in step.out_paths()} == {
             ("bar", FileState.BUILT),
-            ("foo", FileState.AWAITED),
+            ("foo", FileState.PLANNED),
         }
         assert sorted((r.path, r.hash) for r in step.out_paths()) == [
             ("bar", fake_hash("bar")),
@@ -3069,7 +3137,7 @@ async def test_out_paths(wfp: Workflow):
         ]
         assert sorted((r.path, r.state, r.hash) for r in step.out_paths()) == [
             ("bar", FileState.BUILT, fake_hash("bar")),
-            ("foo", FileState.AWAITED, FileHash.unknown()),
+            ("foo", FileState.PLANNED, FileHash.unknown()),
         ]
 
 
@@ -3215,7 +3283,7 @@ async def test_step_static_tree(wfp: Workflow):
         for path in "test.png", "test.txt", "other.txt":
             file, detached = wfp.find_and_detached(File, path)
             assert detached
-            assert file.get_state() == FileState.AWAITED
+            assert file.get_state() == FileState.UNDECLARED
         for path in "sub/boom.txt", "sub/README.md":
             file, detached = wfp.find_and_detached(File, path)
             assert not detached
@@ -3233,11 +3301,11 @@ async def test_confirm_unconfirmed(wfp: Workflow):
         wfp.update_file_hashes(
             {"other.txt": fake_hash("other.txt")}, cause=HashUpdateCause.CONFIRMED
         )
-        assert wfp.find(File, "other.txt").get_state() == FileState.STATIC
+        assert wfp.find(File, "other.txt").get_state() == FileState.CONFIRMED
         # static test.txt
         assert wfp.find(File, "test.txt").get_state() == FileState.UNCONFIRMED
         wfp.update_file_hashes({"test.txt": fake_hash("test.txt")}, cause=HashUpdateCause.CONFIRMED)
-        assert wfp.find(File, "test.txt").get_state() == FileState.STATIC
+        assert wfp.find(File, "test.txt").get_state() == FileState.CONFIRMED
 
 
 async def test_recycle_preserves_hash_across_rerun(wfp: Workflow):
@@ -3253,7 +3321,7 @@ async def test_recycle_preserves_hash_across_rerun(wfp: Workflow):
         assert wfp.find_and_detached(File, "foo.txt") == (foo, True)
 
         # Redeclare the same path: the recycled node must keep its old hash, not lose it
-        # to the file_clear_hash trigger (which only fires for MISSING/AWAITED/VOLATILE).
+        # to the file_clear_hash trigger (which only fires for MISSING/PLANNED/VOLATILE).
         to_check = wfp.declare_static_files(plan, ["foo.txt"])
         assert to_check == {"foo.txt": old_hash}
         assert foo.get_state() == FileState.UNCONFIRMED
@@ -3262,7 +3330,7 @@ async def test_recycle_preserves_hash_across_rerun(wfp: Workflow):
         # Confirming with the same (unchanged) hash must still flip the state: the second
         # RPC call always fires client-side, even when regen() finds no change.
         wfp.update_file_hashes({"foo.txt": old_hash}, cause=HashUpdateCause.CONFIRMED)
-        assert foo.get_state() == FileState.STATIC
+        assert foo.get_state() == FileState.CONFIRMED
         assert foo.get_hash() == old_hash
 
 
@@ -3305,7 +3373,7 @@ async def test_confirm_missing_then_present(wfp: Workflow):
         wfp.update_file_hashes(
             {"ghost.txt": fake_hash("ghost.txt")}, cause=HashUpdateCause.CONFIRMED
         )
-        assert ghost.get_state() == FileState.STATIC
+        assert ghost.get_state() == FileState.CONFIRMED
         assert ghost.get_hash() == fake_hash("ghost.txt")
 
 
@@ -3315,7 +3383,7 @@ async def test_confirm_static_then_absent(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         declare_static(wfp, plan, ["foo.txt"])
         foo = wfp.find(File, "foo.txt")
-        assert foo.get_state() == FileState.STATIC
+        assert foo.get_state() == FileState.CONFIRMED
 
         # A later confirmation for the same path that now finds it absent must win.
         wfp.update_file_hashes({"foo.txt": FileHash.unknown()}, cause=HashUpdateCause.CONFIRMED)
@@ -3344,7 +3412,7 @@ async def test_hash_update_external_unconfirmed(wfp: Workflow):
             {"a.txt": fake_hash("a.txt"), "b.txt": FileHash.unknown()},
             cause=HashUpdateCause.EXTERNAL,
         )
-        assert a.get_state() == FileState.STATIC
+        assert a.get_state() == FileState.CONFIRMED
         assert b.get_state() == FileState.MISSING
 
 
@@ -3420,7 +3488,7 @@ async def test_register_static_tree_rejects_attached_unconfirmed_or_missing(wfp:
     """A static tree cannot be declared over a file already attached to another creator.
 
     This holds regardless of the file's state: an UNCONFIRMED or MISSING file declared by
-    another creator blocks the tree exactly like a STATIC or BUILT one would, per the rule
+    another creator blocks the tree exactly like a CONFIRMED or BUILT one would, per the rule
     that a static tree is the sole owner of the files under it. The two declarations here
     already come from different creators (`sub` and `plan`), which is what keeps this a
     rejection rather than the hand-over case covered by
@@ -3533,7 +3601,7 @@ async def test_register_static_tree_adopts_detached_file(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         (foo,) = declare_static(wfp, plan, ["data/foo.txt"])
-        assert foo.get_state() == FileState.STATIC
+        assert foo.get_state() == FileState.CONFIRMED
         foo.detach()
         assert foo.is_detached()
 
@@ -3568,30 +3636,30 @@ async def test_declare_static_files_other_creator_still_raises(wfp: Workflow):
 
 
 async def test_declare_static_files_same_creator_after_confirm(wfp: Workflow):
-    """The same-creator no-op also applies once the file has been confirmed STATIC."""
+    """The same-creator no-op also applies once the file has been confirmed CONFIRMED."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         (a,) = declare_static(wfp, plan, ["a.txt"])
-        assert a.get_state() == FileState.STATIC
+        assert a.get_state() == FileState.CONFIRMED
         a_hash = a.get_hash()
 
         to_check = wfp.declare_static_files(plan, ["a.txt"])
         assert to_check == {}
-        assert a.get_state() == FileState.STATIC
+        assert a.get_state() == FileState.CONFIRMED
         assert a.get_hash() == a_hash
 
 
 async def test_declare_static_files_same_creator_output_still_raises(wfp: Workflow):
     """Declaring a file the same step already produced as an output is still an error.
 
-    An AWAITED file is not one of the three states a static declaration can produce, so
+    A PLANNED file is not one of the three states a static declaration can produce, so
     it is a genuine contradiction, not a repeated declaration.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "touch a.txt", out_paths=["a.txt"])
         step = wfp.find(Step, "touch a.txt")
-        assert wfp.find(File, "a.txt").get_state() == FileState.AWAITED
+        assert wfp.find(File, "a.txt").get_state() == FileState.PLANNED
     with pytest.raises(GraphError):
         async with wfp.db:
             wfp.declare_static_files(step, ["a.txt"])
@@ -3882,7 +3950,7 @@ async def test_static_tree_adoption_clears_stale_build_hash(wfp: Workflow, targe
 
     Its stored hash is build-time provenance, not a confirmed source's content, so
     `register_static_tree`'s eager adoption sweep must not let it survive the recycle into
-    UNCONFIRMED the way a STATIC-origin hash does (`test_static_tree_lost_child`).
+    UNCONFIRMED the way a CONFIRMED-origin hash does (`test_static_tree_lost_child`).
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -3919,25 +3987,25 @@ async def test_supply_file_clears_stale_build_hash_on_lazy_adoption(
         assert foo.get_hash().is_unknown
 
 
-async def test_awaited_redeclare_unaffected_by_stale_build_hash_clear(wfp: Workflow):
-    """Redeclaring an already-AWAITED file as AWAITED again must not be touched by the new clause.
+async def test_planned_redeclare_unaffected_by_stale_build_hash_clear(wfp: Workflow):
+    """Redeclaring an already-PLANNED file as PLANNED again must not be touched by the new clause.
 
     This pins that the `file_clear_hash` trigger's added `UNCONFIRMED`-with-`BUILT`/`OUTDATED`
     origin branch is scoped to `NEW.state = UNCONFIRMED` only, and does not affect the ordinary
-    AWAITED re-declaration a step performs by redeclaring its own outputs before a rerun.
+    PLANNED re-declaration a step performs by redeclaring its own outputs before a rerun.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
-        out = wfp._declare_file(plan, "out.txt", FileState.AWAITED)
-        assert out.get_state() == FileState.AWAITED
+        out = wfp._declare_file(plan, "out.txt", FileState.PLANNED)
+        assert out.get_state() == FileState.PLANNED
         assert out.get_hash().is_unknown
 
-        # Simulate a restart: the file is detached, then redeclared AWAITED again before
+        # Simulate a restart: the file is detached, then redeclared PLANNED again before
         # ever having been built.
         out.detach()
         assert out.is_detached()
-        out = wfp._declare_file(plan, "out.txt", FileState.AWAITED)
-        assert out.get_state() == FileState.AWAITED
+        out = wfp._declare_file(plan, "out.txt", FileState.PLANNED)
+        assert out.get_state() == FileState.PLANNED
         assert out.get_hash().is_unknown
 
 
@@ -3966,11 +4034,11 @@ async def test_consistency_succeeded_step(wfp: Workflow, monkeypatch: pytest.Mon
         assert out.get_state() == FileState.BUILT
         file_hashes = wfp.get_file_hashes(["out.txt"])
         assert file_hashes == {"out.txt": fake_hash("out.txt")}
-    # Manually change the output file to AWAITED, which must clear the file hash.
+    # Manually change the output file to PLANNED, which must clear the file hash.
     # However, this is still the output of a BUILT step, which should trip the consistency check.
     with pytest.raises(ConsistencyError):  # noqa: PT012
         async with wfp.db:
-            out.set_state(FileState.AWAITED)
+            out.set_state(FileState.PLANNED)
             file_hashes = wfp.get_file_hashes(["out.txt"])
             wfp._check_consistency()
     assert file_hashes == {"out.txt": FileHash.unknown()}
@@ -4215,9 +4283,9 @@ async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Wo
 async def test_clean_stepup_root_parents(wfs: Workflow):
     async with wfs.db:
         declare_static(wfs, wfs.root, ["../foo.txt"])
-        assert wfs.find(File, "../foo.txt").get_state() == FileState.STATIC
+        assert wfs.find(File, "../foo.txt").get_state() == FileState.CONFIRMED
         wfs.delete_detached()
-        assert wfs.find(File, "../foo.txt").get_state() == FileState.STATIC
+        assert wfs.find(File, "../foo.txt").get_state() == FileState.CONFIRMED
 
 
 async def test_large_inode(wfp: Workflow):
@@ -4603,9 +4671,9 @@ async def test_resolve_supply_file_target_static_tree(wfs_target: Workflow):
 
 
 async def test_resolve_supply_file_target_static_existing():
-    """A target matching a pre-existing STATIC file must be rejected when supplied as an input.
+    """A target matching a pre-existing CONFIRMED file must be rejected when supplied as an input.
 
-    The STATIC row is confirmed on a *targetless* workflow first (simulating a previous
+    The CONFIRMED row is confirmed on a *targetless* workflow first (simulating a previous
     director process), since a targeted workflow would already reject the declaration
     itself via `_declare_file`. A second `Workflow` instance, sharing the database and
     constructed with a matching target, then supplies it as an input.
@@ -4704,6 +4772,50 @@ async def test_dependency_kind_check_rejects_step_to_step(wfp: Workflow):
         async with wfp.db:
             wfp.db.execute(
                 "INSERT INTO dependency (source, sink) VALUES (?, ?)", (step_a.i, step_b.i)
+            )
+
+
+async def test_file_undeclared_detached_check_rejects_insert(wfp: Workflow):
+    """An UNDECLARED file row may not be inserted for an attached node.
+
+    UNDECLARED is the state of a file that never had a role, so nothing can claim it.
+    Enforced by the `file_check_undeclared_detached_ins` trigger (FILE_SCHEMA, file.py).
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        cursor = wfp.db.execute(
+            "INSERT INTO node (kind, label, creator, detached) "
+            "VALUES ('file', 'claimed.txt', ?, FALSE)",
+            (plan.i,),
+        )
+        node_i = cursor.lastrowid
+    with pytest.raises(sqlite3.IntegrityError, match="an UNDECLARED file must be detached"):
+        async with wfp.db:
+            wfp.db.execute(
+                "INSERT INTO file (node, state) VALUES (?, ?)",
+                (node_i, FileState.UNDECLARED.value),
+            )
+    # The rejected INSERT leaves the node row of the first transaction without a file row,
+    # which the fixture's teardown consistency check would flag. A real write path creates
+    # both in one transaction, so drop the node here rather than weakening that check.
+    async with wfp.db:
+        wfp.db.execute("DELETE FROM node WHERE i = ?", (node_i,))
+
+
+async def test_file_undeclared_detached_check_rejects_update(wfp: Workflow):
+    """An attached file may not be moved into UNDECLARED, only a detached one.
+
+    The `_upd` variant of the trigger. A detached node keeps the state of its former life,
+    so the reverse implication is not checked: see `File.initialize_row`.
+    """
+    async with wfp.db:
+        file_plan = wfp.find(File, "plan.py")
+        assert not file_plan.is_detached()
+    with pytest.raises(sqlite3.IntegrityError, match="an UNDECLARED file must be detached"):
+        async with wfp.db:
+            wfp.db.execute(
+                "UPDATE file SET state = ? WHERE node = ?",
+                (FileState.UNDECLARED.value, file_plan.i),
             )
 
 
@@ -4921,7 +5033,7 @@ async def test_creator_chain_pending_false_when_nothing_pending(wfp: Workflow):
 #
 
 
-async def test_is_regular_output_true_for_awaited(wfp: Workflow):
+async def test_is_regular_output_true_for_planned(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog", out_paths=["out.txt"])
@@ -4954,7 +5066,7 @@ async def test_is_regular_output_true_for_outdated(wfp: Workflow):
 
 
 async def test_is_regular_output_false_for_static(wfp: Workflow):
-    """A STATIC file declared by a step (e.g. via `static()`) is not one of its outputs."""
+    """A CONFIRMED file declared by a step (e.g. via `static()`) is not one of its outputs."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         declare_static(wfp, plan, ["static.txt"])

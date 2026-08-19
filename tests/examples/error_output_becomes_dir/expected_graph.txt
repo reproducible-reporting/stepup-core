@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -23,6 +23,6 @@ step:mkdir result
                 sink   file:result
 
 file:result
-               state = AWAITED
+               state = PLANNED
              creator   step:mkdir result
               source   step:mkdir result

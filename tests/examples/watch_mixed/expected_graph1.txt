@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -18,7 +18,7 @@ step:./plan.py
              product   step:cp orig.txt copy1.txt
 
 file:orig.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp orig.txt copy1.txt
 

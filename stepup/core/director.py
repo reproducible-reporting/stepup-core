@@ -785,7 +785,7 @@ class DirectorHandler:
         """Submit a hash job for each `path: old_hash` entry, applied with `cause=CONFIRMED`.
 
         Fire-and-forget: the caller does not wait for these jobs. Each job's own
-        completion flips the file from `UNCONFIRMED` to `STATIC` or `MISSING` and wakes
+        completion flips the file from `UNCONFIRMED` to `CONFIRMED` or `MISSING` and wakes
         `job_loop`, which is what lets a step consuming the file become runnable.
         """
         for path, old_hash in to_check.items():
@@ -811,7 +811,7 @@ class DirectorHandler:
             contains, which turns an overlap within one call into a no-op instead of a
             "parent directory of an existing static tree" error.
         file_paths
-            Files to declare `UNCONFIRMED`, to be confirmed as `STATIC` or `MISSING` by a
+            Files to declare `UNCONFIRMED`, to be confirmed as `CONFIRMED` or `MISSING` by a
             hash job submitted in the background. The `UNCONFIRMED` intermediate state
             avoids unnecessary file hash calculations: when size, inode and mtime are
             unchanged, the old hash is reused.
@@ -956,7 +956,7 @@ class DirectorHandler:
         This is an RPC wrapper for `Workflow.amend_step`.
 
         When some dynamic inputs are still `UNCONFIRMED` (matches of a static tree not yet hashed),
-        this call blocks until they are resolved to `STATIC` or `MISSING`,
+        this call blocks until they are resolved to `CONFIRMED` or `MISSING`,
         running their hash jobs immediately rather than through the builder's queue:
         the calling step already occupies a slot and is idle while it waits,
         so promoting its hash jobs outside the `--jobs` budget keeps real concurrency at `njob`,
@@ -985,7 +985,7 @@ class DirectorHandler:
                 if not is_detached:
                     for path in checked_paths:
                         file = self.workflow.find(File, path)
-                        if file.get_state() not in (FileState.STATIC, FileState.BUILT):
+                        if file.get_state() not in (FileState.CONFIRMED, FileState.BUILT):
                             unavailable.add(path)
         carry_on = len(unavailable) == 0 and len(unfresh) == 0
         if not carry_on:

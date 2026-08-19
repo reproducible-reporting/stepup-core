@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -20,17 +20,17 @@ step:./plan.py
              product   step:./demovars.py
 
 file:demovars.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./demovars.py
 
 file:printvars.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./printvars.py
 
 file:variables.json
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./demovars.py
 

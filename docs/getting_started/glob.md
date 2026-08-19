@@ -72,7 +72,7 @@ for the details, which are identical for both functions.
 
 StepUp will either fail or issue a warning if a `glob()` match is not declared static
 because allowing such matches could lead to non-deterministic builds.
-For example, a built file from an initial run could be picked up by a subsequent run
+For example, an output file from an initial run could be picked up by a subsequent run
 as a match and alter the workflow.
 To keep your workflow deterministic,
 StepUp requires every match to be declared static by a step or covered by a static tree.

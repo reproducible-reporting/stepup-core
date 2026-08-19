@@ -167,9 +167,9 @@ def _insert_input_file(con, node_id, creator_id, state, *, detached=False, label
         "INSERT INTO node (i, kind, label, creator, detached) VALUES (?, 'file', ?, ?, ?)",
         (node_id, label, creator_id, detached),
     )
-    if state in (FileState.MISSING, FileState.AWAITED, FileState.VOLATILE):
+    if state in (FileState.MISSING, FileState.PLANNED, FileState.VOLATILE):
         hash_value = None
-    else:  # STATIC, BUILT, OUTDATED
+    else:  # CONFIRMED, BUILT, OUTDATED
         hash_value = FileHash(b"\x01\x02\x03", 0o100644, 1000.0, 100, 42).to_json()
     con.execute(
         "INSERT INTO file (node, state, hash) VALUES (?, ?, ?)",
@@ -565,7 +565,7 @@ def test_target_match_elevates_producer(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED)  # step 2's output
+    _insert_input_file(con, 3, 2, FileState.PLANNED)  # step 2's output
     _add_dep(con, 2, 3)
     _insert_target_path(con, "file_3.txt")
     _run_update_meta_after(con)
@@ -577,7 +577,7 @@ def test_target_match_elevates_producer(con):
 def test_target_match_on_volatile_sink_not_elevated(con):
     """A step whose only target-matching sink is VOLATILE is not elevated.
 
-    Dependency sinks of a step are exactly its out_paths (AWAITED/BUILT/OUTDATED) and
+    Dependency sinks of a step are exactly its out_paths (PLANNED/BUILT/OUTDATED) and
     vol_paths (VOLATILE); the ofile.state != VOLATILE filter keeps elevation restricted to
     regular outputs, matching the fact that a build target can never legitimately be a
     vol_path (declaration-time checks reject that combination for reachable graphs).
@@ -610,7 +610,7 @@ def test_target_match_on_detached_sink_not_elevated(con):
         need=Need.OPTIONAL,
         implied_need=Need.OPTIONAL,
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, detached=True)
+    _insert_input_file(con, 3, 2, FileState.PLANNED, detached=True)
     _add_dep(con, 2, 3)
     _insert_target_path(con, "file_3.txt")
     _run_update_meta_after(con)
@@ -623,7 +623,7 @@ def test_target_match_keeps_plan_need(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.PLAN, implied_need=Need.PLAN
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED)
+    _insert_input_file(con, 3, 2, FileState.PLANNED)
     _add_dep(con, 2, 3)
     _insert_target_path(con, "file_3.txt")
     _run_update_meta_after(con)
@@ -643,7 +643,7 @@ def test_target_match_elevates_optional_need_step(con):
         need=Need.OPTIONAL,
         implied_need=Need.OPTIONAL,
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED)
+    _insert_input_file(con, 3, 2, FileState.PLANNED)
     _add_dep(con, 2, 3)
     _insert_target_path(con, "file_3.txt")
     _run_update_meta_after(con)
@@ -673,7 +673,7 @@ def test_target_match_propagates_to_upstream_source(con):
     _insert_step(
         con, 4, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 5, 4, FileState.AWAITED)
+    _insert_input_file(con, 5, 4, FileState.PLANNED)
     _add_dep(con, 2, 3)
     _add_dep(con, 3, 4)
     _add_dep(con, 4, 5)
@@ -709,7 +709,7 @@ def test_dir_target_elevates_producer_of_file_inside(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fig.svg")
+    _insert_input_file(con, 3, 2, FileState.PLANNED, label="out/report/fig.svg")
     _add_dep(con, 2, 3)
     _insert_target_dir(con, "out/report/")
     _run_update_meta_after(con)
@@ -726,7 +726,7 @@ def test_dir_target_boundary_sibling_not_matched(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report_debug.txt")
+    _insert_input_file(con, 3, 2, FileState.PLANNED, label="out/report_debug.txt")
     _add_dep(con, 2, 3)
     _insert_target_dir(con, "out/report/")
     _run_update_meta_after(con)
@@ -743,7 +743,7 @@ def test_dir_target_matches_directory_node_itself(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/")
+    _insert_input_file(con, 3, 2, FileState.PLANNED, label="out/report/")
     _add_dep(con, 2, 3)
     _insert_target_dir(con, "out/report/")
     _run_update_meta_after(con)
@@ -756,7 +756,7 @@ def test_dir_target_matches_nested_subdirectory(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/sub/fig.svg")
+    _insert_input_file(con, 3, 2, FileState.PLANNED, label="out/report/sub/fig.svg")
     _add_dep(con, 2, 3)
     _insert_target_dir(con, "out/report/")
     _run_update_meta_after(con)
@@ -770,7 +770,7 @@ def test_dir_target_matches_non_ascii_label(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fé中.svg")
+    _insert_input_file(con, 3, 2, FileState.PLANNED, label="out/report/fé中.svg")
     _add_dep(con, 2, 3)
     _insert_target_dir(con, "out/report/")
     _run_update_meta_after(con)
@@ -793,7 +793,7 @@ def test_dir_target_optional_producer_not_elevated(con):
         need=Need.OPTIONAL,
         implied_need=Need.OPTIONAL,
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fig.svg")
+    _insert_input_file(con, 3, 2, FileState.PLANNED, label="out/report/fig.svg")
     _add_dep(con, 2, 3)
     _insert_target_dir(con, "out/report/")
     _run_update_meta_after(con)
@@ -819,7 +819,7 @@ def test_dir_target_detached_sink_not_elevated(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fig.svg", detached=True)
+    _insert_input_file(con, 3, 2, FileState.PLANNED, label="out/report/fig.svg", detached=True)
     _add_dep(con, 2, 3)
     _insert_target_dir(con, "out/report/")
     _run_update_meta_after(con)
@@ -832,7 +832,7 @@ def test_empty_target_dir_is_no_op(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fig.svg")
+    _insert_input_file(con, 3, 2, FileState.PLANNED, label="out/report/fig.svg")
     _add_dep(con, 2, 3)
     _run_update_meta_after(con)
     row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
@@ -844,7 +844,7 @@ def test_dir_target_nested_and_duplicate_ranges_are_harmless(con):
     _insert_step(
         con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
     )
-    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/sub/fig.svg")
+    _insert_input_file(con, 3, 2, FileState.PLANNED, label="out/report/sub/fig.svg")
     _add_dep(con, 2, 3)
     _insert_target_dir(con, "out/", "out/report/", "out/report/sub/")
     _run_update_meta_after(con)
@@ -1096,10 +1096,10 @@ def test_volatile_input_blocks_step(con):
     assert _get_runnable_ids(con) == []
 
 
-def test_initial_input_awaited_blocks_step(con):
-    """An initial dependency on an AWAITED file blocks the step."""
+def test_initial_input_planned_blocks_step(con):
+    """An initial dependency on a PLANNED file blocks the step."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _insert_input_file(con, 3, 1, FileState.PLANNED)
     _add_dep(con, 3, 2)
     _recompute_ready(con)
     assert _get_runnable_ids(con) == []
@@ -1142,18 +1142,18 @@ def test_initial_input_built_allows_step(con):
 
 
 def test_initial_input_static_allows_step(con):
-    """An initial dependency on a STATIC file does not block the step."""
+    """An initial dependency on a CONFIRMED file does not block the step."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
-    _insert_input_file(con, 3, 1, FileState.STATIC)
+    _insert_input_file(con, 3, 1, FileState.CONFIRMED)
     _add_dep(con, 3, 2)
     _recompute_ready(con)
     assert _get_runnable_ids(con) == [2]
 
 
-def test_dynamic_input_awaited_blocks_step(con):
-    """A dynamic, attached input in AWAITED state blocks the step."""
+def test_dynamic_input_planned_blocks_step(con):
+    """A dynamic, attached input in PLANNED state blocks the step."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _insert_input_file(con, 3, 1, FileState.PLANNED)
     dep_id = _add_dep_returning_id(con, 3, 2)
     _mark_dep_dynamic(con, dep_id)
     _recompute_ready(con)
@@ -1183,7 +1183,7 @@ def test_dynamic_input_built_allows_step(con):
 def test_dynamic_input_missing_allows_step(con):
     """A dynamic, attached input in MISSING state does not block the step.
 
-    MISSING is neither AWAITED nor OUTDATED, so case 1 of the blocking condition does not apply.
+    MISSING is neither PLANNED nor OUTDATED, so case 1 of the blocking condition does not apply.
     The step proceeds and will validate its dynamic inputs before running.
     """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
@@ -1212,7 +1212,7 @@ def test_one_ready_one_blocking_input_excludes_step(con):
     """When at least one input is blocking, the step is excluded even if others are ready."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.BUILT)  # ready
-    _insert_input_file(con, 4, 1, FileState.AWAITED)  # blocking
+    _insert_input_file(con, 4, 1, FileState.PLANNED)  # blocking
     _add_dep(con, 3, 2)
     _add_dep(con, 4, 2)
     _recompute_ready(con)
@@ -1365,23 +1365,23 @@ def test_select_inputs_built_file(con):
 
 
 def test_select_inputs_static_file(con):
-    """A STATIC file dependency returns state=STATIC."""
+    """A CONFIRMED file dependency returns state=CONFIRMED."""
     _insert_step(con, 2, 1, StepState.PENDING)
-    _insert_input_file(con, 3, 1, FileState.STATIC)
+    _insert_input_file(con, 3, 1, FileState.CONFIRMED)
     _add_dep(con, 3, 2)
     rows = _get_inputs(con, 2)
     assert len(rows) == 1
-    assert rows[0]["state"] == FileState.STATIC.value
+    assert rows[0]["state"] == FileState.CONFIRMED.value
 
 
-def test_select_inputs_awaited_file(con):
-    """An AWAITED file dependency returns state=AWAITED with zeroed metadata."""
+def test_select_inputs_planned_file(con):
+    """A PLANNED file dependency returns state=PLANNED with zeroed metadata."""
     _insert_step(con, 2, 1, StepState.PENDING)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _insert_input_file(con, 3, 1, FileState.PLANNED)
     _add_dep(con, 3, 2)
     rows = _get_inputs(con, 2)
     assert len(rows) == 1
-    assert rows[0]["state"] == FileState.AWAITED.value
+    assert rows[0]["state"] == FileState.PLANNED.value
     assert rows[0]["hash"] is None
 
 
@@ -1417,8 +1417,8 @@ def test_select_inputs_multiple_files(con):
     """Multiple file dependencies return one row per file, ordered by label."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.BUILT)
-    _insert_input_file(con, 4, 1, FileState.STATIC)
-    _insert_input_file(con, 5, 1, FileState.AWAITED)
+    _insert_input_file(con, 4, 1, FileState.CONFIRMED)
+    _insert_input_file(con, 5, 1, FileState.PLANNED)
     _add_dep(con, 3, 2)
     _add_dep(con, 4, 2)
     _add_dep(con, 5, 2)
@@ -1426,8 +1426,8 @@ def test_select_inputs_multiple_files(con):
     assert len(rows) == 3
     states = {r["label"]: r["state"] for r in rows}
     assert states["file_3.txt"] == FileState.BUILT.value
-    assert states["file_4.txt"] == FileState.STATIC.value
-    assert states["file_5.txt"] == FileState.AWAITED.value
+    assert states["file_4.txt"] == FileState.CONFIRMED.value
+    assert states["file_5.txt"] == FileState.PLANNED.value
 
 
 def test_select_inputs_only_returns_inputs_for_queried_sink(con):
@@ -1435,7 +1435,7 @@ def test_select_inputs_only_returns_inputs_for_queried_sink(con):
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_step(con, 3, 1, StepState.PENDING)
     _insert_input_file(con, 4, 1, FileState.BUILT)  # input to step 2
-    _insert_input_file(con, 5, 1, FileState.STATIC)  # input to step 3 only
+    _insert_input_file(con, 5, 1, FileState.CONFIRMED)  # input to step 3 only
     _add_dep(con, 4, 2)
     _add_dep(con, 5, 3)
     rows = _get_inputs(con, 2)
@@ -1531,8 +1531,8 @@ def test_resource_counts_resource_not_in_available_excluded(con):
 #
 # The three blocking branches are:
 #   VOLATILE      – any dep type, any detach state
-#   Case 1        – dynamic AND NOT detached AND state IN (AWAITED, OUTDATED)
-#   Case 2        – initial (not dynamic) AND (detached OR state not in {BUILT, STATIC})
+#   Case 1        – dynamic AND NOT detached AND state IN (PLANNED, OUTDATED)
+#   Case 2        – initial (not dynamic) AND (detached OR state not in {BUILT, CONFIRMED})
 # -----------------------------------------------------------------------
 
 
@@ -1568,10 +1568,10 @@ def test_unavailable_input_volatile_dynamic(con):
     assert _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_case1_dynamic_nondetached_awaited(con):
-    """Case 1: dynamic, non-detached, AWAITED -> unavailable."""
+def test_unavailable_input_case1_dynamic_nondetached_planned(con):
+    """Case 1: dynamic, non-detached, PLANNED -> unavailable."""
     _insert_step(con, 2, 1, StepState.PENDING)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _insert_input_file(con, 3, 1, FileState.PLANNED)
     dep_id = _add_dep_returning_id(con, 3, 2)
     _mark_dep_dynamic(con, dep_id)
     assert _has_unavailable_input(con, 2)
@@ -1587,7 +1587,7 @@ def test_unavailable_input_case1_dynamic_nondetached_outdated(con):
 
 
 def test_unavailable_input_case1_miss_dynamic_nondetached_missing(con):
-    """Dynamic, non-detached, MISSING: MISSING not in {AWAITED, OUTDATED} so case 1 does not fire;
+    """Dynamic, non-detached, MISSING: MISSING not in {PLANNED, OUTDATED} so case 1 does not fire;
     case 2 does not fire because the dep is dynamic -> available."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.MISSING)
@@ -1596,20 +1596,20 @@ def test_unavailable_input_case1_miss_dynamic_nondetached_missing(con):
     assert not _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_case1_miss_dynamic_detached_awaited(con):
-    """Dynamic, detached, AWAITED: case 1 requires NOT detached so it does not fire;
+def test_unavailable_input_case1_miss_dynamic_detached_planned(con):
+    """Dynamic, detached, PLANNED: case 1 requires NOT detached so it does not fire;
     case 2 requires an initial dep so it also does not fire -> available."""
     _insert_step(con, 2, 1, StepState.PENDING)
-    _insert_input_file(con, 3, 1, FileState.AWAITED, detached=True)
+    _insert_input_file(con, 3, 1, FileState.PLANNED, detached=True)
     dep_id = _add_dep_returning_id(con, 3, 2)
     _mark_dep_dynamic(con, dep_id)
     assert not _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_case2_initial_nondetached_awaited(con):
-    """Case 2: initial, non-detached, AWAITED (not in {BUILT, STATIC}) -> unavailable."""
+def test_unavailable_input_case2_initial_nondetached_planned(con):
+    """Case 2: initial, non-detached, PLANNED (not in {BUILT, CONFIRMED}) -> unavailable."""
     _insert_step(con, 2, 1, StepState.PENDING)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _insert_input_file(con, 3, 1, FileState.PLANNED)
     _add_dep(con, 3, 2)
     assert _has_unavailable_input(con, 2)
 
@@ -1631,7 +1631,7 @@ def test_unavailable_input_case2_initial_nondetached_missing(con):
 
 
 def test_unavailable_input_case2_miss_initial_nondetached_built(con):
-    """Case 2: initial, non-detached, BUILT (in {BUILT, STATIC}) -> available."""
+    """Case 2: initial, non-detached, BUILT (in {BUILT, CONFIRMED}) -> available."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.BUILT)
     _add_dep(con, 3, 2)
@@ -1639,9 +1639,9 @@ def test_unavailable_input_case2_miss_initial_nondetached_built(con):
 
 
 def test_unavailable_input_case2_miss_initial_nondetached_static(con):
-    """Case 2: initial, non-detached, STATIC -> available."""
+    """Case 2: initial, non-detached, CONFIRMED -> available."""
     _insert_step(con, 2, 1, StepState.PENDING)
-    _insert_input_file(con, 3, 1, FileState.STATIC)
+    _insert_input_file(con, 3, 1, FileState.CONFIRMED)
     _add_dep(con, 3, 2)
     assert not _has_unavailable_input(con, 2)
 
@@ -1658,7 +1658,7 @@ def test_unavailable_input_multiple_one_blocking(con):
     """Multiple inputs: one non-blocking and one blocking -> unavailable (EXISTS semantics)."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.BUILT)
-    _insert_input_file(con, 4, 1, FileState.AWAITED)
+    _insert_input_file(con, 4, 1, FileState.PLANNED)
     _add_dep(con, 3, 2)
     _add_dep(con, 4, 2)
     assert _has_unavailable_input(con, 2)
@@ -1668,7 +1668,7 @@ def test_unavailable_input_multiple_none_blocking(con):
     """Multiple inputs, all non-blocking -> available."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_input_file(con, 3, 1, FileState.BUILT)
-    _insert_input_file(con, 4, 1, FileState.STATIC)
+    _insert_input_file(con, 4, 1, FileState.CONFIRMED)
     _add_dep(con, 3, 2)
     _add_dep(con, 4, 2)
     assert not _has_unavailable_input(con, 2)
@@ -1833,7 +1833,7 @@ def test_checkable_step_blocked_by_unavailable_initial_input(con):
     """A step with a hash but an unavailable initial (non-dynamic) input is NOT checkable."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_step_hash(con, 2)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _insert_input_file(con, 3, 1, FileState.PLANNED)
     _add_dep(con, 3, 2)
     _recompute_ready(con)
     assert _get_checkable_ids(con) == []
@@ -1848,7 +1848,7 @@ def test_checkable_step_with_ready_initial_and_unready_dynamic_input(con):
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_step_hash(con, 2)
     # Ready initial input
-    _insert_input_file(con, 3, 1, FileState.STATIC)
+    _insert_input_file(con, 3, 1, FileState.CONFIRMED)
     _add_dep(con, 3, 2)
     # Unready dynamic input (MISSING — case 1 of UNAVAILABLE_INPUT blocks but not INITIAL)
     _insert_input_file(con, 4, 1, FileState.MISSING)
@@ -1856,7 +1856,7 @@ def test_checkable_step_with_ready_initial_and_unready_dynamic_input(con):
     _mark_dep_dynamic(con, dep_id)
     _recompute_ready(con)
     # MISSING dynamic inputs are NOT blocked by UNAVAILABLE_INPUT
-    # (case 1 only blocks AWAITED/OUTDATED),
+    # (case 1 only blocks PLANNED/OUTDATED),
     # so both the runnable and checkable paths of SELECT_NEXT_STEP allow them.
     assert _get_checkable_ids(con) == [2]
 
@@ -1893,10 +1893,10 @@ def test_checkable_step_with_hash_and_exhausted_resource(con):
     assert _get_checkable_ids(con) == [2]
 
 
-def test_unavailable_input_blocks_on_dynamic_awaited(con):
-    """UNAVAILABLE_INPUT blocks on dynamic AWAITED inputs."""
+def test_unavailable_input_blocks_on_dynamic_planned(con):
+    """UNAVAILABLE_INPUT blocks on dynamic PLANNED inputs."""
     _insert_step(con, 2, 1, StepState.PENDING)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _insert_input_file(con, 3, 1, FileState.PLANNED)
     dep_id = _add_dep_returning_id(con, 3, 2)
     _mark_dep_dynamic(con, dep_id)
     assert _has_unavailable_input(con, 2)
@@ -1911,10 +1911,10 @@ def test_unavailable_input_blocks_on_dynamic_outdated(con):
     assert _has_unavailable_input(con, 2)
 
 
-def test_unavailable_input_blocks_on_initial_awaited(con):
-    """UNAVAILABLE_INPUT blocks on an initial (non-dynamic) AWAITED input."""
+def test_unavailable_input_blocks_on_initial_planned(con):
+    """UNAVAILABLE_INPUT blocks on an initial (non-dynamic) PLANNED input."""
     _insert_step(con, 2, 1, StepState.PENDING)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _insert_input_file(con, 3, 1, FileState.PLANNED)
     _add_dep(con, 3, 2)
     assert _has_unavailable_input(con, 2)
 

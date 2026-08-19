@@ -254,7 +254,7 @@ async def test_run_promoted_hash_jobs_applies_result(wfs: Workflow, tmpdir):
         )
 
         async with wfs.db:
-            assert wfs.find(File, "a.txt").get_state() == FileState.STATIC
+            assert wfs.find(File, "a.txt").get_state() == FileState.CONFIRMED
 
 
 async def test_run_promoted_hash_jobs_awaits_already_claimed_job_without_rerunning():

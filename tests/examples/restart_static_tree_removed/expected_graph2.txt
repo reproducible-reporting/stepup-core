@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -31,7 +31,7 @@ step:cp -p static/bar.txt bar.txt
                 sink   file:bar.txt
 
 file:static/bar.txt
-               state = STATIC
+               state = CONFIRMED
              creator   st:static/
                 sink   step:cp -p static/bar.txt bar.txt
 

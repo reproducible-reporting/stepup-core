@@ -20,5 +20,5 @@ wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-# The file inp.txt was AWAITED, so changes to this file are not relevant.
+# The file vol.txt is VOLATILE, so changes to this file are not relevant.
 [[ $(grep -c "UPDATED │ vol.txt" current_stdout.txt ) -eq 0 ]] || exit 1

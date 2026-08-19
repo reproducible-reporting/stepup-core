@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -22,17 +22,17 @@ step:./plan.py
                 sink   file:args.json [dynamic]
 
 file:config.json
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./plan.py
 
 file:data.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py run --inp=args.json
 
 file:work.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py run --inp=args.json
 

@@ -41,5 +41,5 @@ wait
 [[ -f plan.py ]] || exit 1
 [[ -f test1.txt ]] || exit 1
 [[ -f test2.txt ]] || exit 1
-# The file test1.txt was AWAITED, so changes to this file are not relevant for StepUp.
+# The file test1.txt was PLANNED, so changes to this file are not relevant for StepUp.
 [[ $(grep -c "UPDATED │ test1.txt" current_stdout2.txt ) -eq 0 ]] || exit 1

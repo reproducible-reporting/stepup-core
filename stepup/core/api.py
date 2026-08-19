@@ -760,7 +760,7 @@ def amend(
         When dynamic inputs are not yet available.
         Let this exception propagate — do not catch it.
         The director defers the step once the missing inputs become available.
-        Note this call blocks until any dynamic input matching an unconfirmed static file is hashed,
+        Note this call blocks until any dynamic input matching an unconfirmed file is hashed,
         so it may take a while for large files.
     AmendWhileHoldingError
         When `inp` is non-empty and this is called anywhere in the calling step's execution

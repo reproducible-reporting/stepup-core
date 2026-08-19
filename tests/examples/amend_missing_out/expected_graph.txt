@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -17,7 +17,7 @@ step:./plan.py
              product   step:./demo.py
 
 file:demo.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./demo.py
 
@@ -31,6 +31,6 @@ step:./demo.py
                 sink   file:subdir/foo.out [dynamic]
 
 file:subdir/foo.out
-               state = AWAITED
+               state = PLANNED
              creator   step:./demo.py
               source   step:./demo.py

@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -19,7 +19,7 @@ step:./plan.py
              product   step:sleep 0.5; echo 'Some input for drop_dynamic example' > inp.txt
 
 file:work.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py
 

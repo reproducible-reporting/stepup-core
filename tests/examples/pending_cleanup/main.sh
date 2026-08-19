@@ -47,5 +47,5 @@ wait
 [[ -f bye.txt ]] || exit 1
 grep elsewhere hello.txt
 grep soon bye.txt
-# The file hello.txt was AWAITED, so changes to this file are not relevant.
+# The file hello.txt was PLANNED, so changes to this file are not relevant.
 [[ $(grep -c "UPDATED │ hello.txt" current_stdout2.txt ) -eq 0 ]] || exit 1

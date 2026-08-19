@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -19,7 +19,7 @@ step:./plan.py
              product   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
 file:README.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 

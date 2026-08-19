@@ -492,7 +492,7 @@ async def test_run_hash_job_confirmed_applies_even_when_unchanged(
     wfs: Workflow, tmpdir, monkeypatch
 ):
     """CONFIRMED must be applied even when the hash didn't change: it's the only cause that
-    flips UNCONFIRMED -> STATIC."""
+    flips UNCONFIRMED -> CONFIRMED."""
     with contextlib.chdir(tmpdir):
         async with wfs.db:
             wfs.declare_static_files(wfs.root, ["foo.txt"])
@@ -509,12 +509,12 @@ async def test_run_hash_job_confirmed_applies_even_when_unchanged(
         assert calls == [({"foo.txt": real_hash}, HashUpdateCause.CONFIRMED)]
         assert hash_job.future.result() == real_hash
         async with wfs.db:
-            assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+            assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
 
 
 async def test_run_hash_job_external_not_applied_when_unchanged(wfs: Workflow, tmpdir, monkeypatch):
     """An unchanged hash under a non-CONFIRMED cause must not trigger update_file_hashes:
-    e.g. (EXTERNAL, STATIC, known) would call handle_external_update and needlessly mark
+    e.g. (EXTERNAL, CONFIRMED, known) would call handle_external_update and needlessly mark
     all sinks pending."""
     with contextlib.chdir(tmpdir):
         async with wfs.db:
@@ -524,7 +524,7 @@ async def test_run_hash_job_external_not_applied_when_unchanged(wfs: Workflow, t
         real_hash = FileHash.unknown().regen("foo.txt")
         async with wfs.db:
             wfs.update_file_hashes({"foo.txt": real_hash}, cause=HashUpdateCause.CONFIRMED)
-            assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+            assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
 
         calls = _spy_update_file_hashes(monkeypatch)
         executor = _make_executor(reporter=_FakeReporter(), workflow=wfs, db=wfs.db)

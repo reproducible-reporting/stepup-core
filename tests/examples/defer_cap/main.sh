@@ -10,7 +10,7 @@ PID=$!
 # Dispatch 1: never.txt missing -> defer (count=1), parks PENDING.
 stepup wait
 
-# Editing trigger.txt (an ordinary, already-STATIC input) makes X eligible again
+# Editing trigger.txt (an ordinary, already-CONFIRMED input) makes X eligible again
 # (mark_pending), without ever making the dynamic input never.txt available.
 echo v1 > trigger.txt
 stepup watch-update trigger.txt

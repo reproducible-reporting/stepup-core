@@ -260,8 +260,15 @@ and will be updated with any further changes before the final release.
     - The step state `QUEUED` has been removed, as it is no longer needed.
     - A new step state `CHECKING` has been added
       for steps that are being hash-checked for possible skipping.
-    - The files state `UNCONFIRMED` has been added to distinguish truly missing files
-      from those who still need to be hash-checked.
+    - File states are now classified into three roles:
+      `STATIC`, `OUTPUT` and `VOLATILE`.
+      A role does not change during a build, while a state may.
+      Related file state changes:
+        - `UNCONFIRMED` has been added to distinguish truly missing files
+          from those who still need to be hash-checked.
+        - `AWAITED` has been split into `UNDECLARED` (no role yet) and `PLANNED` (to be built).
+        - `STATIC` has been renamed to `CONFIRMED`,
+          so that state names no longer overlap with role names.
     - `step_outcome` and `step_subprocess` tables were added.
     - The `step` table now tracks re-entrant `hold()`/`release()` calls,
       needed for the new `hold()` context manager (see above).
@@ -406,6 +413,13 @@ and will be updated with any further changes before the final release.
   the cursor stays visible while the build is suspended,
   and keyboard interaction keeps working after the build is resumed.
   Previously every keystroke was echoed and then swallowed by the terminal.
+- When an optional step is reverted to pending because nothing needs its output anymore,
+  its volatile outputs keep the `VOLATILE` file state.
+- A step whose input is changed or deleted while the step is temporarily detached
+  from the workflow now runs again once it is recycled.
+  Previously it was recycled in its succeeded state and silently kept its stale output.
+  This could be observed after an incomplete build (or one run with `--no-clean`),
+  which leaves detached steps in the graph for the next build to pick up.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 

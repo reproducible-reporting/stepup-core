@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -18,7 +18,7 @@ step:./plan.py
              product   step:echo Will be deleted by accident > missing.txt
 
 file:work.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py
 
@@ -38,7 +38,7 @@ step:echo Will be deleted by accident > missing.txt
                 sink   file:missing.txt
 
 file:missing.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:echo Will be deleted by accident > missing.txt
               source   step:echo Will be deleted by accident > missing.txt
                 sink   step:./work.py

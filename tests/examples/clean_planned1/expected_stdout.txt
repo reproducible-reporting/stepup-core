@@ -5,7 +5,7 @@
 DIRECTOR │ Ran 1 job(s).
  WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
-             AWAITED: (bogus.txt)  1 step(s)
+          UNDECLARED: (missing.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Create the input file(s) listed above, correct their static() paths,
 or add a step that builds them.
@@ -16,4 +16,19 @@ Run `stepup browse` and search for a name above to see the steps involved.
  WARNING │ Check logs: .stepup/warning.log
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+   PHASE │ build
+DIRECTOR │ Ran 0 job(s).
+ WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+          UNDECLARED: (missing.txt)  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Paths in parentheses are detached: no step in the workflow declares them.
+Run `stepup browse` and search for a name above to see the steps involved.
+────────────────────────────────────────────────────────────────────────────────
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
 DIRECTOR │ See you!

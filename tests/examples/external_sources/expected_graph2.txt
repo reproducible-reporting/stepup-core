@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -22,7 +22,7 @@ st:../pkgs/
              product   file:../pkgs/helper.py
 
 file:worker.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./worker.py
 
@@ -35,6 +35,6 @@ step:./worker.py
               source   file:worker.py
 
 file:../pkgs/helper.py
-               state = STATIC
+               state = CONFIRMED
              creator   st:../pkgs/
                 sink   step:./worker.py

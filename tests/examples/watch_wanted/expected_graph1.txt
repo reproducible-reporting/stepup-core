@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -18,7 +18,7 @@ step:./plan.py
              product   step:cp input2.txt output2.txt
 
 file:static.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
 
 step:cp input1.txt output1.txt
@@ -30,11 +30,11 @@ step:cp input1.txt output1.txt
                 sink   file:output1.txt
 
 (file:input1.txt)
-               state = AWAITED
+               state = UNDECLARED
                 sink   step:cp input1.txt output1.txt
 
 file:output1.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp input1.txt output1.txt
               source   step:cp input1.txt output1.txt
 
@@ -47,10 +47,10 @@ step:cp input2.txt output2.txt
                 sink   file:output2.txt
 
 (file:input2.txt)
-               state = AWAITED
+               state = UNDECLARED
                 sink   step:cp input2.txt output2.txt
 
 file:output2.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp input2.txt output2.txt
               source   step:cp input2.txt output2.txt

@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -24,10 +24,10 @@ step:cp -p missing.txt hello.txt
                 sink   file:hello.txt
 
 (file:missing.txt)
-               state = AWAITED
+               state = UNDECLARED
                 sink   step:cp -p missing.txt hello.txt
 
 file:hello.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp -p missing.txt hello.txt
               source   step:cp -p missing.txt hello.txt

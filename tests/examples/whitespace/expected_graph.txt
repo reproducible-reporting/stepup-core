@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -19,13 +19,13 @@ step:./plan.py
              product   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
 file:README NOW.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:'./script is cool.py' run
                 sink   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
 file:script is cool.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:'./script is cool.py' plan
                 sink   step:'./script is cool.py' run

@@ -68,10 +68,19 @@ SELECT label, state, hash FROM optional_to_be_deleted
 """
 
 UPDATE_OPTIONAL_TO_BE_DELETED = f"""
+-- Put the regular outputs of the reverted steps back to PLANNED,
+-- but leave the volatile ones in VOLATILE.
+-- VOLATILE is the only state in its role,
+-- so resetting such a row would migrate it into the OUTPUT role,
+-- where out_paths() would count it as a regular output
+-- and nothing would move it back until the step is redeclared.
+-- Volatile rows stay in optional_to_be_deleted either way:
+-- they must still be removed from disk.
 UPDATE file
-SET state = {FileState.AWAITED.value}, hash = NULL
+SET state = {FileState.PLANNED.value}, hash = NULL
 FROM optional_to_be_deleted
 WHERE file.node = optional_to_be_deleted.i
+AND file.state != {FileState.VOLATILE.value}
 """
 
 DROP_OPTIONAL_STEP_TABLE = """
@@ -430,7 +439,12 @@ async def remove_outdated_outputs(db: DBSession, workflow: Workflow, reporter: R
 
     await _prune_empty_dirs(parents, reporter)
 
-    # Reset the state of the deleted files in the database, if they are still present.
+    # Reset the state of the deleted files in the database,
+    # if they are still present and not VOLATILE.
+    #
+    # The VOLATILE guard is what makes the one in UPDATE_OPTIONAL_TO_BE_DELETED stick:
+    # `revert_optional` runs earlier in the same `Builder.finalize`,
+    # and the volatile paths it flagged for deletion still have a live file row here.
     async with db:
         db.executemany(
             """
@@ -438,8 +452,12 @@ async def remove_outdated_outputs(db: DBSession, workflow: Workflow, reporter: R
             UPDATE file
             SET state = ?, hash = NULL
             WHERE node IN node_tmp
+            AND state != ?
             """,
-            [(path, FileState.AWAITED.value) for path in workflow.to_be_deleted],
+            [
+                (path, FileState.PLANNED.value, FileState.VOLATILE.value)
+                for path in workflow.to_be_deleted
+            ],
         )
     workflow.to_be_deleted.clear()
 

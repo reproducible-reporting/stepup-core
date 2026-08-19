@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -19,12 +19,12 @@ step:./plan.py
              product   step:tr a-z A-Z < hop1.txt > hop2.txt
 
 file:hop1.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:tr a-z A-Z < hop1.txt > hop2.txt
 
 file:sub/plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./plan.py  # wd=sub
 

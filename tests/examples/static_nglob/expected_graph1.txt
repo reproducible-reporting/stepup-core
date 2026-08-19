@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -32,32 +32,32 @@ step:./plan.py
              product   step:cp -p ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
 
 file:ch-1-intro/sec-1-1-blabla.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
 
 file:ch-1-intro/sec-1-2-some-more.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
 
 file:ch-2-theory/sec-2-1-basics.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
 
 file:ch-2-theory/sec-2-2-advanced.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
 
 file:ch-3-conclusions/sec-3-1-summary.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
 
 file:ch-3-conclusions/sec-3-2-outlook.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
 

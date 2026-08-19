@@ -12,7 +12,7 @@ import attrs
 from path import Path
 
 from .cattrs import json_converter
-from .enums import REGULAR_OUTPUT_STATES, FileState, Need, StepState
+from .enums import FILE_STATES_BY_ROLE, FileRole, FileState, Need, StepState
 from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, StepHash
@@ -77,14 +77,14 @@ input_file.state = {FileState.VOLATILE.value} OR
     -- Case 1: Is a dynamic dependency
     dynamic_dep.i IS NOT NULL AND
     NOT input_node.detached AND
-    input_file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
+    input_file.state IN ({FileState.PLANNED.value}, {FileState.OUTDATED.value})
 ) OR
 (
     -- Case 2: Is an initial dependency
     dynamic_dep.i IS NULL AND
     (
         input_node.detached OR
-        input_file.state NOT IN ({FileState.BUILT.value}, {FileState.STATIC.value})
+        input_file.state NOT IN ({FileState.BUILT.value}, {FileState.CONFIRMED.value})
     )
 )
 """
@@ -932,14 +932,14 @@ class Step(Node):
         )
 
     def has_unavailable_dynamic_input(self) -> bool:
-        """Determine if any dynamic input dependency is not currently `STATIC` or `BUILT`."""
+        """Determine if any dynamic input dependency is not currently `CONFIRMED` or `BUILT`."""
         sql = f"""
         SELECT EXISTS (
             SELECT 1 FROM dependency
             JOIN dynamic_dep ON dynamic_dep.i = dependency.i
             JOIN file ON file.node = dependency.source
             WHERE dependency.sink = ?
-            AND file.state NOT IN ({FileState.STATIC.value}, {FileState.BUILT.value})
+            AND file.state NOT IN ({FileState.CONFIRMED.value}, {FileState.BUILT.value})
         )
         """
         return bool(self.db.execute(sql, (self.i,)).fetchone()[0])
@@ -1061,7 +1061,7 @@ class Step(Node):
         *,
         include_detached: bool = False,
         dynamic: bool | None = None,
-        states: tuple[FileState, ...] = (),
+        states: Collection[FileState] = (),
     ) -> Iterator[PathRecord]:
         """Iterate over paths of this step using various criteria."""
         # Which relation?
@@ -1135,7 +1135,7 @@ class Step(Node):
             "sink",
             include_detached=include_detached,
             dynamic=dynamic,
-            states=REGULAR_OUTPUT_STATES,
+            states=FILE_STATES_BY_ROLE[FileRole.OUTPUT],
         )
 
     def vol_paths(
@@ -1146,12 +1146,12 @@ class Step(Node):
             "sink",
             include_detached=include_detached,
             dynamic=dynamic,
-            states=(FileState.VOLATILE,),
+            states=FILE_STATES_BY_ROLE[FileRole.VOLATILE],
         )
 
     def static_paths(self) -> Iterator[PathRecord]:
         """Iterate over static paths created by this step."""
-        yield from self._paths("product", states=(FileState.STATIC,))
+        yield from self._paths("product", states=(FileState.CONFIRMED,))
 
     def missing_paths(self) -> Iterator[PathRecord]:
         """Iterate over missing paths created by this step."""
@@ -1235,17 +1235,12 @@ class Step(Node):
         self._detach_created_steps()
 
         # Detach static file definitions
+        states = ", ".join(str(state.value) for state in FILE_STATES_BY_ROLE[FileRole.STATIC])
         sql = (
             "SELECT i, label FROM node JOIN file ON node.i = file.node "
-            "WHERE creator = ? AND state in (?, ?, ?)"
+            f"WHERE creator = ? AND state IN ({states})"
         )
-        data = (
-            self.i,
-            FileState.STATIC.value,
-            FileState.MISSING.value,
-            FileState.UNCONFIRMED.value,
-        )
-        for i, label in self.db.execute(sql, data):
+        for i, label in self.db.execute(sql, (self.i,)):
             file = File(self.graph, i, label)
             file.detach()
 

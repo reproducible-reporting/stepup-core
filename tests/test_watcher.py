@@ -107,7 +107,7 @@ async def test_watch_changes_reports_unchanged_and_updates_only_the_changed_file
 async def test_watch_changes_drain_records_missing_file(wfp: Workflow, tmpdir):
     """A build-phase inotify event for a confirmed-`MISSING` file must be recorded
     by the drain loop in `watch_changes`, not discarded,
-    so the file can flip back to `STATIC` in the following watch phase.
+    so the file can flip back to `CONFIRMED` in the following watch phase.
     """
     with contextlib.chdir(tmpdir):
         async with wfp.db:
@@ -132,4 +132,4 @@ async def test_watch_changes_drain_records_missing_file(wfp: Workflow, tmpdir):
         await watcher.watch_changes(change_queue, asyncio.Event())
 
         async with wfp.db:
-            assert ghost.get_state() == FileState.STATIC
+            assert ghost.get_state() == FileState.CONFIRMED

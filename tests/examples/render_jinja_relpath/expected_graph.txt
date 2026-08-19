@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -27,7 +27,7 @@ st:static/
              product   file:static/variables.py
 
 file:variables.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
@@ -40,7 +40,7 @@ step:cp -p static/preamble.inc.tex public/preamble.inc.tex
                 sink   file:public/preamble.inc.tex
 
 file:static/preamble.inc.tex
-               state = STATIC
+               state = CONFIRMED
              creator   st:static/
                 sink   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
 
@@ -59,7 +59,7 @@ step:./plan.py  # wd=static
              product   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 file:static/plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   st:static/
                 sink   step:./plan.py  # wd=static
 
@@ -76,12 +76,12 @@ step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  #
                 sink   file:public/main.tex
 
 file:static/main.tex
-               state = STATIC
+               state = CONFIRMED
              creator   st:static/
                 sink   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 file:static/variables.py
-               state = STATIC
+               state = CONFIRMED
              creator   st:static/
                 sink   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 

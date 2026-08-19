@@ -248,9 +248,11 @@ HTML_TEMPLATE = """\
       border: 0px;
       background-color: var(--link-color);
     }
+    .undeclared { color: var(--text-color); }
+    .unconfirmed { color: var(--purple); }
     .missing { color: var(--red); }
-    .static { color: var(--blue); }
-    .awaited { color: var(--orange); }
+    .confirmed { color: var(--blue); }
+    .planned { color: var(--orange); }
     .built { color: var(--green); }
     .outdated { color: var(--yellow); }
     .volatile { color: var(--purple); }

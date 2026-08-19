@@ -21,7 +21,7 @@ from stepup.core.workflow import Workflow
 
 
 def _make_stray_unconfirmed(workflow: Workflow, path: str) -> None:
-    """Move an already-STATIC file back to UNCONFIRMED, keeping its cached hash.
+    """Move an already-CONFIRMED file back to UNCONFIRMED, keeping its cached hash.
 
     A direct DB poke rather than a second `declare_static_files()` call: recycling a
     node's state through the public API requires it to be detached first (e.g. via a
@@ -91,7 +91,7 @@ async def test_check_file_changes_does_nothing_when_nothing_to_check(wfs: Workfl
 
 async def test_check_file_changes_confirms_unchanged_stray_unconfirmed_row(wfs: Workflow, tmpdir):
     """A stray UNCONFIRMED row (crash while its confirming hash job was still queued or in
-    flight) whose cached hash still matches disk must become STATIC directly, via
+    flight) whose cached hash still matches disk must become CONFIRMED directly, via
     `CONFIRMED`, without depending on a step rerun and without an UPDATED/DELETED report
     (the file did not actually change)."""
     with contextlib.chdir(tmpdir):
@@ -113,12 +113,12 @@ async def test_check_file_changes_confirms_unchanged_stray_unconfirmed_row(wfs: 
 
         assert reporter.calls == [("STARTUP", "Checking 1 file(s) for changes")]
         async with wfs.db:
-            assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+            assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
 
 
 async def test_check_file_changes_confirms_deleted_stray_unconfirmed_row(wfs: Workflow, tmpdir):
     """A stray UNCONFIRMED row whose file is now absent must become MISSING, reported
-    as DELETED -- same reporting as a regular STATIC file being externally deleted."""
+    as DELETED -- same reporting as a regular CONFIRMED file being externally deleted."""
     with contextlib.chdir(tmpdir):
         with open("foo.txt", "w") as fh:
             fh.write("hello")
@@ -142,7 +142,7 @@ async def test_check_file_changes_confirms_deleted_stray_unconfirmed_row(wfs: Wo
 
 
 async def test_check_file_changes_reports_externally_updated_static_file(wfs: Workflow, tmpdir):
-    """A regular (non-UNCONFIRMED) STATIC file that changed on disk must still be picked
+    """A regular (non-UNCONFIRMED) CONFIRMED file that changed on disk must still be picked
     up via the EXTERNAL cause, reported as UPDATED, and get its new hash applied."""
     with contextlib.chdir(tmpdir):
         with open("foo.txt", "w") as fh:
@@ -166,7 +166,7 @@ async def test_check_file_changes_reports_externally_updated_static_file(wfs: Wo
             ),
         ]
         async with wfs.db:
-            assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+            assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
             assert wfs.find(File, "foo.txt").get_hash() != old_hash
 
 

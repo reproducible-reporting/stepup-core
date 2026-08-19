@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -27,22 +27,22 @@ step:./plan.py
              product   step:cp -p raw4.txt converted4.txt
 
 file:raw1.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p raw1.txt converted1.txt
 
 file:raw2.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p raw2.txt converted2.txt
 
 file:raw3.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p raw3.txt converted3.txt
 
 file:raw4.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p raw4.txt converted4.txt
 
@@ -56,7 +56,7 @@ step:cp -p raw1.txt converted1.txt
                 sink   file:converted1.txt
 
 file:converted1.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp -p raw1.txt converted1.txt
               source   step:cp -p raw1.txt converted1.txt
 
@@ -69,7 +69,7 @@ step:cp -p raw2.txt converted2.txt
                 sink   file:converted2.txt
 
 file:converted2.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp -p raw2.txt converted2.txt
               source   step:cp -p raw2.txt converted2.txt
 
@@ -97,7 +97,7 @@ step:cp -p raw4.txt converted4.txt
                 sink   file:converted4.txt
 
 file:converted4.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp -p raw4.txt converted4.txt
               source   step:cp -p raw4.txt converted4.txt
 

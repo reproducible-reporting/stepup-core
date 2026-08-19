@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -20,7 +20,7 @@ step:./plan.py
              product   step:echo hi > f1.txt
 
 file:work.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py
 
@@ -78,6 +78,6 @@ step:cat f1.txt f3.txt > f4.txt
                 sink   file:f4.txt
 
 file:f4.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cat f1.txt f3.txt > f4.txt
               source   step:cat f1.txt f3.txt > f4.txt

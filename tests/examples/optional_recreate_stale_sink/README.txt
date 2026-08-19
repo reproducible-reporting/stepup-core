@@ -23,7 +23,7 @@ refreshes hop2.txt on disk. The consumer in `b` never sees that refresh: since
 `a` no longer declares hop2.txt as an output, that file node has no producer
 anymore, and `b`'s own (untouched) declared input now points at an orphaned
 file -- reported as a detached input in the pending report's "Unavailable inputs"
-table, the same diagnostic used by e.g. the `awaited_detached` example.
+table, the same diagnostic used by e.g. the `undeclared_detached` example.
 That part is a separate, pre-existing
 piece of behavior (dropping a still-referenced output declaration is not
 something StepUp reconciles automatically), unrelated to the OPTIONAL-step bug

@@ -86,31 +86,43 @@ The nodes of the graph can be instances of the following two main classes:
       The step failed because the subprocess exited with a non-zero exit code,
       or expected output files were not created.
 
-2. A `File` defines a path and a status, which can be any of the following:
+2. A `File` defines a path, a **role** and a **state**.
+   The role says where the file comes from and is fixed for the duration of a build.
+   (It can change between builds, e.g. after you edit `plan.py`.)
+   The state says where the file is in its lifecycle within that role.
+   Only `CONFIRMED` and `BUILT` files can be used as inputs to other steps,
+   provided all other requirements are met.
 
-    - `UNCONFIRMED`:
-      A file that should become a static file after its hash has been computed and stored.
-      This is a transient state that evolves either to `MISSING` or `STATIC`.
-      This logic sits entirely in the director, so you don't need to worry about it.
-    - `MISSING`:
-      A static file that does not exist or has been removed.
-    - `STATIC`:
-      A file provided by you, not created by any step.
-      It can only be used as an input to a step, never as an output.
-    - `AWAITED`:
-      An input file to a step whose origin is yet unclear.
-      It can be produced by a step that has not been declared yet
-      or it can also be declared as a static file later.
-    - `BUILT`:
-      The output of a step that has been successfully executed.
-    - `OUTDATED`:
-      An output of a step that has been executed,
-      but that needs to be rebuilt,
-      typically because the step's inputs have changed since it last ran.
-    - `VOLATILE`:
-      A file created by a step, but whose contents are not deterministic.
-      It cannot be used as input, no hashes are computed for it.
-      These files are only registered so that they can be removed when appropriate.
+    - The `STATIC` role is for files provided by you, not created by any step.
+      StepUp guarantees they are preserved throughout the build,
+      so they can never be the output of a step.
+        - `UNCONFIRMED`:
+          A transient state that the director resolves to `MISSING` or `CONFIRMED`,
+          once existence has been checked and the file hash has been computed.
+          You don't need to worry about it.
+        - `MISSING`:
+          The existence check failed.
+        - `CONFIRMED`:
+          The existence check succeeded and the file hash is known.
+    - The `OUTPUT` role is for files created by a step.
+        - `PLANNED`:
+          The step has not run yet, so the file has no contents to offer.
+        - `BUILT`:
+          The step completed successfully.
+        - `OUTDATED`:
+          The file was built earlier but needs to be rebuilt,
+          typically because the step's inputs have changed since it last ran.
+    - The `VOLATILE` role is for files created by a step whose contents are not reproducible.
+      They cannot be used as inputs and no hashes are computed for them.
+      They are only registered so that they can be removed when appropriate.
+      This role has a single state of the same name, `VOLATILE`.
+
+    Finally, a file that a step uses as an input but that nothing declares
+    — neither a static file nor the output of a step — has no role
+    and is in the `UNDECLARED` state.
+    It may exist on disk, but StepUp does not know where it came from,
+    so the step that needs it cannot run.
+    Declaring the file resolves this.
 
 There are also a few special nodes:
 

@@ -5,8 +5,8 @@
 DIRECTOR │ Ran 1 job(s).
  WARNING │ 2 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
-             AWAITED: (input1.txt)  1 step(s)
-             AWAITED: (input2.txt)  1 step(s)
+          UNDECLARED: (input1.txt)  1 step(s)
+          UNDECLARED: (input2.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Create the input file(s) listed above, correct their static() paths,
 or add a step that builds them.
@@ -23,8 +23,8 @@ DIRECTOR │ Ran 0 job(s).
  WARNING │ 3 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              MISSING: plan.py       3 step(s)
-             AWAITED: (input1.txt)  1 step(s)
-             AWAITED: (input2.txt)  1 step(s)
+          UNDECLARED: (input1.txt)  1 step(s)
+          UNDECLARED: (input2.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Create the input file(s) listed above, correct their static() paths,
 or add a step that builds them.

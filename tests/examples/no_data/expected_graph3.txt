@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -33,7 +33,7 @@ step:cat analyzed.txt
               source   file:analyzed.txt
 
 file:data.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:grep -i foo data.txt > analyzed.txt
 

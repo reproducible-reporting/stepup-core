@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -28,7 +28,7 @@ step:echo inp1 > foo1.txt
                 sink   file:foo1.txt
 
 file:foo1.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:echo inp1 > foo1.txt
               source   step:echo inp1 > foo1.txt
                 sink   step:cat foo1.txt foo2.txt > bar.txt
@@ -42,7 +42,7 @@ step:echo inp2 > foo2.txt
                 sink   file:foo2.txt
 
 file:foo2.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:echo inp2 > foo2.txt
               source   step:echo inp2 > foo2.txt
                 sink   step:cat foo1.txt foo2.txt > bar.txt
@@ -58,7 +58,7 @@ step:cat foo1.txt foo2.txt > bar.txt
                 sink   file:bar.txt
 
 file:bar.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cat foo1.txt foo2.txt > bar.txt
               source   step:cat foo1.txt foo2.txt > bar.txt
                 sink   step:cat bar.txt > egg.txt
@@ -73,6 +73,6 @@ step:cat bar.txt > egg.txt
                 sink   file:egg.txt
 
 file:egg.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cat bar.txt > egg.txt
               source   step:cat bar.txt > egg.txt

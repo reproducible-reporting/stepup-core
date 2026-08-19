@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -31,7 +31,7 @@ step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/
                 sink   file:dir_vol/vol.txt
 
 file:dir_inp/inp.txt
-               state = STATIC
+               state = CONFIRMED
              creator   st:dir_inp/
                 sink   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
 

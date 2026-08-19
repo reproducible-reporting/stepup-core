@@ -25,25 +25,30 @@ CREATE TABLE IF NOT EXISTS file (
   hash TEXT,
   FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE,
   CHECK (
-    state NOT IN ({FileState.STATIC.value}, {FileState.BUILT.value}, {FileState.OUTDATED.value})
+    state NOT IN ({FileState.CONFIRMED.value}, {FileState.BUILT.value}, {FileState.OUTDATED.value})
     OR hash IS NOT NULL
   ),
   CHECK (hash IS NULL OR json_valid(hash))
 ) WITHOUT ROWID;
 
 -- A hash is only meaningful for a file whose content is known and trusted
--- (STATIC/BUILT/OUTDATED); null it out whenever the state moves to MISSING, AWAITED or
--- VOLATILE, so File.set_state does not have to special-case the reset itself.
+-- (CONFIRMED/BUILT/OUTDATED); null it out whenever the state moves to UNDECLARED, MISSING,
+-- PLANNED or VOLATILE, so File.set_state does not have to special-case the reset itself.
 -- UNCONFIRMED is only partly excluded: a file being redeclared static keeps a hash that came
--- from a previous STATIC state, so FileHash.regen() can skip recomputing it when the file on
+-- from a previous CONFIRMED state, so FileHash.regen() can skip recomputing it when the file on
 -- disk is unchanged. A hash that came from BUILT or OUTDATED reflects what a step produced,
 -- not a confirmed source's content, so it must not survive a recycle into UNCONFIRMED -- that
 -- would let a leftover build product be silently adopted as a trusted source. Do not add
 -- `hash` to the `SET` clause of the upsert in File.initialize_row() -- that would defeat the
--- STATIC-origin optimization this trigger is carving the exception for.
+-- CONFIRMED-origin optimization this trigger is carving the exception for.
 CREATE TRIGGER IF NOT EXISTS file_clear_hash AFTER UPDATE OF state ON file
 WHEN (
-    NEW.state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileState.VOLATILE.value})
+    NEW.state IN (
+        {FileState.UNDECLARED.value},
+        {FileState.MISSING.value},
+        {FileState.PLANNED.value},
+        {FileState.VOLATILE.value}
+    )
     OR (
         NEW.state = {FileState.UNCONFIRMED.value}
         AND OLD.state IN ({FileState.BUILT.value}, {FileState.OUTDATED.value})
@@ -51,6 +56,29 @@ WHEN (
 ) AND NEW.hash IS NOT NULL
 BEGIN
     UPDATE file SET hash = NULL WHERE node = NEW.node;
+END;
+
+-- UNDECLARED is the state of a file that never had a role, so it can only occur on a node
+-- that nothing claims: state = UNDECLARED implies the node is detached. The converse does not
+-- hold -- a detached node keeps the state of its former life (see File.initialize_row) --
+-- so there is nothing to check in the other direction.
+-- Deliberately only guarded on the file side. Trellis.create's recycle path re-attaches a node
+-- (UPDATE node SET creator, detached) before initialize_row writes its new state, so an
+-- attached node briefly still carries the old UNDECLARED state. A trigger on node would abort
+-- on that legitimate window; a trigger on file never sees it, because no file write happens
+-- inside it.
+CREATE TRIGGER IF NOT EXISTS file_check_undeclared_detached_ins AFTER INSERT ON file
+WHEN NEW.state = {FileState.UNDECLARED.value}
+BEGIN
+    SELECT RAISE(ABORT, 'an UNDECLARED file must be detached')
+    FROM node WHERE node.i = NEW.node AND NOT node.detached;
+END;
+
+CREATE TRIGGER IF NOT EXISTS file_check_undeclared_detached_upd AFTER UPDATE OF state ON file
+WHEN NEW.state = {FileState.UNDECLARED.value}
+BEGIN
+    SELECT RAISE(ABORT, 'an UNDECLARED file must be detached')
+    FROM node WHERE node.i = NEW.node AND NOT node.detached;
 END;
 """
 
@@ -90,13 +118,18 @@ class File(Node):
         state
             The state to initialize the file with.
             If the file was previously `BUILT` or `OUTDATED`
-            and is being (re)created as `AWAITED`,
+            and is being (re)created as `UNDECLARED` or `PLANNED`,
             the previous state and hash are carried over instead
             (see the comments below for why).
+            This carry-over is why a detached file can be `BUILT`:
+            `UNDECLARED` is the state of a file that never had a role,
+            not the state of every roleless file.
         """
         hash_json = None
-        # If the file was previously BUILT or OUTDATED, and created again as AWAITED,
-        # it should copy that state (and hash).
+        # If the file was previously BUILT or OUTDATED,
+        # and created again as UNDECLARED or PLANNED, it should copy that state (and hash).
+        # This is what lets a recycled node keep its state and hash across a restart,
+        # so a step whose outputs are unchanged can still be skipped.
         # Note: SQLite checks the file table's CHECK constraint against the literal VALUES(...),
         # even when the row already exists and the DO UPDATE branch never touches the hash column.
         # So a real hash must be supplied here whenever the final state requires one.
@@ -105,7 +138,7 @@ class File(Node):
         # (recycle) path, so a recycled file's previous hash survives unless the
         # file_clear_hash trigger nulls it afterward. This is what lets a redeclared
         # UNCONFIRMED file keep its old hash for FileHash.regen()'s cheap-skip check.
-        if state == FileState.AWAITED:
+        if state in (FileState.UNDECLARED, FileState.PLANNED):
             sql = "SELECT state, hash FROM file WHERE node = ?"
             row = self.db.execute(sql, (self.i,)).fetchone()
             if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):

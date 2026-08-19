@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -16,21 +16,25 @@ step:./plan.py
              product   step:echo Hello > test1.txt
 
 step:echo Hello > test1.txt
-               state = SUCCEEDED
+               state = PENDING
                 need = DEFAULT
              creator   step:./plan.py
+              source   (file:bogus.txt)
              product   file:test1.txt
+             product   file:test2.txt
                 sink   file:test1.txt
-                sink   (file:test2.txt)
+                sink   file:test2.txt
 
 (file:bogus.txt)
-               state = AWAITED
+               state = UNDECLARED
+                sink   step:echo Hello > test1.txt
 
 file:test1.txt
-               state = BUILT
+               state = PLANNED
              creator   step:echo Hello > test1.txt
               source   step:echo Hello > test1.txt
 
-(file:test2.txt)
-               state = AWAITED
+file:test2.txt
+               state = PLANNED
+             creator   step:echo Hello > test1.txt
               source   step:echo Hello > test1.txt

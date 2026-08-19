@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -22,23 +22,23 @@ step:./plan.py
              product   step:./work.py
 
 file:inp1.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./prep.py run
 
 file:inp2.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py
 
 file:prep.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./prep.py plan
                 sink   step:./prep.py run
 
 file:work.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py
 

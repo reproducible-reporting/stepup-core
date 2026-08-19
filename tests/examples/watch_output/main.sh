@@ -13,7 +13,7 @@ stepup graph current_graph1
 [[ -f input.txt ]] || exit 1
 [[ -f output.txt ]] || exit 1
 
-# Remove a built file and rerun.
+# Remove an output file and rerun.
 rm output.txt
 stepup watch-delete output.txt
 stepup run

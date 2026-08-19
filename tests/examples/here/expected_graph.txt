@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -17,7 +17,7 @@ step:./plan.py
              product   step:./plan.py  # wd=www
 
 file:www/plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./plan.py  # wd=www
 
@@ -34,7 +34,7 @@ step:./plan.py  # wd=www
              product   step:cp -p index.md ../../public/www/index.md  # wd=www
 
 file:www/index.md
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py  # wd=www
                 sink   step:cp -p index.md ../../public/www/index.md  # wd=www
 

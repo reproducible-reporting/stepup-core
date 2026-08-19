@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -22,10 +22,10 @@ step:./plan.py
                 sink   (file:second)
 
 (file:first)
-               state = AWAITED
+               state = UNDECLARED
                 sink   (step:cat first > second)
 
 (file:second)
-               state = AWAITED
+               state = PLANNED
              creator   (step:cat first > second)
               source   (step:cat first > second)

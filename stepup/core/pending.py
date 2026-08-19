@@ -57,7 +57,7 @@ class PendingInput:
     """One row of the `Unavailable inputs` table: a dead-end input file."""
 
     state: FileState
-    """The file's current state, e.g. `MISSING` or `AWAITED`."""
+    """The file's current state, e.g. `MISSING` or `UNDECLARED`."""
 
     path: str
     """The file's path."""
@@ -308,8 +308,9 @@ WHERE step.state = {StepState.PENDING.value}
 # Blocking inputs of every step in U: UNAVAILABLE_INPUT_WHERE's ordinary dispatch test, or
 # (only for a deferred step) the has_unavailable_dynamic_input test that set `deferred`
 # in the first place -- a deferred step's dynamic inputs are not otherwise covered by
-# UNAVAILABLE_INPUT_WHERE once they are no longer AWAITED/OUTDATED (e.g. detached or
-# MISSING), which is exactly the gap defer_cap-shaped workflows fall into.
+# UNAVAILABLE_INPUT_WHERE once they are no longer attached and PLANNED/OUTDATED
+# (e.g. UNDECLARED, which implies detached, or MISSING),
+# which is exactly the gap defer_cap-shaped workflows fall into.
 _INSERT_PEND_FILE_BLOCK = f"""
 INSERT INTO pend_file_block(src_file, dst_step)
 SELECT DISTINCT dep.source, pend_step.i
@@ -321,7 +322,7 @@ LEFT JOIN dynamic_dep ON dynamic_dep.i = dep.i
 WHERE ({UNAVAILABLE_INPUT_WHERE})
    OR (
        pend_step.deferred AND dynamic_dep.i IS NOT NULL
-       AND input_file.state NOT IN ({FileState.STATIC.value}, {FileState.BUILT.value})
+       AND input_file.state NOT IN ({FileState.CONFIRMED.value}, {FileState.BUILT.value})
    )
 """
 

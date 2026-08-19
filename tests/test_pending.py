@@ -48,6 +48,14 @@ async def _settle(workflow: Workflow, scheduler: Scheduler) -> None:
         scheduler._update_meta_ready()
 
 
+def _declare_static(workflow: Workflow, creator: Step, paths: list[str]) -> None:
+    """Declare `paths` as static and confirm them present, i.e. `FileState.CONFIRMED`."""
+    workflow.declare_static_files(creator, paths)
+    workflow.update_file_hashes(
+        {path: fake_hash(path) for path in paths}, cause=HashUpdateCause.CONFIRMED
+    )
+
+
 def _declare_missing(workflow: Workflow, creator: Step, paths: list[str]) -> None:
     """Declare `paths` as static and confirm them absent, i.e. `FileState.MISSING`."""
     workflow.declare_static_files(creator, paths)
@@ -132,7 +140,7 @@ async def test_detached_input(wfp: Workflow):
     assert len(summary.inputs) == 1
     row = summary.inputs[0]
     assert row.path == "gen.txt"
-    assert row.state == FileState.AWAITED
+    assert row.state == FileState.UNDECLARED
     assert row.detached is True
     assert row.nblocked == 1
 
@@ -180,7 +188,7 @@ async def test_deferred_detached_dynamic_input(wfp: Workflow):
         work.set_state(StepState.RUNNING)
         amend_step(wfp, work, inp_paths=["never.txt"])
         never = wfp.find(File, "never.txt")
-        assert never.get_state() == FileState.AWAITED
+        assert never.get_state() == FileState.UNDECLARED
         never.detach()
         work.set_state(StepState.PENDING, deferred=True)
     await _settle(wfp, scheduler)
@@ -191,7 +199,7 @@ async def test_deferred_detached_dynamic_input(wfp: Workflow):
     assert len(summary.inputs) == 1
     row = summary.inputs[0]
     assert row.path == "never.txt"
-    assert row.state == FileState.AWAITED
+    assert row.state == FileState.UNDECLARED
     assert row.detached is True
     assert row.nblocked == 1
 
@@ -207,8 +215,8 @@ async def test_deferred_no_blocking_input(wfp: Workflow):
         wfp.define_step(plan, "work")
         work = wfp.find(Step, "work")
         work.set_state(StepState.RUNNING)
+        _declare_static(wfp, plan, ["side.txt"])
         amend_step(wfp, work, inp_paths=["side.txt"])
-        wfp.update_file_hashes({"side.txt": fake_hash("side.txt")}, cause=HashUpdateCause.SUCCEEDED)
         work.set_state(StepState.PENDING, deferred=True)
     await _settle(wfp, scheduler)
     async with wfp.db:
@@ -403,8 +411,8 @@ async def test_partition_invariant(wfp: Workflow):
         wfp.define_step(plan, "deferred_work")
         deferred_work = wfp.find(Step, "deferred_work")
         deferred_work.set_state(StepState.RUNNING)
+        _declare_static(wfp, plan, ["side.txt"])
         amend_step(wfp, deferred_work, inp_paths=["side.txt"])
-        wfp.update_file_hashes({"side.txt": fake_hash("side.txt")}, cause=HashUpdateCause.SUCCEEDED)
         deferred_work.set_state(StepState.PENDING, deferred=True)
         # Dynamic cycle (see test_dynamic_cycle for why this needs a child-step indirection).
         wfp.define_step(plan, "cyc1")

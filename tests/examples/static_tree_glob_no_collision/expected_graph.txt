@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -22,7 +22,7 @@ st:data/
              product   file:data/foo.txt
 
 file:sub/plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./plan.py  # wd=sub
 
@@ -44,7 +44,7 @@ step:cp -p ../data/foo.txt foo.txt  # wd=sub
                 sink   file:sub/foo.txt
 
 file:data/foo.txt
-               state = STATIC
+               state = CONFIRMED
              creator   st:data/
                 sink   step:cp -p ../data/foo.txt foo.txt  # wd=sub
 

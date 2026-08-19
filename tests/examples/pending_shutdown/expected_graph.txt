@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -24,7 +24,7 @@ step:stepup shutdown; sleep 3; echo hello > msg.txt
                 sink   file:msg.txt
 
 file:msg.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:stepup shutdown; sleep 3; echo hello > msg.txt
               source   step:stepup shutdown; sleep 3; echo hello > msg.txt
                 sink   step:cat msg.txt

@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -20,17 +20,17 @@ step:./plan.py
              product   step:./work.py run '{"factor": 3, "inp": ["data.txt"], "out": ["result.txt"]}'
 
 file:config.json
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./plan.py
 
 file:data.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py run '{"factor": 3, "inp": ["data.txt"], "out": ["result.txt"]}'
 
 file:work.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py run '{"factor": 3, "inp": ["data.txt"], "out": ["result.txt"]}'
 

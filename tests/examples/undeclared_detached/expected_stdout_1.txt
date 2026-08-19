@@ -1,13 +1,12 @@
- STARTUP │ Watching 1 director(y|ies)
- STARTUP │ Checking 1 file(s) for changes
- UPDATED │ plan.py (digest 8c3a0a0c ➜ 1a3aa51e, size 132 ➜ 94)
+ STARTUP │ (Re)initialized boot script
    PHASE │ build
    START │ ./plan.py
  SUCCESS │ ./plan.py
-DIRECTOR │ Ran 2 job(s).
- WARNING │ 1 step(s) remained pending.
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 2 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
-             AWAITED: (src2.txt)  1 step(s)
+          UNDECLARED: (src1.txt)  1 step(s)
+          UNDECLARED: (src2.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Create the input file(s) listed above, correct their static() paths,
 or add a step that builds them.
@@ -17,5 +16,5 @@ Run `stepup browse` and search for a name above to see the steps involved.
  WARNING │ Skipping file cleanup due to incomplete build
  WARNING │ Check logs: .stepup/warning.log
    PHASE │ watch
-DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot
+DIRECTOR │ Wrote graph to current_graph_1.txt, current_graph_1_provenance.dot and current_graph_1_dependency.dot
 DIRECTOR │ See you!

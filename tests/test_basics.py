@@ -40,7 +40,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -76,7 +76,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -89,7 +89,7 @@ step:./plan.py
              product   file:foo
 
 file:foo
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
 
 """
@@ -122,7 +122,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -144,7 +144,7 @@ step:cp -v original.txt copy.txt
                 sink   file:copy.txt
 
 file:original.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -v original.txt copy.txt
 
@@ -232,7 +232,7 @@ async def test_static_registers_tree_before_file(client: AsyncRPCClient, path_tm
 
 async def test_amend_blocks_until_static_tree_match_confirmed(client: AsyncRPCClient):
     """`amend()` naming a fresh static-tree match must block until it is hashed and
-    confirmed, then report the step as runnable with the file STATIC."""
+    confirmed, then report the step as runnable with the file CONFIRMED."""
     try:
         job_i = _get_job_i()
         os.mkdir("sub")

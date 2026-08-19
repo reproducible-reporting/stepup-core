@@ -10,7 +10,7 @@ inp2.txt
 DIRECTOR │ Ran 2 job(s).
  WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
-             AWAITED: (inp2.txt)  1 step(s)
+          UNDECLARED: (inp2.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Create the input file(s) listed above, correct their static() paths,
 or add a step that builds them.

@@ -44,8 +44,8 @@ def _insert_file(con, node_id, label, state, *, detached=False):
         "INSERT INTO node (i, kind, label, creator, detached) VALUES (?, 'file', ?, 1, ?)",
         (node_id, label, detached),
     )
-    # STATIC/BUILT/OUTDATED files require a non-null (JSON) hash.
-    needs_hash = state in (FileState.STATIC, FileState.BUILT, FileState.OUTDATED)
+    # CONFIRMED/BUILT/OUTDATED files require a non-null (JSON) hash.
+    needs_hash = state in (FileState.CONFIRMED, FileState.BUILT, FileState.OUTDATED)
     con.execute(
         "INSERT INTO file (node, state, hash) VALUES (?, ?, ?)",
         (node_id, state.value, "{}" if needs_hash else None),

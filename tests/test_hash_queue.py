@@ -174,8 +174,8 @@ async def test_gather_hashes_returns_results_in_input_order_and_applies_them(wfs
 
         assert list(result) == ["a.txt", "b.txt"]
         async with wfs.db:
-            assert wfs.find(File, "a.txt").get_state() == FileState.STATIC
-            assert wfs.find(File, "b.txt").get_state() == FileState.STATIC
+            assert wfs.find(File, "a.txt").get_state() == FileState.CONFIRMED
+            assert wfs.find(File, "b.txt").get_state() == FileState.CONFIRMED
 
 
 async def test_gather_hashes_respects_njob_concurrency_bound():

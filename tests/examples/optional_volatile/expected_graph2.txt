@@ -1,0 +1,35 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   step:echo out > out.txt; echo vol > vol.log
+
+step:echo out > out.txt; echo vol > vol.log
+               state = PENDING
+                need = OPTIONAL
+             creator   step:./plan.py
+             product   file:out.txt
+             product   file:vol.log
+                sink   file:out.txt
+                sink   file:vol.log
+
+file:out.txt
+               state = PLANNED
+             creator   step:echo out > out.txt; echo vol > vol.log
+              source   step:echo out > out.txt; echo vol > vol.log
+
+file:vol.log
+               state = VOLATILE
+             creator   step:echo out > out.txt; echo vol > vol.log
+              source   step:echo out > out.txt; echo vol > vol.log

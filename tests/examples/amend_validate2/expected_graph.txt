@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -18,7 +18,7 @@ step:./plan.py
              product   step:echo ping > ping.txt
 
 file:work.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./work.py
 
@@ -34,7 +34,7 @@ step:./work.py
                 sink   file:work.txt
 
 file:work.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:./work.py
               source   step:./work.py
 
@@ -52,5 +52,5 @@ file:ping.txt
                 sink   step:./work.py
 
 (file:pong.txt)
-               state = AWAITED
+               state = UNDECLARED
                 sink   step:./work.py

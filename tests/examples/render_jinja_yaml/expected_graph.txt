@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -21,18 +21,18 @@ step:./plan.py
              product   step:sc-render-jinja template.txt trip2.yaml rendered-trip2.txt
 
 file:template.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:sc-render-jinja template.txt trip1.yaml rendered-trip1.txt
                 sink   step:sc-render-jinja template.txt trip2.yaml rendered-trip2.txt
 
 file:trip1.yaml
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:sc-render-jinja template.txt trip1.yaml rendered-trip1.txt
 
 file:trip2.yaml
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:sc-render-jinja template.txt trip2.yaml rendered-trip2.txt
 

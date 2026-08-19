@@ -18,7 +18,7 @@ pong.txt
 DIRECTOR │ Ran 4 job(s).
  WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
-             AWAITED: (pong.txt)  1 step(s)
+          UNDECLARED: (pong.txt)  1 step(s)
 ──────────────────────────────────── Remedy ────────────────────────────────────
 Create the input file(s) listed above, correct their static() paths,
 or add a step that builds them.

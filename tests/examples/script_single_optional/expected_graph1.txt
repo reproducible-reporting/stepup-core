@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -17,7 +17,7 @@ step:./plan.py
              product   step:./generate.py plan --optional
 
 file:generate.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./generate.py plan --optional
                 sink   step:./generate.py run
@@ -39,6 +39,6 @@ step:./generate.py run
                 sink   file:runout.txt
 
 file:runout.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:./generate.py run
               source   step:./generate.py run

@@ -65,7 +65,7 @@ By following these good practices, you can avoid the following problems:
 - Unintentionally overwriting a file by calling `amend(out=...)` or `amend(vol=...)`
   only after writing to these outputs.
 
-    > When you call `amend()` first and the files are registered as STATIC
+    > When you call `amend()` first and the files are registered as static files
     > or outputs of other steps, an exception is raised.
     > This is a safety check to prevent overwriting files that belong to other steps,
     > but this only works if you call `amend()` before writing to the files.

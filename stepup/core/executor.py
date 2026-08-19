@@ -649,10 +649,10 @@ class Executor:
             finally:
                 hash_job.worker = None
         if new_hash != hash_job.old_hash or hash_job.cause == HashUpdateCause.CONFIRMED:
-            # CONFIRMED must be applied even when unchanged:
-            # only the update flips UNCONFIRMED -> STATIC/MISSING.
+            # The CONFIRMED cause must be applied even when unchanged:
+            # only the update flips UNCONFIRMED -> CONFIRMED/MISSING.
             # Unchanged results under other causes are deliberately NOT applied:
-            # e.g. (EXTERNAL, STATIC, known) would call handle_external_update
+            # e.g. (EXTERNAL, CONFIRMED, known) would call handle_external_update
             # and needlessly mark all sinks pending. (They should already be pending.)
             async with self.db:
                 self.workflow.update_file_hashes({hash_job.path: new_hash}, cause=hash_job.cause)
@@ -763,11 +763,11 @@ class Executor:
         async with self.db:
             # Some inputs may be dynamic and still unavailable,
             # for which checking hashes is too early.
-            # Therefore, only check the hashes of built and static files.
+            # Therefore, only check the hashes of built and confirmed files.
             inp_hashes = {
                 rec.path: rec.hash
                 for rec in run.step.inp_paths()
-                if rec.state in (FileState.BUILT, FileState.STATIC)
+                if rec.state in (FileState.BUILT, FileState.CONFIRMED)
             }
             env_deps = list(run.step.env_deps())
             out_hashes = {rec.path: rec.hash for rec in run.step.out_paths()}

@@ -100,6 +100,17 @@ Their states are defined in `enums.py`.
 All graph mutations happen inside SQLite transactions.
 The `DBSession` in `sqlite3.py` serializes writes.
 
+A file node also has a **role** (`FileRole` in `enums.py`): who declares the file,
+as opposed to where it currently sits in its lifecycle.
+`FILE_STATES_BY_ROLE` and its inverse `FILE_ROLE_BY_STATE` are the only place where the
+partitioning of `FileState` into roles is written down;
+derive any "all states of this role" test from them instead of spelling out a state tuple.
+Not every state set is a role, though:
+"available as an input" (`BUILT`, `CONFIRMED`) cuts across two roles and includes neither fully,
+and several other partial sets are genuinely about a lifecycle phase.
+The rules for when a role determines a state, and why `UNDECLARED` is not simply
+"the roleless state", are in the `FileRole` and `FileState` docstrings.
+
 ### Graph Determinism
 
 **The graph must be a deterministic function of the source files and the plan/step code,
@@ -239,6 +250,11 @@ Triggers are also used for pure validation (`RAISE(ABORT, ...)`) of multi-row in
 `CHECK` constraint cannot express,
 e.g. `node_check_creator_kind_ins`/`_upd` and `dependency_check_kinds_ins` (`WORKFLOW_SCHEMA`,
 `workflow.py`), which replaced the Python-side `Workflow._check_creator`/`_check_source` hooks.
+Which table such a trigger is placed on is part of the invariant, not a free choice:
+`file_check_undeclared_detached_ins`/`_upd` (`FILE_SCHEMA`, `file.py`) guards
+"`state = UNDECLARED` implies the node is detached" from the `file` side only,
+because the equivalent trigger on `node` would abort on the legitimate window in which
+`Trellis.create` re-attaches a recycled node before its new state is written.
 Trigger names follow the same `<table>_<purpose>` convention as indexes, with no prefix.
 `WHEN` clauses that depend on enum values are generated via f-string interpolation against
 the enum (e.g. `{StepState.SUCCEEDED.value}`) rather than hardcoded literals,

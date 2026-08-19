@@ -20,5 +20,6 @@ wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-# The file inp.txt was AWAITED, so changes to this file are not relevant.
+# The node for inp.txt is detached (UNDECLARED): nothing declares the file,
+# so change_is_relevant falls through to the glob patterns, of which there are none.
 [[ $(grep -c "UPDATED │ inp.txt" current_stdout.txt ) -eq 0 ]] || exit 1

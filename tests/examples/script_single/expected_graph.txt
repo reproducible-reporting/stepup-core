@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -18,7 +18,7 @@ step:./plan.py
              product   step:cp -p work/test.csv work/copy.csv
 
 file:work/generate.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
                 sink   step:./generate.py run  # wd=work
@@ -59,7 +59,7 @@ file:work/copy.csv
               source   step:cp -p work/test.csv work/copy.csv
 
 file:work/config.json
-               state = STATIC
+               state = CONFIRMED
              creator   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
                 sink   step:./generate.py run  # wd=work
 

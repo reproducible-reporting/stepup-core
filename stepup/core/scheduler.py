@@ -156,7 +156,7 @@ WHERE NOT node.detached AND step._check_after
 #
 # The CASE/EXISTS term elevates a step to at least TARGET when one of its attached,
 # non-volatile outputs is a target. Dependency sinks of a step are exactly its out_paths
-# (AWAITED/BUILT/OUTDATED) and vol_paths (VOLATILE), so excluding VOLATILE leaves exactly
+# (PLANNED/BUILT/OUTDATED) and vol_paths (VOLATILE), so excluding VOLATILE leaves exactly
 # the regular outputs. NOT onode.detached mirrors Workflow.reconcile_targets()'s
 # deliberate skipping of detached rows.
 # Without targets, target_path (always created and populated in Scheduler.initialize())
@@ -688,15 +688,15 @@ class Scheduler:
                 )
 
             # Amended or not, just process ready inputs.
-            if not detached and file_state in (FileState.BUILT, FileState.STATIC):
+            if not detached and file_state in (FileState.BUILT, FileState.CONFIRMED):
                 # Input is ready, collect its hash and look no further.
                 inp_hashes[path] = FileHash.from_json(hash_value)
                 continue
 
             # Sanity checks
             if is_dynamic:
-                if not detached and file_state in (FileState.AWAITED, FileState.OUTDATED):
-                    # Attached dynamic inputs with state AWAITED or OUTDATED are not ready.
+                if not detached and file_state in (FileState.PLANNED, FileState.OUTDATED):
+                    # Attached dynamic inputs with state PLANNED or OUTDATED are not ready.
                     # This should never have been selected for queueing.
                     raise RuntimeError(
                         f"Step {step} has a dynamic input {path} that is not ready yet, "

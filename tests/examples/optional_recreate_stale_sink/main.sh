@@ -31,7 +31,7 @@ grep -qx hello b/done.txt
 # declares it as an output, that file node has no producer anymore: `b` is
 # correctly left PENDING, reported as blocked on a detached input in the
 # "Unavailable inputs" table (the PENDING return code bit, the same code used
-# by e.g. the `awaited_detached` example for an incomplete-but-not-crashed
+# by e.g. the `undeclared_detached` example for an incomplete-but-not-crashed
 # build) instead of silently reusing a stale result. That part is
 # unrelated to the OPTIONAL-step bug under test here, so this phase only checks
 # that `a`'s own step reran -- not that `b` completes.

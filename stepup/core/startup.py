@@ -132,7 +132,7 @@ async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: B
         "SELECT label, state, hash "
         "FROM node JOIN file ON node.i = file.node AND state NOT IN (?, ?) AND NOT detached"
     )
-    data = (FileState.AWAITED.value, FileState.VOLATILE.value)
+    data = (FileState.PLANNED.value, FileState.VOLATILE.value)
     async with db:
         rows = db.execute(sql, data).fetchall()
     if len(rows) == 0:
@@ -145,10 +145,10 @@ async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: B
         old_file_hash = FileHash.from_json(hash_value)
         old_by_path[path] = old_file_hash
         # Stray UNCONFIRMED rows (left behind by a director killed while their confirming hash
-        # job was still queued or in flight) are resolved directly here, via CONFIRMED, rather
-        # than depending on the RUNNING -> FAILED -> PENDING reset above to rerun the declaring
-        # step: CONFIRMED is the only cause that flips UNCONFIRMED -> STATIC/MISSING, and unlike
-        # the other causes it is applied by the hash job even when the hash is unchanged
+        # job was still queued or in flight) are resolved directly here, via the CONFIRMED cause,
+        # rather than depending on the RUNNING -> FAILED -> PENDING reset above to rerun the
+        # declaring step: it is the only cause that flips UNCONFIRMED -> CONFIRMED/MISSING, and
+        # unlike the other causes it is applied by the hash job even when the hash is unchanged
         # (see Executor.run_hash_job).
         cause = (
             HashUpdateCause.CONFIRMED

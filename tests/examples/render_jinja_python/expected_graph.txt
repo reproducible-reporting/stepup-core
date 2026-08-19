@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -18,12 +18,12 @@ step:./plan.py
              product   step:sc-render-jinja template.md variables.py rendered.md
 
 file:template.md
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:sc-render-jinja template.md variables.py rendered.md
 
 file:variables.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:sc-render-jinja template.md variables.py rendered.md
 

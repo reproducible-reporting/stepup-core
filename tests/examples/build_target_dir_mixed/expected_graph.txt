@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -23,22 +23,22 @@ step:./plan.py
              product   step:cp -p d_input.txt exact_optional.txt
 
 file:a_input.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p a_input.txt out/a.txt
 
 file:b_input.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p b_input.txt solo.txt
 
 file:c_input.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p c_input.txt out/optional.txt
 
 file:d_input.txt
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
                 sink   step:cp -p d_input.txt exact_optional.txt
 
@@ -77,7 +77,7 @@ step:cp -p c_input.txt out/optional.txt
                 sink   file:out/optional.txt
 
 file:out/optional.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:cp -p c_input.txt out/optional.txt
               source   step:cp -p c_input.txt out/optional.txt
 

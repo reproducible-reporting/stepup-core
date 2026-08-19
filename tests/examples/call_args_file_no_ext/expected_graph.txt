@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
              creator   root:
                 sink   step:./plan.py
 
@@ -18,10 +18,10 @@ step:./plan.py
                 sink   file:args.dat [dynamic]
 
 file:work.py
-               state = STATIC
+               state = CONFIRMED
              creator   step:./plan.py
 
 file:args.dat
-               state = AWAITED
+               state = PLANNED
              creator   step:./plan.py
               source   step:./plan.py
