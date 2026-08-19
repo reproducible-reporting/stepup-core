@@ -14,7 +14,21 @@ from .hash import FileHash
 from .trellis import Node
 from .utils import format_digest
 
-__all__ = ("File",)
+__all__ = ("REGULAR_OUTPUT_WHERE", "File")
+
+
+# The test for "this file is a regular (non-volatile) output of a step",
+# as an SQL fragment shared by every query that has to agree on what a regular output is.
+# The dependency sinks of a step are its out_paths (PLANNED, BUILT or OUTDATED) and its
+# vol_paths (VOLATILE), so ruling out VOLATILE leaves precisely the regular outputs.
+#
+# The fragment assumes three table aliases, which every caller must provide:
+# `depo` for the dependency edge (its source is the producing step),
+# `onode` for the output's node row, and `ofile` for its file row.
+# Only the predicate is shared, not the joins around it:
+# the callers drive their joins from different directions for query-planner reasons
+# documented at each site.
+REGULAR_OUTPUT_WHERE = f"NOT onode.detached AND ofile.state != {FileState.VOLATILE.value}"
 
 
 FILE_SCHEMA = f"""

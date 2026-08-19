@@ -9,6 +9,7 @@ import attrs
 
 from .enums import FileState, Need, StepState
 from .exceptions import ConsistencyError
+from .file import REGULAR_OUTPUT_WHERE
 from .hash import FileHash
 from .job import Job, RunJob, ValidateDynamicJob
 from .path import dir_range_upper
@@ -165,11 +166,10 @@ WHERE NOT node.detached AND step._check_after
 # narrowing propagation to steps whose value actually changed.
 #
 # The CASE/EXISTS term elevates a step to at least TARGET
-# when one of its attached, non-volatile outputs is a target.
-# Dependency sinks of a step are exactly its out_paths (PLANNED/BUILT/OUTDATED)
-# and vol_paths (VOLATILE), so excluding VOLATILE leaves exactly the regular outputs.
-# NOT onode.detached mirrors Workflow.reconcile_targets()'s deliberate skipping of
-# detached rows.
+# when one of its outputs is a target.
+# What counts as an output is the shared REGULAR_OUTPUT_WHERE predicate (file.py),
+# which also skips detached rows,
+# matching Workflow.reconcile_targets()'s deliberate skipping of them.
 # Without targets, target_path (always created and populated in Scheduler.initialize())
 # is empty, so the EXISTS never matches and the term contributes Need.OPTIONAL
 # (the enum minimum), which results in a no-op inside MAX.
@@ -196,8 +196,7 @@ WITH cte AS (
                 JOIN node AS onode ON onode.i = depo.sink
                 JOIN file AS ofile ON ofile.node = depo.sink
                 WHERE depo.source = check_after.i
-                  AND NOT onode.detached
-                  AND ofile.state != {FileState.VOLATILE.value}
+                  AND {REGULAR_OUTPUT_WHERE}
                   AND onode.label IN (SELECT path FROM target_path)
             ) THEN {Need.TARGET.value}
             WHEN step.need = {Need.DEFAULT.value} AND EXISTS (
@@ -205,8 +204,7 @@ WITH cte AS (
                 JOIN node AS onode ON onode.i = depo.sink
                 JOIN file AS ofile ON ofile.node = depo.sink
                 WHERE depo.source = check_after.i
-                  AND NOT onode.detached
-                  AND ofile.state != {FileState.VOLATILE.value}
+                  AND {REGULAR_OUTPUT_WHERE}
                   AND EXISTS (
                       SELECT 1 FROM target_dir
                       WHERE onode.label >= target_dir.path

@@ -15,9 +15,7 @@ stepup join
 wait
 
 [[ ! -f vol.txt ]] || exit 1
-# define_step's pre-recycle guard (workflow.py) reports the whole sorted list of offending
-# vol_paths as Path reprs, not a single path, hence the list-literal formatting here.
-grep -F "A build target cannot be a volatile output: [Path('vol.txt')]" .stepup/fail.log
+grep -F "A build target cannot be a volatile output: vol.txt" .stepup/fail.log
 
 # Run 2: a target that resolves to a static file must be rejected the same way. plan.py is
 # replaced (its content hash changes, so the boot step re-runs and declares the new graph).

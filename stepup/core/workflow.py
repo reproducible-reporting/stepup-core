@@ -20,6 +20,7 @@ from .enums import (
     FILE_ROLE_BY_STATE,
     FILE_STATES_BY_ROLE,
     TARGET_FORBIDDEN_STATES,
+    Availability,
     FileRole,
     FileState,
     HashUpdateCause,
@@ -27,7 +28,7 @@ from .enums import (
     StepState,
 )
 from .exceptions import ConsistencyError, GraphError
-from .file import File
+from .file import REGULAR_OUTPUT_WHERE, File
 from .hash import FileHash, fmt_digest
 from .nglob import NamedGlob, glob_base_dir, has_any_wildcards
 from .path import dir_range_upper
@@ -62,30 +63,36 @@ logger = logging.getLogger(__name__)
 # is another deliberate direct-SQL write that bypasses `Trellis.create()`/`Node.reattach()`;
 # it relies on `node_check_creator_kind_upd` below
 # to keep enforcing this same invariant on that path.
-WORKFLOW_SCHEMA = """
+WORKFLOW_SCHEMA = f"""
 CREATE TRIGGER IF NOT EXISTS node_check_creator_kind_ins AFTER INSERT ON node
-WHEN NEW.creator IS NOT NULL AND NEW.kind != 'root'
+WHEN NEW.creator IS NOT NULL AND NEW.kind != '{Root.kind()}'
 BEGIN
     SELECT RAISE(ABORT, 'invalid creator kind for new node')
     FROM node AS c
     WHERE c.i = NEW.creator
         AND NOT (
-            (NEW.kind = 'file' AND c.kind IN ('step', 'st', 'root'))
-            OR (NEW.kind = 'step' AND c.kind IN ('step', 'root'))
-            OR (NEW.kind = 'st' AND c.kind = 'step')
+            (
+                NEW.kind = '{File.kind()}'
+                AND c.kind IN ('{Step.kind()}', '{StaticTree.kind()}', '{Root.kind()}')
+            )
+            OR (NEW.kind = '{Step.kind()}' AND c.kind IN ('{Step.kind()}', '{Root.kind()}'))
+            OR (NEW.kind = '{StaticTree.kind()}' AND c.kind = '{Step.kind()}')
         );
 END;
 
 CREATE TRIGGER IF NOT EXISTS node_check_creator_kind_upd AFTER UPDATE OF creator ON node
-WHEN NEW.creator IS NOT NULL AND NEW.kind != 'root'
+WHEN NEW.creator IS NOT NULL AND NEW.kind != '{Root.kind()}'
 BEGIN
     SELECT RAISE(ABORT, 'invalid creator kind after recycle')
     FROM node AS c
     WHERE c.i = NEW.creator
         AND NOT (
-            (NEW.kind = 'file' AND c.kind IN ('step', 'st', 'root'))
-            OR (NEW.kind = 'step' AND c.kind IN ('step', 'root'))
-            OR (NEW.kind = 'st' AND c.kind = 'step')
+            (
+                NEW.kind = '{File.kind()}'
+                AND c.kind IN ('{Step.kind()}', '{StaticTree.kind()}', '{Root.kind()}')
+            )
+            OR (NEW.kind = '{Step.kind()}' AND c.kind IN ('{Step.kind()}', '{Root.kind()}'))
+            OR (NEW.kind = '{StaticTree.kind()}' AND c.kind = '{Step.kind()}')
         );
 END;
 
@@ -101,9 +108,9 @@ BEGIN
     FROM node AS s, node AS k
     WHERE s.i = NEW.source AND k.i = NEW.sink
         AND NOT (
-            (s.kind = 'file' AND k.kind = 'step')
-            OR (s.kind = 'step' AND k.kind = 'file')
-            OR (s.kind = 'st' AND k.kind = 'file')
+            (s.kind = '{File.kind()}' AND k.kind = '{Step.kind()}')
+            OR (s.kind = '{Step.kind()}' AND k.kind = '{File.kind()}')
+            OR (s.kind = '{StaticTree.kind()}' AND k.kind = '{File.kind()}')
         );
 END;
 
@@ -126,8 +133,9 @@ SELECT node.i, node.label FROM node
 JOIN node AS cnode ON node.creator = cnode.i
 JOIN file ON node.i = file.node
 JOIN dependency ON node.i = source
-WHERE sink = ? AND node.kind = 'file' AND file.state = {FileState.UNCONFIRMED.value}
-    AND cnode.kind = 'st'
+WHERE sink = ? AND node.kind = '{File.kind()}'
+    AND file.state = {FileState.UNCONFIRMED.value}
+    AND cnode.kind = '{StaticTree.kind()}'
 """
 
 # Flags the `_check_after` bit of every step with an in-scope output
@@ -137,10 +145,11 @@ WHERE sink = ? AND node.kind = 'file' AND file.state = {FileState.UNCONFIRMED.va
 # the stale direction (a step elevated by a directory target in a previous run)
 # is already covered by that method's `_implied_need = TARGET` reset.
 #
-# Mirrors UPDATE_CHECK_AFTER's directory arm (scheduler.py):
-# the same dependency-based join (depo.source -> step),
-# not the exact-target loop's file.creator() walk,
+# Reaches the step through the same dependency-based join as UPDATE_CHECK_AFTER's
+# directory arm (scheduler.py), `depo.source -> step`,
+# not through the exact-target loop's file.creator() walk,
 # so reconcile and recompute can never disagree about which step a file belongs to.
+# What counts as an output there is the shared `REGULAR_OUTPUT_WHERE` predicate (file.py).
 # No `need = DEFAULT` filter here:
 # over-flagging is safe (recomputation is state-free)
 # and UPDATE_CHECK_AFTER re-applies the restriction.
@@ -165,8 +174,7 @@ WHERE node IN (
     )
     JOIN dependency AS depo ON depo.sink = onode.i
     JOIN file AS ofile ON ofile.node = onode.i
-    WHERE NOT onode.detached
-      AND ofile.state != {FileState.VOLATILE.value}
+    WHERE {REGULAR_OUTPUT_WHERE}
 )
 """
 
@@ -234,6 +242,47 @@ includes neither fully, so the table cannot be keyed on `FileRole` instead of `F
 the role fixes `new_state`, but not `action`.
 """
 
+
+_DECLARABLE_STATES = (FileState.UNCONFIRMED, FileState.PLANNED, FileState.VOLATILE)
+"""The file states a declaration may ask for, in `Workflow._declare_file`.
+
+A file only ever enters the graph in one of these three,
+and reaches the others by a later transition.
+"""
+
+_UNDECLARABLE_STATE_HINTS = {
+    FileState.BUILT: "It must be PLANNED first.",
+    FileState.CONFIRMED: "It must be UNCONFIRMED first.",
+    FileState.MISSING: "It must be UNCONFIRMED first.",
+}
+"""The state a file must be declared in to reach an undeclarable one, keyed by that state.
+
+Only covers the states that a caller could plausibly ask for by mistake.
+A state without an entry still raises, just without the extra advice.
+"""
+
+_RELEVANT_STATES = frozenset(FileState) - {FileState.PLANNED, FileState.VOLATILE}
+"""States in which a change to an attached file node can affect the workflow.
+
+`PLANNED` and `VOLATILE` are the states in which the build itself owns the path,
+so a change there is StepUp's own writing rather than news.
+"""
+
+_RELEVANT_STATES_DURING_BUILD = frozenset({FileState.CONFIRMED, FileState.MISSING})
+"""States in which a change observed during a build phase can only be a user edit.
+
+Stricter than `_RELEVANT_STATES`, because a build phase is writing outputs concurrently.
+"""
+
+
+#
+# Error message formatting
+#
+# Everything from here to `SupplyInfo` is pure text formatting:
+# no database access and no `self`.
+# Its job is to turn a rejected declaration into a message a plan author can act on,
+# and to do so identically whichever of the two colliding declarations arrives second.
+#
 
 _FILE_ROLE_VERBS = {
     FileRole.STATIC: "declared static",
@@ -335,6 +384,38 @@ def _static_tree_product_message(tree_path: str, path: str) -> str:
         f"Static tree ({tree_path}) cannot contain build product ({path}): "
         "a static tree is the sole owner of the files under it, in either order. "
         "Move the output outside the tree, or narrow the tree."
+    )
+
+
+def _glob_product_message(pattern: str, glob_step_label: str, path: str, step_label: str) -> str:
+    """Format the error for a glob pattern that matches a path a step builds.
+
+    The pattern and the output can be declared in either order,
+    and whichever comes second is the one that raises.
+    A byte-identical message is what makes the diagnostic independent of that order,
+    so this is the single place the text is written.
+
+    Parameters
+    ----------
+    pattern
+        The glob pattern, as registered.
+    glob_step_label
+        The label of the step that registered the pattern.
+    path
+        The matching path that is a build product.
+    step_label
+        The label of the step that builds `path`.
+
+    Returns
+    -------
+    message
+        The error message.
+    """
+    return (
+        f"Glob pattern ({pattern}) registered by step ({glob_step_label}) "
+        f"matches ({path}), which step ({step_label}) builds. "
+        "A glob pattern may only match static files: narrow the pattern, "
+        "or declare the file with static() instead of building it."
     )
 
 
@@ -556,7 +637,30 @@ def _claim_collision_message(path: str, claim: Claim, decl: Decl) -> str:
     return _file_collision_message(path, claim_decl, decl)
 
 
-def _raise_if_out_and_vol(
+def _raise_if_dir_inputs(inp_paths: Collection[str]) -> None:
+    """Raise when an input path is a directory.
+
+    The wording matches `api.py`'s client-side `PathError`,
+    so a plan author sees the same sentence
+    whether the mistake is caught before or after the RPC.
+
+    Parameters
+    ----------
+    inp_paths
+        The input paths declared in this call, sorted,
+        which makes the reported path deterministic.
+
+    Raises
+    ------
+    GraphError
+        When a path ends in a separator.
+    """
+    for inp_path in inp_paths:
+        if inp_path.endswith(os.sep):
+            raise GraphError(f"Directory inputs are not supported: {inp_path}")
+
+
+def _raise_if_out_and_vol_overlap(
     creator_phrase: str, out_paths: Collection[str], vol_paths: Collection[str]
 ) -> None:
     """Raise when the same path is declared as a regular and as a volatile output.
@@ -605,23 +709,13 @@ class SupplyInfo:
     """Dependency identifier when the relation is new, None otherwise."""
 
     @property
-    def is_available(self) -> bool:
-        """True if possibly available, False if certainly unavailable.
-
-        If False, the file is UNDECLARED, PLANNED, OUTDATED or MISSING,
-        and thus certainly unavailable.
-        A MISSING file only becomes available again at a build boundary
-        (watch phase or restart), never within the current build.
-        If True, the file is BUILT, UNCONFIRMED or CONFIRMED.
-        In case of an UNCONFIRMED file, it still needs to be confirmed as CONFIRMED (or MISSING),
-        but we cannot report it as unavailable yet, hence the True value.
-        """
-        return self.state in (FileState.BUILT, FileState.CONFIRMED, FileState.UNCONFIRMED)
-
-    @property
-    def is_unconfirmed(self) -> bool:
-        """True if the file's state is UNCONFIRMED and its existence still needs to be checked."""
-        return self.state == FileState.UNCONFIRMED
+    def availability(self) -> Availability:
+        """Whether the file can serve as an input to the step; see `Availability`."""
+        if self.state == FileState.UNCONFIRMED:
+            return Availability.UNCONFIRMED
+        if self.state in (FileState.BUILT, FileState.CONFIRMED):
+            return Availability.AVAILABLE
+        return Availability.UNAVAILABLE
 
 
 @attrs.define(frozen=True, order=True)
@@ -644,10 +738,10 @@ class GlobViolation:
     def is_error(self) -> bool:
         """Whether the match is a build product, i.e. an error rather than a warning.
 
-        `find_glob_violations` only queries attached nodes,
-        and skips the ones in the STATIC role before constructing a violation,
-        so `state` is either `None` or a state in the OUTPUT or VOLATILE role.
-        A match with no node at all remains a warning.
+        A violation with no node (`state` is `None`) is a warning:
+        nothing in the graph contradicts the match, it is merely unjustified.
+        A violation whose node is in the STATIC role is not a violation at all
+        and is never constructed.
         """
         return self.state is not None and FILE_ROLE_BY_STATE[self.state] != FileRole.STATIC
 
@@ -662,7 +756,8 @@ class Workflow(Trellis):
     defer_cap: int = attrs.field(kw_only=True, default=100)
     """Maximum number of consecutive defers (since the last SUCCEEDED)
     before a step is failed instead of parked in PENDING again.
-    A livelock guard, not expected to bind in normal use; see `Step.mark_completed()`.
+    A livelock guard against a step that defers forever,
+    not expected to bind in normal use.
     """
 
     targets: frozenset[Path] = attrs.field(kw_only=True, factory=frozenset, converter=frozenset)
@@ -792,20 +887,24 @@ class Workflow(Trellis):
             Whether the boot script was (re)initialized.
         """
         command = "." / PLAN_PY
-        nodes = {node.key(): node for node in self.root.products()}
-        del nodes["root:"]
+        # Both nodes are looked up by label rather than among the root's products.
+        # Nothing else can hold these two labels while attached:
+        # a second declaration of plan.py collides in `_check_declaration`,
+        # and a second definition of the boot step in `_raise_if_step_exists`.
+        plan_file = self.find_attached(File, PLAN_PY)
+        boot_step = self.find_attached(Step, Step.adjust_label(command))
         if (
-            len(nodes) >= 2
-            and "file:plan.py" in nodes
-            and nodes["file:plan.py"].get_state() == FileState.CONFIRMED
-            and f"step:{command}" in nodes
+            plan_file is not None
+            and boot_step is not None
+            and plan_file.get_state() == FileState.CONFIRMED
         ):
             # The boot steps are already present (from a previous invocation of stepup).
             return False
 
         # Need to (re)initialize the boot steps.
-        for node in nodes.values():
-            node.detach()
+        for node in self.root.products():
+            if node.i != self.root.i:
+                node.detach()
         to_check = self.declare_static_files(self.root, [PLAN_PY])
         checked = {path: file_hash.refreshed(path) for path, file_hash in to_check.items()}
         self.update_file_hashes(checked, cause=HashUpdateCause.CONFIRMED)
@@ -866,8 +965,8 @@ class Workflow(Trellis):
         # One-time startup cost, several queries per target instead of one batched query.
         # Accepted for now given small typical target counts; revisit if this shows up in profiling.
         for path in sorted(self.targets):
-            file, detached = self.find_and_detached(File, path)
-            if file is None or detached:
+            file = self.find_attached(File, path)
+            if file is None:
                 # Not (yet) in the graph, or detached.
                 # Detached rows are deliberately skipped:
                 # they may be garbage from an abandoned plan,
@@ -902,10 +1001,9 @@ class Workflow(Trellis):
 
     def is_regular_output(self, path: str) -> bool:
         """Return whether `path` is currently a regular (non-volatile) output of a step."""
-        file, detached = self.find_and_detached(File, path)
+        file = self.find_attached(File, path)
         return (
             file is not None
-            and not detached
             and isinstance(file.creator(), Step)
             and file.get_state() in FILE_STATES_BY_ROLE[FileRole.OUTPUT]
         )
@@ -922,28 +1020,18 @@ class Workflow(Trellis):
         -------
         has_output
             True if any active step produces a regular output under `dir_path`, False otherwise.
+            False therefore means the directory target names a place nothing is built.
 
         Notes
         -----
-        Backs the end-of-build matched-nothing warning for directory targets.
-        (See `finalize.report_completion`.)
-
         The query scans the label range `[dir_path, dir_range_upper(dir_path))`,
-        i.e. exactly the file labels under the directory target.
-        Within that range, a file counts as a regular output when it is attached,
-        is the sink of a dependency edge (whose source is then the step that produces it),
-        and its state is not `VOLATILE`.
-        The dependency sinks of a step are its `out_paths` (`PLANNED`, `BUILT` or `OUTDATED`)
-        and its `vol_paths` (`VOLATILE`),
-        so ruling out `VOLATILE` leaves precisely the regular outputs.
+        i.e. exactly the file labels under the directory target,
+        and applies the shared `REGULAR_OUTPUT_WHERE` predicate (`file.py`) within it.
         `is_regular_output()` answers the same question for one exact label,
         but reaches the step through the file's creator instead of a dependency edge.
 
-        This condition is copied from the directory arm of `scheduler.UPDATE_CHECK_AFTER`,
-        which elevates a step to `Need.TARGET`
-        when one of its outputs falls under a directory target,
-        so the two can never disagree about what counts as an output there.
-        One filter of that arm is deliberately dropped: `step.need = DEFAULT`.
+        One filter of `scheduler.UPDATE_CHECK_AFTER`'s directory arm is deliberately
+        not applied here: `step.need = DEFAULT`.
         Elevation leaves steps declared `OPTIONAL` alone,
         so a directory holding only `OPTIONAL` outputs elevates nothing,
         yet it is a correctly spelled path and must not be reported.
@@ -960,8 +1048,7 @@ class Workflow(Trellis):
             "JOIN dependency AS depo ON depo.sink = onode.i "
             f"WHERE onode.kind = '{File.kind()}' "
             "AND onode.label >= ? AND onode.label < ? "
-            "AND NOT onode.detached "
-            f"AND ofile.state != {FileState.VOLATILE.value})",
+            f"AND {REGULAR_OUTPUT_WHERE})",
             (dir_path, dir_range_upper(dir_path)),
         ).fetchone()
         return bool(row[0])
@@ -1060,14 +1147,19 @@ class Workflow(Trellis):
         cause
             The reason for the hash updates.
         """
-        if not isinstance(cause, HashUpdateCause):
-            raise TypeError(f"cause must be a HashUpdateCause, got: {cause!r}")
         if len(file_hashes) == 0:
             return
 
         # Efficiently look up the node id and state of every requested path.
         # See get_file_hashes for why this uses an IN subquery against the path_list
         # scratch table instead of a plain JOIN.
+        # Detached rows are deliberately not filtered out.
+        # A detached node keeps its state and hash and can be recycled back into the graph,
+        # so its hash must stay current for the same reason mark_consuming_steps_pending
+        # includes detached sinks.
+        # The count check below depends on this:
+        # with a NOT detached filter, a path whose only node is detached would go missing
+        # and turn a normal update into a ConsistencyError.
         db = self.db
         db.execute("DELETE FROM path_list")
         db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in file_hashes))
@@ -1082,12 +1174,12 @@ class Workflow(Trellis):
         ]
 
         if len(records) != len(file_hashes):
-            raise AssertionError(
+            raise ConsistencyError(
                 f"Inconsistent number of records: expected={len(file_hashes)} actual={len(records)}"
             )
 
         # Files grouped by the follow-up action to take on them, keyed by the action tags used
-        # in `_HASH_TRANSITIONS` (`"updated"` -> `handle_external_update`, etc.).
+        # in `_HASH_TRANSITIONS` (`"updated"` -> `handle_updated_file`, etc.).
         action_lists: dict[str, list[tuple[int, str]]] = {
             "updated": [],
             "deleted": [],
@@ -1097,7 +1189,7 @@ class Workflow(Trellis):
         new_states_hashes = []
 
         def raise_unexpected(path, old_state, fh):
-            raise AssertionError(
+            raise ConsistencyError(
                 f"Unexpected file hash update: cause={cause.name} path={path} "
                 f"state={old_state.name} "
                 f"digest={fmt_digest(fh.digest)} mode={stat.filemode(fh.mode)}"
@@ -1134,9 +1226,9 @@ class Workflow(Trellis):
             action_lists["completed"],
         )
         for i, path in action_lists["updated"]:
-            self.handle_external_update(File(self, i, path))
+            self.handle_updated_file(File(self, i, path))
         for i, path in action_lists["deleted"]:
-            self.handle_external_delete(File(self, i, path))
+            self.handle_deleted_file(File(self, i, path))
         for i, path in action_lists["completed"]:
             self.mark_consuming_steps_pending(File(self, i, path))
 
@@ -1175,10 +1267,13 @@ class Workflow(Trellis):
         )
         return {path: FileHash.from_json(hash_value) for path, hash_value in db.execute(sql)}
 
-    def handle_external_update(self, file: File):
-        """Modify the graph to account for the external changes to this file.
+    def handle_updated_file(self, file: File):
+        """Modify the graph to account for a file whose content changed.
 
         File states and hashes have already been updated before this method is called.
+        The change is not necessarily an external one:
+        every `"updated"` row of `_HASH_TRANSITIONS` arrives here,
+        which includes a step's own inputs rehashed after a failed run.
         """
         state = file.get_state()
         if state == FileState.CONFIRMED:
@@ -1189,12 +1284,13 @@ class Workflow(Trellis):
             if isinstance(creator, Step):
                 self.mark_step_pending(creator)
 
-    def handle_external_delete(self, file: File):
+    def handle_deleted_file(self, file: File):
         """Modify the graph to account for the fact this file is not on disk.
 
         File states and hashes have already been updated before this method is called,
         so the file is MISSING (static) or PLANNED (output) by the time this runs:
         those are the only states the `"deleted"` rows of `_HASH_TRANSITIONS` lead to.
+        As with `handle_updated_file`, the disappearance is not necessarily an external one.
         """
         state = file.get_state()
         logger.info("File not on disk: %s (%s)", file.path, state.name)
@@ -1246,6 +1342,10 @@ class Workflow(Trellis):
         if state in (StepState.SUCCEEDED, StepState.FAILED):
             logger.info("Mark %s step PENDING: %s", state.name, step.label)
             # Outdate the BUILT output files of the step.
+            # Detached outputs are included for the same reason as in
+            # mark_consuming_steps_pending: a detached node can be recycled back into the
+            # graph with its state intact, so a BUILT output left behind here would be
+            # recycled as up to date even though its producer has to run again.
             for file in step.sinks(File, include_detached=True):
                 if file.get_state() == FileState.BUILT:
                     self.mark_file_outdated(file)
@@ -1258,7 +1358,7 @@ class Workflow(Trellis):
             file.set_state(FileState.OUTDATED)
             self.mark_consuming_steps_pending(file)
         elif state != FileState.OUTDATED:
-            raise ValueError(f"Cannot make file outdated when its state is {state.name}")
+            raise ConsistencyError(f"Cannot make file outdated when its state is {state.name}")
 
     #
     # Build phase (helper methods)
@@ -1537,12 +1637,9 @@ class Workflow(Trellis):
         (`_check_declaration`), not here.
         """
         # Consistency checks before creating the file.
-        if file_state == FileState.BUILT:
-            raise ValueError("Cannot create a BUILT file. It must be PLANNED first.")
-        if file_state == FileState.CONFIRMED:
-            raise ValueError("Cannot create a CONFIRMED file. It must be UNCONFIRMED first.")
-        if file_state == FileState.MISSING:
-            raise ValueError("Cannot create a MISSING file. It must be UNCONFIRMED first.")
+        if file_state not in _DECLARABLE_STATES:
+            hint = _UNDECLARABLE_STATE_HINTS.get(file_state, "")
+            raise ConsistencyError(f"Cannot create a {file_state.name} file. {hint}".rstrip())
         if file_state == FileState.VOLATILE and path.endswith(os.sep):
             raise GraphError("A volatile output cannot be a directory.")
         if not isinstance(creator, StaticTree):
@@ -1569,10 +1666,9 @@ class Workflow(Trellis):
     def _hashes_to_check(self, unconfirmed: Collection[File]) -> dict[str, FileHash]:
         """Collect the currently known hashes of UNCONFIRMED file nodes, keyed by path.
 
-        This mapping is intended for the caller to submit as hash jobs
-        (`HashQueue.submit`, `cause=HashUpdateCause.CONFIRMED`),
-        one per path, so each file's validity is checked and confirmed as static
-        (or resolved as missing) in the background.
+        A known hash is what lets a check be skipped:
+        `FileHash.refreshed` reuses it when size, inode and mtime are unchanged,
+        so the file does not have to be read again to settle its state.
 
         Parameters
         ----------
@@ -1630,8 +1726,6 @@ class Workflow(Trellis):
         -----
         Declaring a file that the same creator already declared static is a no-op.
         """
-        if isinstance(paths, str):
-            raise TypeError("The paths argument cannot be a string.")
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
         # A path inside a static tree belongs to that tree, which is its sole owner,
@@ -1684,12 +1778,10 @@ class Workflow(Trellis):
         -----
         Registering a tree that the same creator's tree already covers is a no-op.
         """
-        if not isinstance(path, str):
-            raise TypeError("The argument path must be a string.")
-        if Path(path).isabs():
-            raise ValueError(f"Static tree paths cannot be absolute paths: {path}")
         if has_any_wildcards(path):
-            raise ValueError(f"Static tree does not support wildcards: {path}")
+            # `api.static()` expands patterns client-side,
+            # so a wildcard can only get here through a bug or a hand-written RPC call.
+            raise ConsistencyError(f"Static tree does not support wildcards: {path}")
         if path == STEPUP_DIR or path.startswith(STEPUP_DIR + os.sep):
             raise GraphError(f"Cannot declare a static tree under {STEPUP_DIR}: {path}")
         path = Path(path) / ""
@@ -1703,6 +1795,14 @@ class Workflow(Trellis):
             raise GraphError(
                 "A static tree cannot be the project root: it would have to own "
                 "plan.py and every step output. Declare the subdirectories instead."
+            )
+        if path == "/":
+            # The absolute counterpart of the case above.
+            # An absolute static tree is supported, but a tree at the file system root
+            # would own every absolute path in the graph, which is never what a plan means.
+            raise GraphError(
+                "A static tree cannot be the file system root: it would own every "
+                "absolute path in the workflow. Declare a subdirectory instead."
             )
         static_tree = self._find_owning_static_tree(path)
         if static_tree is not None:
@@ -1841,16 +1941,13 @@ class Workflow(Trellis):
         env_deps = sorted(set(env_deps))
         out_paths = sorted(set(out_paths))
         vol_paths = sorted(set(vol_paths))
-        # Deliberate duplicate of _declare_file's check:
-        # needed as long as the `old_step is not None` branch below returns early,
-        # since that path never calls _declare_file on vol_paths.
-        target_vol_paths = self.targets & set(vol_paths)
-        if target_vol_paths:
-            raise GraphError(
-                f"A build target cannot be a volatile output: {sorted(target_vol_paths)}"
-            )
-        if any(inp_path.endswith(os.sep) for inp_path in inp_paths):
-            raise GraphError("Directory inputs are not supported.")
+        # _declare_file applies the same check, but only on the path that reaches it.
+        # This one is still needed because the `old_step is not None` branch below
+        # returns early, and that path never calls _declare_file on vol_paths.
+        # vol_paths is sorted, so the reported path does not depend on argument order.
+        for vol_path in vol_paths:
+            self._raise_if_forbidden_target(vol_path, FileState.VOLATILE)
+        _raise_if_dir_inputs(inp_paths)
         if env_overrides is not None and not set(env_deps).isdisjoint(env_overrides):
             raise GraphError(
                 "Variable(s) cannot be both an env dependency and a env_overrides override: "
@@ -1903,7 +2000,7 @@ class Workflow(Trellis):
             self._check_declaration(step_phrase, out_path, FileRole.OUTPUT)
         for vol_path in vol_paths:
             self._check_declaration(step_phrase, vol_path, FileRole.VOLATILE)
-        _raise_if_out_and_vol(step_phrase, out_paths, vol_paths)
+        _raise_if_out_and_vol_overlap(step_phrase, out_paths, vol_paths)
 
         # Create new step
         step = self.create(
@@ -1926,7 +2023,7 @@ class Workflow(Trellis):
         for info in self._supply_files(step, inp_paths):
             # We do not care about the unavailable files here,
             # because the step will only be executed when all inputs are available.
-            if info.is_unconfirmed:
+            if info.availability == Availability.UNCONFIRMED:
                 unconfirmed.add(info.file)
 
         # Process vars
@@ -1991,14 +2088,11 @@ class Workflow(Trellis):
         A pre-existing initial dependency stays an initial dependency and is ignored here,
         so it does not affect what `reset_for_rerun` drops.
         """
-        if not isinstance(step, Step):
-            raise TypeError(f"step must be a Step instance, got: {step!r}")
         # Normalize arguments
         inp_paths = sorted(set(inp_paths))
         out_paths = sorted(set(out_paths))
         vol_paths = sorted(set(vol_paths))
-        if any(inp_path.endswith(os.sep) for inp_path in inp_paths):
-            raise GraphError("Directory inputs are not supported.")
+        _raise_if_dir_inputs(inp_paths)
 
         # Keep track of missing files, of which there are three different types:
         # - unavailable = certainly not available.
@@ -2013,16 +2107,17 @@ class Workflow(Trellis):
         # Process inp_paths
         infos = self._supply_files(step, inp_paths, require_new_edge=False)
         for info in infos:
-            if not info.is_available:
+            availability = info.availability
+            if availability == Availability.UNAVAILABLE:
                 unavailable.add(info.file.path)
+            elif availability == Availability.UNCONFIRMED:
+                unconfirmed.add(info.file)
             elif info.state == FileState.BUILT:
                 producer = info.file.creator()
                 if isinstance(producer, Step) and ran_concurrently(producer.i, step.i):
                     unfresh.add(info.file.path)
             if info.new_idep is not None:
                 dynamic_ideps.append((info.new_idep,))
-            if info.is_unconfirmed:
-                unconfirmed.add(info.file)
 
         # Process vars
         step.amend_env_deps(env_deps)
@@ -2037,7 +2132,9 @@ class Workflow(Trellis):
         vol_paths = [
             path for path in vol_paths if self._check_declaration(step, path, FileRole.VOLATILE)
         ]
-        _raise_if_out_and_vol(_creator_phrase(Step.kind(), step.label), out_paths, vol_paths)
+        _raise_if_out_and_vol_overlap(
+            _creator_phrase(Step.kind(), step.label), out_paths, vol_paths
+        )
         self._raise_if_glob_match(step.label, out_paths + vol_paths)
 
         # Create out_paths
@@ -2058,12 +2155,6 @@ class Workflow(Trellis):
     #
     # Glob patterns
     #
-
-    def nglobs(self) -> Iterator[NamedGlob]:
-        """Iterate over the patterns registered by all attached steps."""
-        sql = "SELECT data FROM node JOIN nglob ON node.i = nglob.node WHERE NOT node.detached"
-        for (data,) in self.db.execute(sql):
-            yield json_converter.structure(json.loads(data), NamedGlob)
 
     def nglob_registrations(self) -> Iterator[tuple[int, NamedGlob, Step]]:
         """Iterate over the patterns registered by all attached steps, with their context.
@@ -2124,8 +2215,6 @@ class Workflow(Trellis):
         Matches that are not (yet) justified are accepted here.
         `find_glob_violations` catches the ones that never become justified.
         """
-        if not isinstance(step, Step):
-            raise TypeError(f"step must be a Step instance, got: {step!r}")
 
         paths = ng.files()
 
@@ -2153,12 +2242,7 @@ class Workflow(Trellis):
             row = db.execute(sql).fetchone()
             if row is not None:
                 path, creator_label = row
-                raise GraphError(
-                    f"Glob pattern ({ng.pattern}) registered by step ({step.label}) matches "
-                    f"({path}), which step ({creator_label}) builds. "
-                    "A glob pattern may only match static files: narrow the pattern, "
-                    "or declare the file with static() instead of building it."
-                )
+                raise GraphError(_glob_product_message(ng.pattern, step.label, path, creator_label))
 
         # Reject matches under .stepup/, mirroring the rule _declare_file applies.
         # This is load-bearing, not defensive:
@@ -2206,10 +2290,7 @@ class Workflow(Trellis):
             for path in sorted(product_paths):
                 if re.compile(regex).fullmatch(path):
                     raise GraphError(
-                        f"Glob pattern ({pattern}) registered by step ({glob_step_label}) "
-                        f"matches ({path}), which step ({step_label}) builds. "
-                        "A glob pattern may only match static files: narrow the pattern, "
-                        "or declare the file with static() instead of building it."
+                        _glob_product_message(pattern, glob_step_label, path, step_label)
                     )
 
     def find_glob_violations(self) -> list[GlobViolation]:
@@ -2322,7 +2403,7 @@ class Workflow(Trellis):
             A path that did not exist before is a potential new match.
         """
         if deleted & updated:
-            raise ValueError("Deleted and updated paths cannot overlap.")
+            raise ConsistencyError("Deleted and updated paths cannot overlap.")
         for i, ng, step in self.nglob_registrations():
             # A step becomes pending when one of its patterns loses a deleted file as a match,
             # or could gain a new match among the updated files.
@@ -2337,31 +2418,46 @@ class Workflow(Trellis):
     # Watch phase
     #
 
+    def _change_is_relevant(self, path: str, relevant_states: Collection[FileState]) -> bool:
+        """Judge a file system change against a set of file states.
+
+        An attached file node decides the answer through its state.
+        A path with no attached node of its own is judged by the registered glob patterns,
+        which is the only place such a path is recorded at all.
+
+        Parameters
+        ----------
+        path
+            The path that changed.
+        relevant_states
+            The states an attached file node must be in for the change to matter.
+
+        Returns
+        -------
+        is_relevant
+            Whether the change can affect the workflow.
+        """
+        file = self.find_attached(File, path)
+        if file is not None:
+            return file.get_state() in relevant_states
+        return self.matches_any_glob(path)
+
     def change_is_relevant(self, path: str) -> bool:
         """Return whether a file system change to `path` can affect the workflow.
 
         An attached file node makes the change relevant unless the build itself owns the path
         (`PLANNED` or `VOLATILE`).
-        A path with no node of its own is judged by the registered glob patterns.
         """
-        file, detached = self.find_and_detached(File, path)
-        if not (file is None or detached):
-            return file.get_state() not in (FileState.PLANNED, FileState.VOLATILE)
-        return self.matches_any_glob(path)
+        return self._change_is_relevant(path, _RELEVANT_STATES)
 
     def change_is_relevant_during_build(self, path: str) -> bool:
         """Relevance test for events observed while a build phase was running.
 
         Stricter than `change_is_relevant`: a file the build itself is writing is not a user edit,
         so only `CONFIRMED` and `MISSING` nodes qualify.
-        A path with no node at all is judged by the registered glob patterns,
-        as in `change_is_relevant`.
-        No step can be building it, since a pattern may not match a build product.
+        No step can be building such a path, since a pattern may not match a build product.
         """
-        file, detached = self.find_and_detached(File, path)
-        if not (file is None or detached):
-            return file.get_state() in (FileState.CONFIRMED, FileState.MISSING)
-        return self.matches_any_glob(path)
+        return self._change_is_relevant(path, _RELEVANT_STATES_DURING_BUILD)
 
     def relevant_paths_under(self, directory: str) -> Iterator[str]:
         """Iterate over all paths under `directory` whose disappearance is relevant.
@@ -2380,7 +2476,7 @@ class Workflow(Trellis):
         for (path,) in self.db.execute(sql, (pattern,)):
             seen.add(path)
             yield path
-        for ng in self.nglobs():
+        for _nglob_i, ng, _step in self.nglob_registrations():
             for path in ng.files():
                 if path.startswith(directory) and path not in seen:
                     seen.add(path)

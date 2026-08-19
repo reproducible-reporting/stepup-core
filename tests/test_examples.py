@@ -261,6 +261,7 @@ EXAMPLES = [
     "static_pattern_tree_overlap",
     "static_tree1",
     "static_tree2",
+    "static_tree_absolute",
     "static_tree_amend",
     "static_tree_dirhash",
     "static_tree_file_after",

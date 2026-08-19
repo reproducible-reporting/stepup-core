@@ -14,6 +14,7 @@ __all__ = (
     "FILE_ROLE_BY_STATE",
     "FILE_STATES_BY_ROLE",
     "TARGET_FORBIDDEN_STATES",
+    "Availability",
     "Change",
     "FileRole",
     "FileState",
@@ -256,3 +257,29 @@ class HashUpdateCause(IntEnum):
 
     CONFIRMED = 54
     """A declared static file was hashed; it becomes `CONFIRMED` if present, `MISSING` if not."""
+
+
+class Availability(IntEnum):
+    """Whether a file supplied to a step can serve as one of its inputs.
+
+    The three values are deliberately not a boolean:
+    `UNCONFIRMED` is neither, and collapsing it either way is wrong.
+    Treating it as unavailable would abort a step over a file that is most likely present,
+    and treating it as available would let the step run before its existence is settled.
+    """
+
+    UNAVAILABLE = 61
+    """The file is UNDECLARED, PLANNED, OUTDATED or MISSING, so it certainly cannot be used.
+
+    A MISSING file only becomes available again at a build boundary
+    (watch phase or restart), never within the current build.
+    """
+
+    UNCONFIRMED = 62
+    """The file matches a static tree and still has to be confirmed as CONFIRMED or MISSING.
+
+    A hash job decides which it becomes, so the answer is not yet known.
+    """
+
+    AVAILABLE = 63
+    """The file is BUILT or CONFIRMED, so it can be used as an input right away."""

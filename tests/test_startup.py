@@ -217,7 +217,7 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
             # and must reflect the fresh scan, not the pickled (or stale) old one.
             row = wfp.db.execute("SELECT data FROM nglob WHERE node = ?", (plan.i,)).fetchone()
             assert isinstance(row[0], str)
-            new_nglobs = list(wfp.nglobs())
+            new_nglobs = [reg_ng for _i, reg_ng, _step in wfp.nglob_registrations()]
             assert len(new_nglobs) == 1
             assert new_nglobs[0].files() == ["inp1.txt", "inp3.txt"]
 

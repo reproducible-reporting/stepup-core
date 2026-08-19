@@ -485,7 +485,7 @@ async def test_run_hash_job_confirmed_applies_even_when_unchanged(
 
 async def test_run_hash_job_external_not_applied_when_unchanged(wfs: Workflow, tmpdir, monkeypatch):
     """An unchanged hash under a non-CONFIRMED cause must not trigger update_file_hashes:
-    e.g. (EXTERNAL, CONFIRMED, known) would call handle_external_update and needlessly mark
+    e.g. (EXTERNAL, CONFIRMED, known) would call handle_updated_file and needlessly mark
     all sinks pending."""
     with contextlib.chdir(tmpdir):
         async with wfs.db:

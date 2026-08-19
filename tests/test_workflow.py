@@ -87,7 +87,7 @@ async def test_invalid_path(wfs):
 async def test_declare_file_rejects_missing(wfs: Workflow):
     """`_declare_file` must reject `MISSING`: callers must go through `UNCONFIRMED` first."""
     async with wfs.db:
-        with pytest.raises(ValueError):
+        with pytest.raises(ConsistencyError):
             wfs._declare_file(wfs.root, "foo.txt", FileState.MISSING)
 
 
@@ -1318,8 +1318,9 @@ async def test_register_glob(wfp: Workflow):
         assert list(wfp.nglob_registrations()) == [(1, ng, step)]
         assert wfp.format_str() == REGISTER_NGLOB_GRAPH
 
-        # Detaching does not clear the row, but Workflow.nglobs() must skip it: a detached
-        # leftover pattern must not be visible to the eager checks Phase 2 adds.
+        # Detaching does not clear the row, but Workflow.nglob_registrations() must skip
+        # it: a detached leftover pattern must not be visible to the eager checks Phase 2
+        # adds.
         step.detach()
         assert list(step.nglobs()) == [ng]
         assert list(wfp.nglob_registrations()) == []
@@ -1335,11 +1336,11 @@ async def test_nglobs_skips_detached_step(wfp: Workflow):
         step = wfp.find(Step, "touch log")
         ng = NamedGlob("*.txt")
         wfp.register_nglob(step, ng)
-        assert list(wfp.nglobs()) == [ng]
+        assert [reg_ng for _i, reg_ng, _step in wfp.nglob_registrations()] == [ng]
         assert wfp.change_is_relevant("foo.txt")
 
         step.detach()
-        assert list(wfp.nglobs()) == []
+        assert [reg_ng for _i, reg_ng, _step in wfp.nglob_registrations()] == []
         assert not wfp.change_is_relevant("foo.txt")
 
 
@@ -1480,7 +1481,7 @@ async def test_register_glob_ignores_detached_undeclared_match(wfp: Workflow):
         ng = NamedGlob("*.txt")
         ng.extend(["missing.txt"])
         wfp.register_nglob(plan, ng)  # must not raise
-        assert list(wfp.nglobs()) == [ng]
+        assert [reg_ng for _i, reg_ng, _step in wfp.nglob_registrations()] == [ng]
 
 
 async def test_register_glob_accepts_static_and_missing_and_unconfirmed(wfp: Workflow):
@@ -1499,7 +1500,7 @@ async def test_register_glob_accepts_static_and_missing_and_unconfirmed(wfp: Wor
         ng = NamedGlob("*.txt")
         ng.extend(["static.txt", "unconfirmed.txt", "missing.txt"])
         wfp.register_nglob(plan, ng)  # must not raise
-        assert list(wfp.nglobs()) == [ng]
+        assert [reg_ng for _i, reg_ng, _step in wfp.nglob_registrations()] == [ng]
 
 
 async def test_register_glob_rejects_stepup_dir(wfp: Workflow):
@@ -1782,8 +1783,9 @@ async def test_amend_step_output_matching_glob_raises(wfp: Workflow):
 
 async def test_define_step_output_matching_detached_glob_ok(wfp: Workflow):
     """A detached step keeps its `nglob` row (only `reset_for_rerun` deletes it), so the
-    detached-pattern filter in `Workflow.nglobs()` must apply to check (b) too, or a
-    leftover pattern from a step that has moved on would block a perfectly valid build.
+    detached-pattern filter in `Workflow.nglob_registrations()` must apply to check (b)
+    too, or a leftover pattern from a step that has moved on would block a perfectly
+    valid build.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -1938,7 +1940,7 @@ async def test_externally_updated_built_detached(wfp: Workflow):
         step = wfp.find(Step, "touch foo.txt")
         step.detach()
         assert step.get_state() == StepState.PENDING
-    with pytest.raises(AssertionError):
+    with pytest.raises(ConsistencyError):
         async with wfp.db:
             wfp.update_file_hashes(
                 {"foo.txt": fake_hash("foo.txt")}, cause=HashUpdateCause.EXTERNAL
@@ -1954,7 +1956,7 @@ async def test_externally_deleted_built_detached(wfp: Workflow):
         step = wfp.find(Step, "touch foo.txt")
         step.detach()
         assert step.get_state() == StepState.PENDING
-    with pytest.raises(AssertionError):
+    with pytest.raises(ConsistencyError):
         async with wfp.db:
             wfp.update_file_hashes({"foo.txt": FileHash.unknown()}, cause=HashUpdateCause.EXTERNAL)
     async with wfp.db:
@@ -2024,7 +2026,7 @@ async def test_externally_deleted(wfp: Workflow):
         # Static
         wfp.update_file_hashes({"tst": FileHash.unknown()}, cause=HashUpdateCause.EXTERNAL)
         assert tst.get_state() == FileState.MISSING
-    with pytest.raises(AssertionError):
+    with pytest.raises(ConsistencyError):
         async with wfp.db:
             wfp.update_file_hashes({"tst": FileHash.unknown()}, cause=HashUpdateCause.EXTERNAL)
 
@@ -2032,7 +2034,7 @@ async def test_externally_deleted(wfp: Workflow):
         # Built
         prr = wfp.find(File, "prr")
         assert prr.get_state() == FileState.PLANNED
-    with pytest.raises(AssertionError):
+    with pytest.raises(ConsistencyError):
         async with wfp.db:
             wfp.update_file_hashes({"prr": FileHash.unknown()}, cause=HashUpdateCause.EXTERNAL)
     async with wfp.db:
@@ -2408,7 +2410,7 @@ async def test_static_tree_basic(wfp: Workflow):
         assert to_check == {}
 
         # Define static tree and check attributes
-    with pytest.raises(ValueError):
+    with pytest.raises(ConsistencyError):
         async with wfp.db:
             wfp.register_static_tree(plan, "head*")
     async with wfp.db:
@@ -3797,6 +3799,28 @@ async def test_register_static_tree_root_raises(wfp: Workflow, root_path: str):
         plan = wfp.find(Step, "./plan.py")
         with pytest.raises(GraphError, match="project root"):
             wfp.register_static_tree(plan, root_path)
+
+
+async def test_register_static_tree_fs_root_raises(wfp: Workflow):
+    """A static tree cannot be rooted at the file system root.
+
+    An absolute static tree is supported (see the `static_tree_absolute` example),
+    but a tree at `/` would own every absolute path in the workflow.
+    This is tested here rather than as an example,
+    because `api.static("/")` rejects the argument before it reaches the director.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        with pytest.raises(GraphError, match="file system root"):
+            wfp.register_static_tree(plan, "/")
+
+
+async def test_register_static_tree_absolute(wfp: Workflow):
+    """An absolute path is a valid static tree root."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "/tmp/absolute-tree-example")
+        assert isinstance(wfp.find(StaticTree, "/tmp/absolute-tree-example/"), StaticTree)
 
 
 async def test_step_try_clean(wfp: Workflow):

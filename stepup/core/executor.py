@@ -655,7 +655,7 @@ class Executor:
             # only the update flips UNCONFIRMED -> CONFIRMED/MISSING.
             # Unchanged results under other causes are deliberately NOT applied:
             # e.g. the transition for (EXTERNAL, CONFIRMED, known)
-            # would call `handle_external_update`
+            # would call `handle_updated_file`
             # and needlessly mark all sinks pending. (They should already be pending.)
             async with self.db:
                 self.workflow.update_file_hashes({hash_job.path: new_hash}, cause=hash_job.cause)

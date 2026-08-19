@@ -81,7 +81,7 @@ async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: Report
     )
     async with db:
         rows = db.execute(sql).fetchall()
-        nglobs = list(workflow.nglobs())
+        nglobs = [ng for _nglob_i, ng, _step in workflow.nglob_registrations()]
 
     # None of these directories is created here:
     # a directory is only created when a step is about to write into it.

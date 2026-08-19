@@ -740,6 +740,18 @@ class Trellis:
         i, detached = row
         return node_type(self, i, label), bool(detached)
 
+    def find_attached(self, node_type: type[NodeType], label: str) -> NodeType | None:
+        """Return the attached node for the given node class and label, if there is one.
+
+        A detached node is reported as absent,
+        because a detached row is a memory of a former life rather than a current claim.
+        Use `find_and_detached` when the difference between the two matters.
+        """
+        sql = "SELECT i FROM node WHERE kind = ? AND label = ? AND NOT detached"
+        data = (node_type.kind(), label)
+        row = self.db.execute(sql, data).fetchone()
+        return None if row is None else node_type(self, row[0], label)
+
     def nodes(
         self,
         node_type: type[NodeType] | None = None,
