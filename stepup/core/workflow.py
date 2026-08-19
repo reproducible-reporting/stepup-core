@@ -331,9 +331,9 @@ def _creator_phrase(kind: str, label: str) -> str:
         When the creator is of any other kind, which is a bug in StepUp:
         only a step and the root node are things a plan author can be pointed at.
     """
-    if kind == "step":
+    if kind == Step.kind():
         return f"step ({label})"
-    if kind == "root":
+    if kind == Root.kind():
         return "StepUp itself"
     raise ConsistencyError(f"Cannot phrase a creator of kind {kind}: {label}")
 
@@ -1071,7 +1071,7 @@ class Workflow(Trellis):
         elif state in (FileState.PLANNED, FileState.OUTDATED):
             # Mark the creator pending, as to make sure the file is rebuilt.
             creator = file.creator()
-            if creator is not None and creator.kind() == "step":
+            if isinstance(creator, Step):
                 self.mark_step_pending(creator)
 
     def handle_external_delete(self, file: File):
@@ -1086,7 +1086,7 @@ class Workflow(Trellis):
         if state == FileState.PLANNED:
             # Request rerun of creator
             creator = file.creator()
-            if creator is not None and creator.kind() == "step":
+            if isinstance(creator, Step):
                 self.mark_step_pending(creator)
         self.mark_consuming_steps_pending(file)
 
@@ -1460,7 +1460,7 @@ class Workflow(Trellis):
             raise ValueError("Cannot create a MISSING file. It must be UNCONFIRMED first.")
         if file_state == FileState.VOLATILE and path.endswith(os.sep):
             raise GraphError("A volatile output cannot be a directory.")
-        if creator.kind() != "st":
+        if not isinstance(creator, StaticTree):
             static_tree = self._find_owning_static_tree(path)
             if static_tree is not None:
                 if file_state == FileState.UNCONFIRMED:
@@ -1562,7 +1562,7 @@ class Workflow(Trellis):
         to_declare = []
         for path in paths:
             declarer = creator
-            if creator.kind() != "st":
+            if not isinstance(creator, StaticTree):
                 static_tree = self._find_owning_static_tree(path)
                 if static_tree is not None:
                     tree_creator = static_tree.creator()
@@ -1816,7 +1816,7 @@ class Workflow(Trellis):
         # Validate the new step before creating it, so that every check that names the step
         # sees the graph without the step's own declarations in it.
         self._raise_if_step_exists(creator, step_label)
-        step_phrase = _creator_phrase("step", step_label)
+        step_phrase = _creator_phrase(Step.kind(), step_label)
         for out_path in out_paths:
             self._raise_if_claimed(step_phrase, out_path, FileRole.OUTPUT)
         for vol_path in vol_paths:
@@ -1964,7 +1964,7 @@ class Workflow(Trellis):
         vol_paths = [
             path for path in vol_paths if self._is_new_declaration(step, path, FileRole.VOLATILE)
         ]
-        _raise_if_out_and_vol(_creator_phrase("step", step.label), out_paths, vol_paths)
+        _raise_if_out_and_vol(_creator_phrase(Step.kind(), step.label), out_paths, vol_paths)
         self._raise_if_glob_match(step.label, out_paths + vol_paths)
 
         # Create out_paths

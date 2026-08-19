@@ -186,7 +186,16 @@ class Node:
 
     @classmethod
     def kind(cls) -> str:
-        """Lower-case prefix of the key string representing a node."""
+        """Lower-case prefix of the key string representing a node.
+
+        This string is the node's type discriminator in the `node.kind` column,
+        and the key under which `Trellis` looks up the class for a stored row.
+        Overriding it in an existing subclass changes the database schema.
+
+        Code holding a `Node` instance should branch with `isinstance`, not on this string;
+        the string is for rendering and for code that reads the database
+        without constructing nodes.
+        """
         return cls.__name__.lower()
 
     @classmethod
