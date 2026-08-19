@@ -1943,6 +1943,24 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1959,6 +1977,36 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#testing-an-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing an Extension
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -2323,6 +2371,25 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#testing-an-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing an Extension
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2377,6 +2444,30 @@ A package can implement three types of components:</p>
 <p><a href="../tool/">Custom <strong>tools</strong></a>, which appear as new subcommands in the StepUp CLI.</p>
 </li>
 </ol>
+<h2 id="testing-an-extension">Testing an Extension<a class="headerlink" href="#testing-an-extension" title="Permanent link">&para;</a></h2>
+<p>The module <code>stepup.core.pytest</code> holds test utilities that extensions can reuse:</p>
+<ul>
+<li><code>run_example()</code> runs an integration example in a temporary directory
+  and compares the files it produces to the expected ones in the source directory.
+  <code>run_plan()</code> runs the <code>plan.py</code> of an example as an ordinary Python script.</li>
+<li>
+<p><code>ConventionTests</code> collects the tests for the coding conventions of the StepUp packages,
+  most importantly that every module declares <code>__all__</code>
+  and that no module imports a name another module does not export.
+  Subclass it in a test module and name the package to be tested:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.pytest</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConventionTests</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">TestConventions</span><span class="p">(</span><span class="n">ConventionTests</span><span class="p">):</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">package</span> <span class="o">=</span> <span class="s2">"stepup.spam"</span>
+</span></code></pre></div>
+<p>Set <code>example_rc = None</code> in the subclass when the test suite has no integration examples.
+For the failing assertions to explain themselves,
+add the following line to <code>conftest.py</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">pytest</span><span class="o">.</span><span class="n">register_assert_rewrite</span><span class="p">(</span><span class="s2">"stepup.core.pytest"</span><span class="p">)</span>
+</span></code></pre></div>
+</li>
+</ul>
 
 
 
