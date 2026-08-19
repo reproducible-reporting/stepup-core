@@ -93,6 +93,31 @@ This makes diffs to prose easier to review,
 since editing one sentence doesn't reflow unrelated lines.
 The 100-character line length (see Linting below) is a hard cap, not a target to fill.
 
+### Prose That Ages Well
+
+Stale prose is worse than no prose. When writing comments, docstrings, or other prose, avoid:
+
+- **Describing callers.** Don't note how other code uses a function or class.
+  That's the caller's concern, and the remark silently rots when the caller changes.
+- **Describing history.** Don't explain what the code used to do or how it changed.
+  The current code should speak for itself; history belongs in commit messages.
+- **Implementation details in docstrings.** Document the contract (how to use something),
+  not how it works internally.
+- **Line-number references.** They break as soon as the file changes.
+  Point to a function, class, or file name instead.
+- **Restating the code.** A comment should say something the code doesn't already say
+  (the reason, the invariant, the non-obvious constraint) not paraphrase the next line.
+  A purely redundant comment isn't wrong, so nothing forces it to be updated,
+  and it drifts out of sync silently.
+- **Repetitive and duplicate comments.**
+  If a remark is repeated in multiple places, it will rot in one place when updated in another.
+  Factor out the common remark into a single function or class docstring, or a Markdown file in `docs/`.
+- **Timeless phrasing for point-in-time claims.** An empirical observation about an external
+  tool or environment (e.g. "SQLite's planner never picks this index") can stop being true
+  after a version upgrade, with nothing to flag the comment as outdated.
+  Say what was observed and, when it matters, on what
+  (e.g. "as of SQLite 3.45, measured separately").
+
 ### Linting (ruff)
 
 Do not add `# noqa` comments unless the violation is a genuine false positive that cannot

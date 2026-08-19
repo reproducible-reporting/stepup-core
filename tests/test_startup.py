@@ -174,14 +174,14 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
     """A restart-detected nglob change (files added/removed while the director was not
     running) must persist matches in the same format later reads expect.
 
-    Regression test: `check_nglob_changes` used to persist the freshly scanned matches
-    with `pickle.dumps`, while every read path (`Workflow.nglobs`, `Step.nglobs`,
-    `browse.py`) expects the `nglob.data` column to hold JSON, via `json_converter`
-    (see `stepup.core.cattrs`). That mismatch was invisible in the integration examples,
-    because the owning step (typically the perpetually-rerunning `PLAN` step) usually
-    re-registers its nglob with correct JSON before anything reads the row again -- but a
-    read in that window (e.g. a concurrent `stepup graph`, or a step that doesn't rerun
-    immediately) would hit a `json.JSONDecodeError` on the pickled bytes.
+    Every read path (`Workflow.nglobs`, `Step.nglobs`, `browse.py`) expects the
+    `nglob.data` column to hold JSON, via `json_converter` (see `stepup.core.cattrs`), so
+    `check_nglob_changes` must persist with the same encoding rather than `pickle.dumps`.
+    A mismatch would be invisible in the integration examples, because the owning step
+    (typically the perpetually-rerunning `PLAN` step) usually re-registers its nglob with
+    correct JSON before anything reads the row again -- but a read in that window (e.g. a
+    concurrent `stepup graph`, or a step that doesn't rerun immediately) would hit a
+    `json.JSONDecodeError` on the pickled bytes.
     """
     with contextlib.chdir(tmpdir):
         with open("inp1.txt", "w"):

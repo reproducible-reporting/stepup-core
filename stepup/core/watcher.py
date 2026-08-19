@@ -112,9 +112,10 @@ class Watcher:
     """
 
     files_changed_events: set[asyncio.Event] = attrs.field(init=False, factory=set)
-    """Event set to True when a relevant file event was recorded.
+    """Events registered by callers waiting for the next relevant file change.
 
-    This is used by the watch_update and watch_delete functions.
+    Every event in this set is set() whenever a relevant change is recorded.
+    A waiter adds its own event before waiting and discards it afterward.
     """
 
     async def loop(self, stop_event: asyncio.Event):

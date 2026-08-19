@@ -946,10 +946,9 @@ def test_build_tool_tui_error_prints_short_message(
 def test_boot_tool_propagates_return_code(monkeypatch: pytest.MonkeyPatch) -> None:
     """`_deprecated_boot_tool` must return what `_build_tool` returned, not swallow it.
 
-    Regression guard: a bare `_build_tool(args)` call (no `return`) was harmless only
-    because `_build_tool` used to always exit via `sys.exit` and never actually return.
-    Now that it returns a value, forgetting the `return` here would make `stepup boot`
-    silently exit 0 regardless of the actual outcome.
+    Regression guard: `_build_tool` returns a value instead of always exiting via
+    `sys.exit`, so a bare `_build_tool(args)` call (no `return`) here would make
+    `stepup boot` silently exit 0 regardless of the actual outcome.
     """
     monkeypatch.setattr("stepup.core.tui._build_tool", lambda args: 42)
     assert _deprecated_boot_tool(argparse.Namespace()) == 42
@@ -1097,9 +1096,9 @@ def test_keyboard_reports_unreachable_director(
     """A keystroke sent while the director's socket does not exist is reported, not raised.
 
     Regression test: `AsyncRPCClient.socket` raises `FileNotFoundError` (or
-    `ConnectionRefusedError`) in the ordinary shutdown window, and nothing used to catch
-    it at the per-keystroke connect, so it escaped `keyboard`, `asyncio.gather`, and
-    `_build_tool`'s `except TUIError`, surfacing as a traceback instead of the exit code.
+    `ConnectionRefusedError`) in the ordinary shutdown window. Catching it at the
+    per-keystroke connect keeps it from escaping `keyboard`, `asyncio.gather`, and
+    `_build_tool`'s `except TUIError` as a traceback instead of the exit code.
     """
     monkeypatch.setattr("stepup.core.tui._iter_keystrokes", _fixed_keystrokes(["r"]))
     fake_reporter_handler = FakeReporterHandler()
@@ -1342,10 +1341,10 @@ def test_async_build_director_spawn_failure_does_not_hang(
 ) -> None:
     """A director that fails to spawn must surface as an error, not hang forever.
 
-    Regression test: `stop_event.set()` used to be the last statement of the `try`
-    block, so an exception raised earlier (e.g. the director subprocess failing to
-    spawn) left the reporter RPC server task waiting on `stop_event.wait()` forever,
-    and the `finally` block's `asyncio.gather(*tasks)` never returned.
+    Regression guard: if `stop_event.set()` were the last statement of the `try` block,
+    an exception raised earlier (e.g. the director subprocess failing to spawn) would
+    leave the reporter RPC server task waiting on `stop_event.wait()` forever, and the
+    `finally` block's `asyncio.gather(*tasks)` would never return.
     """
     (path_tmp / "plan.py").touch()
 
@@ -1384,9 +1383,9 @@ def test_async_build_stops_reporter_on_nonzero_exit(
 ) -> None:
     """A director exiting with a positive, non-signal code must still stop the reporter.
 
-    Regression test: `reporter_handler.shutdown()` used to be called only when the
-    director was killed by a signal (`returncode < 0`), leaving the `Live` display
-    running and the cursor hidden after any other non-clean director exit.
+    Regression guard: calling `reporter_handler.shutdown()` only when the director was
+    killed by a signal (`returncode < 0`) would leave the `Live` display running and the
+    cursor hidden after any other non-clean director exit.
     The call is idempotent, so the exact number of calls is irrelevant.
     """
     (path_tmp / "plan.py").touch()
@@ -1430,8 +1429,9 @@ def test_async_build_stops_reporter_on_spawn_failure(
 ) -> None:
     """An exception on the way to the director must still restore the terminal.
 
-    The `finally` block used to only set `stop_event`, which does not stop the `Live`
-    display, so an exception raised inside the `try` left the cursor hidden.
+    Regression guard: merely setting `stop_event` in the `finally` block does not stop
+    the `Live` display, so an exception raised inside the `try` would leave the cursor
+    hidden.
     """
     (path_tmp / "plan.py").touch()
     fake_reporter_handler = FakeReporterHandler()

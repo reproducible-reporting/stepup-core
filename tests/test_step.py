@@ -197,8 +197,8 @@ def test_set_state_deferred_rejects_non_pending_state(con):
     """`deferred=True` combined with a state other than PENDING is rejected by the
     step table's deferred/state CHECK constraint (see STEP_SCHEMA).
 
-    `Step.set_state()` used to raise `ValueError` for this in Python; it no longer
-    duplicates the check, so this is now only caught at the database level.
+    `Step.set_state()` does not duplicate this check in Python, so it is caught only
+    at the database level.
     """
     _insert_step(con, 2, 1)
     step_a = _make_step(con, 2)

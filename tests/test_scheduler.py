@@ -2153,25 +2153,26 @@ async def test_child_of_running_step_dispatched_as_soon_as_created(wfp: Workflow
     """A step created by an already-RUNNING creator is dispatched right away, as soon as its
     own inputs are ready, without waiting for the creator to settle into a new state.
 
-    Regression test for a bug where `_safe` was only (re)computed for a step's *existing*
-    children when the creator's own `_check_safe` flag was processed by `_update_meta_safe()`.
-    A step's `_check_safe` flag is set once, at the moment it is dispatched to RUNNING, and
-    used to be cleared by the very next `_update_meta_safe()` pass (which the builder runs on
-    every `pop_runnable_job()` call) -- typically well before the creator's script has had a
-    chance to create any children. When the creator then created a *new* child while
-    remaining RUNNING (the common case for a `plan.py` calling `step()`), nothing re-flagged
-    the creator's `_check_safe`, so the new child's `_safe` was never (re)computed from the
-    creator's RUNNING state until the creator transitioned state again (typically on
-    completion). `SELECT_SAFE_UPDATE` now seeds its recursive walk one level up, at each
-    flagged step's *creator*, using the creator's own already-computed `_safe`/state, so a
-    freshly created child's own `_safe` is derived the moment *it* is flagged (at creation),
+    `SELECT_SAFE_UPDATE` seeds its recursive walk one level up, at each flagged step's
+    *creator*, using the creator's own already-computed `_safe`/state, so a freshly
+    created child's own `_safe` is derived the moment *it* is flagged (at creation),
     regardless of whether its creator is flagged in the same pass.
+
+    A step's `_check_safe` flag is set once, at the moment it is dispatched to RUNNING,
+    and is cleared by the very next `_update_meta_safe()` pass (which the builder runs on
+    every `pop_runnable_job()` call) -- typically well before the creator's script has had
+    a chance to create any children. Seeding the walk only at the flagged step itself,
+    instead of one level up at its creator, would miss a *new* child created while the
+    creator remains RUNNING (the common case for a `plan.py` calling `step()`): nothing
+    would re-flag the creator's `_check_safe`, so the new child's `_safe` would never be
+    (re)computed from the creator's RUNNING state until the creator transitioned state
+    again (typically on completion).
     """
     scheduler = Scheduler(wfp, db=wfp.db)
     await scheduler.initialize(None)
 
-    # Unlike the real boot step (created with `safe=True` in `Workflow.__init__`, see
-    # `workflow.py:217`), the `wfp` fixture defines "./plan.py" without it, so it starts
+    # Unlike the real boot step (created with `safe=True` in `Workflow.__init__`),
+    # the `wfp` fixture defines "./plan.py" without it, so it starts
     # with `_safe=0` like any other step. Root has no `step` row, so `_update_meta_safe()`
     # can never derive the boot step's own `_safe` from its creator. Bring it in line with
     # the real bootstrap so the scheduler can dispatch it in the first place.

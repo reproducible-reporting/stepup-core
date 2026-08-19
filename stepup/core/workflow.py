@@ -116,10 +116,9 @@ CREATE TEMP TABLE IF NOT EXISTS node_list (i INTEGER PRIMARY KEY) WITHOUT ROWID;
 
 
 # Find the UNCONFIRMED inputs of a step whose creator is a static tree.
-# No recursion through the dependency graph is needed:
-# file-to-file dependency edges no longer exist
-# since directory nodes were removed from the graph (schema version 5),
-# so a step's unconfirmed inputs are always among its direct inputs.
+# No recursion through the dependency graph is needed: a dependency edge always connects
+# a file and a step (dependency_check_kinds_ins enforces this), so a step's unconfirmed
+# inputs are always among its direct inputs.
 UNCONFIRMED_INPUTS = f"""
 SELECT node.i, node.label FROM node
 JOIN node AS cnode ON node.creator = cnode.i
@@ -191,12 +190,11 @@ _HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState
     # file's existence changed on disk between them. Trust the later report.
     (HashUpdateCause.CONFIRMED, FileState.MISSING, True): (FileState.CONFIRMED, "completed"),
     (HashUpdateCause.CONFIRMED, FileState.CONFIRMED, False): (FileState.MISSING, "deleted"),
-    # startup.py's scan_file_changes no longer relies on these: it confirms stray
-    # UNCONFIRMED rows directly via CONFIRMED above, changed or not. Kept as a defensive
-    # fallback for Watcher.watch_changes, whose EXTERNAL regen loop is not known to be
-    # unreachable for a non-detached UNCONFIRMED file (Workflow.change_is_relevant() does not
-    # exclude UNCONFIRMED, only PLANNED/VOLATILE) even though it is not expected to hit
-    # one in normal operation.
+    # A stray UNCONFIRMED row is normally confirmed directly via CONFIRMED above, changed or
+    # not. These two entries are a defensive fallback: Watcher.watch_changes's EXTERNAL regen
+    # loop is not known to be unreachable for a non-detached UNCONFIRMED file
+    # (Workflow.change_is_relevant() does not exclude UNCONFIRMED, only PLANNED/VOLATILE),
+    # even though hitting one is not expected in normal operation.
     (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, True): (FileState.CONFIRMED, "updated"),
     (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, False): (FileState.MISSING, "deleted"),
 }
@@ -265,9 +263,8 @@ Only the way out, never a restatement of the collision:
 def _static_tree_file_message(tree_path: str, path: str) -> str:
     """Format the error for a static file declaration colliding with a static tree.
 
-    Both directions produce this exact text: `_declare_file` raises it when the tree
-    was declared first, `register_static_tree` when the file was. A byte-identical
-    message is what makes the diagnostic independent of execution order.
+    Whichever of the two declarations comes second must produce this exact text:
+    a byte-identical message is what makes the diagnostic independent of execution order.
 
     Parameters
     ----------
@@ -331,9 +328,8 @@ def _creator_phrase(kind: str, label: str) -> str:
     Raises
     ------
     ConsistencyError
-        When the creator is of any other kind.
-        A static tree is intercepted by `_claim_collision_message`, which phrases a collision with
-        a tree in terms of its ownership, so no plan can get one here.
+        When the creator is of any other kind, which is a bug in StepUp:
+        only a step and the root node are things a plan author can be pointed at.
     """
     if kind == "step":
         return f"step ({label})"
@@ -370,10 +366,9 @@ def _file_collision_message(
     Raises
     ------
     ConsistencyError
-        When both declarations are identical.
-        Such a declaration is a no-op that the caller must have skipped:
-        `define_step` dedupes its output paths, while `declare_static_files` and `amend_step`
-        skip what the creator already declared in the same role.
+        When both declarations are identical, which is a bug in StepUp:
+        redeclaring a file in the same role by the same creator is a no-op,
+        not a collision, and must be skipped before reaching here.
     """
     (role1, creator1), (role2, creator2) = sorted([decl_a, decl_b])
     verb1 = _FILE_ROLE_VERBS[role1]
@@ -462,9 +457,6 @@ def _raise_if_out_and_vol(
     creator_phrase: str, out_paths: Collection[str], vol_paths: Collection[str]
 ) -> None:
     """Raise when the same path is declared as a regular and as a volatile output.
-
-    The two declarations are made by the same creator in the same call, so neither is in
-    the graph yet and the claim guards above cannot see them.
 
     Parameters
     ----------
@@ -1109,8 +1101,8 @@ class Workflow(Trellis):
         Marking it pending now is what makes the recycled step reconsider itself.
 
         This is why all three follow-up actions of `update_file_hashes` route through here:
-        the two `handle_external_*` methods used to mark only attached sinks pending,
-        which left exactly that stale-recycle hole for externally changed or deleted inputs.
+        marking only attached sinks pending would leave exactly this stale-recycle hole
+        open for externally changed or deleted inputs.
         """
         for step in file.sinks(Step, include_detached=True):
             self.mark_step_pending(step)

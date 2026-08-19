@@ -311,10 +311,6 @@ def query_director_log(director_log: Path) -> tuple[Path | None, int | None, str
 
     This is the single place that reads the header lines
     which `async_main` in `director.py` writes to `DIRECTOR_LOG`.
-    It is used by `get_socket` in `interact.py`,
-    which waits until a live director advertises its socket,
-    and by the stale-socket check in `tui.py`,
-    which refuses to start a build while a previous director's socket still exists.
 
     Parameters
     ----------

@@ -141,7 +141,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
         exist as a tree before `other/file.txt` is checked against it, and for
         `static("data/", "data/sub/")`, where the parent tree must be registered before
         a nested one.
-        It no longer decides the outcome of mixing a tree with a file it contains:
+        It does not decide the outcome of mixing a tree with a file it contains:
         a single call declaring both is a no-op in either argument order, the same as
         declaring them in two separate calls in either order.
 
@@ -175,7 +175,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     at the time this function is called, not when the step is executed.
 
     A glob metacharacter (`*`, `?`, `[`) in a literal argument is significant: a file
-    named `table[1].csv` can no longer be declared by spelling it out, since the
+    named `table[1].csv` cannot be declared by spelling it out, since the
     argument is read as a pattern. Use `glob.escape()` from the standard library
     (`glob.escape("table[1].csv")`) to declare such a file by name.
 

@@ -314,9 +314,8 @@ WHERE req.node = node.i
 # STEP_DISPATCH_WHERE) in priority order and stops at the first eligible row, instead of
 # materializing and sorting the whole PENDING candidate set on every dispatch. That is only
 # possible because step._has_hash and step._ready are materialized, trigger-maintained
-# columns (see STEP_SCHEMA and Scheduler._update_meta_ready/RECOMPUTE_READY) -- the
-# correlated UNAVAILABLE_INPUT/step_hash EXISTS checks this query used to run per candidate
-# row are gone from here entirely.
+# columns (see STEP_SCHEMA and Scheduler._update_meta_ready/RECOMPUTE_READY), so this query
+# needs no correlated UNAVAILABLE_INPUT/step_hash EXISTS check per candidate row.
 #
 # node.detached and the resource check are intentionally NOT part of step_dispatch's WHERE
 # clause (a partial index can only reference columns of the indexed table), so they are

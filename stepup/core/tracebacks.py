@@ -65,8 +65,7 @@ def print_step_traceback(exc: BaseException, file: TextIO) -> None:
 def install_excepthook() -> None:
     """Install a `sys.excepthook` that shortens tracebacks of uncaught exceptions.
 
-    This is called by `stepup.core.api` at import time,
-    but only when the module is imported by a step running under a director.
+    Intended for a step's process, and only when it runs under a director.
     Anything the hook does not shorten is passed on to the previously installed hook,
     so a `python plan.py` run outside StepUp keeps the behavior it would otherwise have.
     Calling this more than once is a no-op.

@@ -193,10 +193,8 @@ class StepUpProgressBar(ProgressBar):
     def request_refresh(self, delay: float = PROGRESS_REFRESH_DELAY):
         """Schedule a refresh, coalescing with any refresh already pending.
 
-        This coalesces bursts of progress-relevant events into a single delayed `refresh()` call,
+        Coalesces bursts of progress-relevant events into a single delayed `refresh()` call,
         instead of repainting the terminal on every event.
-        It is also used by `do_refresh` to keep ticking at `PROGRESS_REFRESH_INTERVAL`
-        while steps are running, so their elapsed times stay current on screen.
         """
         if self._refresh_handle is None:
             loop = asyncio.get_running_loop()
@@ -205,8 +203,7 @@ class StepUpProgressBar(ProgressBar):
     def do_refresh(self):
         """Perform an immediate refresh of the progress bar.
 
-        This is called by `request_refresh` after the coalescing delay,
-        or by functions that need an immediate refresh outside that delay.
+        Bypasses any pending coalesced delay.
         """
         if self._refresh_handle is not None:
             self._refresh_handle.cancel()

@@ -629,8 +629,8 @@ class Trellis:
     def _check_consistency(self):
         """Check whether the graph satisfies all constraints."""
         # Root-node facts (id 1, self-creating, never detached, empty label) and non-root
-        # self-creation are enforced by CHECK constraints on the node table, so they no longer
-        # need a Python-side check here.
+        # self-creation are enforced by CHECK constraints on the node table,
+        # so no Python-side check is needed here.
         sql = (
             "SELECT node.i, node.kind, node.label, node.creator, node.detached, cnode.detached "
             "FROM node LEFT JOIN node AS cnode ON node.creator = cnode.i"

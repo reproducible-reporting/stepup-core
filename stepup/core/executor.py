@@ -76,13 +76,12 @@ class NoOverwriteDict(dict):
 class Executor:
     """Run steps in the director process as asyncio tasks.
 
-    One shared instance serves all concurrent steps.
-    The external API is used as follows:
+    One shared instance serves all concurrent steps. Its external API:
 
-    - The methods `validate_dynamic_job`, `try_skip_job` and `execute_job`
-      are the coroutines created by the builder for each job.
-    - `defer` is called from `director.py`
-    - `interrupt` is called from `builder.py`.
+    - `validate_dynamic_job`, `try_skip_job` and `execute_job` are the coroutines
+      created for each job.
+    - `defer` marks a running job as deferred for later execution.
+    - `interrupt` signals every currently running job.
     """
 
     # References to other StepUp components.

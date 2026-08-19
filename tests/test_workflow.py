@@ -2544,9 +2544,9 @@ async def test_static_tree_then_static_file_hands_over(wfp: Workflow):
 async def test_static_tree_then_static_file_raises_other_creator(wfp: Workflow):
     """The tree-first order raises for a foreign creator.
 
-    This is the centrepiece of the phase: previously this order was a silent no-op
-    regardless of which step declared the file, so whether an independent plan's build
-    succeeded could depend on which of two plans ran first. Now both orders raise; see
+    Both `static("data/")`-then-`static("data/foo.txt")` and the reverse order raise,
+    regardless of which step declared the file, so an independent plan's build outcome
+    cannot depend on which of two plans ran first. See
     `test_static_file_then_static_tree_raises_other_creator` for the reverse order and
     `test_static_tree_conflict_same_message_both_orders` for the message equality.
     """
@@ -2982,7 +2982,7 @@ async def test_static_tree_race_condition(wfp: Workflow):
     """Two steps race to be the first to use the same static-tree file as input.
 
     Both `define_step` calls happen before either confirmation is processed, so both
-    are told to check and confirm the file. The second confirmation to arrive used to
+    are told to check and confirm the file. The second confirmation to arrive must not
     crash with `Unexpected file hash update: cause=CONFIRMED ... state=FileState.CONFIRMED`.
     """
     async with wfp.db:
@@ -3029,9 +3029,8 @@ async def test_static_tree_same_creator_file_and_subdir_both_no_op(wfp: Workflow
 async def test_static_tree_glob_owns_nothing(wfp: Workflow):
     """A `glob()` pattern matching inside another step's static tree is not a collision.
 
-    After Phase 2, `register_nglob` no longer declares its matches, so there is nothing
-    for the tree to conflict with (README open question 3): the pattern is accepted
-    even though `sub`, not `plan`, registers it.
+    As of Phase 2, `register_nglob` declares nothing, so there is nothing for the tree
+    to conflict with: the pattern is accepted even though `sub`, not `plan`, registers it.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -3395,7 +3394,7 @@ async def test_hash_update_external_unconfirmed(wfp: Workflow):
     """Drive the (EXTERNAL, UNCONFIRMED, True/False) rows, a defensive fallback.
 
     `scan_file_changes` (Phase 2) resolves stray UNCONFIRMED rows via CONFIRMED at startup,
-    so this EXTERNAL/UNCONFIRMED path should no longer be reachable there in practice.
+    so this EXTERNAL/UNCONFIRMED path is not expected to be reachable there in practice.
     It is kept as a defensive fallback (see the comment on these entries in
     `_HASH_TRANSITIONS`) in case a non-detached UNCONFIRMED file ever survives into a
     watch phase, whose own hashing loop uses EXTERNAL.
@@ -3419,7 +3418,7 @@ async def test_hash_update_external_unconfirmed(wfp: Workflow):
 async def test_step_completed_succeeds_with_unconfirmed_product(wfp: Workflow):
     """Step.mark_completed() must accept a step whose declared static file is still UNCONFIRMED.
 
-    Since hash confirmation is fire-and-forget (Phase 3), this is now a normal state, not a
+    Since hash confirmation is fire-and-forget (Phase 3), this is a normal state, not a
     protocol violation: the confirming hash job may still be queued or in flight when the
     declaring step completes. A consumer of the file cannot become runnable before the hash
     job resolves it (the scheduler's UNCONFIRMED-is-not-ready gate), and a stray UNCONFIRMED
@@ -4597,7 +4596,7 @@ async def test_need_threshold_property_with_target_dirs_only():
 
 async def test_define_step_rejects_need_target(wfp: Workflow):
     # need=Need.TARGET is rejected by the step table's need CHECK constraint (see
-    # STEP_SCHEMA); Workflow.define_step() no longer duplicates this check in Python.
+    # STEP_SCHEMA); Workflow.define_step() does not duplicate this check in Python.
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
     with pytest.raises(sqlite3.IntegrityError):
@@ -4708,8 +4707,8 @@ async def test_need_column_check_rejects_target(wfp: Workflow):
 async def test_node_creator_kind_check_rejects_file_creator_for_file(wfp: Workflow):
     """A `file` node's creator must be a step, static tree or root, not another file.
 
-    This used to be rejected by `Workflow._check_creator` in Python; it is now only
-    caught by the `node_check_creator_kind_ins` trigger (WORKFLOW_SCHEMA, workflow.py).
+    Only the `node_check_creator_kind_ins` trigger (WORKFLOW_SCHEMA, workflow.py) enforces
+    this; `Workflow` does not duplicate the check in Python.
     """
     async with wfp.db:
         file_plan = wfp.find(File, "plan.py")
@@ -4747,8 +4746,8 @@ async def test_node_creator_kind_check_rejects_on_update(wfp: Workflow):
 async def test_dependency_kind_check_rejects_file_to_file(wfp: Workflow):
     """A file -> file dependency edge is not one of the three allowed kind combinations.
 
-    This used to be rejected by `Workflow._check_source` in Python; it is now only caught
-    by the `dependency_check_kinds_ins` trigger (WORKFLOW_SCHEMA, workflow.py).
+    Only the `dependency_check_kinds_ins` trigger (WORKFLOW_SCHEMA, workflow.py) enforces
+    this; `Workflow` does not duplicate the check in Python.
     """
     async with wfp.db:
         file_a = wfp.create(File, None, "a.txt", state=FileState.MISSING)

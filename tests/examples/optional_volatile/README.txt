@@ -11,6 +11,6 @@ VOLATILE is the only state in its role,
 so resetting it would migrate it into the BUILT role,
 where `Step.out_paths()` counts it as a regular output of the step.
 
-The third phase restores the consumer within the same director session,
-which is the window where the wrong state used to be observable:
-the step becomes needed again without being redeclared.
+The third phase restores the consumer within the same director session: the step
+becomes needed again without being redeclared, which is the window where a stale
+state would be observable.

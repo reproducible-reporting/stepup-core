@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS step (
     -- added and one of the (then six-plus) sub-expressions is miscopied.
     CHECK (_safe_ignoring_hold >= _safe),
     -- A step can only be deferred while it is PENDING (see StepState.PENDING). This is the
-    -- sole enforcement of that rule: Step.set_state() no longer duplicates it in Python.
+    -- sole enforcement of that rule: Step.set_state() must not duplicate it in Python.
     -- Every write path that changes state also writes deferred in the same statement
     -- (Step.set_state defaults it to False; the trigger-driven clears below only ever move
     -- it to False), so this never goes transiently false mid-statement.
