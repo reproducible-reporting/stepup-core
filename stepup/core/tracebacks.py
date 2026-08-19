@@ -1,11 +1,11 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Print a step's traceback without StepUp's own frames.
+"""Print a step's traceback without the frames that only show how StepUp launched it.
 
 When a step fails, the frames that matter are the user's.
 The frames that launched the step (`_forkserver_entry`, `runpy`, ...) never do,
 and StepUp's own frames only matter when the failure is a StepUp bug.
-This module removes the former always and the latter only for a `UsageError`,
+This module always removes the former, and removes the latter only for a `UsageError`,
 which is by definition a mistake in the user's code rather than in StepUp.
 
 There are two entry points, because there are two ways a step's exception gets printed:
@@ -46,7 +46,7 @@ LAUNCHER_MODULES = frozenset(["runpy", "importlib._bootstrap", "importlib._boots
 
 
 def print_step_traceback(exc: BaseException, file: TextIO) -> None:
-    """Print the traceback of a failed step, with StepUp's own frames removed.
+    """Print the traceback of a failed step, with the uninteresting frames removed.
 
     Parameters
     ----------
@@ -92,7 +92,7 @@ def install_excepthook() -> None:
 def _shorten(exc: BaseException) -> str | None:
     """Format an exception with the uninteresting frames removed.
 
-    Only the traceback of *exc* itself is filtered.
+    Only the traceback of `exc` itself is filtered.
     A chained exception (`__cause__` or `__context__`) keeps all its frames,
     as its stack was not built by StepUp's step-launching machinery.
 
@@ -115,7 +115,8 @@ def _shorten(exc: BaseException) -> str | None:
         return None
     tbe = traceback.TracebackException(type(exc), exc, exc.__traceback__, compact=True)
     if len(tbe.stack) != len(keep):
-        # The two are 1:1 in practice. They can only diverge through `sys.tracebacklimit`,
+        # The two are 1:1 in practice.
+        # They can only diverge through `sys.tracebacklimit`,
         # in which case the flags computed from the traceback chain no longer line up
         # and stock formatting is the only safe option.
         return None
@@ -131,14 +132,14 @@ def _shorten(exc: BaseException) -> str | None:
 
 
 def _mark_shortened(parts: list[str], tbe: traceback.TracebackException) -> list[str]:
-    """Tell the reader that frames are missing, by amending the header line if there is one.
+    """Tell the reader that frames are missing, by amending the header line or appending a footer.
 
     Parameters
     ----------
     parts
         The parts of the formatted traceback, as returned by `TracebackException.format`.
     tbe
-        The exception the parts were formatted from, with its stack already filtered.
+        The formatted exception's traceback, with its stack already filtered.
 
     Returns
     -------
@@ -174,7 +175,7 @@ def _keep_frames(exc: BaseException) -> tuple[list[bool], bool]:
         Whether a StepUp frame was dropped,
         i.e. whether the user is being shown less than the interpreter would show.
         Dropped launcher frames do not count:
-        they carry nothing a user could want back.
+        they carry nothing a user would want restored.
     """
     usage = isinstance(exc, UsageError)
     keep = []
@@ -199,8 +200,8 @@ def _keep_frames(exc: BaseException) -> tuple[list[bool], bool]:
 def _is_launcher_frame(frame: types.FrameType, outermost: bool) -> bool:
     """Test whether a frame belongs to the machinery that starts a step.
 
-    These frames are dropped for every exception type, also for a plain bug in the user's
-    code: they say only that StepUp ran the script, which the user's own frames already imply.
+    These frames are dropped for every exception type, even for a plain bug in the user's code:
+    they say only that StepUp ran the script, which the user's own frames already imply.
 
     Parameters
     ----------
@@ -226,7 +227,7 @@ def _is_stepup_frame(frame: types.FrameType) -> bool:
     """Test whether a frame belongs to StepUp or one of its extensions.
 
     The module name is used instead of the file name, because it is exact
-    and covers extension packages such as `stepup.reprep` without further ado.
+    and covers extension packages such as `stepup.reprep` without special-casing.
     """
     module_name = frame.f_globals.get("__name__")
     return module_name is not None and module_name.partition(".")[0] == "stepup"

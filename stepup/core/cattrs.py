@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""StepUp instances of cattrs converters and related utilities."""
+"""cattrs converters preconfigured for StepUp, and the hooks they register."""
 
 import cattrs.preconf.json
 import cattrs.preconf.pyyaml
@@ -53,8 +53,11 @@ def _register_nglob_hooks(converter):
 
 
 json_converter = cattrs.preconf.json.make_converter()
-yaml_converter = cattrs.preconf.pyyaml.make_converter()
 
 _register_path_hooks(json_converter)
-_register_path_hooks(yaml_converter)
 _register_nglob_hooks(json_converter)
+
+yaml_converter = cattrs.preconf.pyyaml.make_converter()
+
+_register_path_hooks(yaml_converter)
+_register_nglob_hooks(yaml_converter)

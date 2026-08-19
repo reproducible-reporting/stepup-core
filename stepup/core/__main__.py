@@ -25,7 +25,7 @@ __all__ = ("main", "sb_main")
 
 
 SHOW_CONFIG = "show-config"
-"""The subcommand that runs despite a broken configuration, because it explains it."""
+"""The subcommand that runs despite a broken configuration, because it reports what is wrong."""
 
 
 def main():
@@ -43,7 +43,7 @@ def main():
 
 
 def _main():
-    """Parse the command line and run the requested subcommand, if the configuration allows it."""
+    """Parse the command line and run the requested subcommand if the configuration allows it."""
     parser, tool_funcs, loader = build_parser()
     args = parser.parse_args()
     tool_func = tool_funcs.get(args.tool)
@@ -77,7 +77,8 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Callable], Config
     tool_funcs
         The function implementing each subcommand, keyed by subcommand name.
     loader
-        The configuration loader, patched into every parser.
+        The configuration loader,
+        patched into the top-level parser and passed to every subcommand.
         Call `ConfigLoader.check` on it to find out what is wrong with the configuration.
     """
     # Configuration loader

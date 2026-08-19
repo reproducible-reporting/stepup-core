@@ -6,7 +6,7 @@
 ───────────────────────────── Missing output files ─────────────────────────────
 out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   compact ➜ explained, inp_digest 46ace8b8, out_digest b19341b7 ➜ a23c0e47
+Modified step hash   compact ➜ explained, inp_digest ef2a8879, out_digest b19341b7 ➜ a23c0e47
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p inp.txt out.txt
  SUCCESS │ cp -p inp.txt out.txt

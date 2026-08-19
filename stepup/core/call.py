@@ -1,13 +1,8 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Dispatch decorator and driver for scripts invoked by `call()`.
+"""Dispatch driver for scripts invoked by `call()`.
 
-The `driver` is the explicit entry point: add it to every worker script called via `call()`:
-
-```python
-if __name__ == "__main__":
-    driver()
-```
+The `driver()` function is the explicit entry point.
 """
 
 import argparse
@@ -36,8 +31,9 @@ def driver() -> None:
         driver()
     ```
 
-    When invoked with no function argument, `driver()` prints one suggested command
-    per callable function and exits, which is useful for discovery.
+    When invoked with no function argument,
+    `driver()` prints one suggested command line per function the script exposes,
+    which is useful for discovery.
     """
     ns = inspect.currentframe().f_back.f_globals
     script_path = ns.get("__file__", sys.argv[0])
@@ -49,6 +45,7 @@ def driver() -> None:
 
 
 def _parse_args(script_path: str) -> argparse.Namespace:
+    """Parse command line arguments for `driver()`."""
     parser = argparse.ArgumentParser(
         prog=script_path,
         description="Dispatch a function by name.",
@@ -70,7 +67,8 @@ def _parse_args(script_path: str) -> argparse.Namespace:
         dest="path_inp",
         default=None,
         metavar="PATH",
-        help="Path to a JSON/YAML file of kwargs (mutually exclusive with positional JSON).",
+        help="Path to a Python, JSON, TOML or YAML file of keyword arguments "
+        "(mutually exclusive with positional JSON).",
     )
     args = parser.parse_args()
     if args.json_inp is not None and args.path_inp is not None:
@@ -79,6 +77,7 @@ def _parse_args(script_path: str) -> argparse.Namespace:
 
 
 def _dispatch(script_path: str, obj: dict[str, Any], args: argparse.Namespace) -> None:
+    """Dispatch a function by name with keyword arguments from JSON or a file."""
     fn = obj.get(args.function)
     if fn is None or not callable(fn):
         raise AttributeError(f"{script_path} does not define a function '{args.function}'")
@@ -110,6 +109,7 @@ def _dispatch(script_path: str, obj: dict[str, Any], args: argparse.Namespace) -
 def _structure_kwargs(
     kwargs: dict[str, Any], hints: dict[str, Any], script_path: str
 ) -> dict[str, Any]:
+    """Structure keyword arguments according to type hints."""
     result = {}
     for k, v in kwargs.items():
         ann = hints.get(k)
@@ -126,6 +126,7 @@ def _structure_kwargs(
 
 
 def _print_list(script_path: str, ns: dict[str, Any]) -> None:
+    """Print one suggested command line per callable function in the script."""
     if "__all__" in ns:
         registry = {name: fn for name, fn in ns.items() if name in ns["__all__"] and callable(fn)}
     else:
@@ -152,5 +153,6 @@ def _print_list(script_path: str, ns: dict[str, Any]) -> None:
 
 
 def _short_path(script_path: str) -> str:
+    """Return a short relative path to the script."""
     rel = Path(script_path).relpath()
     return rel if os.sep in rel else "." / rel

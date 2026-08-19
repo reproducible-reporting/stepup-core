@@ -2,16 +2,18 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Root-cause analysis of `PENDING` steps left over at the end of a build phase.
 
-Printing one page per pending step is `O(pending steps)`, which in a realistic workflow
-means thousands of near-identical pages: one missing input file can leave hundreds of
-steps pending, all for the same underlying reason. `analyze_pending` instead identifies
-the small set of **root causes** (unavailable input files, unsatisfiable resources,
-failed producers, ...) and, for each one, how many pending steps it transitively blocks.
+Printing one page per pending step is `O(pending steps)`,
+which in a realistic workflow means thousands of near-identical pages:
+one missing input file can leave hundreds of steps pending,
+all for the same underlying reason.
+`analyze_pending` instead identifies the small set of **root causes**
+(unavailable input files, unsatisfiable resources, failed producers, ...)
+and, for each one, how many pending steps it transitively blocks.
 The result (`PendingSummary`) is fixed-size, independent of how many steps are pending.
 
-The step-level predicate for "this input blocks that step" (`UNAVAILABLE_INPUT_WHERE` in
-`step.py`) is shared verbatim with the scheduler's dispatch query, so this analysis can
-never disagree with dispatch about what "blocked" means.
+The step-level predicate for "this input blocks that step"
+(`UNAVAILABLE_INPUT_WHERE` in `step.py`) is shared verbatim with the scheduler's dispatch query,
+so this analysis can never disagree with dispatch about what "blocked" means.
 """
 
 from collections.abc import Sequence
@@ -38,15 +40,18 @@ MAX_ROWS = 10
 RANK_POOL = 20
 """Number of roots kept (ranked by attributed count) before the exact-count pass.
 
-Wider than `MAX_ROWS` so that a root whose attributed count under-represents it (because
-ties were broken in some other root's favour, see the `Counting` note on `analyze_pending`)
+Wider than `MAX_ROWS` so that a root whose attributed count under-represents it
+(because ties were broken in some other root's favour,
+see the `Ranking and exact counts` section below)
 still has a chance to surface once its *exact* count is known.
 """
 
-# Root kinds, ordered by priority: lower wins when a step has candidate blockers of more
-# than one kind (see the ORDER BY in _INSERT_PEND_BLOCKER below). Root kinds always win
-# over a step->step edge (BLOCK_STEP), so a step directly blocked by (say) a dead-end file
-# is attributed to that file rather than to whichever sibling pending step sorts first.
+# Root kinds, ordered by priority:
+# lower wins when a step has candidate blockers of more than one kind
+# (see the ORDER BY in _INSERT_PEND_BLOCKER below).
+# Root kinds always win over a step->step edge (BLOCK_STEP),
+# so a step directly blocked by (say) a dead-end file is attributed to that file
+# rather than to whichever sibling pending step sorts first.
 ROOT_FILE, ROOT_RESOURCE, ROOT_FAILED = 0, 1, 2
 ROOT_DEFERRED, ROOT_OTHER, ROOT_RUNNABLE = 3, 4, 5
 BLOCK_STEP = 6
@@ -71,7 +76,7 @@ class PendingInput:
 
 @attrs.define
 class PendingResource:
-    """One row of the `Blocked resources` table: an unsatisfiable named resource."""
+    """One row of the `Insufficient resources` table: an unsatisfiable named resource."""
 
     name: str
     """The resource name."""
@@ -91,7 +96,9 @@ class PendingOther:
     """One count-only bucket on the `Other reasons` page."""
 
     nblocked: int
-    """Number of pending steps attributed to this bucket. Zero means "omit the line"."""
+    """Number of pending steps attributed to this bucket.
+    Zero means "omit the line".
+    """
 
     example: str | None
     """Label of the lowest-sorting step in the bucket, or `None` when `nblocked == 0`."""
@@ -101,33 +108,55 @@ class PendingOther:
 class PendingSummary:
     """Fixed-size explanation of why steps remained pending, produced by `analyze_pending`.
 
-    The `inputs`/`resources` tables and the `Other reasons` buckets use different counting
-    semantics on purpose: table counts are **exact** transitive counts (what a user acts
-    on) and can overlap (a step blocked by two dead-end files is counted under both), while
-    the bucket counts are **attributed** (each pending step counted under exactly one
-    bucket), so `sum(bucket counts) == ntotal` regardless of overlap.
+    The `inputs`/`resources` tables and the `Other reasons` buckets
+    use different counting semantics on purpose:
+    table counts are **exact** transitive counts (what a user acts on)
+    and can overlap (a step blocked by two dead-end files is counted under both),
+    while the bucket counts are **attributed**
+    (each pending step counted under at most one bucket).
+    Attribution partitions the pending steps over *all* root kinds,
+    including the files and resources behind the two tables,
+    so the buckets alone do not add up to `ntotal`:
+    a step attributed to a dead-end file or an unsatisfiable resource is in no bucket at all.
     """
 
     ntotal: int
     """Total number of pending steps in the reporting universe."""
 
     inputs: list[PendingInput]
-    """Up to `MAX_ROWS` dead-end input files, ranked by exact blocked count, desc then path asc."""
+    """Up to `MAX_ROWS` dead-end input files,
+    ordered by exact blocked count descending, then by path ascending.
+
+    Which files make the cut is settled by exact count within a wider candidate pool,
+    not by a global exact-count ranking:
+    see the `Ranking and exact counts` section.
+    """
 
     ninputs_hidden: int
     """Number of dead-end input files beyond `inputs`."""
 
     ninputs_hidden_blocked: int
-    """Attributed (lower-bound) step count for the input files not shown in `inputs`."""
+    """Attributed (lower-bound) step count for the input files not shown in `inputs`.
+
+    Zero when every hidden file blocks only steps that are already attributed
+    to one of the files in `inputs`.
+    """
 
     resources: list[PendingResource]
-    """Up to `MAX_ROWS` unsatisfiable resources, ranked by exact blocked count."""
+    """Up to `MAX_ROWS` unsatisfiable resources,
+    ordered by exact blocked count descending, then by name ascending.
+
+    Which resources make the cut is settled the same way as for `inputs`.
+    """
 
     nresources_hidden: int
     """Number of unsatisfiable resources beyond `resources`."""
 
     nresources_hidden_blocked: int
-    """Attributed (lower-bound) step count for the resources not shown in `resources`."""
+    """Attributed (lower-bound) step count for the resources not shown in `resources`.
+
+    Zero under the same circumstances as `ninputs_hidden_blocked`.
+    """
 
     failed: PendingOther
     """Steps ultimately blocked by a `FAILED` step (a producer, or a creator ancestor)."""
@@ -136,31 +165,41 @@ class PendingSummary:
     """Steps stuck in (or downstream of) a dynamic cycle: no root blocker reaches them."""
 
     deferred: PendingOther
-    """Steps deferred on an unavailable dynamic input, but with no blocking input found
-    at report time (a stale `deferred` flag; see `Step.has_unavailable_dynamic_input`).
+    """Steps carrying a stale `deferred` flag: nothing blocks their inputs at report time.
+
+    Neither the ordinary dispatch test nor the extra dynamic-input test for deferred steps
+    (both in `_INSERT_PEND_FILE_BLOCK`) turns up an input that blocks such a step,
+    so its `deferred` flag no longer reflects the state of its inputs.
+    A deferred step whose dynamic inputs really are unavailable is reported under `inputs`.
     """
 
     other: PendingOther
-    """Steps that are unsafe for a reason not covered above:
-    their nearest chain-broken creator ancestor is neither pending-and-eligible nor
-    `FAILED`, e.g. a `SUCCEEDED`-but-unsafe creator, or a creator below `need_threshold`.
+    """Steps that are unsafe for a reason not covered above.
+
+    Their nearest chain-broken creator ancestor is `PENDING`
+    yet sits outside the reporting universe,
+    i.e. it is detached or at/below `need_threshold`.
     """
 
     runnable: PendingOther
-    """Steps with no candidate blocker at all: dispatch should have picked them up.
-    Not expected in practice: a non-empty bucket points at `_safe` metadata that is stale
-    at report time, i.e. a gap in the `_check_safe` bookkeeping.
+    """Steps with no candidate blocker at all: dispatch could have picked them up.
+
+    Normally this means the build phase ended before they were dispatched,
+    e.g. after a failing step put the scheduler on hold, or after an interrupt.
+    Failing that, it exposes stale `_safe` metadata:
+    `_INSERT_PEND_STEP` reads the stored safety columns
+    instead of re-deriving safety from the creator chain,
+    so a step whose `_check_safe` recompute never ran still looks safe here.
     """
 
 
 #
 # Scratch tables
 #
-# All temp tables use a `pend_` prefix, are DROPped before CREATE (so a previous call that
-# raised mid-analysis cannot leave stale tables behind for the next one) and again after
-# use. Everything happens inside the caller's transaction (see `analyze_pending`'s
-# docstring): no `async with db:` here, matching `Scheduler`'s "information gathering"
-# methods.
+# All temp tables use a `pend_` prefix.
+# They are DROPped before CREATE and again after use.
+# A previous call that raised mid-analysis will not affect the next call.
+# Everything happens inside the caller's transaction (see `analyze_pending`'s docstring).
 #
 
 _PEND_TABLE_NAMES = (
@@ -186,10 +225,12 @@ _CREATE_PEND_TABLES = (
         deferred INTEGER NOT NULL
     ) WITHOUT ROWID
     """,
-    # Blocking (file -> step) edges: dep.source is an input file that blocks dep.sink from
-    # running, i.e. UNAVAILABLE_INPUT_WHERE holds, or the deferred-with-unavailable-
-    # dynamic-input test does. One row per (file, step) pair; a file can block many steps
-    # and a step can have many blocking files.
+    # Blocking (file -> step) edges:
+    # dep.source is an input file that blocks dep.sink from running,
+    # i.e. UNAVAILABLE_INPUT_WHERE holds,
+    # or the deferred-with-unavailable-dynamic-input test does.
+    # One row per (file, step) pair;
+    # a file can block many steps and a step can have many blocking files.
     """
     CREATE TEMP TABLE pend_file_block (
         src_file INTEGER NOT NULL,
@@ -197,8 +238,9 @@ _CREATE_PEND_TABLES = (
     )
     """,
     "CREATE INDEX pend_file_block_src ON pend_file_block(src_file)",
-    # Blocking files with no live producer: no step in U produces them, and no FAILED step
-    # produces them either, so nothing left in the build will ever create them.
+    # Blocking files with no live producer:
+    # no step in U produces them, and no FAILED step produces them either,
+    # so nothing left in the build will ever create them.
     """
     CREATE TEMP TABLE pend_dead_file (
         i INTEGER PRIMARY KEY,
@@ -207,18 +249,18 @@ _CREATE_PEND_TABLES = (
         detached INTEGER NOT NULL
     ) WITHOUT ROWID
     """,
-    # For every unsafe step in U, its nearest chain-broken creator ancestor (the first
-    # ancestor whose own state/holding is what actually makes the step unsafe). At most one
-    # row per dst_step: see the comment on _INSERT_PEND_UNSAFE_ANC.
+    # For every unsafe step in U, its nearest chain-broken creator ancestor
+    # (the first ancestor whose own state/holding is what actually makes the step unsafe).
+    # At most one row per dst_step: see the comment on _INSERT_PEND_UNSAFE_ANC.
     """
     CREATE TEMP TABLE pend_unsafe_anc (
         dst_step INTEGER PRIMARY KEY,
         anc INTEGER NOT NULL
     ) WITHOUT ROWID
     """,
-    # Resources required by a step in U that are undefined or over-committed. `id` is a
-    # plain (non-WITHOUT-ROWID) autoincrementing surrogate key, used as `pend_seed`/
-    # `pend_blocker`'s `root_id` for this root kind.
+    # Resources required by a step in U that are undefined or over-committed.
+    # `id` is a plain (non-WITHOUT-ROWID) autoincrementing surrogate key,
+    # used as `pend_seed`/`pend_blocker`'s `root_id` for this root kind.
     """
     CREATE TEMP TABLE pend_resource (
         id INTEGER PRIMARY KEY,
@@ -227,8 +269,9 @@ _CREATE_PEND_TABLES = (
         units_available INTEGER
     )
     """,
-    # The full step -> step blocking relation over U (every candidate edge, not just the
-    # primary one), used by the exact-count closure. src_step blocks dst_step.
+    # The full step -> step blocking relation over U
+    # (every candidate edge, not just the primary one), used by the exact-count closure.
+    # src_step blocks dst_step.
     """
     CREATE TEMP TABLE pend_step_block (
         src_step INTEGER NOT NULL,
@@ -236,10 +279,11 @@ _CREATE_PEND_TABLES = (
     )
     """,
     "CREATE INDEX pend_step_block_src ON pend_step_block(src_step)",
-    # Direct root -> step edges, populated only for the two root kinds that ever need an
-    # exact (non-attributed) transitive count: FILE and RESOURCE (see _build_inputs/
-    # _build_resources). FAILED/DEFERRED/OTHER/RUNNABLE buckets only ever report
-    # attributed counts (from pend_attributed), so they need no entry here.
+    # Direct root -> step edges,
+    # populated only for the two root kinds that ever need an exact (non-attributed)
+    # transitive count: FILE and RESOURCE (see _build_inputs/_build_resources).
+    # The FAILED/DEFERRED/OTHER/RUNNABLE buckets only ever report attributed counts
+    # (from pend_attributed), so they need no entry here.
     """
     CREATE TEMP TABLE pend_seed (
         root_kind INTEGER NOT NULL,
@@ -248,9 +292,10 @@ _CREATE_PEND_TABLES = (
     )
     """,
     "CREATE INDEX pend_seed_root ON pend_seed(root_kind, root_id)",
-    # The single primary blocker chosen for every step in U (root kinds win over
-    # BLOCK_STEP; see the ROOT_* ordering above). Out-degree 1 makes the reverse relation a
-    # forest, which pend_attributed walks in O(pending).
+    # The single primary blocker chosen for every step in U
+    # (root kinds win over BLOCK_STEP; see the ROOT_* ordering above).
+    # Out-degree 1 makes the reverse relation a forest,
+    # which pend_attributed walks in O(pending).
     """
     CREATE TEMP TABLE pend_blocker (
         dst_step INTEGER PRIMARY KEY,
@@ -259,9 +304,9 @@ _CREATE_PEND_TABLES = (
     ) WITHOUT ROWID
     """,
     "CREATE INDEX pend_blocker_src ON pend_blocker(src)",
-    # The attribution forest walk's result: every step in U mapped to the root (kind, id)
-    # it is ultimately attributed to. A step absent here is in (or downstream of) a dynamic
-    # cycle: see the `cyclic` bucket.
+    # The attribution forest walk's result:
+    # every step in U mapped to the root (kind, id) it is ultimately attributed to.
+    # A step absent here is in (or downstream of) a dynamic cycle: see the `cyclic` bucket.
     """
     CREATE TEMP TABLE pend_attributed (
         dst_step INTEGER PRIMARY KEY,
@@ -287,11 +332,14 @@ WHERE step.state = {StepState.PENDING.value}
 """
 
 
-# The pending universe U, exactly as SELECT_NEXT_STEP's threshold binds it, so reporting
-# can never diverge from dispatch. `unsafe` recomputes STEP_DISPATCH_WHERE's safety
-# disjunct live (rather than trusting the materialized _ready) so a stale flag cannot
-# silently produce a wrong bucket; `_safe` is read from the column, matching
-# STEP_DISPATCH_WHERE (recomputing it would mean duplicating SELECT_SAFE_UPDATE).
+# The pending universe U, exactly as SELECT_NEXT_STEP's threshold binds it,
+# so reporting can never diverge from dispatch.
+# `unsafe` is STEP_DISPATCH_WHERE's safety disjunct, negated,
+# over the same stored columns, so the two can never disagree about what counts as safe.
+# Deriving safety from the creator chain here instead
+# would mean duplicating SELECT_SAFE_UPDATE;
+# the price is that stale `_safe` metadata reaches the report,
+# which is what the `runnable` bucket exposes.
 _INSERT_PEND_STEP = f"""
 INSERT INTO pend_step(i, label, unsafe, deferred)
 SELECT node.i, node.label,
@@ -304,12 +352,15 @@ WHERE step.state = {StepState.PENDING.value}
 """
 
 
-# Blocking inputs of every step in U: UNAVAILABLE_INPUT_WHERE's ordinary dispatch test, or
-# (only for a deferred step) the has_unavailable_dynamic_input test that set `deferred`
-# in the first place -- a deferred step's dynamic inputs are not otherwise covered by
-# UNAVAILABLE_INPUT_WHERE once they are no longer attached and PLANNED/OUTDATED
-# (e.g. UNDECLARED, which implies detached, or MISSING),
-# which is exactly the gap defer_cap-shaped workflows fall into.
+# Blocking inputs of every step in U:
+# UNAVAILABLE_INPUT_WHERE's ordinary dispatch test,
+# or (only for a deferred step) the has_unavailable_dynamic_input test
+# that set `deferred` in the first place.
+# A deferred step's dynamic inputs are not otherwise covered by UNAVAILABLE_INPUT_WHERE
+# once they are no longer attached and PLANNED/OUTDATED
+# (e.g. UNDECLARED, which implies detached, or MISSING).
+# Without the second test, such a step would have no blocking input to be attributed to
+# and would land in the `deferred` bucket as if its flag were stale.
 _INSERT_PEND_FILE_BLOCK = f"""
 INSERT INTO pend_file_block(src_file, dst_step)
 SELECT DISTINCT dep.source, pend_step.i
@@ -326,9 +377,10 @@ WHERE ({UNAVAILABLE_INPUT_WHERE})
 """
 
 
-# Blocking files with no live producer: no dependency-edge producer (see the module
-# docstring: `node.creator` is provenance, not this relation -- a declared static/missing
-# file has no producer here at all) that is either in U or FAILED.
+# Blocking files with no live producer:
+# no dependency-edge producer that is either in U or FAILED.
+# (`node.creator` is provenance, not this relation:
+# a declared static or missing file has no producer here at all.)
 _INSERT_PEND_DEAD_FILE = f"""
 INSERT INTO pend_dead_file(i, label, state, detached)
 SELECT DISTINCT f.node, node.label, f.state, node.detached
@@ -349,14 +401,15 @@ WHERE NOT EXISTS (
 """
 
 
-# The nearest chain-broken creator ancestor of every unsafe step in U: walk up the creator
-# chain through ancestors that are RUNNING/SUCCEEDED and not holding (i.e. not
-# chain-broken), and stop at the first one that is. Terminates on "no step row" (the root
-# is its own creator and has none), which is safe here: a step only seeds this walk because
-# it is unsafe, which (by construction of _safe) guarantees a real, non-root ancestor along
-# its chain is chain-broken. _holding > 0 is unreachable at report time (no step is RUNNING
-# once the builder has stopped) but is included for correctness, matching _safe's own
-# definition.
+# The nearest chain-broken creator ancestor of every unsafe step in U:
+# walk up the creator chain through ancestors that are RUNNING/SUCCEEDED and not holding
+# (i.e. not chain-broken), and stop at the first one that is.
+# Terminates on "no step row" (the root is its own creator and has none), which is safe here:
+# a step only seeds this walk because it is unsafe,
+# which (by construction of _safe) guarantees that a real, non-root ancestor along its chain
+# is chain-broken.
+# _holding > 0 is unreachable at report time (no step is RUNNING once the builder has stopped)
+# but is included for correctness, matching _safe's own definition.
 _INSERT_PEND_UNSAFE_ANC = f"""
 INSERT INTO pend_unsafe_anc(dst_step, anc)
 WITH RECURSIVE up(dst_step, anc) AS (
@@ -380,11 +433,11 @@ WHERE step.state NOT IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
 """
 
 
-# Resources required by a step in U that are undefined or over-committed. No RUNNING
-# subtraction (unlike scheduler.RESOURCE_UNAVAILABLE): this runs after the builder has
-# stopped, so there is nothing running to subtract. units_needed is the largest requirement
-# among the steps actually blocked on this resource, i.e. what a user would need to raise
-# the limit to in order to unblock at least one of them.
+# Resources required by a step in U that are undefined or over-committed.
+# No RUNNING subtraction (unlike scheduler.RESOURCE_UNAVAILABLE):
+# this runs after the builder has stopped, so there is nothing running to subtract.
+# units_needed is the largest requirement among the steps actually blocked on this resource,
+# i.e. what a user would need to raise the limit to in order to unblock at least one of them.
 _INSERT_PEND_RESOURCE = """
 INSERT INTO pend_resource(name, units_needed, units_available)
 SELECT req.name, MAX(req.units), MAX(avail.units)
@@ -396,10 +449,12 @@ GROUP BY req.name
 """
 
 
-# The full step -> step blocking relation over U: src_step blocks dst_step because src_step
-# produces a blocking input of dst_step, or because src_step is dst_step's nearest
-# chain-broken creator ancestor and that ancestor is itself in U (still pending and
-# eligible, i.e. dst_step is waiting for it rather than for something outside U).
+# The full step -> step blocking relation over U:
+# src_step blocks dst_step because src_step produces a blocking input of dst_step,
+# or because src_step is dst_step's nearest chain-broken creator ancestor
+# and that ancestor is itself in U
+# (still pending and eligible,
+# i.e. dst_step is waiting for it rather than for something outside U).
 _INSERT_PEND_STEP_BLOCK = """
 INSERT INTO pend_step_block(src_step, dst_step)
 SELECT prod.i, pfb.dst_step
@@ -435,13 +490,16 @@ WHERE req.node IN (SELECT i FROM pend_step)
 """
 
 
-# The single primary blocker per step in U: one UNION ALL of every candidate kind, keeping
-# only the top-ranked candidate per dst_step (ROW_NUMBER, partitioned by dst_step, ordered
-# by kind then a deterministic tie-break). Root kinds win over BLOCK_STEP by construction
-# of the ROOT_*/BLOCK_STEP integer values (see their definitions above). `src_label` is the
-# empty string for ROOT_DEFERRED/ROOT_OTHER, which have at most one candidate row per
-# dst_step already (no tie to break); ROOT_RESOURCE uses the resource name so multiple
-# unsatisfiable resources on the same step still sort deterministically.
+# The single primary blocker per step in U:
+# one UNION ALL of every candidate kind,
+# keeping only the top-ranked candidate per dst_step
+# (ROW_NUMBER, partitioned by dst_step, ordered by kind then a deterministic tie-break).
+# Root kinds win over BLOCK_STEP by construction of the ROOT_*/BLOCK_STEP integer values
+# (see their definitions above).
+# `src_label` is the empty string for ROOT_DEFERRED/ROOT_OTHER,
+# which have at most one candidate row per dst_step already (no tie to break);
+# ROOT_RESOURCE uses the resource name
+# so multiple unsatisfiable resources on the same step still sort deterministically.
 _INSERT_PEND_BLOCKER = f"""
 INSERT INTO pend_blocker(dst_step, kind, src)
 SELECT dst_step, kind, src FROM (
@@ -523,8 +581,9 @@ SELECT dst_step, kind, src FROM (
 """
 
 
-# RUNNABLE: whatever is left has no candidate blocker of any kind, i.e. dispatch should
-# have picked it up already. Not expected in practice (see PendingSummary.runnable).
+# RUNNABLE: whatever is left has no candidate blocker of any kind,
+# i.e. dispatch should have picked it up already.
+# Not expected in practice (see PendingSummary.runnable).
 _INSERT_PEND_BLOCKER_RUNNABLE = f"""
 INSERT INTO pend_blocker(dst_step, kind, src)
 SELECT i, {ROOT_RUNNABLE}, i FROM pend_step
@@ -532,15 +591,18 @@ WHERE i NOT IN (SELECT dst_step FROM pend_blocker)
 """
 
 
-# Attribute every step in U to exactly one root, by walking the primary-blocker forest
-# (pend_blocker restricted to BLOCK_STEP has out-degree 1, see its comment) from every
-# root-kind seed. UNION ALL is safe here (no row can repeat): a step cannot consume its own
-# output (add_source raises CyclicError) or be its own creator (the node table's own CHECK
-# constraint), so self-parenting is impossible, and every non-root-seeded step has exactly
-# one parent in this forest. A step inside (or downstream of) a dynamic cycle has a parent
-# chain that never leaves the cycle, so it is never reached by any seed and is absent from
-# the result -- this is exactly the residual the `cyclic` bucket reports, with no
-# cycle-detection code needed.
+# Attribute every step in U to exactly one root,
+# by walking the primary-blocker forest
+# (pend_blocker restricted to BLOCK_STEP has out-degree 1, see its comment)
+# from every root-kind seed.
+# UNION ALL is safe here (no row can repeat):
+# a step cannot consume its own output (add_source raises CyclicError)
+# or be its own creator (the node table's own CHECK constraint),
+# so self-parenting is impossible,
+# and every non-root-seeded step has exactly one parent in this forest.
+# A step inside (or downstream of) a dynamic cycle has a parent chain that never leaves the cycle,
+# so it is never reached by any seed and is absent from the result.
+# This is exactly the residual the `cyclic` bucket reports, with no cycle-detection code needed.
 _INSERT_PEND_ATTRIBUTED = f"""
 INSERT INTO pend_attributed(dst_step, root_kind, root_id)
 WITH RECURSIVE walk(i, root_kind, root_id) AS (
@@ -559,9 +621,9 @@ SELECT i, root_kind, root_id FROM walk
 def analyze_pending(workflow: Workflow) -> PendingSummary:
     """Explain why steps remained pending, as a fixed-size root-cause summary.
 
-    Must be called after the builder has stopped (no `RUNNING` or `CHECKING` steps) and
-    with the database lock held by the caller (`async with db:`), following the
-    "Information gathering" convention in `scheduler.py`.
+    Must be called after the builder has stopped (no `RUNNING` or `CHECKING` steps)
+    and with the database lock held by the caller (`async with db:`),
+    following the "Information gathering" convention in `scheduler.py`.
     It reads the `available_resource` temp table, which `Scheduler.initialize()` owns.
 
     Parameters
@@ -572,9 +634,10 @@ def analyze_pending(workflow: Workflow) -> PendingSummary:
     Returns
     -------
     summary
-        The root-cause summary. `PendingSummary(ntotal=0, ...)` when no step remained
-        pending, computed with a single `COUNT(*)` so the common (successful-build) path
-        stays cheap.
+        The root-cause summary.
+        `PendingSummary(ntotal=0, ...)` when no step remained pending,
+        computed with a single `COUNT(*)`
+        so the common (successful-build) path stays cheap.
     """
     summary, _attributed_totals = _analyze_pending(workflow)
     return summary
@@ -583,12 +646,19 @@ def analyze_pending(workflow: Workflow) -> PendingSummary:
 def _analyze_pending(workflow: Workflow) -> tuple[PendingSummary, dict[int, int]]:
     """Core of `analyze_pending`.
 
-    Additionally returns `{root_kind: attributed_count}` (for every kind present in
-    `pend_attributed`, including `ROOT_FILE`/`ROOT_RESOURCE`, which `PendingSummary` only
-    ever reports as *exact*, overlapping counts). `analyze_pending` discards this second
-    value; `tests/test_pending.py` uses it to assert the partition invariant
-    (`sum(totals.values()) + cyclic.nblocked == ntotal`), which `PendingSummary` alone
-    cannot express.
+    Parameters
+    ----------
+    workflow
+        The workflow to analyze.
+
+    Returns
+    -------
+    summary
+        The root-cause summary of the pending steps.
+    attributed_totals
+        `{root_kind: attributed_count}` for every kind present in `pend_attributed`.
+        This return value is only used by `tests/test_pending.py` to assert the partition invariant:
+        `sum(totals.values()) + cyclic.nblocked == ntotal`.
     """
     db = workflow.db
     threshold = workflow.need_threshold.value
@@ -654,32 +724,51 @@ def _analyze_pending(workflow: Workflow) -> tuple[PendingSummary, dict[int, int]
 #
 # Ranking and exact counts
 #
-# Two counting semantics, on purpose: ranking (which roots matter most) uses the
-# attributed, O(pending) counts from pend_attributed; the counts actually displayed for the
-# top MAX_ROWS are exact, from a dedicated reachability closure over the full
-# pend_step_block relation. Attribution alone misranks whenever roots overlap (a shared
-# root can look smaller than it truly is, because ties in the primary-blocker choice always
-# resolve the same way), so ranking keeps a wider pool (RANK_POOL) before the exact counts
-# settle which roots are actually displayed.
+# Two counting semantics, on purpose:
+# ranking (which roots matter most) uses the attributed, O(pending) counts from pend_attributed;
+# the counts actually displayed for the top MAX_ROWS are exact,
+# from a dedicated reachability closure over the full pend_step_block relation.
+# Attribution alone misranks whenever roots overlap
+# (a shared root can look smaller than it truly is,
+# because ties in the primary-blocker choice always resolve the same way),
+# so ranking keeps a wider pool (RANK_POOL)
+# before the exact counts settle which roots are actually displayed.
 #
 
 
-def _rank_pool(db: DBSession, root_kind: int) -> list[tuple[int, int]]:
-    """Return `(root_id, attributed_count)` for every root of `root_kind`, ranked desc."""
-    return db.execute(
-        "SELECT root_id, COUNT(*) AS n FROM pend_attributed "
-        "WHERE root_kind = ? GROUP BY root_id ORDER BY n DESC, root_id ASC",
-        (root_kind,),
-    ).fetchall()
+# Every root of one kind with its attributed step count, ranked by that count descending,
+# then by root id ascending.
+# The roots are enumerated from their own scratch table and LEFT JOINed onto pend_attributed,
+# not read out of pend_attributed itself:
+# a root that never wins the primary-blocker tie-break has no attributed step at all
+# (count zero), yet it still blocks steps,
+# so it has to stay both in the ranking pool and in the hidden-root count.
+_SELECT_RANK_FILE = f"""
+SELECT root.i AS root_id, COUNT(pa.dst_step) AS n
+FROM pend_dead_file AS root
+LEFT JOIN pend_attributed AS pa ON pa.root_kind = {ROOT_FILE} AND pa.root_id = root.i
+GROUP BY root.i
+ORDER BY n DESC, root_id ASC
+"""
+
+
+_SELECT_RANK_RESOURCE = f"""
+SELECT root.id AS root_id, COUNT(pa.dst_step) AS n
+FROM pend_resource AS root
+LEFT JOIN pend_attributed AS pa ON pa.root_kind = {ROOT_RESOURCE} AND pa.root_id = root.id
+GROUP BY root.id
+ORDER BY n DESC, root_id ASC
+"""
 
 
 def _exact_counts(db: DBSession, root_kind: int, root_ids: Sequence[int]) -> dict[int, int]:
     """Return the exact transitive step count for each of `root_ids`.
 
     Computed by one recursive closure over `pend_step_block`, seeded from `pend_seed`.
-    `UNION` (not `UNION ALL`) is required: the real blocking relation has diamonds (a step
-    blocked by two roots) and, transitively, cycles, so a naive `UNION ALL` walk would not
-    terminate or would over-count.
+    `UNION` (not `UNION ALL`) is required:
+    the real blocking relation has diamonds (a step blocked by two roots)
+    and, transitively, cycles,
+    so a naive `UNION ALL` walk would not terminate or would over-count.
     """
     if len(root_ids) == 0:
         return {}
@@ -703,24 +792,36 @@ def _exact_counts(db: DBSession, root_kind: int, root_ids: Sequence[int]) -> dic
     return dict(rows)
 
 
-def _rank_display(db: DBSession, root_kind: int) -> tuple[list[int], dict[int, int], int, int]:
+def _rank_display(
+    db: DBSession, root_kind: int, rank_sql: str
+) -> tuple[list[int], dict[int, int], int, int]:
     """Select up to `MAX_ROWS` roots of `root_kind` to display, by exact count.
+
+    Parameters
+    ----------
+    db
+        The database session to query.
+    root_kind
+        The root kind to rank, one of `ROOT_FILE` / `ROOT_RESOURCE`.
+    rank_sql
+        The ranking query for that kind,
+        `_SELECT_RANK_FILE` or `_SELECT_RANK_RESOURCE`.
 
     Returns
     -------
     displayed
-        Root ids to display (at most `MAX_ROWS`), in no particular order --
-        callers sort them by their own presentation key (e.g. path/name) once they have
-        fetched the corresponding metadata.
+        Root ids to display (at most `MAX_ROWS`), in no particular order.
+        (Callers are expected to sort.)
     exact
         Exact transitive step count for every id in `displayed`.
     nhidden
         Number of roots of this kind beyond `displayed`.
     nhidden_blocked
         Attributed step count summed over every root beyond `displayed`
-        (a lower bound: exact counts are not computed for hidden roots).
+        (a lower bound: exact counts are not computed for hidden roots,
+        and a root shadowed by a displayed one contributes nothing).
     """
-    ranked = _rank_pool(db, root_kind)
+    ranked = db.execute(rank_sql).fetchall()
     total_attributed = sum(n for _, n in ranked)
     pool_ids = [root_id for root_id, _ in ranked[:RANK_POOL]]
     exact = _exact_counts(db, root_kind, pool_ids)
@@ -733,7 +834,7 @@ def _rank_display(db: DBSession, root_kind: int) -> tuple[list[int], dict[int, i
 
 def _build_inputs(db: DBSession) -> tuple[list[PendingInput], int, int]:
     """Build `PendingSummary.inputs` and its hidden-row counters."""
-    displayed, exact, nhidden, nhidden_blocked = _rank_display(db, ROOT_FILE)
+    displayed, exact, nhidden, nhidden_blocked = _rank_display(db, ROOT_FILE, _SELECT_RANK_FILE)
     meta = {}
     if len(displayed) > 0:
         placeholders = ", ".join("?" * len(displayed))
@@ -754,7 +855,9 @@ def _build_inputs(db: DBSession) -> tuple[list[PendingInput], int, int]:
 
 def _build_resources(db: DBSession) -> tuple[list[PendingResource], int, int]:
     """Build `PendingSummary.resources` and its hidden-row counters."""
-    displayed, exact, nhidden, nhidden_blocked = _rank_display(db, ROOT_RESOURCE)
+    displayed, exact, nhidden, nhidden_blocked = _rank_display(
+        db, ROOT_RESOURCE, _SELECT_RANK_RESOURCE
+    )
     meta = {}
     if len(displayed) > 0:
         placeholders = ", ".join("?" * len(displayed))

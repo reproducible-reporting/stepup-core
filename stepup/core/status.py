@@ -31,9 +31,10 @@ SQL_STEP_LABELS = (
     "SELECT label FROM node JOIN step ON node.i = step.node WHERE state = ? AND NOT detached"
 )
 
-# Used-only resource counts. The "available" half only lives in the director's
-# in-memory `available_resource` temp table (seeded from --resources) and is
-# never persisted to graph.db, so it cannot be reconstructed here.
+# Resource units in use, without their available counterparts:
+# the "available" half only lives in the director's in-memory `available_resource` temp table
+# (seeded from `--resources`) and is never persisted to `graph.db`,
+# so it cannot be reconstructed here.
 SQL_RESOURCE_COUNTS = """
 SELECT st.name, SUM(st.units) AS used
 FROM step_resource AS st
@@ -49,10 +50,15 @@ def status_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     Parameters
     ----------
     subparsers
-        The sub parser to add the status tool to.
+        The subparser to add the status tool to.
     loader
-        The configuration loader to override the default configuration with
-        config file values.
+        The configuration loader to override the default configuration with config file values.
+        (Not used here.)
+
+    Returns
+    -------
+    tool
+       The function implementing the status subcommand.
     """
     subparsers.add_parser(
         "status",
@@ -62,7 +68,7 @@ def status_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 
 
 def status_tool(args: argparse.Namespace):
-    """Print the status of the workflow by reading `.stepup/graph.db` directly."""
+    """Print the status of the workflow by reading the graph database directly."""
     root = Path(os.getenv("STEPUP_ROOT", "."))
     path_db = root / GRAPH_DB
     if not path_db.exists():
@@ -75,7 +81,7 @@ def status_tool(args: argparse.Namespace):
 
 
 def print_status(con: sqlite3.Connection):
-    """Print the status of the workflow stored in the given graph database connection."""
+    """Print the status of the workflow in the graph database behind the given connection."""
     print("[bold underline]Step counts[/]")
     for value, count in con.execute(SQL_STEP_COUNTS):
         print(f"  {StepState(value).name:10s} {count:6d}")

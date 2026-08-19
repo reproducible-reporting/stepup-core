@@ -5,7 +5,7 @@
 import argparse
 import os
 import sqlite3
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from path import Path
 from rich.console import Console
@@ -26,21 +26,25 @@ def clean_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     Parameters
     ----------
     subparsers
-        The sub parser to add the clean tool to.
+        The subparser to add the clean tool to.
     loader
-        The configuration loader to override the default configuration with
-        config file values.
+        The configuration loader to override the default configuration with config file values.
+
+    Returns
+    -------
+    tool_func
+        The function to call with the parsed args to execute the clean command.
     """
-    parser = subparsers.add_parser("clean", help="Remove (stale) outputs in a directory. ")
+    parser = subparsers.add_parser("clean", help="Remove (stale) outputs in a directory.")
     parser.add_argument(
         "paths",
         default=[Path(".")],
         type=Path,
         nargs="*",
         help="A list of paths to consider for the cleanup. "
-        "Given a file, depending outputs will be cleaned. "
+        "Given a file, outputs depending on it will be cleaned. "
         "The file itself may also be removed. "
-        "Given a directory, all containing outputs will be cleaned. "
+        "Given a directory, all outputs it contains will be cleaned. "
         "The directory itself may also be removed. "
         "Unless additional flags are given, only old detached outputs are removed, "
         "i.e. outputs for which there is no longer a corresponding step.",
@@ -75,12 +79,12 @@ def clean_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 
 
 def clean_tool(args: argparse.Namespace):
-    """Main program."""
+    """Clean up the outputs selected by the command-line arguments."""
     # Translate all unique paths so they are relative to STEPUP_ROOT,
     # because this is how they are stored in the database. (tr_ prefix)
     tr_paths = {translate(path.normpath()) for path in args.paths}
 
-    # Copy the database in memory and work on the copy.
+    # Open the graph database read-only, because the cleanup only reads the workflow graph.
     root = Path(os.getenv("STEPUP_ROOT", "."))
     path_db = root / GRAPH_DB
     con = connect(path_db, read_only=True)
@@ -100,7 +104,7 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
     tr_paths
         The paths to consider for the cleanup.
     args
-        The command-line arguments
+        The command-line arguments.
     """
     # Find all paths matching the given paths
     tr_matching_paths = search_matching_paths(con, tr_paths)
@@ -109,14 +113,13 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
     tr_consuming_paths = search_consuming_paths(con, tr_matching_paths, not args.all)
     tr_consuming_paths.sort(reverse=True)
 
-    # Loop over paths, remove and collect info for stdout
+    # Loop over the paths, remove them and collect information to print.
     console = Console(highlight=False)
     if not args.commit:
         console.print("[yellow]# Note: No files or directories are actually removed.[/]")
         console.print("[yellow]# Use the --commit option to execute the removals.[/]")
     parents = set()
     for tr_consuming_path, state, detached, old_file_hash in tr_consuming_paths:
-        # translate_back to local path
         lo_consuming_path = translate_back(tr_consuming_path)
         missing = not lo_consuming_path.exists()
         if missing:
@@ -152,7 +155,7 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
             if still_there:
                 parts.append(" Removal failed!")
             if changed:
-                parts.append(" File changed after workflow!")
+                parts.append(" File changed after the workflow created it!")
             if detached:
                 parts.append(" Detached output!")
             parts.append("[/]")
@@ -194,8 +197,9 @@ def search_matching_paths(con: sqlite3.Connection, tr_paths: set[str]) -> set[st
     Returns
     -------
     matching_paths
-        A set of paths that match the given paths.
-        This only includes paths that are (volatile) outputs of steps.
+        A set of file paths matching the given paths,
+        including all paths inside a given directory.
+        Only file nodes are considered, never steps or other node kinds.
     """
     tr_matching_paths = set()
     for tr_path in tr_paths:
@@ -206,9 +210,9 @@ def search_matching_paths(con: sqlite3.Connection, tr_paths: set[str]) -> set[st
 
 INITIAL_SINKS = "CREATE TABLE temp.initial_sink (current INTEGER PRIMARY KEY) WITHOUT ROWID"
 
-RECURSE_SINKS = """
+RECURSE_SINKS_MULTI = """
 WITH RECURSIVE all_sink(current) AS (
-    -- Initial: Set initial node
+    -- Initial: Select the initial nodes
     SELECT current
     FROM temp.initial_sink
     UNION
@@ -231,7 +235,7 @@ DROP_SINKS = "DROP TABLE IF EXISTS temp.initial_sink"
 
 
 def search_consuming_paths(
-    con: sqlite3.Connection, initial_paths: list[Path], detached_only: bool
+    con: sqlite3.Connection, initial_paths: Iterable[Path], detached_only: bool
 ) -> list[tuple[Path, FileState, bool, FileHash]]:
     """Find all paths that depend on the given initial paths.
 
@@ -241,7 +245,10 @@ def search_consuming_paths(
         The database connection.
     initial_paths
         The initial paths to consider.
-        They will be included in the returned results.
+        They are included in the results themselves,
+        subject to the same filtering as the paths depending on them.
+    detached_only
+        When True only detached (volatile) output paths are searched for.
 
     Returns
     -------
@@ -249,9 +256,9 @@ def search_consuming_paths(
         A list of paths and their file states and hashes.
         This only includes paths that are (volatile) outputs of steps.
         For each file, a tuple is returned with:
+
         - The path
         - The file state
-        - The step state (of the step that created the file)
         - Whether it is detached
         - The file hash
     """
@@ -266,8 +273,8 @@ def search_consuming_paths(
         if detached_only:
             select_outputs += " AND detached"
         return [
-            (row[0], FileState(row[1]), bool(row[2]), FileHash.from_json(row[3]))
-            for row in con.execute(RECURSE_SINKS + select_outputs)
+            (Path(row[0]), FileState(row[1]), bool(row[2]), FileHash.from_json(row[3]))
+            for row in con.execute(RECURSE_SINKS_MULTI + select_outputs)
         ]
     finally:
         con.execute(DROP_SINKS)

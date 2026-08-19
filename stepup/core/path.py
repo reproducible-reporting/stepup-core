@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Specialized path operations"""
+"""Specialized path operations."""
 
 import os
 from collections.abc import Iterable
@@ -24,8 +24,8 @@ __all__ = (
 )
 
 
-# A path-like argument accepted by the user-facing API: either a `str`
-# or any `os.PathLike` (such as a `pathlib.Path`).
+# A path-like argument accepted by the user-facing API:
+# either a `str` or any `os.PathLike` (such as a `pathlib.Path`).
 StrPath = str | os.PathLike[str]
 
 # All coercion functions wrap `os.fspath` to facilitate future refactorings of the code.
@@ -70,7 +70,7 @@ def get_affixes(path: StrPath) -> tuple[str, str]:
     Returns
     -------
     leading
-        The leading slash of the path, or `""` if there is none.
+        The leading `./` of the path, or `""` if there is none.
     trailing
         The trailing slash of the path, or `""` if there is none.
 
@@ -80,10 +80,10 @@ def get_affixes(path: StrPath) -> tuple[str, str]:
     """
     path = coerce_str(path)
     trailing = ""
-    if path.endswith(os.sep):
-        trailing = os.sep
+    if path.endswith("/"):
+        trailing = "/"
         path = path[:-1]
-    leading = f".{os.sep}" if path.startswith(f".{os.sep}") else ""
+    leading = "./" if path.startswith("./") else ""
     return leading, trailing
 
 
@@ -95,30 +95,31 @@ def apply_affixes(path: StrPath, leading: str, trailing: str) -> Path:
     path
         The path to which the affixes will be applied.
     leading
-        The leading slash to apply or `""`.
+        The leading `./` to apply or `""`.
     trailing
         The trailing slash to apply or `""`.
 
     Raises
     ------
     PathError
-        If the path already has leading or trailing slashes and the corresponding affix is not None.
+        If the path already has a leading or trailing slash
+        and the corresponding affix is not empty.
     PathError
-        If the leading is given and not one of `""` or `"./"`.
+        If `leading` is neither `""` nor `"./"`.
     PathError
-        If the trailing is given and not `""` or `"/"`.
+        If `trailing` is neither `""` nor `"/"`.
     """
     path = coerce_str(path)
     if leading != "":
-        if leading != f".{os.sep}":
+        if leading != "./":
             raise PathError(f"Leading affix must be one of '' or './', got '{leading}'")
-        if path.startswith((os.sep, f".{os.sep}")):
+        if path.startswith(("/", "./")):
             raise PathError(f"Path already has a leading slash: {path}")
         path = leading + path
     if trailing != "":
-        if trailing != os.sep:
+        if trailing != "/":
             raise PathError(f"Trailing affix must be '' or '/', got '{trailing}'")
-        if path.endswith(os.sep):
+        if path.endswith("/"):
             raise PathError(f"Path already has a trailing slash: {path}")
         path = path + trailing
     return coerce_path(path)
@@ -127,7 +128,7 @@ def apply_affixes(path: StrPath, leading: str, trailing: str) -> Path:
 def make_path_out(
     path_in: StrPath, dest: StrPath | None, ext: str | None, other_exts: Iterable[str] = ()
 ) -> Path:
-    """Construct an output path given the input path, an out argument and the expected extension.
+    """Construct an output path given the input path, a destination and the expected extension.
 
     Parameters
     ----------
@@ -135,12 +136,13 @@ def make_path_out(
         The input path from which the output path can be derived.
     dest
         An output destination.
-        Either None (only change extension),
+        Either `None` (only change extension),
         a destination directory (requires trailing slash) or a file.
-        In either case, the extension of the output is equal to ext.
+        In all three cases, the output must have extension `ext`,
+        unless `ext` is `None` or the extension is one of `other_exts`.
     ext
-        The (new) extension of the output, e.g. .pdf.
-        When None, the extension of the input is preserved.
+        The (new) extension of the output, e.g. `.pdf`.
+        When `None`, the extension of the input is preserved.
     other_exts
         Other extensions that are allowed for the output.
 
@@ -158,7 +160,7 @@ def make_path_out(
     path_in = coerce_path(path_in)
     if dest is not None:
         dest = coerce_str(dest)
-    if dest is None or dest.endswith(os.sep):
+    if dest is None or dest.endswith("/"):
         path_out = path_in
         if ext is not None:
             path_out = Path(path_out.stem + ext)
@@ -178,14 +180,16 @@ def make_path_out(
 
 
 def translate(path: StrPath, workdir: StrPath = ".") -> Path:
-    """Normalize the path and, if relative, make it relative to `self.root`.
+    """Normalize the path and, if relative, make it relative to `STEPUP_ROOT`.
 
     Parameters
     ----------
     path
-        The path to translate. If relative, it assumed to be relative to the working directory.
+        The path to translate.
+        If relative, it is assumed to be relative to `workdir`.
     workdir
-        The work directory. If relative, it is assumed to be relative to `self.here`
+        The working directory.
+        If relative, it is assumed to be relative to `HERE`.
 
     Returns
     -------
@@ -204,14 +208,16 @@ def translate(path: StrPath, workdir: StrPath = ".") -> Path:
 
 
 def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
-    """If relative, make it relative to work directory, assuming it is relative to `self.root`.
+    """If relative, make the path relative to `workdir`, assuming it is relative to `STEPUP_ROOT`.
 
     Parameters
     ----------
     path
-        The path to translate. If relative, it is assumed to be relative to `ROOT`.
+        The path to translate.
+        If relative, it is assumed to be relative to `STEPUP_ROOT`.
     workdir
-        The working directory. If relative, it is assumed to be relative to `HERE`.
+        The working directory.
+        If relative, it is assumed to be relative to `HERE`.
 
     Returns
     -------
@@ -230,11 +236,27 @@ def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
     return path
 
 
-def dir_range_upper(path: str) -> str:
-    """Compute the exclusive upper bound of the label prefix range matched by a directory target.
+def dir_range_upper(parent: str) -> str:
+    """Compute the exclusive upper bound for a range of paths that are all under the given parent.
 
-    `path` always ends in `/` (`0x2F`). Since `0x2F + 1 == 0x30 == "0"`, replacing the
-    trailing slash with `"0"` gives the smallest string that sorts (byte-wise) just past
-    every label starting with `path`, without per-row string concatenation in SQL.
+    SQL queries can define the range of all paths under parent with the following WHERE clause:
+
+    ```sql
+    WHERE path >= :parent AND path < :upper_bound
+    ```
+
+    where `:parent` is the parent path and `:upper_bound` is the result of this function.
+
+    Raises
+    ------
+    ValueError
+        If `parent` does not end with a trailing slash.
     """
-    return path[:-1] + "0"
+    # `parent` must end in `/` (`0x2F`).
+    # Since `0x2F + 1 == 0x30 == "0"`,
+    # replacing the trailing slash with `"0"` gives the smallest string
+    # that sorts (byte-wise) just past every label starting with `parent`,
+    # so a SQL query can use it as a bound parameter instead of concatenating strings per row.
+    if not parent.endswith("/"):
+        raise ValueError("Trailing slash expected to compute path range upper bound")
+    return parent[:-1] + "0"

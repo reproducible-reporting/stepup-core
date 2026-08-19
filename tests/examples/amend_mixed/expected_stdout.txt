@@ -23,14 +23,14 @@ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot an
 ───────────────────────────── Missing output files ─────────────────────────────
 inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest c5b37064, out_digest 922bd120 ➜ a992ab96
+Modified step hash   explained, inp_digest 633de079, out_digest 922bd120 ➜ a992ab96
 Modified out hash    inp2.txt (digest b24d3f94 ➜ UNKNOWN, size 21 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────────────────────────────────────────────────────────
    START │ echo Contents of inp2.txt > inp2.txt
  SUCCESS │ echo Contents of inp2.txt > inp2.txt
     SKIP │ ./work.py > log.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 7d883eb8, out_digest d0ac0986
+Same step hash       explained, inp_digest cd125c99, out_digest d0ac0986
 Same inp hash        inp0.txt
 Same inp hash        inp2.txt
 Same inp hash        tmp1.txt
@@ -46,14 +46,14 @@ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot an
    PHASE │ build
   NOSKIP │ cp inp1.txt tmp1.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 3f6cefae ➜ 3a4c58c6, out_digest a63be687 ➜ (unset)
+Modified step hash   explained, inp_digest 639915e7 ➜ 23e28f4e, out_digest a63be687 ➜ (unset)
 Modified inp hash    inp1.txt (digest b38c4067 ➜ 805fc678, size 15 ➜ 16)
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp inp1.txt tmp1.txt
  SUCCESS │ cp inp1.txt tmp1.txt
   NOSKIP │ ./work.py > log.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 7d883eb8 ➜ 85dd9c6b, out_digest d0ac0986 ➜ (unset)
+Modified step hash   explained, inp_digest cd125c99 ➜ a448a4bf, out_digest d0ac0986 ➜ (unset)
 Modified inp hash    inp0.txt (digest 0528e490 ➜ 2ddb584b)
 Modified inp hash    tmp1.txt (digest b38c4067 ➜ 805fc678, size 15 ➜ 16)
 ────────────────────────────── Remained the same ───────────────────────────────

@@ -4,7 +4,7 @@
    PHASE │ build
   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   compact ➜ explained, inp_digest 7a885ec1 ➜ 05f3f362, out_digest e3b0c442 ➜ (unset)
+Modified step hash   compact ➜ explained, inp_digest fd4b12cd ➜ 22419d3b, out_digest e3b0c442 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./plan.py
  SUCCESS │ ./plan.py

@@ -32,17 +32,26 @@ async def startup_from_db(
     builder: Builder,
 ):
     """Initialize internal datastructures by loading relevant parts from the database."""
-    # Make steps pending if they are RUNNING, CHECKING, or FAILED.
+    await reset_to_pending(workflow, db, reporter)
+    await populate_dir_queue(workflow, db, reporter)
+    await check_env_changes(workflow, db, reporter)
+    await check_file_changes(db, reporter, builder)
+
+    # Check for added / removed files that match nglobs used by some steps.
+    # File content changes are not relevant for this check.
+    await check_nglob_changes(workflow, db, reporter)
+
+    # Every step that must run again is pending now, so the builder can start.
+    logger.info("Startup sequence completed")
+    builder.resume.set()
+
+
+async def reset_to_pending(workflow: Workflow, db: DBSession, reporter: ReporterClient):
+    """Make steps pending if they are RUNNING, CHECKING, or FAILED."""
+
     # RUNNING/CHECKING are uncommon, but can happen if the director crashes.
     async with db:
         # Steps that were running are considered failed.
-        # A stray UNCONFIRMED file left behind by a director killed while its confirming hash job
-        # was still queued or in flight no longer depends on this reset for recovery:
-        # scan_file_changes below confirms such rows directly, via CONFIRMED,
-        # regardless of whether the hash changed.
-        # Rerunning the declaring step (this reset's actual purpose) redeclares
-        # and reconfirms the same path anyway, which is a harmless duplicate confirmation
-        # (see the race comment in workflow.py's _HASH_TRANSITIONS).
         db.execute(
             "UPDATE step SET state = ? WHERE state = ?",
             (StepState.FAILED.value, StepState.RUNNING.value),
@@ -60,11 +69,45 @@ async def startup_from_db(
                 await reporter("STARTUP", "Making failed steps pending")
                 _first_failed = False
             workflow.mark_step_pending(step)
+        # Interrupted hash jobs (related to `UNCONFIRMED` files) don't need to be handled here.
+        # See `check_file_changes()` for how they are resolved.
 
-    # Populate dir queue
-    await populate_dir_queue(workflow, db, reporter)
 
-    # Check for changes in environment variables used by steps.
+async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: ReporterClient):
+    """Populate the workflow's directory queue with directories to watch."""
+    sql = (
+        "SELECT label FROM node JOIN file ON node.i = file.node WHERE kind = 'file' AND "
+        f"file.state != {FileState.VOLATILE.value}"
+    )
+    async with db:
+        rows = db.execute(sql).fetchall()
+        nglobs = list(workflow.nglobs())
+
+    # File-node directories belong to the workflow, so they are watched directly
+    # and may be created (`watch_dir` honours `create_parent_dirs`).
+    # Glob-pattern directories are not:
+    # a pattern only observes the file system,
+    # so they go through watch_existing_dir instead, which never creates a directory.
+    # A root-level path's parent is "", normalized to "." so it folds into the same set entry
+    # as glob_base_dir's own root value, keeping the reported count accurate.
+    file_dirs = {str(Path(path).parent) or "." for (path,) in rows}
+    glob_dirs = set()
+    for ng in nglobs:
+        for path in ng.files():
+            glob_dirs.add(str(Path(path.rstrip(os.sep)).parent) or ".")
+        glob_dirs.add(glob_base_dir(ng.pattern))
+
+    parents = file_dirs | glob_dirs
+    if len(parents) > 0:
+        await reporter("STARTUP", f"Watching {len(parents)} director(y|ies)")
+        for path in file_dirs:
+            workflow.watch_dir(path)
+        for path in glob_dirs - file_dirs:
+            workflow.watch_existing_dir(path)
+
+
+async def check_env_changes(workflow: Workflow, db: DBSession, reporter: ReporterClient):
+    """Check for changes in environment variables used by steps."""
     async with db:
         env_var_uses = db.execute(
             "SELECT node, label, name, value FROM env_var JOIN node ON env_var.node = node.i"
@@ -85,49 +128,15 @@ async def startup_from_db(
             for step in to_mark_pending:
                 workflow.mark_step_pending(step)
 
-    # Check for file changes
-    await check_file_changes(db, reporter, builder)
-    # Check for added / removed files that match nglobs used by some steps.
-    # File content changes are not relevant for this check.
-    await check_nglob_changes(workflow, db, reporter)
-
-    # Wrap up by making necessary steps pending and starting the builder.
-    logger.info("Startup sequence completed")
-    builder.resume.set()
-
-
-async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: ReporterClient):
-    sql = (
-        "SELECT label FROM node JOIN file ON node.i = file.node WHERE kind = 'file' AND "
-        f"file.state != {FileState.VOLATILE.value}"
-    )
-    async with db:
-        rows = db.execute(sql).fetchall()
-        nglobs = list(workflow.nglobs())
-
-    # File-node directories are known to exist and are watched directly. Glob-pattern
-    # directories are not: a pattern only observes the filesystem, so they go through
-    # watch_existing_dir instead, which never creates a directory (see there).
-    # A root-level path's parent is "", normalized to "." so it folds into the same
-    # set entry as glob_base_dir's own root value, keeping the reported count accurate.
-    file_dirs = {str(Path(path).parent) or "." for (path,) in rows}
-    glob_dirs = set()
-    for ng in nglobs:
-        for path in ng.files():
-            glob_dirs.add(str(Path(path.rstrip(os.sep)).parent) or ".")
-        glob_dirs.add(glob_base_dir(ng.pattern))
-
-    parents = file_dirs | glob_dirs
-    if len(parents) > 0:
-        await reporter("STARTUP", f"Watching {len(parents)} director(y|ies)")
-        for path in file_dirs:
-            workflow.watch_dir(path)
-        for path in glob_dirs - file_dirs:
-            workflow.watch_existing_dir(path)
-
 
 async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: Builder):
-    """Check all files in the workflow for changes."""
+    """Check all relevant files in the workflow for changes.
+
+    The following are not checked:
+    - Files in the VOLATILE state: they are expected to change.
+    - Files in the PLANNED state: they are not yet built, so their content is not relevant.
+    - Detached files: they are not part of the workflow, so their content is not relevant.
+    """
     sql = (
         "SELECT label, state, hash "
         "FROM node JOIN file ON node.i = file.node AND state NOT IN (?, ?) AND NOT detached"
@@ -139,17 +148,18 @@ async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: B
         return
 
     await reporter("STARTUP", f"Checking {len(rows)} file(s) for changes")
+    # Stray `UNCONFIRMED` rows, left behind by a director killed
+    # while their confirming hash job was still queued or in flight,
+    # are resolved directly here, via the `CONFIRMED` cause,
+    # rather than depending on the `RUNNING` -> `FAILED` -> `PENDING` reset
+    # in `startup_from_db()` to rerun the declaring step.
+    # `CONFIRMED` is the only cause that flips `UNCONFIRMED` -> `CONFIRMED`/`MISSING`,
+
     old_by_path = {}
     path_hash_causes = []
     for path, state, hash_value in rows:
         old_file_hash = FileHash.from_json(hash_value)
         old_by_path[path] = old_file_hash
-        # Stray UNCONFIRMED rows (left behind by a director killed while their confirming hash
-        # job was still queued or in flight) are resolved directly here, via the CONFIRMED cause,
-        # rather than depending on the RUNNING -> FAILED -> PENDING reset above to rerun the
-        # declaring step: it is the only cause that flips UNCONFIRMED -> CONFIRMED/MISSING, and
-        # unlike the other causes it is applied by the hash job even when the hash is unchanged
-        # (see Executor.run_hash_job).
         cause = (
             HashUpdateCause.CONFIRMED
             if FileState(state) == FileState.UNCONFIRMED
@@ -172,15 +182,14 @@ async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: B
 
 
 async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: ReporterClient) -> None:
-    """Look for new and deleted matches in nglobs used by some jobs, and process them.
+    """Look for new and deleted matches in nglobs registered by steps, and process them.
 
-    This is fully self-contained: for each nglob, the paths it matched last time
-    (persisted in the `nglob` table) are compared to a fresh scan of the
-    file system, without consulting the workflow's file states at all.
-    Steps whose nglob matches changed are marked pending and their new matches
-    are persisted.
+    This is fully self-contained:
+    for each nglob, the paths it matched last time (persisted in the `nglob` table)
+    are compared to a fresh scan of the file system,
+    without consulting the workflow's file states at all.
+    Steps whose nglob matches changed are marked pending and their new matches are persisted.
     """
-    # Load all nglobs
     async with db:
         nglobs = list(workflow.nglob_registrations())
     if len(nglobs) == 0:
@@ -211,9 +220,10 @@ async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: Repor
     for path in sorted(all_added):
         await reporter("UPDATED", path)
 
-    # Persist the freshly scanned matches (already the correct new state, no need to
-    # recompute them again through Workflow.process_nglob_changes) for the nglobs whose
-    # matches actually changed, and mark their owning steps pending.
+    # Persist the freshly scanned matches of the nglobs whose matches actually changed,
+    # and mark their owning steps pending.
+    # A fresh scan is already the correct new state,
+    # so there is no need to recompute it through Workflow.process_nglob_changes.
     if len(changed) > 0:
         async with db:
             for i, step, fresh in changed:

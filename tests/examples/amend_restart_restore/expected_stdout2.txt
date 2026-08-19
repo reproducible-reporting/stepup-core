@@ -4,14 +4,14 @@
    PHASE │ build
   NOSKIP │ echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 18f9df93, out_digest 91a94667 ➜ e195d556
+Modified step hash   explained, inp_digest d5615eff, out_digest 91a94667 ➜ e195d556
 Modified out hash    inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
 ────────────────────────────────────────────────────────────────────────────────
    START │ echo word2 > inp2.txt
  SUCCESS │ echo word2 > inp2.txt
     SKIP │ ./work.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 5f9e5efc, out_digest 29f755b3
+Same step hash       explained, inp_digest 480aa09f, out_digest 29f755b3
 Same inp hash        inp1.txt
 Same inp hash        inp2.txt
 Same inp hash        work.py

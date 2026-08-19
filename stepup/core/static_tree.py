@@ -15,7 +15,7 @@ class StaticTree(Node):
 
     @classmethod
     def kind(cls) -> str:
-        """Lower-case prefix of the key string representing a node."""
+        """Return the lower-case prefix of the key string representing a node."""
         return "st"
 
     def add_source(self, source: Node, skip_cycle_check: bool = False) -> int:
@@ -25,7 +25,8 @@ class StaticTree(Node):
     def after_lost_product(self):
         """Do nothing, since a static tree has no cached result that could go stale.
 
-        A static tree only declares files static;
-        it is never skipped and stores nothing that a lost product would invalidate.
-        It is removed by the next `Trellis.delete_detached`, unless a new creator recycles it first.
+        A static tree only declares files static
+        and stores nothing that a lost product would invalidate.
+        It is deleted by `Trellis.delete_detached` as soon as that is safe,
+        unless a new creator recycles it first.
         """

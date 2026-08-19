@@ -14,14 +14,18 @@ __all__ = (
     "HashError",
     "HashFailedError",
     "InputNotFoundError",
-    "InteractError",
     "PathError",
     "RPCError",
     "RunError",
     "StepUpError",
-    "TUIError",
+    "ToolError",
     "UsageError",
 )
+
+
+#
+# Usage Errors
+#
 
 
 class UsageError(Exception):
@@ -34,30 +38,11 @@ class UsageError(Exception):
     """
 
 
-class GraphError(UsageError):
-    """A change to the graph could not be made as it would introduce an inconsistency."""
-
-
-class CyclicError(GraphError):
-    """Adding a new relation would introduce a cyclic dependency."""
-
-
-class AmendWhileHoldingError(GraphError):
-    """`amend(inp=...)` was called while the calling step has an open `hold()` block.
-
-    An `amend(inp=...)` inside a `hold()` block can deadlock:
-    the step cannot release the hold without the dynamic input,
-    and the input's producer cannot run until the hold is released.
-    Call the amend-triggering code before entering the `with hold():` block.
-    `amend(env=..., out=..., vol=...)` cannot deadlock this way and does not raise this error.
-    """
-
-
 class ConfigError(UsageError, ValueError):
     """A configuration file or environment variable holds something StepUp cannot use.
 
     `ValueError` is kept in the bases because most of the underlying problems
-    (a bad TOML syntax, a value of the wrong type, a value outside the allowed choices)
+    (bad TOML syntax, a value of the wrong type, a value outside the allowed choices)
     surface as a `ValueError` before being wrapped in this class.
 
     The command-line interface reports these without a traceback,
@@ -66,17 +51,30 @@ class ConfigError(UsageError, ValueError):
     """
 
 
-class ConsistencyError(RuntimeError):
-    """An invariant of the workflow graph is violated.
-
-    Deliberately not a `UsageError`: no plan can put the graph in such a state through the
-    public API, so this always points at a bug in StepUp (or at a database corrupted by
-    something outside it), and the full traceback is what a bug report needs.
-    """
+class ToolError(UsageError):
+    """An error raised by a command line tool that must be shown without traceback."""
 
 
-class RPCError(Exception):
-    """A remote procedure call could not be interpreted correctly."""
+#
+# Graph Errors (special case of Usage Error)
+#
+
+
+class GraphError(UsageError):
+    """A change to the graph could not be made as it would introduce an inconsistency."""
+
+
+class AmendWhileHoldingError(GraphError):
+    """`amend(inp=...)` was called while the calling step has an open `hold()` block."""
+
+
+class CyclicError(GraphError):
+    """Adding a new relation would introduce a cyclic dependency."""
+
+
+#
+# StepUp API usage errors
+#
 
 
 class StepUpError(UsageError, ValueError):
@@ -100,31 +98,32 @@ class EnvVarError(StepUpError):
     """An environment variable referenced in a path or string could not be resolved."""
 
 
+#
+# Internal Errors
+#
+
+
+class ConsistencyError(RuntimeError):
+    """An invariant of the workflow graph is violated.
+
+    Deliberately not a `UsageError`:
+    no plan can put the graph in such a state through the public API,
+    so this always points at a bug in StepUp
+    (or at a database corrupted by something outside it),
+    and the full traceback is what a bug report needs.
+    """
+
+
+class RPCError(Exception):
+    """A remote procedure call could not be interpreted correctly."""
+
+
 class InputNotFoundError(Exception):
     """Raised when dynamic inputs are not available yet."""
 
 
 class CgroupError(RuntimeError):
     """Cgroup v2 accounting is unavailable or unusable for this process."""
-
-
-class TUIError(RuntimeError):
-    """An error raised by the terminal user interface (`tui.py`) before the director starts.
-
-    Distinguished from a plain `RuntimeError` so that the top-level handler in
-    `_build_tool` (`tui.py`) can catch it and print a short, user-facing message
-    (`ERROR: ...` on stderr) instead of a full traceback, then exit with
-    `ReturnCode.INTERNAL`.
-    """
-
-
-class InteractError(RuntimeError):
-    """An error raised by an interactive tool (`interact.py`) that talks to the director.
-
-    Distinguished from a plain `RuntimeError` so that the tools can catch it and print a
-    short, user-facing message (`ERROR: ...` on stderr) instead of a full traceback,
-    then exit with `ReturnCode.INTERNAL`.
-    """
 
 
 class RunError(RuntimeError):
@@ -136,11 +135,8 @@ class HashError(Exception):
 
 
 class HashCancelledError(HashError):
-    """Raised from `FileHash.regen` when `cancel_event` was set."""
+    """Raised when a hash computation was aborted because its `cancel_event` was set."""
 
 
 class HashFailedError(HashError):
-    """Raised when a file cannot be hashed because it is not a regular file.
-
-    E.g. the path turned out to be a directory.
-    """
+    """Raised when a file cannot be hashed."""

@@ -14,7 +14,7 @@ from path import Path
 from .constants import DIRECTOR_LOG, STEPUP_DIR
 from .utils import scan_director_log
 
-__all__ = ("remove_hashes", "run_example")
+__all__ = ("remove_hashes", "run_example", "run_plan")
 
 
 def remove_hashes(graph: dict) -> dict:
@@ -37,19 +37,21 @@ which says nothing about what went wrong.
 """
 
 EXAMPLE_TIMEOUT = 30.0
-"""Seconds to wait for an example to finish, before failing the test."""
+"""Seconds to wait for an example to finish before failing the test."""
 
 
 async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     """Run an example use case in a temporary directory and check the outputs.
 
-    The script ``main.sh`` in the example is the entry point for the test case.
-    It must have one or more lines ``stepup ...  & # > current_stdout{something}.txt &``,
-    from which the substring `& # ` is removed before testing, to keep the output for comparison
-    to the expected reporter.
+    The script `main.sh` in the example is the entry point for the test case.
+    It must have one or more lines of the form
+    `stepup ... & # > current_stdout{something}.txt &`,
+    where `sb`, the shortcut for `stepup build`, may be used instead of `stepup`.
+    The ` & #` in such a line is removed before the example runs,
+    so that the reporter output is captured for comparison with the expected output.
 
-    All files in the srcdir starting with ``expected_`` will be compared to corresponding files
-    starting with ``current_`` after completion of the example.
+    All files in the srcdir starting with `expected_` will be compared to corresponding files
+    starting with `current_` in the temporary directory after completion of the example.
 
     Parameters
     ----------
@@ -62,10 +64,10 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     """
     workdir = tmpdir / "example"
     shutil.copytree(srcdir, workdir)
-    # Make the shared boilerplate available at ../example.rc relative to main.sh.
+    # Make the shared boilerplate available at `../example.rc` relative to `main.sh`.
     shutil.copy(srcdir.parent / "example.rc", workdir.parent / "example.rc")
 
-    # Rewrite the script to redirect the input and output of stepup.
+    # Rewrite the script to activate the commented-out redirection of the stepup output.
     sed_proc = await asyncio.create_subprocess_shell(
         r"sed -i -e '/^\(stepup\|sb\)/ s/ & #//' main.sh",
         stdin=subprocess.DEVNULL,
@@ -90,7 +92,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
         pairs = []
 
-        for path_exp in sorted(workdir.glob("expected*.*")):
+        for path_exp in sorted(srcdir.glob("expected*.*")):
             fn_exp = path_exp.basename()
             path_cur = workdir / ("current" + fn_exp[8:])
             if not path_cur.is_file():
@@ -112,19 +114,21 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             # Normalize output before comparing:
             cur = cur.replace(Path.cwd(), "${PWD}")
             cur = cur.replace(workdir, "${CASE}")
-            # - Listening paths are random
+            # - The director's socket path contains a random temporary directory
             cur = re.sub(r"DIRECTOR │ Listening on .*\n", "", cur)
-            # - Exact line numbers in exceptions change often, not important
+            # - Exact line numbers in exceptions change often and do not matter here
             cur = re.sub(r", line \d+, in ", ", line ---, in ", cur)
-            # - Remove new types of traceback output not present in Python 3.11
+            # - Remove new types of traceback output not introduced after Python 3.11,
+            #   which is the oldest version we support.
             cur = re.sub(r"^    \.{3}<\d+ lines>\.{3}\n", "", cur, flags=re.MULTILINE)
             cur = re.sub(r"^    \)\n", "", cur, flags=re.MULTILINE)
             cur = re.sub(r"    \~*\^*\n", "", cur, flags=re.MULTILINE)
             # - Remove trailing whitespace
             cur = re.sub(r"[ \t]+?(\n|\Z)", r"\1", cur)
-            # - Remove digests, change often, content of results must be tested explicitly.
+            # - Remove digests: they change often,
+            #   so the content of results must be tested explicitly.
             cur = re.sub(r" {10}(.{4})digest = [ 0-9a-f]{71}\n", "", cur)
-            # - Remove standard error: sensitive to OS and Python version
+            # - Strip the body of the standard error page: it is sensitive to OS and Python version
             cur = re.sub(
                 STDERR_BEGIN + r".*?" + STDERR_END,
                 STDERR_BEGIN + "\n(stripped)\n" + STDERR_END,
@@ -134,7 +138,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             # - Timings are not deterministic
             cur = re.sub(r"DIRECTOR │ Wall .*\n", "", cur)
 
-            # Perform the comparison
+            # Overwrite the expected output or keep the pair for the comparison below.
             if overwrite_expected:
                 path_exp = srcdir / fn_exp
                 with open(path_exp, "w") as fh:
@@ -169,7 +173,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
 
 async def run_plan(srcdir: Path, tmpdir: Path):
-    """Copy a plan.py script to a temporary directory and run it as an ordinary Python script.
+    """Copy a `plan.py` script to a temporary directory and run it as an ordinary Python script.
 
     Parameters
     ----------
@@ -181,8 +185,9 @@ async def run_plan(srcdir: Path, tmpdir: Path):
     Notes
     -----
     This is not the intended way of using `plan.py` scripts.
-    They are normally processed by StepUp instead of running them directly.
-    Nevertheless, they should still work without generating exceptions, for debugging purposes.
+    They are normally processed by StepUp instead of being run directly.
+    Nevertheless, running them directly should not raise exceptions,
+    which is useful for debugging.
     """
     workdir = tmpdir / "example"
     shutil.copytree(srcdir, workdir)

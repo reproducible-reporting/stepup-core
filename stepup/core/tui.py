@@ -2,10 +2,14 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Own the `stepup build` command line, spawn the director subprocess, and supervise it.
 
-Supervision means forwarding terminal signals and keystrokes to the director
-and translating its exit status into a `ReturnCode`.
-This module also serves the reporter RPC socket that the director connects back to,
-to report progress.
+This module involves a bi-directional RPC connection between the director and the TUI:
+
+- Supervision means forwarding terminal signals and keystrokes to the director
+  and translating its exit status into a `ReturnCode`.
+  The TUI (and the `keyboard` task) connect to the director as clients.
+
+- This module also serves the reporter RPC socket that the director connects back to,
+  to report progress.
 """
 
 import argparse
@@ -40,7 +44,7 @@ from .constants import (
     STEPUP_DIR,
 )
 from .enums import ReturnCode
-from .exceptions import RPCError, TUIError, UsageError
+from .exceptions import RPCError, ToolError, UsageError
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
 from .utils import (
@@ -65,10 +69,11 @@ __all__ = ("boot_subcommand", "build_subcommand")
 class MergeResourcesAction(argparse.Action):
     """Merge a `--resources` value into the accumulated one instead of replacing it.
 
-    Argparse seeds the namespace with `action.default` before parsing, so on the first
-    `-r` occurrence the accumulated value is already whatever `ConfigLoader.patch_parser`
-    put there (config file and env var merged in). Repeated `-r` occurrences merge left
-    to right on top of that, consistent with how config and env values combine.
+    Argparse seeds the namespace with `action.default` before parsing,
+    so on the first `-r` occurrence the accumulated value is already
+    whatever `ConfigLoader.patch_parser` put there (config file and env var merged in).
+    Repeated `-r` occurrences merge left to right on top of that,
+    consistent with how config and env values combine.
     """
 
     def __call__(self, parser, namespace, values, option_string=None):
@@ -94,13 +99,13 @@ def positive_decimal(value: str) -> Decimal:
 
 
 def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: str) -> None:
-    """Register the build subparser under *name*.
+    """Register the build subparser under `name`.
 
-    The argument definitions are identical for every subcommand name; only the
-    subparser name and its help text differ.
-    The parser's `prog` is pinned to `"stepup build"` instead of the default derived
-    from *name*, because `ConfigLoader.patch_parser` derives the config section from `prog`.
-    Configuration therefore always comes from the `"build"` section, regardless of *name*,
+    The argument definitions are identical for every subcommand name;
+    only the subparser name and its help text differ.
+    The parser's `prog` is pinned to `"stepup build"` instead of the default derived from `name`,
+    because `ConfigLoader.patch_parser` derives the config section from `prog`.
+    Configuration therefore always comes from the `"build"` section, regardless of `name`,
     so `stepup build` and its aliases share a single source of truth for configuration.
     The price is that an alias shows `usage: stepup build ...` in its help,
     which is a fair hint towards the canonical name.
@@ -108,10 +113,9 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
     Parameters
     ----------
     subparsers
-        The sub parser to add the build tool to.
+        The subparser to add the build tool to.
     loader
-        The configuration loader to override the default configuration with
-        config file values.
+        The configuration loader to override the default configuration with config file values.
     name
         The subcommand name to register (e.g. `"build"` or `"boot"`).
     help_text
@@ -147,7 +151,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "-e",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Explain for every step with recording info why it cannot be skipped.",
+        help="Explain for every step with recorded info why it cannot be skipped.",
     )
     group.add_argument(
         "--fix-epoch",
@@ -286,15 +290,14 @@ def build_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     Parameters
     ----------
     subparsers
-        The sub parser to add the build tool to.
+        The subparser to add the build tool to.
     loader
-        The configuration loader to override the default configuration with
-        config file values.
+        The configuration loader to override the default configuration with config file values.
 
     Returns
     -------
     tool_func
-        The function to call with the parsed arguments, i.e. `_build_tool`.
+        The function to call with the parsed args to start building.
     """
     _add_build_parser(subparsers, loader, "build", "Build the StepUp workflow.")
     return _build_tool
@@ -306,15 +309,15 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     Parameters
     ----------
     subparsers
-        The sub parser to add the boot tool to.
+        The subparser to add the boot tool to.
     loader
-        The configuration loader to override the default configuration with
-        config file values.
+        The configuration loader to override the default configuration with config file values.
 
     Returns
     -------
     tool_func
-        The function to call with the parsed arguments, i.e. `_deprecated_boot_tool`.
+        The function to call with the parsed args
+        to print a deprecation warning and start building.
     """
     _add_build_parser(subparsers, loader, "boot", "Deprecated alias of 'stepup build'.")
     return _deprecated_boot_tool
@@ -326,7 +329,7 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 
 
 def _build_tool(args: argparse.Namespace) -> int:
-    """Run `stepup build`, reporting a `TUIError` as an error message instead of a traceback.
+    """Run `stepup build`, reporting a `ToolError` as an error message instead of a traceback.
 
     Parameters
     ----------
@@ -340,7 +343,7 @@ def _build_tool(args: argparse.Namespace) -> int:
     """
     try:
         return asyncio.run(_async_build(args))
-    except TUIError as exc:
+    except ToolError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return ReturnCode.INTERNAL.value
 
@@ -373,8 +376,9 @@ def _deprecated_boot_tool(args: argparse.Namespace) -> int:
 async def _async_build(args: argparse.Namespace) -> int:
     """Launch the director, forward keystrokes and terminal signals to it, and report progress.
 
-    The director and reporter sockets live in a per-run `tempfile.TemporaryDirectory`,
-    deliberately not under `.stepup/`, since `_reset_stepup_dir` clears that directory.
+    Sockets are placed in a per-run temp directory under `/tmp` rather than `${PWD}/.stepup/`.
+    Unix domain socket paths have a strict limit of 104 bytes (macOS) / 108 bytes (Linux).
+    Deeply nested project paths can easily breach this constraint.
 
     Parameters
     ----------
@@ -384,18 +388,19 @@ async def _async_build(args: argparse.Namespace) -> int:
     Returns
     -------
     returncode
-        The exit code for the `stepup build` process, combining what the director
-        reported with `ReturnCode.INTERRUPTED` when a terminal signal was received
+        The exit code for the `stepup build` process,
+        combining what the director reported
+        with `ReturnCode.INTERRUPTED` when a terminal signal was received
         and `ReturnCode.INTERNAL` when a debug build found problems in the director log.
 
     Raises
     ------
-    TUIError
+    ToolError
         If `plan.py` does not exist in the project root,
         or if a director is already running (see `_check_no_running_director`).
     """
-    # Absolutize STEPUP_ROOT before changing directory, so a relative path is
-    # interpreted against the original cwd.
+    # Absolutize STEPUP_ROOT before changing directory,
+    # so a relative path is interpreted against the original cwd.
     stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd())).absolute()
     targets, target_dirs = _normalize_targets(args.targets, stepup_root)
     if stepup_root != Path.cwd():
@@ -404,7 +409,7 @@ async def _async_build(args: argparse.Namespace) -> int:
 
     # Sanity check before creating a subdirectory.
     if not PLAN_PY.is_file():
-        raise TUIError("File plan.py does not exist.")
+        raise ToolError("File plan.py does not exist.")
 
     _reset_stepup_dir()
 
@@ -415,8 +420,9 @@ async def _async_build(args: argparse.Namespace) -> int:
         director_socket_path = dir_sockets / "director"
         reporter_socket_path = dir_sockets / "reporter"
 
-        # Set up the reporter monitor. Its lifetime is that of the socket directory,
-        # not that of the director subprocess, so it is not owned by _supervise_director.
+        # Set up the reporter monitor.
+        # Its lifetime is that of the socket directory, not that of the director subprocess,
+        # so it is not owned by _supervise_director.
         stop_event = asyncio.Event()
         reporter_handler = ReporterHandler(args.progress, stop_event)
         task_reporter = asyncio.create_task(
@@ -436,8 +442,9 @@ async def _async_build(args: argparse.Namespace) -> int:
                 argv, director_socket_path, reporter_handler, stop_event
             )
         finally:
-            # Both are called unconditionally, i.e. also when an exception escapes the try
-            # block above. The shutdown stops the Live display and restores the cursor,
+            # Both are called unconditionally,
+            # i.e. also when an exception escapes the try block above.
+            # The shutdown stops the Live display and restores the cursor,
             # which the director's own shutdown RPC never got to do in that case.
             # `ReporterHandler.shutdown` already sets `stop_event` as a side effect;
             # setting it here as well keeps the await below from depending on that,
@@ -452,11 +459,11 @@ async def _async_build(args: argparse.Namespace) -> int:
 def _normalize_targets(raw_targets: list[str], stepup_root: Path) -> tuple[list[Path], list[Path]]:
     """Resolve and validate `stepup build` target arguments against the project root.
 
-    A raw target ending in `os.sep` is a directory target: everything under that
-    subtree whose declared `need` is `DEFAULT` is elevated, best-effort (see
-    `docs/advanced_topics/build_targets.md`). Everything else is an exact-file target,
-    regardless of what exists on disk. The trailing slash is the only classifier;
-    classification never looks at the file system.
+    A raw target ending in `os.sep` is a directory target:
+    every step under that subtree whose declared `need` is `DEFAULT` is elevated, best-effort
+    (see `docs/advanced_topics/build_targets.md`).
+    Everything else is an exact-file target, regardless of what exists on disk.
+    The trailing slash is the only classifier; classification never looks at the file system.
 
     Parameters
     ----------
@@ -470,19 +477,18 @@ def _normalize_targets(raw_targets: list[str], stepup_root: Path) -> tuple[list[
     targets
         The normalized, root-relative exact-file target paths.
     target_dirs
-        The normalized, root-relative directory target paths, each carrying its
-        trailing slash.
+        The normalized, root-relative directory target paths, each carrying its trailing slash.
 
     Raises
     ------
-    TUIError
+    ToolError
         If a target is an empty string.
     """
     targets = []
     target_dirs = []
     for raw_target in raw_targets:
         if raw_target == "":
-            raise TUIError("A target cannot be an empty string.")
+            raise ToolError("A target cannot be an empty string.")
         is_dir_target = raw_target.endswith(os.sep)
         target_abs = Path(raw_target).absolute()
         target_rel = target_abs.relpath(stepup_root).normpath()
@@ -496,21 +502,22 @@ def _normalize_targets(raw_targets: list[str], stepup_root: Path) -> tuple[list[
 def _check_no_running_director() -> None:
     """Refuse to start a build while another director owns this workflow.
 
-    The check is deliberately conservative: an advertised pid that still exists is
-    treated as a running director, even though the pid could have been reused, because
-    two directors on one database is the failure this guards against.
+    The check is deliberately conservative:
+    an advertised pid that still exists is treated as a running director,
+    even though the pid could have been reused,
+    because two directors on one database are exactly what this guards against.
 
     Raises
     ------
-    TUIError
-        If a director socket from a previous run still exists and its process is
-        (or may still be) alive.
+    ToolError
+        If a director socket from a previous run still exists
+        and its process is (or may still be) alive.
     """
     path_old_socket, pid, _ = query_director_log(DIRECTOR_LOG)
     if path_old_socket is None:
         return
     if pid is None or is_process_running(pid):
-        raise TUIError(
+        raise ToolError(
             f"A director may still be running (pid {pid}), "
             f"using socket {path_old_socket}. Stop it before starting a new build."
         )
@@ -521,17 +528,16 @@ def _check_no_running_director() -> None:
 
 
 def _reset_stepup_dir() -> None:
-    """Refuse to start next to a running director, then clear the `.stepup` directory.
+    """Refuse to start next to a running director, then remove the log files in `.stepup`.
 
     The order matters and is the reason these two steps live in one function:
-    the running-director check reads `DIRECTOR_LOG`, which clearing the directory deletes.
+    the running-director check reads `DIRECTOR_LOG`, which is one of the files removed.
     Checking second would make the check unconditionally pass.
 
     Raises
     ------
-    TUIError
-        If a director socket exists at the path recorded in `DIRECTOR_LOG`
-        (see `_check_no_running_director`).
+    ToolError
+        If another director may still be running (see `_check_no_running_director`).
     """
     _check_no_running_director()
     STEPUP_DIR.makedirs_p()
@@ -553,7 +559,8 @@ def _build_director_argv(
     Parameters
     ----------
     args
-        The parsed `stepup build` command-line arguments. Not mutated.
+        The parsed `stepup build` command-line arguments.
+        Not mutated.
     targets, target_dirs
         The normalized target paths, as returned by `_normalize_targets`.
     director_socket_path
@@ -562,7 +569,6 @@ def _build_director_argv(
         The socket at which the reporter listens for updates from the director.
     live_progress
         Whether the director should send live step-count updates to the reporter.
-        Callers derive this from `args.progress and reporter_handler.console.is_terminal`.
 
     Returns
     -------
@@ -572,8 +578,9 @@ def _build_director_argv(
     Raises
     ------
     RuntimeError
-        If `args.cgroup` is set and `cgroup_scope_prefix()` cannot build a
-        `systemd-run --scope` prefix (see its own `Raises` section).
+        If `args.cgroup` is set
+        and `cgroup_scope_prefix()` cannot build a `systemd-run --scope` prefix
+        (see its own `Raises` section).
     """
     argv = []
     if args.perf is not None:
@@ -637,15 +644,11 @@ async def _supervise_director(
 ) -> int:
     """Run the director subprocess to completion and translate its wait status.
 
-    This creates the director's log file and owns the terminal signal handlers and the
-    keyboard task, both of which are strictly scoped to the lifetime of the subprocess.
-    The subprocess never outlives this function: whatever happens, it is waited for,
-    and killed first if it is still running.
-
-    The reporter socket is served **by the TUI** itself; the director connects to it as a
-    client to send progress updates. The director socket goes the other way: the TUI
-    (and the `keyboard` task) connect to the director as clients. This inversion is the
-    single most confusing thing about the module.
+    This creates the director's log file
+    and owns the terminal signal handlers and the keyboard task,
+    both of which are strictly scoped to the lifetime of the subprocess.
+    The subprocess never outlives this function:
+    whatever happens, it is waited for, and killed first if it is still running.
 
     Parameters
     ----------
@@ -669,8 +672,9 @@ async def _supervise_director(
     raw_terminal = None
     try:
         with open(DIRECTOR_LOG, "w") as log_file:
-            # The child gets a duplicate of the log file descriptor, so this handle can be
-            # closed right after the spawn, instead of being kept open for the whole build.
+            # The child gets a duplicate of the log file descriptor,
+            # so this handle can be closed right after the spawn,
+            # instead of being kept open for the whole build.
             process_director = await asyncio.create_subprocess_exec(
                 *argv,
                 stdin=subprocess.DEVNULL,
@@ -679,25 +683,27 @@ async def _supervise_director(
             )
         # Install terminal signal handlers, to avoid internal tracebacks
         # when the user presses Ctrl-C or the process is killed by a SIGTERM.
-        # The director aborts the build itself, so this waits for it rather than
-        # exiting straight away, which would cut its shutdown short.
+        # The director aborts the build itself,
+        # so this waits for it rather than exiting straight away,
+        # which would cut its shutdown short.
         signal_handler = TerminalSignalHandler(reporter_handler, process_director)
         suspend_handler = SuspendHandler(reporter_handler, process_director)
         loop = asyncio.get_running_loop()
-        # Wait for the director in a task, so that the interactive setup below can
-        # race the appearance of its socket against its exit.
+        # Wait for the director in a task,
+        # so that the interactive setup below can race the appearance of its socket
+        # against its exit.
         task_director = asyncio.create_task(process_director.wait(), name="director-wait")
         try:
             for sig in (signal.SIGINT, signal.SIGTERM):
                 loop.add_signal_handler(sig, signal_handler.handle, sig)
             loop.add_signal_handler(signal.SIGTSTP, suspend_handler.handle)
-            # Instantiate keyboard interaction or work non-interactively
+            # Set up keyboard interaction, or work non-interactively.
             if sys.stdin.isatty() and await _wait_for_director_socket(
                 director_socket_path, stop_event, task_director
             ):
-                # Raw mode is entered here, not inside the keyboard task, so that it is
-                # already in place when that task starts and so that the suspend handler
-                # has a terminal to hand back to the shell.
+                # Raw mode is entered here, not inside the keyboard task,
+                # so that it is already in place when that task starts,
+                # and so that the suspend handler has a terminal to hand back to the shell.
                 raw_terminal = RawTerminal(sys.stdin.fileno())
                 raw_terminal.enter()
                 suspend_handler.raw_terminal = raw_terminal
@@ -712,29 +718,32 @@ async def _supervise_director(
                 loop.remove_signal_handler(sig)
             if not task_director.done():
                 # An exception escaped on the way to (or during) the await above.
-                # The director must not survive this function: the caller is about to
-                # remove the socket directory it is listening in, and the next build would
-                # refuse to start next to a director that is still running.
+                # The director must not survive this function:
+                # the socket directory it is listening in is about to be removed,
+                # and the next build would refuse to start
+                # next to a director that is still running.
                 with contextlib.suppress(ProcessLookupError):
                     process_director.kill()
                 await task_director
-        # The director normally calls reporter.shutdown() itself over RPC, but a director
-        # that crashes or is killed never gets there. Calling it here as well is idempotent,
-        # and it stops the Live display before the report below, so that the error line is
-        # not printed underneath a running progress bar.
+        # The director normally calls reporter.shutdown() itself over RPC,
+        # but a director that crashes or is killed never gets there.
+        # Calling it here as well is idempotent,
+        # and it stops the Live display before the report below,
+        # so that the error line is not printed underneath a running progress bar.
         reporter_handler.shutdown()
         return signal_handler.translate_wait_status(wait_status)
     finally:
         if task_keyboard is not None:
             # The keyboard task reads keystrokes until stop_event is set.
-            # The event is set here (idempotently, the caller sets it too) because the
-            # await below would hang forever when an exception escapes the try block
+            # The event is set here (idempotently, the caller sets it too)
+            # because the await below would hang forever when an exception escapes the try block
             # before the reporter shutdown that normally sets it.
             stop_event.set()
             await task_keyboard
         if raw_terminal is not None:
-            # After the keyboard task, so that the reader thread cannot consume a keystroke
-            # in raw mode after the terminal has been handed back to the shell.
+            # After the keyboard task,
+            # so that the reader thread cannot consume a keystroke in raw mode
+            # after the terminal has been handed back to the shell.
             raw_terminal.leave()
 
 
@@ -746,7 +755,7 @@ async def _wait_for_director_socket(
     Waiting on the socket alone would hang forever when the director exits before creating it,
     e.g. because its argparse rejected an option, a preloaded module failed to import,
     or a wrapper like `perf record` refused to start it.
-    Nothing would set *stop_event* in that case:
+    Nothing would set `stop_event` in that case:
     it is set by the director's own `shutdown` RPC or by `_async_build`'s `finally`,
     and neither can happen while control is stuck in this wait.
 
@@ -794,7 +803,7 @@ def _report_director_log_problems(reporter_handler: ReporterHandler) -> int:
     -------
     returncode
         `ReturnCode.INTERNAL` when problems were found and `STEPUP_DEBUG` is set,
-        zero otherwise. The caller combines it with the director's own return code.
+        zero otherwise.
     """
     findings = scan_director_log(DIRECTOR_LOG)
     if len(findings) == 0:
@@ -827,10 +836,9 @@ so that killing steps and reporting the outcome is tried first.
 class TerminalSignalHandler:
     """Handle terminal signals received while the director subprocess is running.
 
-    The director aborts the build on such a signal itself
-    (see `DirectorHandler.interrupt`), so the work here is only to make sure it
-    receives the signal, and to guarantee that the terminal user interface exits even when
-    the director does not.
+    The director aborts the build on such a signal itself (see `DirectorHandler.interrupt`),
+    so the work here is only to make sure it receives the signal,
+    and to guarantee that the terminal user interface exits even when the director does not.
     """
 
     reporter_handler: ReporterHandler = attrs.field()
@@ -875,22 +883,23 @@ class TerminalSignalHandler:
     def translate_wait_status(self, wait_status: int) -> int:
         """Turn the director's wait status into a `ReturnCode` flag combination.
 
-        Both corrections applied here are about signals, which is why this lives on the
-        signal handler: the director may have been killed by one, and this process may
-        have received one.
+        Both corrections applied here are about signals,
+        which is why this lives on the signal handler:
+        the director may have been killed by one, and this process may have received one.
 
         Parameters
         ----------
         wait_status
-            What `Process.wait()` returned: the director's exit code, or minus the number
-            of the signal that killed it.
+            What `Process.wait()` returned:
+            the director's exit code, or minus the number of the signal that killed it.
 
         Returns
         -------
         returncode
-            The director's exit code, with `ReturnCode.INTERRUPTED` OR-ed in when a terminal
-            signal was received, and replaced by `ReturnCode.INTERNAL` when the director was
-            killed by a signal, since a negative wait status is not a `ReturnCode` combination.
+            The director's exit code,
+            with `ReturnCode.INTERRUPTED` OR-ed in when a terminal signal was received,
+            and replaced by `ReturnCode.INTERNAL` when the director was killed by a signal,
+            since a negative wait status is not a `ReturnCode` combination.
         """
         if wait_status < 0:
             signal_name = signal.Signals(-wait_status).name
@@ -925,11 +934,12 @@ class TerminalSignalHandler:
 class SuspendHandler:
     """Handle a `SIGTSTP` (Ctrl-Z) received while the director subprocess is running.
 
-    A suspension is not an interruption: unlike `TerminalSignalHandler`, this leaves the
-    return code alone and never gives up on the director.
-    The director stops its own steps and itself (see `DirectorHandler.suspend`), so the work
-    here is to hand the terminal back to the shell in a usable state and to take it back
-    afterwards.
+    A suspension is not an interruption:
+    unlike `TerminalSignalHandler`, this leaves the return code alone
+    and never gives up on the director.
+    The director stops its own steps and itself (see `DirectorHandler.suspend`),
+    so the work here is to hand the terminal back to the shell in a usable state
+    and to take it back afterwards.
     """
 
     reporter_handler: ReporterHandler = attrs.field()
@@ -944,9 +954,10 @@ class SuspendHandler:
     def handle(self) -> None:
         """Suspend this process, and resume when it is continued.
 
-        The default disposition is restored to actually stop, since a handled `SIGTSTP` does
-        not stop anything. Execution continues after `os.kill` once the shell continues the
-        process group, which is where the terminal is taken over again.
+        The default disposition is restored to actually stop,
+        since a handled `SIGTSTP` does not stop anything.
+        Execution continues after `os.kill` once the shell continues the process group,
+        which is where the terminal is taken over again.
         """
         self.reporter_handler.suspend_display()
         if self.raw_terminal is not None:
@@ -965,8 +976,9 @@ class SuspendHandler:
             suspended = time.perf_counter() - wtime_start
             loop.add_signal_handler(signal.SIGTSTP, self.handle)
             if forwarded:
-                # The shell continues the process group of its job, which does not include a
-                # director that did not receive the suspension from the terminal either.
+                # The shell continues the process group of its job.
+                # That group does not include a director
+                # that never received the suspension from the terminal.
                 with contextlib.suppress(ProcessLookupError):
                     self.process_director.send_signal(signal.SIGCONT)
             if self.raw_terminal is not None:
@@ -979,14 +991,15 @@ _TERMINAL_SIGNALS = frozenset({signal.SIGINT, signal.SIGTSTP})
 
 
 def _terminal_broadcasts(sig: signal.Signals, pid: int) -> bool:
-    """Whether the terminal driver already delivered `sig` to `pid` as well as to this process.
+    """Check whether the terminal driver already sent `sig` to `pid` as well as to this process.
 
-    Of the signals StepUp handles, only `SIGINT` (Ctrl-C) and `SIGTSTP` (Ctrl-Z) are
-    generated by the terminal driver, which sends them to every process in the foreground
-    process group at once. That is the case exactly when this process and `pid` are both in
-    the process group that owns the controlling terminal.
-    A `SIGINT` or `SIGTSTP` sent explicitly (`kill -INT`, `kill -TSTP`) to a backgrounded
-    StepUp does not qualify, and neither does any `SIGTERM`.
+    Of the signals StepUp handles,
+    only `SIGINT` (Ctrl-C) and `SIGTSTP` (Ctrl-Z) are generated by the terminal driver,
+    which sends them to every process in the foreground process group at once.
+    That is the case exactly when this process and `pid`
+    are both in the process group that owns the controlling terminal.
+    A `SIGINT` or `SIGTSTP` sent explicitly (`kill -INT`, `kill -TSTP`) to a backgrounded StepUp
+    does not qualify, and neither does any `SIGTERM`.
 
     Parameters
     ----------
@@ -998,13 +1011,13 @@ def _terminal_broadcasts(sig: signal.Signals, pid: int) -> bool:
     Returns
     -------
     broadcast
-        True if `pid` received `sig` from the terminal driver as well.
+        `True` if `pid` received `sig` from the terminal driver as well.
     """
     if sig not in _TERMINAL_SIGNALS:
         return False
     try:
-        # Query the controlling terminal itself: stdin may be redirected while the
-        # process is still in the foreground process group.
+        # Query the controlling terminal itself:
+        # stdin may be redirected while the process is still in the foreground process group.
         with open("/dev/tty") as tty:
             foreground_pgid = os.tcgetpgrp(tty.fileno())
         return foreground_pgid == os.getpgid(0) == os.getpgid(pid)
@@ -1081,8 +1094,9 @@ class RawTerminal:
 
     Single keystrokes can only be read when canonical input and echo are disabled,
     which is a process-wide change to a terminal shared with the shell.
-    This class owns the attributes it found, so that the same state can be handed back on
-    the way out (`leave`) and for the duration of a suspension (`suspend`).
+    This class owns the attributes it found,
+    so that the same state can be handed back on the way out (`leave`)
+    and for the duration of a suspension (`suspend`).
     """
 
     fd: int = attrs.field()
@@ -1121,9 +1135,10 @@ class RawTerminal:
     def resume(self) -> None:
         """Disable canonical input and echo again, after a `suspend`.
 
-        This is not optional bookkeeping: shells do not reliably restore the attributes of
-        a job they continue, so without this the keyboard interface silently stops working
-        after a Ctrl-Z, with every keystroke echoed and swallowed by the line buffer.
+        This is not optional bookkeeping:
+        shells do not reliably restore the attributes of a job they continue,
+        so without this the keyboard interface silently stops working after a Ctrl-Z,
+        with every keystroke echoed and swallowed by the line buffer.
         """
         if self._saved is not None:
             self._apply_raw()
@@ -1138,19 +1153,17 @@ class RawTerminal:
 async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, None]:
     """Yield keystrokes from stdin, one at a time, until `stop_event` is set.
 
-    The terminal must already be in raw mode, which is `_supervise_director`'s job:
-    it owns the `RawTerminal` for as long as this generator's task lives, and the
-    suspend handler needs to reach the same object.
+    The terminal must already be in raw mode..
 
     Reads happen in a background thread because putting stdin in non-blocking mode
-    (e.g. via `asyncio.StreamReader`) also affects stdout and stderr when they share the
-    same underlying open file description as stdin, which breaks `print` and `rich.print`
-    for large output.
+    (e.g. via `asyncio.StreamReader`) also affects stdout and stderr
+    when they share the same underlying open file description as stdin,
+    which breaks `print` and `rich.print` for large output.
 
-    The background thread may still be blocked in `sys.stdin.read(1)` after this generator
-    closes, since there is no portable way to interrupt a blocking read on stdin from
-    another thread. It is daemonic and the process is about to exit anyway, so it consumes
-    at most one keystroke typed between the end of the build and process exit.
+    The background thread may still be blocked in `sys.stdin.read(1)` after this generator closes,
+    since there is no portable way to interrupt a blocking read on stdin from another thread.
+    It is daemonic and the process is about to exit anyway,
+    so it consumes at most one keystroke typed between the end of the build and process exit.
     """
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue()
@@ -1179,10 +1192,8 @@ async def keyboard(
     An unrecognized key is reported back to the user together with `_KEY_STROKE_HELP`,
     instead of being silently ignored.
 
-    No keystroke may take the build down with it, so every failure of a dispatched call is
-    reported and the loop continues. This coroutine runs as a task that `_supervise_director`
-    awaits in its `finally`, where an escaping exception would replace the director's return
-    code with a traceback.
+    No keystroke may take the build down with it,
+    so every failure of a dispatched call is reported and the loop continues.
 
     Parameters
     ----------
@@ -1208,8 +1219,9 @@ async def keyboard(
                 await method(*action.args)
         except OSError as exc:
             # The director is on its way out (socket unlinked, or listening backlog gone),
-            # or the connection dropped mid-call. Losing a keystroke at that point is
-            # expected, so report it and keep reading until stop_event is set.
+            # or the connection dropped mid-call.
+            # Losing a keystroke at that point is expected,
+            # so report it and keep reading until stop_event is set.
             reporter_handler.report(
                 "KEYBOARD", f"Director unreachable, key {ch} ignored: {exc}", []
             )
@@ -1221,9 +1233,10 @@ async def keyboard(
                 "ERROR", f"Key {ch} failed in the director.", [("Message", str(exc).strip())]
             )
         except RPCError as exc:
-            # The call did reach the director, but raised there, e.g. `graph` could not
-            # write its output files. Unlike an unreachable director, this is a real error
-            # worth landing in the fail log, but it is still only this keystroke that failed.
+            # The call did reach the director, but raised there,
+            # e.g. `graph` could not write its output files.
+            # Unlike an unreachable director, this is a real error worth landing in the fail log,
+            # but it is still only this keystroke that failed.
             reporter_handler.report(
                 "ERROR", f"Key {ch} failed in the director.", [("Traceback", str(exc).strip())]
             )

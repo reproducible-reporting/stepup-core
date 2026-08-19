@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Reporting and cleanup at the end of a build phase.
 
-`Builder.finalize` (in `builder.py`) calls, in this order:
+This module provides three independent entry points for `Builder.finalize`:
 
 - `report_completion`, which reports whatever could not be built and derives a `ReturnCode`,
 - `revert_optional`, which puts optional steps back to `PENDING`,
@@ -12,7 +12,7 @@ The last two form the cleanup pass and are skipped together,
 e.g. after an incomplete build.
 
 None of these touch `Builder` state:
-they work with the workflow, the scheduler and the reporter only,
+they work with the database, the workflow, the scheduler and the reporter only,
 which is why they live here instead of in `builder.py`.
 """
 
@@ -38,7 +38,7 @@ __all__ = ("remove_outdated_outputs", "report_completion", "revert_optional")
 
 
 CREATE_OPTIONAL_STEP_TABLE = f"""
--- Find all optional steps
+-- Find all attached optional steps.
 CREATE TEMP TABLE optional_step AS
 SELECT step.node AS i, node.label, step.state
 FROM step
@@ -48,7 +48,7 @@ AND NOT node.detached
 """
 
 CREATE_OPTIONAL_FILE_TABLE = f"""
--- Find all files that are outputs or volatile of optional steps.
+-- Find all files that are regular or volatile outputs of optional steps.
 CREATE TEMP TABLE optional_to_be_deleted AS
 SELECT node.i, node.label, file.state, file.hash
 FROM file
@@ -96,11 +96,10 @@ DROP TABLE IF EXISTS optional_to_be_deleted
 
 
 async def revert_optional(db: DBSession, workflow: Workflow, reporter: ReporterClient):
-    """Revert optional steps that have previously been executed to pending again."""
+    """Revert optional steps that have been executed earlier back to PENDING."""
     async with db:
-        # Drop before creating, too: a previous call that raised between the CREATE and the
-        # DROP below would otherwise leave the temp tables behind on this connection,
-        # making every later call fail on the CREATE.
+        # Drop before creating out of precaution.
+        # (In principle redundant, because async with db rolls back on error.)
         db.execute(DROP_OPTIONAL_STEP_TABLE)
         db.execute(DROP_OPTIONAL_FILE_TABLE)
         # Get the optional steps that are not pending, and mark them pending again.
@@ -117,6 +116,7 @@ async def revert_optional(db: DBSession, workflow: Workflow, reporter: ReporterC
             # Mark the files for deletion and reset their state in the database.
             workflow.to_be_deleted.update(to_be_deleted)
             db.execute(UPDATE_OPTIONAL_TO_BE_DELETED)
+        # Drop in the end: the temp tables are only needed for the duration of this call.
         db.execute(DROP_OPTIONAL_STEP_TABLE)
         db.execute(DROP_OPTIONAL_FILE_TABLE)
     # Report the reverted steps and the files that are marked for deletion.
@@ -135,12 +135,7 @@ async def revert_optional(db: DBSession, workflow: Workflow, reporter: ReporterC
 
 
 STATE_COLUMN = 20
-"""Column at which the state (or resource name) field of a report line ends.
-
-Every block on the page aligns its state (or resource name) on this column,
-whatever the width of the block's label,
-so that the paths (or resource units) after it line up as well.
-"""
+"""Column at which the state (or resource name) field of a report line ends."""
 
 PENDING_INPUT_REMEDY = """\
 Create the input file(s) listed above, correct their static() paths,
@@ -157,7 +152,7 @@ Run `stepup browse` and search for a name above to see the steps involved."""
 
 
 def _table_lines(rows: list[tuple[str, str, str]], dw: int, cw: int) -> list[str]:
-    """Format `rows` as a block of aligned `Unavailable inputs` / `Blocked resources` lines.
+    """Format `rows` as a block of aligned `Unavailable inputs` / `Insufficient resources` lines.
 
     Parameters
     ----------
@@ -166,6 +161,7 @@ def _table_lines(rows: list[tuple[str, str, str]], dw: int, cw: int) -> list[str
         (or `""` for a remainder row), right-aligned on `STATE_COLUMN`,
         **detail** is left-aligned on `dw`,
         and **count** is right-aligned on `cw` and followed by the literal `" step(s)"`.
+        An empty **count** drops the count cell, and the padding before it, from the line.
     dw
         The width to left-align `detail` on.
     cw
@@ -176,10 +172,23 @@ def _table_lines(rows: list[tuple[str, str, str]], dw: int, cw: int) -> list[str
     lines
         One line per row.
     """
-    return [
-        f"{key:>{STATE_COLUMN}s}: {detail:<{dw}s}  {count:>{cw}s} step(s)"
-        for key, detail, count in rows
-    ]
+    lines = []
+    for key, detail, count in rows:
+        line = f"{key:>{STATE_COLUMN}s}: {detail:<{dw}s}"
+        if len(count) > 0:
+            line += f"  {count:>{cw}s} step(s)"
+        lines.append(line.rstrip())
+    return lines
+
+
+def _format_hidden_count(nhidden_blocked: int) -> str:
+    """Format the count cell of a remainder row, given its attributed step count.
+
+    The number is only a lower bound (see `PendingSummary.ninputs_hidden_blocked`),
+    and a lower bound of zero says nothing at all,
+    so it is left out instead of printed as `≥ 0`.
+    """
+    return "" if nhidden_blocked == 0 else f"≥ {nhidden_blocked}"
 
 
 def _input_rows(summary: PendingSummary) -> list[tuple[str, str, str]]:
@@ -193,14 +202,14 @@ def _input_rows(summary: PendingSummary) -> list[tuple[str, str, str]]:
             (
                 "",
                 f"... and {summary.ninputs_hidden} more input(s)",
-                f"≥ {summary.ninputs_hidden_blocked}",
+                _format_hidden_count(summary.ninputs_hidden_blocked),
             )
         )
     return rows
 
 
 def _format_units_available(units_available: int | None) -> str:
-    """Format the "available" clause of a `Insufficient resources` row."""
+    """Format the `available` clause of an `Insufficient resources` row."""
     return "none available" if units_available is None else f"{units_available} available"
 
 
@@ -219,27 +228,21 @@ def _resource_rows(summary: PendingSummary) -> list[tuple[str, str, str]]:
             (
                 "",
                 f"... and {summary.nresources_hidden} more resource(s)",
-                f"≥ {summary.nresources_hidden_blocked}",
+                _format_hidden_count(summary.nresources_hidden_blocked),
             )
         )
     return rows
 
 
 def _other_lines(summary: PendingSummary) -> list[str]:
-    """Format the `Other reasons` page: one prose line per non-empty bucket.
-
-    The `, e.g. {example}` clause is always included:
-    `PendingOther.example` is `None` only when `nblocked == 0`,
-    which the queries in `pending.py` make impossible to reach here, so it is asserted
-    rather than branched around.
-    """
+    """Format the `Other reasons` page: one prose line per non-empty bucket."""
     lines = []
     for bucket, template in (
         (summary.failed, "{n} step(s) are blocked by failed steps, e.g. {example}."),
         (summary.cyclic, "{n} step(s) are waiting on each other, e.g. {example}."),
         (
             summary.deferred,
-            "{n} step(s) are deferred with unavailable dynamic inputs, e.g. {example}.",
+            "{n} step(s) are deferred, yet none of their inputs is unavailable, e.g. {example}.",
         ),
         (
             summary.other,
@@ -252,6 +255,8 @@ def _other_lines(summary: PendingSummary) -> list[str]:
     ):
         if bucket.nblocked == 0:
             continue
+        # The `, e.g. {example}` clause is always included:
+        # `PendingOther.example` is `None` only when `nblocked == 0`.
         assert bucket.example is not None
         lines.append(template.format(n=bucket.nblocked, example=bucket.example))
     return lines
@@ -294,9 +299,9 @@ async def _report_pending_steps(
     if len(other_lines) > 0:
         pages.append(("Other reasons", "\n".join(other_lines)))
     if len(pages) > 0:
-        # Unconditional once any other page is present: the `stepup browse` line always
-        # applies, and PENDING_INPUT_REMEDY/PENDING_RESOURCE_REMEDY are gated above on the
-        # very tables that make this page non-empty in the first place.
+        # Unconditional once any other page is present: the `stepup browse` line always applies,
+        # and `_remedy_lines` gates `PENDING_INPUT_REMEDY` and `PENDING_RESOURCE_REMEDY`
+        # on the very tables that make this page non-empty in the first place.
         pages.append(("Remedy", "\n".join(_remedy_lines(summary))))
 
     await reporter("WARNING", f"{summary.ntotal} step(s) remained pending.", pages)
@@ -308,14 +313,15 @@ async def _report_missing_targets(
 ) -> ReturnCode:
     """Report targets that no step in the workflow produces."""
     async with db:
-        # Targets that never became the regular output of an active step: reported after the
-        # build phase completes, since dynamically-declared steps may only appear once earlier
-        # steps run, so this cannot be checked upfront.
+        # Targets that never became the regular output of an active step.
+        # This cannot be checked upfront,
+        # because dynamically declared steps may only appear once earlier steps have run.
         missing_targets = sorted(
             target for target in workflow.targets if not workflow.is_regular_output(target)
         )
-        # Directory targets that matched zero regular outputs: weaker than the exact-target
-        # warning above by design (best-effort semantics), see Workflow.has_regular_output_under.
+        # Directory targets that matched zero regular outputs.
+        # This check is weaker than the exact-target one above by design (best-effort semantics).
+        # See `Workflow.has_regular_output_under`.
         missing_target_dirs = sorted(
             target_dir
             for target_dir in workflow.target_dirs
@@ -443,9 +449,9 @@ async def remove_outdated_outputs(db: DBSession, workflow: Workflow, reporter: R
     await _prune_empty_dirs(parents, reporter)
 
     # Reset the state of the deleted files in the database,
-    # if they are still present and not VOLATILE.
+    # if their node is still present and its state is not VOLATILE.
     #
-    # The VOLATILE guard is what makes the one in UPDATE_OPTIONAL_TO_BE_DELETED stick:
+    # The VOLATILE guard is what makes the one in `UPDATE_OPTIONAL_TO_BE_DELETED` stick:
     # `revert_optional` runs earlier in the same `Builder.finalize`,
     # and the volatile paths it flagged for deletion still have a live file row here.
     async with db:

@@ -3,9 +3,9 @@
 """Glob with named back-reference support.
 
 Named glob (NGlob) patterns are an advanced form of pattern matching
-that supports back referencing of previously matched substrings.
+that supports back-referencing of previously matched substrings.
 
-It has the following use cases:
+They have the following use cases:
 
 - **Single named wildcard:**
     By default, the wildcard `${*name}` is a placeholder for any string without a separator,
@@ -23,14 +23,15 @@ It has the following use cases:
     In particular, it matches a directory,
     without capturing the trailing separator of that directory,
     and it matches an empty string wherever an anonymous `*` does,
-    i.e. everywhere except directly after a separator.
+    i.e. everywhere except where it makes up a complete path component,
+    which can never be empty.
     (`feedback_${*idx}.md` matches `feedback_.md`, but `data/${*idx}` does not match `data/`.)
     Use a substitution that rules this out, e.g. `{"idx": "?*"}`,
     when an empty match is never acceptable.
 
 - **Consistency within one pattern:**
-    If a pattern uses the same named globs multiple times,
-    the matching substring must also be consistent.
+    If a pattern uses the same named wildcard multiple times,
+    all its occurrences must match the same substring.
     For example:
 
     ```python
@@ -39,17 +40,17 @@ It has the following use cases:
     print(ng.results)
     ```
 
-    These would match:
+    These match:
 
     - `archive_042/feedback_042.md`
     - `archive_777/feedback_777.md`
 
-    This won't match:
+    This does not match:
 
     - `archive_042/feedback_777.md`
 
 - Conventional (recursive) glob wildcards are also allowed and are called "anonymous wildcards"
-  to clarify the distinction from named wildcards.
+  to distinguish them from named wildcards.
 
 This module is Unix-only:
 the forward slash is the one and only path separator it recognizes,
@@ -71,6 +72,7 @@ __all__ = (
     "convert_nglob_to_glob",
     "convert_nglob_to_regex",
     "glob_base_dir",
+    "has_anonymous_wildcards",
     "has_any_wildcards",
     "has_trailing_recursive_wildcard",
     "iter_wildcard_names",
@@ -99,21 +101,21 @@ RE_TRAILING_RECURSIVE_WILD = re.compile("(" + "|".join(RE_TRAILING_RECURSIVE_WIL
 class NamedGlobMatch:
     """A single match of a `NamedGlob` pattern, with substrings for its named wildcards.
 
-    The substring matching the named wildcards can be accessed as attributes.
+    The substrings matching the named wildcards can be accessed as attributes.
     For example, the substring matching a named wildcard `foo` is accessed as follows:
 
     ```python
     print(match.foo)
     ```
 
-    When you expect only a single matching file, then the `single` attribute can be used.
+    When you expect only a single matching file, use the `single` attribute.
     It will raise an exception when there are zero or multiple matches:
 
     ```python
     print(match.single)
     ```
 
-    In the unfortunate case that your named wildcards are named `single`, `files` or `mapping`,
+    In the unfortunate case that your named wildcards are named `single`, `files`, or `mapping`,
     you can access their values through the `mapping` attribute:
 
     ```python
@@ -122,7 +124,10 @@ class NamedGlobMatch:
     """
 
     _mapping: dict[str, str]
+    """Dictionary with `(wildcard_name, substring)` items."""
+
     _files: Path | list[Path]
+    """The matching file(s) for this combination of named-wildcard substrings."""
 
     def __getattr__(self, name: str) -> str:
         try:
@@ -146,7 +151,13 @@ class NamedGlobMatch:
 
     @property
     def single(self) -> Path:
-        """A single path if there is exactly one match, raises an error otherwise."""
+        """The single matching path.
+
+        Raises
+        ------
+        ValueError
+            If there is not exactly one match.
+        """
         result = self._files
         if isinstance(result, list):
             if len(result) == 0:
@@ -162,11 +173,22 @@ class NamedGlob:
     """A named glob pattern, matched against a set of paths."""
 
     _pattern: str = attrs.field()
+    """The named glob pattern used to match paths."""
+
     _subs: dict[str, str] = attrs.field(factory=dict)
+    """User-defined glob patterns for the named wildcards."""
+
     _results: dict[tuple[str, ...], set[Path]] = attrs.field(factory=dict)
+    """All matching files, grouped by substrings matching the named wildcards."""
+
     _used_names: tuple[str, ...] = attrs.field(init=False)
+    """Names of the named wildcards used in the pattern, in alphabetical order."""
+
     _glob_pattern: str = attrs.field(init=False)
+    """The equivalent conventional glob pattern, without back-references."""
+
     _regex: re.Pattern[str] = attrs.field(init=False)
+    """The equivalent regular expression, with symbolic groups for the named wildcards."""
 
     @_used_names.default
     def _default_used_names(self) -> tuple[str, ...]:
@@ -182,7 +204,7 @@ class NamedGlob:
 
     @property
     def pattern(self) -> str:
-        """The Named Glob pattern used to match filenames."""
+        """The named glob pattern used to match paths."""
         return self._pattern
 
     @property
@@ -197,8 +219,8 @@ class NamedGlob:
     def results(self) -> dict[tuple[str, ...], set[Path]]:
         """All matching files, grouped by substrings matching the named wildcards.
 
-        The keys of the `results` dictionary are tuples with the substrings,
-        matching the named wildcards of the pattern in alphabetical order.
+        The keys are tuples with the substrings matching the named wildcards of the pattern,
+        in alphabetical order of the wildcard names.
         The values are sets with matching paths.
         """
         return self._results
@@ -275,8 +297,9 @@ class NamedGlob:
         Yields
         ------
         named_glob_match
-            A `NamedGlobMatch` instance, which contains the substrings matching the named
-            wildcards and the corresponding matching file(s).
+            A `NamedGlobMatch` instance,
+            which contains the substrings matching the named wildcards
+            and the corresponding matching file(s).
         """
         has_anon = has_anonymous_wildcards(self._pattern)
         for values, paths in sorted(self._results.items()):
@@ -305,7 +328,7 @@ class NamedGlob:
         return files[0]
 
     def __bool__(self) -> bool:
-        """True when there are some items in the `results` attribute."""
+        """True when the `results` attribute is not empty."""
         return len(self._results) > 0
 
     def __iter__(self) -> Iterator[Path | NamedGlobMatch]:
@@ -323,13 +346,8 @@ def has_any_wildcards(pattern: str) -> bool:
 def has_trailing_recursive_wildcard(pattern: str) -> bool:
     """Test if a glob pattern ends with a recursive `**` wildcard.
 
-    True when the pattern is exactly `**`,
-    or its last path component is `**` (e.g. `src/**`).
-    A `**` earlier in the pattern (leading or middle, e.g. `**/src/x` or `src/**/x`)
-    does not count:
-    it still enumerates eagerly,
-    but it does not collapse the final path component,
-    so it lacks the "declare the tree instead" replacement that a trailing `**` has.
+    True when the pattern is exactly `**`, or its last path component is `**` (e.g. `src/**`).
+    A `**` earlier in the pattern (leading or middle, e.g. `**/src/x` or `src/**/x`) does not count.
     """
     return RE_TRAILING_RECURSIVE_WILD.search(pattern) is not None
 
@@ -343,7 +361,7 @@ def has_anonymous_wildcards(pattern: str) -> bool:
 
 
 def iter_wildcard_names(pattern: str) -> Iterator[str]:
-    """Iterate over the names of the named wildcards in a Named Glob pattern.
+    """Iterate over the names of the named wildcards in a named glob pattern.
 
     Raises
     ------
@@ -481,8 +499,10 @@ def convert_nglob_to_regex(
 
     if allow_names:
         # Post-process the wildcards matching a single path component,
-        # both the anonymous ones and the named ones listed in `star_names`:
-        # - when enclosed by separators, '*' and '**' do not match empty strings.
+        # both the anonymous ones and the named ones listed in `star_names`.
+        # Such a wildcard may not match an empty string when it makes up a complete component,
+        # because a path never contains an empty component.
+        # - The enclosed case: a separator on either side.
         for ipart, part in enumerate(parts):
             if not (
                 ipart > 0
@@ -496,7 +516,8 @@ def convert_nglob_to_regex(
                 parts[ipart] = rf"(?P<{star_name}>[^/]+)"
             elif part.endswith("*"):
                 parts[ipart] = f"{part[:-1]}+"
-        # - when the pattern ends with '*', it must also match paths with a trailing separator.
+        # - The trailing case: the pattern ends with the wildcard,
+        #   which must then also match paths with a trailing separator.
         #   The separator stays outside the named group,
         #   so a named wildcard never captures a trailing separator.
         star_name = star_names.get(len(parts) - 1)
@@ -509,7 +530,7 @@ def convert_nglob_to_regex(
 
 
 def convert_nglob_to_glob(pattern: str, subs: dict[str, str] | None = None) -> str:
-    """Convert nglob wildcards to ordinary ones, compatible with builtin glob and fnmatch modules.
+    """Convert nglob wildcards to ordinary ones, compatible with `glob` and `fnmatch`.
 
     Parameters
     ----------
@@ -522,7 +543,8 @@ def convert_nglob_to_glob(pattern: str, subs: dict[str, str] | None = None) -> s
     Returns
     -------
     pattern
-        A conventional wildcard string, without the constraint that named wildcards must correspond.
+        A conventional wildcard string,
+        without the constraint that repeated named wildcards must match the same substring.
         Where possible, neighboring wildcards are merged into one.
 
     Raises
@@ -532,7 +554,7 @@ def convert_nglob_to_glob(pattern: str, subs: dict[str, str] | None = None) -> s
     """
     if subs is None:
         subs = {}
-    # Split in text, wildcard and named wildcard fragments.
+    # Split into text, wildcard and named-wildcard fragments.
     parts = []
     # The odd-numbered indices match a (named) wildcard.
     for i, part in enumerate(RE_ANY_WILD.split(pattern)):
@@ -544,7 +566,8 @@ def convert_nglob_to_glob(pattern: str, subs: dict[str, str] | None = None) -> s
             parts.append(part)
     # Remove empty strings due to neighboring wildcards with no normal text in between.
     parts = [part for part in parts if part != ""]
-    # Make sure no asterisks are glued together and a few other simplifications.
+    # Merge asterisks that would otherwise be glued together,
+    # and apply a few other simplifications.
     texts = []
     for part in parts:
         if len(texts) == 0 or part == "?":
@@ -570,8 +593,8 @@ def convert_nglob_to_glob(pattern: str, subs: dict[str, str] | None = None) -> s
 def glob_base_dir(pattern: str) -> str:
     """Return the longest wildcard-free directory prefix of a glob pattern.
 
-    The result never has a trailing separator, and is `.` when the first path component
-    already contains a wildcard, so it can be handed to `Workflow.watch_dir` directly.
+    The result never has a trailing separator,
+    and is `.` when the first path component already contains a wildcard.
 
     Parameters
     ----------

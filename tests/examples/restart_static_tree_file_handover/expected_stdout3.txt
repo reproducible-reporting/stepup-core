@@ -4,7 +4,7 @@
    PHASE │ build
   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 217dfedb ➜ b8f360c0, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest d38a9e7e ➜ b9728efa, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 38b4ddea ➜ 3bbc5fc4, size 281 ➜ 429)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
@@ -13,7 +13,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
  SUCCESS │ ./plan.py
     SKIP │ cat src/foo.txt > copy.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 08f0693f, out_digest 1b3b11b4
+Same step hash       explained, inp_digest 190c8716, out_digest 1b3b11b4
 Same inp hash        src/foo.txt
 Same out hash        copy.txt
 ────────────────────────────────────────────────────────────────────────────────

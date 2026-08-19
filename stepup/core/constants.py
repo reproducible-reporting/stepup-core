@@ -1,13 +1,6 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Shared path constants for the StepUp internal directory layout.
-
-This module is a leaf: it imports only `path` and therefore can be imported
-anywhere without risk of circular dependencies.
-The constants are relative `Path` objects (a `str` subclass that does not
-auto-normalize), so they can be used directly with `open`, `connect`, `glob`,
-or joined against an absolute root with the `/` operator.
-"""
+"""Shared path constants across StepUp."""
 
 from path import Path
 
@@ -39,5 +32,5 @@ SQLLOG_JSON = STEPUP_DIR / "sqllog.json"
 SQLLOG_CSV = STEPUP_DIR / "sqllog.csv"
 JOBLOG_CSV = STEPUP_DIR / "joblog.csv"
 
-# The boot script that StepUp executes first to define the workflow.
+# The planning script that StepUp executes first to define the workflow.
 PLAN_PY = Path("plan.py")

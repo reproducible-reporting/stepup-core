@@ -14,7 +14,7 @@ from path import Path
 from stepup.core import interact
 from stepup.core.constants import DIRECTOR_LOG
 from stepup.core.enums import ReturnCode
-from stepup.core.exceptions import GraphError, InteractError
+from stepup.core.exceptions import GraphError, ToolError
 
 
 def _write_director_log(path_tmp: Path, socket_path: Path, pid: int) -> None:
@@ -29,7 +29,7 @@ def test_get_socket_timeout(path_tmp: Path, monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setenv("STEPUP_ROOT", str(path_tmp))
     monkeypatch.setattr(interact, "GET_SOCKET_TIMEOUT", 0.05)
     monkeypatch.setattr(interact, "GET_SOCKET_INTERVAL", 0.01)
-    with pytest.raises(InteractError):
+    with pytest.raises(ToolError):
         interact.get_socket()
 
 
@@ -41,7 +41,7 @@ def test_get_socket_dead_director(path_tmp: Path, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("STEPUP_ROOT", str(path_tmp))
     monkeypatch.setattr(interact, "GET_SOCKET_TIMEOUT", 0.05)
     monkeypatch.setattr(interact, "GET_SOCKET_INTERVAL", 0.01)
-    with pytest.raises(InteractError):
+    with pytest.raises(ToolError):
         interact.get_socket()
 
 

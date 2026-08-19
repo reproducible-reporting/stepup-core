@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Enumerate objects used in other StepUp modules.
+"""Enumerations used in other StepUp modules.
 
 The integer values of the enums are set by different conventions:
+
 - ReturnCode: binary flags
 - All other enums: non-overlapping values to avoid potential confusion.
 """
@@ -24,6 +25,8 @@ __all__ = (
 
 
 class ReturnCode(Flag):
+    """Composable bit flags for the return code of `stepup build`."""
+
     INTERNAL = auto()
     """The build could not be completed for a reason unrelated to the workflow.
 
@@ -43,7 +46,7 @@ class ReturnCode(Flag):
     """Some steps failed."""
 
     WARNING = auto()
-    """The build produced a warning that does not fit the categories of bit flags below."""
+    """The build produced a warning that does not fit the categories of the other bit flags."""
 
     PENDING = auto()
     """All runnable steps have completed but some non-optional steps remained pending."""
@@ -55,24 +58,26 @@ class ReturnCode(Flag):
 class FileState(IntEnum):
     """State of a file in the StepUp workflow.
 
-    Every state but UNDECLARED belongs to exactly one FileRole, see FILE_ROLE_BY_STATE.
-    UNDECLARED is the state of a file that has no role yet, i.e. that nothing declares.
+    Every state but `UNDECLARED` belongs to exactly one FileRole, see `FILE_ROLE_BY_STATE`.
+    `UNDECLARED` is the state of a file that has no role yet, i.e. that nothing declares.
 
-    CONFIRMED and BUILT files are ready to be used as inputs.
-    UNDECLARED, UNCONFIRMED, MISSING, PLANNED, VOLATILE and OUTDATED files are not.
+    `CONFIRMED` and `BUILT` files are ready to be used as inputs.
+    `UNDECLARED`, `UNCONFIRMED`, `MISSING`, `PLANNED`, `VOLATILE` and `OUTDATED` files are not.
 
     The availability and purpose of file hashes depend on the file state:
 
-    - File hashes are available for CONFIRMED, OUTDATED and BUILT files.
-    - They are not for UNDECLARED, PLANNED, MISSING and VOLATILE files.
-    - They may be present for UNCONFIRMED files, but are not guaranteed to be up-to-date.
+    - File hashes are available for `CONFIRMED`, `OUTDATED` and `BUILT` files.
+    - They are not available for `PLANNED`, `MISSING` and `VOLATILE` files.
+    - They may be present for `UNDECLARED` and `UNCONFIRMED` files,
+      as a leftover from an earlier declaration,
+      but are not guaranteed to be up-to-date.
 
-    Hashes are computed for CONFIRMED files when they are declared.
-    Such files are first declared as UNCONFIRMED and then evolve to CONFIRMED or MISSING,
-    depending on the confirmation outcome at the client side where the file was declared.
+    Hashes are computed for `CONFIRMED` files after they have been declared.
+    Such files are first declared as `UNCONFIRMED` and then evolve to `CONFIRMED` or `MISSING`,
+    depending on whether a background hash job finds the file on disk.
 
-    The hashes of BUILT files are computed when the step completes.
-    OUTDATED files maintain the same hash from their BUILT state.
+    The hashes of `BUILT` files are computed when the step completes.
+    `OUTDATED` files keep the last hash that was computed for them.
     """
 
     #
@@ -83,7 +88,7 @@ class FileState(IntEnum):
     """A file that nothing declares, only supplied as an input to a step.
 
     Such a file has no role yet and its node is always detached.
-    It normally evolves into a state in the STATIC or OUTPUT role,
+    It normally evolves into a state in the `STATIC` or `OUTPUT` role,
     as soon as some plan or step declares the file.
     """
 
@@ -95,7 +100,8 @@ class FileState(IntEnum):
     """A file that is declared static, but whose existence (and hash) needs to be confirmed."""
 
     MISSING = 13
-    """A file declared static, but confirmed to be absent. (never present, or deleted by the user).
+    """A file declared static, but confirmed to be absent
+    (never present, or deleted by the user).
     """
 
     CONFIRMED = 14
@@ -115,7 +121,7 @@ class FileState(IntEnum):
     """
 
     BUILT = 16
-    """An output of a step and step has completed."""
+    """An output of a step that has completed."""
 
     OUTDATED = 17
     """An old output of a step that is no longer up-to-date."""
@@ -125,13 +131,13 @@ class FileState(IntEnum):
     #
 
     VOLATILE = 18
-    """A file declared as volatile output of a step.
+    """A file declared as a volatile output of a step.
 
     This means the following:
 
     - Volatile files are cleaned up just like built files.
-    - Volatile files cannot be used as input.
-    - No hashes are computed for volatile files.
+    - They cannot be used as input.
+    - No hashes are computed for them.
     - They can change when a step is repeated with the same inputs.
     """
 
@@ -139,14 +145,15 @@ class FileState(IntEnum):
 class FileRole(IntEnum):
     """The role of a file in the workflow.
 
-    This is a projection of the FileState enum,
+    This is a projection of the `FileState` enum,
     which is less sensitive to the exact phase of a file's lifecycle.
-    It is used whenever invariance to the exact state within one role is desired.
-    A state in one of these roles cannot migrate into another role during a single build.
-    However, it may change roles between builds, e.g. when the plan.py script is modified.
+    Use it wherever the exact state within a role does not matter.
+    A file that already has a role cannot migrate to another role during a single build.
+    However, it may change role between builds, e.g. when the `plan.py` script is modified.
 
-    For attached file nodes, the state determines the role, and the (path, role) claim is exclusive.
-    A detached node's state is a memory of a former life, or UNDECLARED when it has no role yet.
+    For attached file nodes, the state determines the role,
+    and the `(path, role)` claim is exclusive.
+    A detached node's state is a memory of a former life, or `UNDECLARED` when it has no role yet.
     """
 
     STATIC = 61
@@ -156,7 +163,7 @@ class FileRole(IntEnum):
     """A file created by a step as one of its outputs."""
 
     VOLATILE = 63
-    """A file declared as volatile output of a step."""
+    """A file declared as a volatile output of a step."""
 
 
 FILE_STATES_BY_ROLE = {
@@ -177,6 +184,8 @@ TARGET_FORBIDDEN_STATES = (
 
 
 class StepState(IntEnum):
+    """The state of a step in the workflow."""
+
     PENDING = 21
     """The step still needs to be executed."""
 
@@ -219,6 +228,8 @@ class Need(IntEnum):
 
 
 class Change(IntEnum):
+    """Classify file changes in the watcher."""
+
     UPDATED = 41
     """A file on disk has been added or changed."""
 
@@ -226,20 +237,22 @@ class Change(IntEnum):
     """A file on disk has been deleted."""
 
     DELETED_PARENT = 43
-    """A parent directory was deleted."""
+    """A parent directory has been deleted."""
 
 
 class HashUpdateCause(IntEnum):
     """The reason why file hashes are being updated in `Workflow.update_file_hashes`."""
 
     EXTERNAL = 51
-    """File hashes changed externally (startup or watch phase). Dependencies become pending."""
+    """File hashes changed externally (startup or watch phase
+
+    Steps that consume the file, or the step that creates it, become pending."""
 
     SUCCEEDED = 52
-    """A step succeeded; its outputs should be marked BUILT."""
+    """A step succeeded; its outputs are marked `BUILT`."""
 
     FAILED = 53
-    """A step failed or deferred; outputs remain OUTDATED or PLANNED."""
+    """A step failed or deferred; its outputs end up `OUTDATED` or `PLANNED`."""
 
     CONFIRMED = 54
-    """Client confirmed missing files exist; mark them CONFIRMED."""
+    """A declared static file was hashed; it becomes `CONFIRMED` if present, `MISSING` if not."""

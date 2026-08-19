@@ -11,7 +11,7 @@ import logging
 import os
 import sqlite3
 import time
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, Self
@@ -80,25 +80,34 @@ def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Co
     kwargs
         Additional keyword arguments to pass to `sqlite3.connect()`.
 
+    Returns
+    -------
+    con
+        The SQLite connection object.
+
     Notes
     -----
-    The following deviations from the default settings are used:
+    The following deviations from the default settings are used.
+    Only foreign key enforcement is applied to read-only connections.
+    The remaining pragmas are set on read-write connections.
 
-    - The `cached_statements` parameter is set to a large value to improve
-      performance when executing many similar statements.
-    - Foreign key enforcement is enabled, which is required for the `ON DELETE CASCADE`
-      cleanup of satellite rows. This is a per-connection setting (not stored in the
-      database file), so it must be set on every connection.
+    - The `cached_statements` parameter is set to a large value
+      to improve performance when executing many similar statements.
+    - Foreign key enforcement is enabled,
+      which is required for the `ON DELETE CASCADE` cleanup of satellite rows.
+      This is a per-connection setting (not stored in the database file),
+      so it must be set on every connection.
     - The journal mode is set to WAL (Write-Ahead Logging) to allow concurrent reads and writes.
     - The synchronous mode is set to OFF to improve performance,
       at the cost of potential data loss in the event of a hard crash.
       This is ok because a few lost transactions are not critical for StepUp,
       as long as the database is not fully corrupted.
     - The auto_vacuum mode is set to INCREMENTAL to allow incremental vacuuming of the database.
-    - Recursive triggers are explicitly kept OFF (SQLite's default). Several triggers in
-      `step.py`'s `STEP_SCHEMA` (e.g. `step_flag_check_safe`) `UPDATE` the same table they
-      fire on; turning this `ON` would go against that design and cause them to re-fire on
-      their own writes.
+    - Recursive triggers are explicitly kept OFF (SQLite's default).
+      Several triggers in `step.py`'s `STEP_SCHEMA` (e.g. `step_flag_check_safe`)
+      `UPDATE` the same table they fire on;
+      turning this `ON` would go against that design
+      and cause them to re-fire on their own writes.
     """
     kwargs = kwargs.copy()
     kwargs.setdefault("cached_statements", 1024)
@@ -112,7 +121,7 @@ def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Co
         con.isolation_level = None
         con.execute("PRAGMA foreign_keys = ON")
     else:
-        con = sqlite3.connect(coerce_path(path), **kwargs)
+        con = sqlite3.connect(path, **kwargs)
         con.isolation_level = None
         con.execute("PRAGMA foreign_keys = ON")
         con.execute("PRAGMA journal_mode = WAL")
@@ -194,12 +203,16 @@ def _append_sqllog_row(
 
 @attrs.define
 class DBSession:
-    """Manages SQLite lifetime (via sync context) and exclusive access (via async context)."""
+    """Manages SQLite lifetime (via sync context) and exclusive access (via async context).
+
+    Note that logging and counting is only active when `record` is True.
+    Even then, `executemany()` call with an empty parameter sequences are not logged or counted.
+    """
 
     path_db: str | os.PathLike[str] = attrs.field()
     """Path to the SQLite database file.
 
-    The connection is opened and kept private when creating a DBSession instance.
+    The connection is opened and kept private when creating a `DBSession` instance.
     """
 
     connect_kwargs: dict[str, Any] = attrs.field(factory=dict)
@@ -209,26 +222,37 @@ class DBSession:
     """If True, record SQL debug information for later inspection with `write_log()`."""
 
     path_sqlcsv: StrPath | None = attrs.field(default=None)
-    """When set, each `execute()` / `executemany()` call appends a timing row to this CSV file."""
+    """Each `execute()` / `executemany()` call appends a timing row to this CSV file."""
 
     _con: sqlite3.Connection | None = attrs.field(init=False, default=None)
+    """The SQLite connection, or None if closed."""
+
     _lock: asyncio.Lock = attrs.field(factory=asyncio.Lock, init=False)
+    """Asyncio lock to ensure exclusive access to the database connection."""
+
     _cv: ContextVar[sqlite3.Connection | None] = attrs.field(
         factory=lambda: ContextVar("con_cv", default=None), init=False
     )
+    """Context variable holding the connection for the current asyncio task.
+
+    It is None when the lock is not acquired.
+    """
+
     _log: dict[QueryKey, QueryLog] = attrs.field(factory=dict, init=False)
+    """Mapping of distinct SQL queries to their associated log information."""
+
     _transaction_i: int = attrs.field(init=False, default=0)
     """Incremented once per transaction (each `BEGIN IMMEDIATE` in `__aenter__`)."""
 
     _execute_i: int = attrs.field(init=False, default=0)
-    """Incremented once per `execute()` / `executemany()` call, while `record` is True."""
+    """Counter for the number of `execute()` / `executemany()` calls."""
 
     #
     # Application lifecycle (Synchronous Context Manager)
     #
 
     def __attrs_post_init__(self) -> None:
-        """Open the connection from the start."""
+        """Open the database connection and create the SQL query log CSV file when configured."""
         self._con = connect(self.path_db, **self.connect_kwargs)
         if self.path_sqlcsv is not None:
             _init_sqllog_csv(self.path_sqlcsv)
@@ -249,17 +273,20 @@ class DBSession:
         path_sqllog: StrPath | None = None,
         path_sqlcsv: StrPath | None = None,
         **connect_kwargs: Any,
-    ) -> Iterator[Self]:
-        """Open a database connection and yield a DBSession instance for exclusive access.
+    ) -> Generator[Self, None, None]:
+        """Open a database connection and yield a `DBSession` instance for exclusive access.
 
         Parameters
         ----------
         path_sqllog
-            When given, `record` is set to `True` and `write_log()` is called with this path
-            when the session is closed.
+            When given, `record` is set to `True`
+            and `write_log()` is called with this path when the session is closed.
         path_sqlcsv
-            When given, `record` is set to `True` and a timing row is appended to this CSV
-            file on every `execute()` / `executemany()` call.
+            When given, `record` is set to `True`
+            and a timing row is appended to this CSV file
+            on every `execute()` / `executemany()` call.
+        connect_kwargs
+            Additional keyword arguments to pass to `sqlite3.connect()`.
         """
         record = path_sqllog is not None or path_sqlcsv is not None
         db = cls(path_db, connect_kwargs, record=record, path_sqlcsv=path_sqlcsv)
@@ -328,7 +355,10 @@ class DBSession:
     #
 
     def _take_con(self) -> sqlite3.Connection:
-        """Connection, only accessible if the calling asyncio task currently holds the lock."""
+        """Return the connection.
+
+        It is only accessible while the calling asyncio task holds the lock.
+        """
         con = self._cv.get()
         if con is None:
             raise RuntimeError(
@@ -368,8 +398,8 @@ class DBSession:
     @contextmanager
     def _record_execute(
         self, sql: str, module_name: str, line: int, nrecords: int, args: Iterable[Any] = ()
-    ) -> Iterator[None]:
-        """Context manager to time one `execute()` / `executemany()` call and log it.
+    ) -> Generator[None, None, None]:
+        """Time one `execute()` / `executemany()` call and log it.
 
         Parameters
         ----------
@@ -408,7 +438,7 @@ class DBSession:
                 )
 
     async def initialize(
-        self, application_id: int, schema_version: int, schema_blobs: list[str]
+        self, application_id: int, schema_version: int, schema_blobs: list[str | None]
     ) -> bool:
         """Initialize the database with the given SQL schema.
 
@@ -420,6 +450,7 @@ class DBSession:
             The schema version to set for the database.
         schema_blobs
             A list of SQL schema blobs to execute in order to set up the database.
+            `None` entries are skipped.
 
         Returns
         -------
@@ -449,7 +480,8 @@ class DBSession:
                     )
                 )
             if empty:
-                # Safe to execute inside an isolated initialization run
+                # `VACUUM` cannot run inside a transaction.
+                # This method holds the lock but without transaction, so it is fine.
                 self._con.execute("VACUUM")
         finally:
             self._lock.release()
@@ -460,17 +492,19 @@ class DBSession:
     #
 
     def clean_free_space(self, chunk_size: int = 500, max_pages_to_free: int = 5000) -> int:
-        """Checks the freelist and incrementally reclaims dead space from the disk.
+        """Check the freelist and incrementally reclaim dead space on disk.
 
-        Must be called within an active transaction context (e.g., inside an async with block).
-        Returns the total number of pages freed.
+        Returns
+        -------
+        pages_freed
+            An upper bound on the number of pages freed, rounded up to a multiple of `chunk_size`.
         """
         con = self._take_con()
 
         # 1. Query how many empty pages SQLite is holding onto
         freelist_count = con.execute("PRAGMA freelist_count").fetchone()[0]
 
-        # Only clean up if the freelist is worth the effort (e.g., larger than our chunk size)
+        # Only clean up when the freelist holds at least one full chunk
         if freelist_count < chunk_size:
             return 0
 
@@ -479,7 +513,7 @@ class DBSession:
 
         # 2. Vacuum in small chunks so we don't lock up or spike disk I/O
         while pages_freed < pages_target:
-            # We must exhaustively step through the incremental_vacuum pragma result
+            # We must exhaustively step through the `incremental_vacuum` pragma result
             con.execute("PRAGMA incremental_vacuum(?)", (chunk_size,)).fetchall()
             pages_freed += chunk_size
 
@@ -488,14 +522,14 @@ class DBSession:
     async def database_maintenance_loop(
         self, stop_event: asyncio.Event, start_delay: float = 3.0, interval: float = 300.0
     ) -> None:
-        """Background loop that periodically reclaims free disk space.
+        """Periodically reclaim free disk space in the background.
 
-        Exits cleanly when the provided stop_event is set.
+        The loop exits cleanly when `stop_event` is set.
         """
         wait_time = start_delay
         while not stop_event.is_set():
             try:
-                # Use a short timeout step-loop or wait for the event to minimize shutdown lag
+                # Wait for the next maintenance run, waking up early when the stop event is set
                 with contextlib.suppress(asyncio.TimeoutError):
                     await asyncio.wait_for(stop_event.wait(), timeout=wait_time)
 
@@ -514,21 +548,20 @@ class DBSession:
                 # Handle standard cooperative task cancellation gracefully
                 break
             except BaseException:
-                # Safeguard: Log or handle exceptions so a random database hickup
-                # doesn't completely crash your entire application loop structure.
+                # Safeguard: log unexpected errors here,
+                # so a database hiccup does not propagate out of this background task.
                 logger.error("Error during database maintenance loop", exc_info=True)
                 # Exit the loop on error to avoid repeated failures
                 return
 
 
 def _wipe_database(con: sqlite3.Connection):
-    """Removes all tables and indexes from an SQLite database.
+    """Remove all tables and indexes from an SQLite database.
 
     This function is not to be used inside a transaction,
     because it temporarily disables foreign key constraints.
     """
     try:
-        # Temporarily disable foreign key constraints
         con.execute("PRAGMA foreign_keys = OFF")
         # Drop all tables
         rows = list(
@@ -547,5 +580,4 @@ def _wipe_database(con: sqlite3.Connection):
         for (index,) in rows:
             con.execute(f"DROP INDEX IF EXISTS '{index}'")
     finally:
-        # Restore foreign key constraints
         con.execute("PRAGMA foreign_keys = ON")

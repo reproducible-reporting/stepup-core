@@ -21,7 +21,7 @@ WATCHER_AVAILABLE = sys.platform == "linux"
 if WATCHER_AVAILABLE:
     from asyncinotify import Inotify, Mask, Watch
 else:
-    # Dummy classes for non-linux platforms to avoid type errors below.
+    # Dummy classes for non-Linux platforms to avoid type errors below.
     class Inotify:
         pass
 
@@ -40,16 +40,16 @@ logger = logging.getLogger(__name__)
 
 @attrs.define
 class Watcher:
+    """Watch for file changes and update the workflow accordingly.
+
+    Changes are sent to the workflow at the end of the watch phase, before the build phase.
+    """
+
     workflow: Workflow = attrs.field()
     """The workflow to report file events to."""
 
     db: DBSession = attrs.field()
-    """The workflow database session, i.e. the same object as `workflow.db`.
-
-    It is used directly as an async context manager,
-    which acquires exclusive access to the database for the duration of a transaction.
-    Only workflow calls that may change the database are wrapped in it.
-    """
+    """The workflow database session, i.e. the same object as `workflow.db`."""
 
     reporter: ReporterClient = attrs.field()
     """The reporter to send progress information to."""
@@ -67,15 +67,17 @@ class Watcher:
     hash_queue: HashQueue = attrs.field()
     """Where file hashes to (re)compute are submitted, shared with `Builder`.
 
-    Must be the same instance the `Builder` drains during build phases, since it also
-    carries the `wake` event (`Builder.wake_job_loop`) that a submission nudges; see
-    the composition root in `director.py:serve()`.
+    This must be the same instance as `Builder.hash_queue`,
+    because a submission also sets the queue's `wake` event,
+    which is how a parked builder job loop is nudged.
     """
 
     njob: int = attrs.field()
-    """Maximum number of hash jobs to run concurrently while draining `hash_queue` directly
-    (`job_loop` is not running during the watch phase, so this bounds concurrency in its
-    place). Mirrors `Builder.njob`.
+    """Maximum number of hash jobs to run concurrently while draining `hash_queue` directly.
+
+    The builder's job loop is not running during the watch phase,
+    so this bounds the concurrency in its place.
+    Mirrors `Builder.njob`.
     """
 
     active: asyncio.Event = attrs.field(factory=asyncio.Event)
@@ -87,7 +89,7 @@ class Watcher:
     processed: asyncio.Event = attrs.field(factory=asyncio.Event)
     """The processed event is set when the Watcher has passed all information to the workflow.
 
-    After this event the build phase can start.
+    After this event is set, the build phase can start.
     """
 
     interrupt: asyncio.Event = attrs.field(factory=asyncio.Event)
@@ -100,16 +102,10 @@ class Watcher:
     """Event set when the watcher should resume activity."""
 
     deleted: set[Path] = attrs.field(init=False, factory=set)
-    """Files deleted while the watcher is active.
-
-    These changes are sent to the workflow at the end of the watch phase, before the build phase.
-    """
+    """Files deleted while the watcher is active."""
 
     updated: set[Path] = attrs.field(init=False, factory=set)
-    """Files changed or added files while the watcher is active.
-
-    These changes are sent to the workflow at the end of the watch phase, before the build phase.
-    """
+    """Files created or modified while the watcher is active."""
 
     files_changed_events: set[asyncio.Event] = attrs.field(init=False, factory=set)
     """Events registered by callers waiting for the next relevant file change.
@@ -119,7 +115,7 @@ class Watcher:
     """
 
     async def loop(self, stop_event: asyncio.Event):
-        """The main watcher loop.
+        """Run the main watcher loop.
 
         Parameters
         ----------
@@ -128,9 +124,9 @@ class Watcher:
 
         Notes
         -----
-        One iteration in the main watcher loop consists of observing multi file events.
-        The iteration ends by informing the workflow of all the changes, after which
-        StepUp starts the builder again (or exists).
+        One iteration of the main watcher loop consists of observing multiple file events.
+        The iteration ends by informing the workflow of all the changes,
+        after which StepUp starts the builder again (or exits).
         """
         async with AsyncInotifyWrapper(self.dir_queue) as wrapper:
             while not stop_event.is_set():
@@ -142,11 +138,14 @@ class Watcher:
                 )
                 if stop_event.is_set() or wrapper.stop_event.is_set():
                     break
-                await self.watch_changes(wrapper.change_queue, wrapper.stop_event)
+                await self.watch_changes(wrapper.change_queue)
                 self.resume.clear()
 
-    async def watch_changes(self, change_queue: asyncio.Queue, stop_event: asyncio.Event):
-        """Watch file events. They are sent to the workflow right before the next build phase."""
+    async def watch_changes(self, change_queue: asyncio.Queue):
+        """Watch file events.
+
+        The observed changes are sent to the workflow right before the next build phase.
+        """
         # Reset the state of the watcher: changes are not processed yet.
         # Other parts of StepUp can wait for file changes.
         self.processed.clear()
@@ -162,7 +161,7 @@ class Watcher:
                     await self.record_change(change, path)
 
         # Wait for new changes to show up.
-        # The lock needs to be in the loop, because this is a long-running operation.
+        # The lock is acquired inside the loop because the loop itself is long-running.
         self.active.set()
         async for change, path in stoppable_iterator(change_queue.get, self.interrupt):
             async with self.db:
@@ -173,9 +172,9 @@ class Watcher:
         async with self.db:
             old_hashes = self.workflow.get_file_hashes(self.updated | self.deleted)
 
-        # Hashing runs outside any held transaction: each hash job applies its own result
-        # in its own short transaction (see Executor.run_hash_job), which is safe here
-        # because no build phase is active to contend with.
+        # Hashing runs outside any held transaction.
+        # Each hash job applies its own result in its own short transaction,
+        # which is safe here because no build phase is active to contend with.
         new_hashes = await gather_hashes(
             self.hash_queue,
             self.executor,
@@ -185,10 +184,9 @@ class Watcher:
         )
 
         async with self.db:
-            # An unchanged result was deliberately not applied by the hash job itself
-            # (see Executor.run_hash_job): report it here instead, and prune it from
-            # self.updated before process_nglob_changes runs, so an unchanged file does
-            # not count as an nglob change.
+            # An unchanged result was deliberately not applied by the hash job itself:
+            # report it instead, and prune it from self.updated before process_nglob_changes runs,
+            # so an unchanged file does not count as an nglob change.
             for path, new_file_hash in new_hashes.items():
                 if new_file_hash == old_hashes[path]:
                     await self.reporter("UNCHANGED", path)
@@ -243,18 +241,19 @@ class AsyncInotifyWrapper:
     """
 
     inotify: Inotify | None = attrs.field(init=False, default=None)
-    """Inotify object, only present in context."""
+    """Inotify object, only present while the context is open."""
 
     stop_event: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
-    """Internal stop event, called when context is closed."""
+    """Internal stop event, set when the context is closed."""
 
-    watches: dict[Path, Watch] = attrs.field(init=False, factory=dict)
-    """Directory of watches created with asyncinotify"""
+    watches: dict[Path, Watch | None] = attrs.field(init=False, factory=dict)
+    """Watches created with asyncinotify, keyed by directory."""
 
     change_queue: asyncio.Queue = attrs.field(init=False, factory=asyncio.Queue)
     """A queue object holding file changes received from asyncinotify.
 
-    Each item is a tuple with a `Change` instance and a path."""
+    Each item is a tuple with a `Change` instance and a path.
+    """
 
     dir_loop_task: asyncio.Task | None = attrs.field(init=False, default=None)
     """Task corresponding to the dir_loop method."""
@@ -263,7 +262,7 @@ class AsyncInotifyWrapper:
     """Task corresponding to the change_loop method."""
 
     async def __aenter__(self):
-        """Start using the Inotify Wrapper."""
+        """Start the `AsyncInotifyWrapper`."""
         self.inotify = Inotify()
         self.stop_event.clear()
         self.dir_loop_task = asyncio.create_task(
@@ -277,7 +276,7 @@ class AsyncInotifyWrapper:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        """Close the InotifyWrapper."""
+        """Close the `AsyncInotifyWrapper`."""
         try:
             self.stop_event.set()
             await asyncio.gather(self.dir_loop_task, self.change_loop_task)
@@ -299,15 +298,9 @@ class AsyncInotifyWrapper:
             self.stop_event.set()
 
     async def dir_loop(self):
-        """Add or remove directories to watch, as soon as they are created or defined static.
+        """Install a watch for every directory received from the dir_queue.
 
-        For every directory added, an event handler for watch_dog is created, which puts
-        the observed file events to the change_queue.
-
-        Parameters
-        ----------
-        stop_event
-            Event to interrupt processing items from the dir_queue.
+        The file events observed in a watched directory are put on the change_queue.
         """
         async for path in stoppable_iterator(self.dir_queue.get, self.stop_event):
             path = Path(path).normpath()
@@ -324,9 +317,9 @@ class AsyncInotifyWrapper:
                 path = path.parent
 
     async def change_loop(self):
-        """Collect from INotify and translate then to items for the change_queue."""
+        """Collect events from inotify and translate them into items for the change_queue."""
         async for event in stoppable_iterator(self.inotify.get, self.stop_event):
-            # Drop invalid watches
+            # Mark watches that inotify reports as removed
             path = Path(event.path)
             if event.mask & Mask.IGNORED:
                 self.watches[path] = None
@@ -356,7 +349,7 @@ class AsyncInotifyWrapper:
                         watch = self.watches.get(path, "default")
                         if watch is None:
                             # When a directory is added that was once watched,
-                            # recreate a watcher right away.
+                            # recreate the watch right away.
                             self._install_watch(path)
                         if watch != "default":
                             # Events of files created in this directory may have been missed.

@@ -2,23 +2,23 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Multi-source configuration loader for StepUp and its extensions.
 
-Config files are loaded at construction into an ordered list; the environment
-is also preloaded.  No merging takes place until `patch_parser` is called.
+Config files are loaded at construction into an ordered list;
+the environment is also preloaded.
+No merging takes place until `patch_parser` is called.
 That method applies defaults to any argparse parser one option at a time,
-working through the config list in order (later files win) and overlaying
-the environment last.
+working through the config list in order (later files win)
+and overlaying the environment last.
 
-Environment variable naming convention
---------------------------------------
+## Environment Variable Naming Convention
 
 The section of a subparser is the last word of its `prog`
 (argparse prefixes it with the parent's `prog`, e.g. `"stepup build"` yields `"build"`).
-The env var name is derived from the prefix, the section (if any), and the dest:
+The env var name is derived from the prefix, the section (if any), and the `dest`:
 
-- No section: `STEPUP_DEBUG` (prefix + dest)
+- No section: `STEPUP_LOG_LEVEL` (prefix + dest)
 - Section `"build"`: `STEPUP_BUILD_JOBS` (prefix + section + dest)
-- Dotted section `"some.thing"`: `STEPUP_SOME_THING`
-- Hyphenated section `"render-jinja"`: `STEPUP_RENDER_JINJA`
+- Dotted section `"some.thing"`: `STEPUP_SOME_THING_<DEST>`
+- Hyphenated section `"render-jinja"`: `STEPUP_RENDER_JINJA_<DEST>`
 
 Dots and hyphens in section names are replaced by underscores.
 
@@ -44,16 +44,13 @@ loader.patch_parser(mytool_parser, merge_handlers={"paths": merge_paths})
 messages = loader.check()
 ```
 
-Error handling
---------------
+## Error Handling
 
 Loading and patching never raise on a bad configuration:
 problems are recorded and returned together by `problems` (or `check`, for the messages alone),
 so that a user gets the complete list in one go instead of one problem per run.
 Recognizing an unsupported key or an unknown section also requires
 every parser to have been patched first.
-A `ConfigProblem` remembers where it was found,
-which is what lets `show-config` show it on the line it concerns.
 """
 
 import argparse
@@ -130,7 +127,8 @@ def _not_a_section(section_path: str) -> str:
 def _not_a_setting(section_path: str) -> str:
     """Report a setting that holds a table with settings instead of a plain value.
 
-    The caller appends the location phrase of the section the setting belongs to.
+    The returned message is a fragment,
+    to be completed with the location phrase of the section the setting belongs to.
     """
     return f"'{section_path}' is configured as a section, but a value is expected"
 
@@ -192,14 +190,14 @@ class ConfigProblem:
 class ConfigLoader:
     """Load configuration from files and environment, then patch argparse parsers.
 
-    At construction each config stem is loaded into a separate dict stored in
-    `_configs`; the environment is preloaded into `_env`.  No merging happens
-    until `patch_parser` is called.
+    At construction each config file is loaded into a separate dict stored in `_configs`;
+    the environment is preloaded into `_env`.
+    No merging happens until `patch_parser` is called.
 
     `patch_parser` iterates through `_configs` in order, then overlays `_env`,
-    setting each matching argument default one at a time.  Optional per-option
-    *merge_handlers* can combine an accumulated value with the next one instead
-    of replacing it outright.
+    setting each matching argument default one at a time.
+    Optional per-option `merge_handlers` can combine an accumulated value
+    with the next one instead of replacing it outright.
 
     Anything wrong with the configuration is recorded instead of raised,
     and `problems` returns the complete list.
@@ -210,7 +208,7 @@ class ConfigLoader:
         Prefix for environment variable names.
         With no section, `"stepup"` maps dest `log_level` to `STEPUP_LOG_LEVEL`.
         With section `"build"`, dest `jobs` maps to `STEPUP_BUILD_JOBS`.
-        Also determines the default *pyproject_section* (e.g. `"tool.stepup"`).
+        Also determines the section read from `pyproject.toml` (e.g. `tool.stepup`).
     config_paths
         Ordered list of config file locations, from lowest to highest priority.
         The special filename `pyproject.toml` is loaded from the section derived from `prefix`.
@@ -253,7 +251,6 @@ class ConfigLoader:
         ----------
         config_path
             Path to the config file.
-            Returns an empty dict if the file does not exist.
 
         Returns
         -------
@@ -261,13 +258,13 @@ class ConfigLoader:
             Full dict of the config file, with no parser-key filtering.
             For `pyproject.toml`, the dict of the section derived from the prefix,
             e.g. `tool.stepup`.
+            Empty when the file does not exist.
 
         Raises
         ------
         ConfigError
             When the file cannot be read, parsed, or navigated to the expected section.
-            The message does not name the file,
-            because the caller records it as the location of the problem.
+            The message says what is wrong without naming the file.
         """
         path = Path(config_path).expanduser()
         if not path.is_file():
@@ -291,9 +288,9 @@ class ConfigLoader:
         return data
 
     def _section_path(self, path: Path, section: str | None) -> str:
-        """The dotted TOML path of *section* in the config file at *path*.
+        """Return the dotted TOML path of `section` in the config file at `path`.
 
-        Empty for the top level of a regular config file,
+        The path is empty for the top level of a regular config file,
         because the settings there are not nested in any table.
         """
         parts = []
@@ -330,7 +327,7 @@ class ConfigLoader:
     def _actions(
         self, parser: argparse.ArgumentParser
     ) -> tuple[dict[str, argparse.Action], set[str]]:
-        """Split the user-facing arguments of *parser* into configurable and CLI-only ones.
+        """Split the user-facing arguments of `parser` into configurable and CLI-only ones.
 
         Parameters
         ----------
@@ -361,9 +358,11 @@ class ConfigLoader:
     def _coerce_type(self, raw: Any, action: argparse.Action) -> Any:
         """Parse a raw config value into the target Python type and validate choices.
 
-        Falls back to `string_to_bool` for boolean flags (`store_true`, `store_false`,
-        `BooleanOptionalAction`), `int` for count actions, or the action's `type` callable.
-        After coercion, validates against `action.choices` when present.
+        Boolean flags (`store_true`, `store_false`, `BooleanOptionalAction`) are converted
+        with `string_to_bool` and count actions with `int`.
+        Any other option is converted with the action's `type` callable when it has one,
+        and taken as it is otherwise.
+        After coercion, the value is validated against `action.choices` when present.
 
         Parameters
         ----------
@@ -443,17 +442,18 @@ class ConfigLoader:
     def dump_with_provenance(self) -> dict[str, dict[str, tuple[Any, str]]]:
         """Return the merged config with the source of each value.
 
-        Iterates over loaded config files in priority order (later files override earlier
-        ones for the same key).
-        Only flat (non-dict) values are included; nested subsections beyond one level are
-        ignored, which matches the behavior of `patch_parser`.
+        Iterates over loaded config files in priority order
+        (later files override earlier ones for the same key).
+        Only flat (non-dict) values are included;
+        nested subsections beyond one level are ignored,
+        which matches the behavior of `patch_parser`.
 
         Returns
         -------
         provenance_map
             Dict mapping section names to `{key: (value, source)}` dicts.
             The empty string `""` is used as the section name for top-level keys.
-            *source* is the string representation of the config file path.
+            `source` is the string representation of the config file path.
         """
         result: dict[str, dict[str, tuple[Any, str]]] = {}
 
@@ -477,16 +477,15 @@ class ConfigLoader:
         """Map active env vars to their TOML location across all registered parsers.
 
         Iterates over every `(section, dest)` pair recorded by prior `patch_parser` calls.
-        For each pair whose env var is present in the environment, the coerced value is
-        collected.
+        For each pair whose env var is present in the environment, the coerced value is collected.
         Call this only after all `patch_parser` calls have been made.
 
         Returns
         -------
         mapping
             Dict keyed by env var name.
-            Each value is a list of `(section, dest, coerced_value)` tuples — one per
-            patched parser that registered the dest.
+            Each value is a list of `(section, dest, coerced_value)` tuples —
+            one per patched parser that registered the dest.
             Only env vars that are actually set in the environment are included.
         """
         result: dict[str, list[tuple[str | None, str, Any]]] = {}
@@ -517,11 +516,11 @@ class ConfigLoader:
     ) -> None:
         """Inject config defaults and env-var overrides into an argparse parser.
 
-        For each argument in *parser*, values are accumulated from `_configs`
-        in order (later files win) and then from `_env`.  When a
-        *merge_handler* is registered for a dest and both an accumulated value
-        and an incoming value are non-`None`, the handler is called instead
-        of the plain "incoming replaces accumulated" rule.
+        For each argument in `parser`, values are accumulated from `_configs` in order
+        (later files win) and then from `_env`.
+        When a merge handler is registered for a dest
+        and both an accumulated value and an incoming value are non-`None`,
+        the handler is called instead of the plain "incoming replaces accumulated" rule.
 
         A value that cannot be used is recorded for `problems` and skipped,
         leaving the argument's own default in place, instead of raising.
@@ -614,9 +613,10 @@ class ConfigLoader:
 
             if value is not None:
                 if action.nargs == "?":
-                    # nargs="?" options (e.g. --perf) have two fallback slots: `default`
-                    # (flag absent) and `const` (flag given bare). A config/env value should
-                    # win in both cases, not just when the flag is omitted entirely.
+                    # nargs="?" options (e.g. --perf) have two fallback slots:
+                    # `default` (flag absent) and `const` (flag given bare).
+                    # A config/env value should win in both cases,
+                    # not just when the flag is omitted entirely.
                     action.const = value
                     action.default = value
                 else:
@@ -722,8 +722,9 @@ class ConfigLoader:
         owners = {owner for owner, owner_dests in dests.items() if key in owner_dests} - {section}
         if len(owners) > 0:
             return f" (it belongs {self._join_locations(path, owners)})"
-        # A key equal to a supported one, without ending up in `owners`, is a table
-        # where a setting is expected. Suggesting its own name back is of no use.
+        # A key equal to a supported one, without ending up in `owners`,
+        # is a table where a setting is expected.
+        # Suggesting its own name back is of no use.
         candidates = sorted(
             {dest for owner_dests in dests.values() for dest in owner_dests} - {key}
         )
@@ -749,9 +750,14 @@ def show_config_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     Parameters
     ----------
     subparsers
-        The sub parser to add the show-config tool to.
+        The subparser to add the show-config tool to.
     loader
         The configuration loader used to read and merge configuration sources.
+
+    Returns
+    -------
+    tool_func
+        The function to call with the parsed args to execute the show-config command.
     """
     subparsers.add_parser(
         "show-config",
@@ -788,7 +794,7 @@ def format_config_problems(problems: list[ConfigProblem]) -> str:
 
 
 def _error_console() -> Console:
-    """A console for error output on standard error.
+    """Create a console for error output on standard error.
 
     Soft wrapping leaves long messages to the terminal instead of cropping them.
     """
@@ -935,13 +941,13 @@ class _Anchor:
 
 CORE_ENV_VARS = frozenset(
     {
-        # These are intended for end-users
+        # These are intended for end users.
         "STEPUP_MAX_OUTPUT_SIZE",
         "STEPUP_PATH_FILTER",
         "STEPUP_ROOT",
         "STEPUP_SYNC_RPC_TIMEOUT",
-        # The following only for internal use and are treated as unrecognized,
-        # because users setting them will not have any effect on the configuration.
+        # The following are only for internal use and are treated as unrecognized,
+        # because setting them has no effect on the configuration.
         # "STEPUP_DIRECTOR_SOCKET",
         # "STEPUP_JOB_I",
         # "STEPUP_REPORTER_SOCKET",
@@ -952,7 +958,7 @@ CORE_ENV_VARS = frozenset(
 """The variables StepUp Core acts on without a subcommand defining a setting for them.
 
 Maintained by hand: nothing derives it from the places that read these variables.
-A variable of the prefix that is in neither this set nor `ConfigLoader.known_env_vars`
+A variable with the prefix that is in neither this set nor `ConfigLoader.known_env_vars`
 does nothing, which is how a typo in a variable name becomes visible.
 
 Extension packages are not covered:

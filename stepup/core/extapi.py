@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Utilities for developers of StepUp extension packages.
 
-These functions are not intended for end-users writing `plan.py` files.
+These functions are not intended for end users writing `plan.py` files.
 They are meant for authors of new StepUp extensions who need to interact with the director,
 filter step dependencies, or implement custom API functions that handle environment variables.
 """
@@ -17,7 +17,7 @@ from collections.abc import Callable, Iterable, Iterator
 
 from path import Path
 
-from .exceptions import EnvVarError, StepUpError
+from .exceptions import ConsistencyError, EnvVarError, StepUpError
 from .path import StrPath, coerce_str, translate
 from .step import truncate_output
 from .utils import CaseSensitiveTemplate, extract_env_overrides
@@ -34,17 +34,18 @@ __all__ = (
 def _prepare_stream(data: str | bytes | None, max_bytes: int = 0) -> str:
     """Return a text representation of `data` suitable for the archival record.
 
-    `None` is returned unchanged.
+    `None` becomes an empty string.
 
-    `str` remains unchanged if `max_bytes` is `0` (unlimited)
-    or the string is shorter than `max_bytes`.
-    Otherwise, the string is truncated to `max_bytes` characters
+    A `str` remains unchanged if `max_bytes` is `0` (unlimited)
+    or the string fits within `max_bytes` UTF-8 bytes.
+    Otherwise, the string is truncated to `max_bytes` bytes
     and a note is appended to indicate that it was truncated.
 
-    `bytes` are summarized into a short,
-    human-readable placeholder (byte length and a truncated SHA-256), because the
-    archival columns (`stdin`, `stdout`, `stderr`) are `TEXT` and a raw binary blob
-    is neither valid UTF-8 nor meaningful to a human inspecting the database.
+    `bytes` are summarized into a short, human-readable placeholder
+    (byte length and a truncated SHA-256),
+    because the archival columns (`stdin`, `stdout`, `stderr`) are `TEXT`
+    and a raw binary blob is neither valid UTF-8
+    nor meaningful to a human inspecting the database.
     """
     if data is None:
         return ""
@@ -58,10 +59,10 @@ def _prepare_stream(data: str | bytes | None, max_bytes: int = 0) -> str:
 
 @contextlib.contextmanager
 def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
-    """A context manager for substituting environment variables and tracking the used variables.
+    """Substitute environment variables in paths and record which variables are used.
 
-    The context manager yields a function, `subs`, which takes a path or string with variables and
-    returns the substituted form.
+    The context manager yields a function, `subs`,
+    which takes a path or string with variables and returns the substituted form.
     All used variables are recorded and sent to the director with `amend(env=...)`.
     For example:
 
@@ -71,8 +72,8 @@ def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
         path_out = subs(path_out)
     ```
 
-    This function may be used in other API functions to substitute environment variables in
-    all relevant paths.
+    This function may be used in other API functions
+    to substitute environment variables in all relevant paths.
 
     Raises
     ------
@@ -121,13 +122,13 @@ def record_subprocess(
     """Record a subprocess invocation (already run by the caller) for archival purposes.
 
     This is the low-level escape hatch for wrappers that run the subprocess themselves
-    (e.g. for streaming output, `Popen`-style pipe interaction, shell features, or
-    conditional invocations).
+    (e.g. for streaming output, `Popen`-style pipe interaction, shell features,
+    or conditional invocations).
 
     Most wrappers should use `run_subprocess` instead.
 
     The recorded metadata is meant to be informative for archival and debugging, not authoritative.
-    Outside a running step (e.g. under the dummy RPC client used in tests or driver code),
+    Outside a running step (when `STEPUP_JOB_I` is unset and the RPC client is the dummy one),
     this function is a no-op.
 
     Parameters
@@ -144,18 +145,18 @@ def record_subprocess(
         relative to the step's own working directory.
         It is translated to be relative to `STEPUP_ROOT` for storage.
     env_overrides
-        The environment **overlay** that the caller applied on top of the inherited
-        environment (only the variables it explicitly set), or `None`. Only this overlay
-        is stored, not the full resolved environment.
+        The environment **overlay** that the caller applied on top of the inherited environment
+        (only the variables it explicitly set), or `None`.
+        Only this overlay is stored, not the full resolved environment.
     shell
         Whether `cmd` was executed via a shell (i.e. `subprocess.run(..., shell=True)`).
         This is stored and used when formatting the invocation for display.
     stdin, stdout, stderr
         The standard input/output/error of the subprocess, or `None` when not captured.
-        A `str` is stored verbatim (subject to the director's `--max-output-size` cap for
-        `stdout`/`stderr`). `bytes` (e.g. a pickle blob) are not stored raw; they are
-        recorded as a short summary (byte length and a truncated SHA-256), since the
-        archival record is `TEXT` and informative rather than authoritative.
+        A `str` is stored verbatim, subject to the `STEPUP_MAX_OUTPUT_SIZE` cap.
+        `bytes` (e.g. a pickle blob) are not stored raw:
+        they are recorded as a short summary (byte length and a truncated SHA-256),
+        since the archival record is `TEXT` and informative rather than authoritative.
     """
     from stepup.core.api import RPC_CLIENT, get_job_i  # noqa: PLC0415
 
@@ -188,19 +189,20 @@ def run_subprocess(
     """Run a subprocess and record it for archival purposes.
 
     This is the convenience wrapper for the case where an extension step wraps an executable.
-    The invocation, its return code, and its captured stdout/stderr are recorded via
-    `record_subprocess` (subject to the `STEPUP_MAX_OUTPUT_SIZE` cap).
+    The invocation, its return code, and its captured stdout/stderr
+    are recorded via `record_subprocess` (subject to the `STEPUP_MAX_OUTPUT_SIZE` cap).
 
     Parameters
     ----------
     cmd
         The command line, as a single shell-quoted string.
-        When `shell=False` (the default), `cmd` is split with `shlex.split` and executed
-        directly (no shell), so shell features (pipes, redirections, ...) are not available.
+        When `shell=False` (the default),
+        `cmd` is split with `shlex.split` and executed directly (no shell),
+        so shell features (pipes, redirections, ...) are not available.
         When `shell=True`, `cmd` is passed as-is to the system shell, which enables shell features.
         As an exception, leading `VAR=value` assignments are extracted and applied
         to the subprocess environment, even when `shell=False`.
-        In either case, the caller is then responsible for proper quoting.
+        In either case, the caller is responsible for proper quoting.
     workdir
         The working directory of the subprocess as a path or string,
         relative to the step's own working directory.
@@ -222,8 +224,9 @@ def run_subprocess(
         In case of such a failure, the subprocess's standard output and error are printed
         to the caller's standard output and error stream.
     text
-        The default is to follow the type of `stdin` to run in text or binary mode.
-        If no `stdin` is provided, the default is text mode.
+        Whether to run in text or binary mode.
+        By default, the mode follows the type of `stdin`: text for `str`, binary for `bytes`.
+        When no `stdin` is provided, the default is text mode.
 
     Returns
     -------
@@ -234,6 +237,9 @@ def run_subprocess(
     ------
     subprocess.CalledProcessError
         When `check` is `True` and the subprocess exits with a non-zero return code.
+    TypeError
+        When `stdin` is not `str`, `bytes`, or `None`,
+        or when `stdin` is inconsistent with the `text` flag.
     """
     if shell:
         env_overrides = None
@@ -242,13 +248,12 @@ def run_subprocess(
     run_env = dict(os.environ)
     if env_overrides is not None:
         run_env.update(env_overrides)
-    # Build a dict of keyword arguments to pass to `subprocess.run`.
     run_kwargs = {
         "cwd": workdir,
         "env": run_env,
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
-        "check": False,  # handled below, so we can record the subprocess with returncode
+        "check": False,  # handled below, so the subprocess can be recorded with its return code
         "shell": shell,
     }
     if stdin is None:
@@ -298,7 +303,7 @@ def run_subprocess(
 
 
 def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
-    """Select path retained by the `${STEPUP_PATH_FILTER}`.
+    """Select the paths retained by `${STEPUP_PATH_FILTER}`.
 
     Parameters
     ----------
@@ -309,7 +314,8 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     Returns
     -------
     filtered_paths
-        A collection of paths relative to `${STEPUP_ROOT}` that were retained by the filter.
+        A collection of paths retained by the filter,
+        relative to the current working directory.
 
     Raises
     ------
@@ -317,7 +323,7 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
         When `${STEPUP_PATH_FILTER}` contains an item that does not start with `+` or `-`.
     """
     # The getenv function from StepUp amends the current step to depend on the variable,
-    # to make sure that all steps using it get re-executed properly.
+    # so that every step using it is re-executed when the variable changes.
     from stepup.core.api import getenv  # noqa: PLC0415
 
     # Parse the ${STEPUP_PATH_FILTER} environment variable.
@@ -350,18 +356,31 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
                     result.add(abspath.relpath(realpwd))
                 break
         else:
-            raise AssertionError(f"No matching rule found for path: {path}")
+            raise ConsistencyError(f"No matching rule found for path: {path}")
     return result
 
 
 def get_local_import_paths(script_path: StrPath | None = None) -> list[Path]:
     """Get all local files from `sys.modules`.
 
+    Parameters
+    ----------
+    script_path
+        The path of the script that is currently running, or `None` if unknown.
+
+    Returns
+    -------
+    local_paths
+        A sorted list of paths to local files that are currently imported in `sys.modules`.
+
+    Notes
+    -----
     Files are only included if they match the `${STEPUP_PATH_FILTER}` environment variable.
-    Non-existing files will be ignored, as they can only be the result of a dynamically created
-    module, as in issue https://github.com/reproducible-reporting/stepup-core/issues/21
+    Non-existent files are ignored:
+    they can only be the result of a dynamically created module,
+    as in issue <https://github.com/reproducible-reporting/stepup-core/issues/21>.
     There is no risk of missing files that still need to be created,
-    as all imports have already been successfully resolved already at this point.
+    as all imports have already been successfully resolved at this point.
     """
 
     def iter_module_paths():
@@ -373,7 +392,7 @@ def get_local_import_paths(script_path: StrPath | None = None) -> list[Path]:
                     yield mod_path
 
     mod_paths = filter_dependencies(iter_module_paths())
-    # The script path is already included in the inputs.
+    # The script itself is not returned because it is an input of the step by construction.
     if script_path is not None:
         mod_paths.discard(Path(script_path).normpath())
     return sorted(mod_paths)

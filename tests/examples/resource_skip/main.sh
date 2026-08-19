@@ -24,7 +24,7 @@ wait
 
 # Restore the original content NOW (after the director has shut down).
 # The step is PENDING in the database with a stored hash that matches "content".
-# On the next startup, scan_file_changes will detect the mismatch between the
+# On the next startup, check_file_changes will detect the mismatch between the
 # stored hash (H("changed")) and the current file (H("content")), updating the
 # file hash in the DB, but leaving the step PENDING.
 echo "content" > input.txt

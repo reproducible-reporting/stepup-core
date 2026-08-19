@@ -385,6 +385,34 @@ async def test_ranking_and_truncation(wfp: Workflow):
     assert [row.path for row in summary.inputs] == [f"missing_{k:02d}.txt" for k in range(MAX_ROWS)]
 
 
+async def test_hidden_inputs_shadowed_by_tie_break(wfp: Workflow):
+    """Dead-end files that never win the primary-blocker tie-break still count as hidden.
+
+    Every step here depends on all the files, so only the first one is ever a step's
+    primary blocker and the rest are absent from `pend_attributed`.
+    They are nevertheless files a user has to create, so they must not vanish from the
+    report's hidden-row counter.
+    """
+    scheduler, plan = await _prepare(wfp)
+    n_files = MAX_ROWS + 2
+    paths = [f"missing_{k:02d}.txt" for k in range(n_files)]
+    async with wfp.db:
+        _declare_missing(wfp, plan, paths)
+        for j in range(3):
+            wfp.define_step(plan, f"step_{j}", inp_paths=paths)
+    await _settle(wfp, scheduler)
+    async with wfp.db:
+        summary = analyze_pending(wfp)
+    assert summary.ntotal == 3
+    # Exact counts are equal, so the displayed rows are the MAX_ROWS lowest-sorting files.
+    assert [row.path for row in summary.inputs] == paths[:MAX_ROWS]
+    assert all(row.nblocked == 3 for row in summary.inputs)
+    assert summary.ninputs_hidden == n_files - MAX_ROWS
+    # The hidden files block no step that the displayed ones do not already account for,
+    # so the attributed lower bound is zero.
+    assert summary.ninputs_hidden_blocked == 0
+
+
 #
 # Partition invariant
 #

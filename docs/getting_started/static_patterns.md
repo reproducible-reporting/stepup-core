@@ -51,7 +51,7 @@ A pattern does more than save you some typing.
 Besides declaring the matches, StepUp records the *pattern itself* with the step that
 called `static()`, together with the set of matches it produced.
 
-On a later run, StepUp re-scans the filesystem and compares.
+On a later run, StepUp re-scans the file system and compares.
 When a matching file was added or removed since the last build,
 the step that called `static()` is made pending and runs again,
 so the plan is rebuilt against the new set of files.
@@ -150,7 +150,7 @@ but the call to `static()` will fail in case of a missing file even when using a
 
 - Run StepUp again without making any changes.
   You will notice that `./plan.py` is skipped this time: on startup, StepUp re-scans the
-  filesystem and compares it against the pattern's persisted matches, so a step is only
+  file system and compares it against the pattern's persisted matches, so a step is only
   made pending again when the match set actually changed.
 
 - Add a file `src/egg.txt` and run StepUp again with the same arguments.

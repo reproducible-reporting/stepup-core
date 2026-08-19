@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""The `Scheduler` Turns PENDING jobs into RUNNING jobs as the builder requests them."""
+"""The `Scheduler` turns PENDING jobs into RUNNING jobs as the builder requests them."""
 
 import logging
 import time
@@ -8,6 +8,7 @@ import time
 import attrs
 
 from .enums import FileState, Need, StepState
+from .exceptions import ConsistencyError
 from .hash import FileHash
 from .job import Job, RunJob, ValidateDynamicJob
 from .path import dir_range_upper
@@ -31,40 +32,48 @@ DELETE FROM safe_update
 """
 
 
-# Compute the new _safe and _safe_ignoring_hold values for every (recursive) product of a
-# _check_safe-flagged step, AND for the flagged step itself.
+# Compute the new _safe and _safe_ignoring_hold values
+# for every (recursive) product of a _check_safe-flagged step,
+# AND for the flagged step itself.
 #
-# A product node can be reached through more than one flagged ancestor at once (e.g.
-# Step.detach()/reattach() flags a whole subtree via RECURSIVE_CHECK_WITH_PRODUCTS in step.py), so
-# duplicate rows for the same node id are possible and are resolved with MIN(safe)/MIN(safe_nh):
-# the value derived through a longer (more ancestor-inclusive) chain is always <= the value from
-# a shorter chain, so MIN always recovers the correct, fully-chained answer rather than an
-# arbitrary one.
+# A product node can be reached through more than one flagged ancestor at once
+# (e.g. Step.detach()/reattach() flags a whole subtree
+# via RECURSIVE_CHECK_WITH_PRODUCTS in step.py),
+# so duplicate rows for the same node id are possible
+# and are resolved with MIN(safe)/MIN(safe_nh):
+# the value derived through a longer (more ancestor-inclusive) chain
+# is always <= the value from a shorter chain,
+# so MIN always recovers the correct, fully-chained answer rather than an arbitrary one.
 #
-# `trace` carries four values per node: `safe`/`safe_nh` are that node's own new
-# _safe/_safe_ignoring_hold (what gets written out) and depend only on its *ancestors'*
-# states -- never its own, since a step's own state must not affect its own _safe (e.g.
-# `step_dispatch`'s partial index checks _safe against PENDING steps, so folding this step's
-# own state into _safe would make every PENDING step look permanently unsafe). `chain`/
-# `chain_nh` are `safe`/`safe_nh` with this node's own state additionally folded in, i.e.
-# exactly what its products need as their incoming ancestor-safety. Computing the "_nh"
-# ("no hold") twin costs nothing extra beyond the additional arithmetic: it walks the exact
-# same rows as `safe`/`chain`, just without ever consulting `_holding`, so no new traversal,
-# join, or index is needed for it. `chain` costs nothing extra either: the join that looks up
-# a node's own state (`sp`) is already needed to identify the node itself, so all four values
-# fall out of the same row instead of requiring a second downward pass (as an earlier version
-# of this query did, broadcasting `safe` from creators to products via a separate final CROSS
-# JOIN).
+# `trace` carries four values per node:
+# `safe`/`safe_nh` are that node's own new _safe/_safe_ignoring_hold (what gets written out)
+# and depend only on its ancestors' states, never its own,
+# since a step's own state must not affect its own _safe
+# (e.g. `step_dispatch`'s partial index checks _safe against PENDING steps,
+# so folding this step's own state into _safe would make every PENDING step look
+# permanently unsafe).
+# `chain`/`chain_nh` are `safe`/`safe_nh` with this node's own state additionally folded in,
+# i.e. exactly what its products need as their incoming ancestor-safety.
+# Computing the "_nh" ("no hold") twin costs nothing extra beyond the additional arithmetic:
+# it walks the exact same rows as `safe`/`chain`, just without ever consulting `_holding`,
+# so no new traversal, join, or index is needed for it.
+# `chain` costs nothing extra either:
+# the join that looks up a node's own state (`sp`) is already needed to identify the node
+# itself, so all four values fall out of the same row
+# instead of requiring a second downward pass.
 SELECT_SAFE_UPDATE = f"""
 INSERT INTO safe_update(i, safe, safe_nh)
 WITH RECURSIVE trace(i, safe, chain, safe_nh, chain_nh) AS (
-    -- Seed directly at each _check_safe-flagged step, using its creator's already-computed
-    -- _safe/_safe_ignoring_hold and state (a root creator has no `step` row and is treated as
-    -- trivially safe via COALESCE). creator_step._holding = 0 additionally excludes, for the
-    -- `safe`/`chain` (hold-respecting) pair only, a step whose creator has one or more open
-    -- `hold()` calls, so its children stay unsafe until the matching `release()` brings the
-    -- counter back to zero. The `safe_nh`/`chain_nh` pair mirrors this exactly but never
-    -- consults `_holding` at all, i.e. what `_safe` would be if nothing were ever held.
+    -- Seed directly at each _check_safe-flagged step,
+    -- using its creator's already-computed _safe/_safe_ignoring_hold and state
+    -- (a root creator has no `step` row and is treated as trivially safe via COALESCE).
+    -- creator_step._holding = 0 additionally excludes,
+    -- for the `safe`/`chain` (hold-respecting) pair only,
+    -- a step whose creator has one or more open `hold()` calls,
+    -- so its children stay unsafe until the matching `release()` brings the counter back
+    -- to zero.
+    -- The `safe_nh`/`chain_nh` pair mirrors this exactly but never consults `_holding` at all,
+    -- i.e. what `_safe` would be if nothing were ever held.
     SELECT
         s.node,
         COALESCE(
@@ -97,10 +106,11 @@ WITH RECURSIVE trace(i, safe, chain, safe_nh, chain_nh) AS (
 
     UNION ALL
 
-    -- Follow (recursive) products: a product's own new safe/safe_nh is simply the
-    -- chain/chain_nh inherited from its creator. Both are refreshed in the same row to also
-    -- fold in the product's own state (and, for chain only, its own _holding), ready for use
-    -- by *its* products in the next iteration.
+    -- Follow (recursive) products:
+    -- a product's own new safe/safe_nh is simply the chain/chain_nh inherited from its creator.
+    -- Both are refreshed in the same row to also fold in the product's own state
+    -- (and, for chain only, its own _holding),
+    -- ready for use by *its* products in the next iteration.
     SELECT
         sp.node,
         trace.chain,
@@ -129,8 +139,7 @@ CREATE TEMPORARY TABLE IF NOT EXISTS check_after(i INTEGER PRIMARY KEY)
 """
 
 
-# Holds only the ids of steps whose _implied_need/_tail_time changed in the current
-# _update_meta_after iteration -- see PROPAGATE_UPDATE_CHECK_AFTER for how it's used.
+# Seed set for PROPAGATE_UPDATE_CHECK_AFTER; see its comment.
 INIT_CHANGED_AFTER = """
 CREATE TEMPORARY TABLE IF NOT EXISTS changed_after(i INTEGER PRIMARY KEY)
 """
@@ -148,28 +157,33 @@ WHERE NOT node.detached AND step._check_after
 """
 
 
-# Compute the new _implied_need and _tail_time for each step in check_after, and apply them
-# directly in the same statement (avoids a round trip through a separate, materialized
-# update_after table). RETURNING reports exactly the node ids that were written, which the
-# caller feeds into PROPAGATE_UPDATE_CHECK_AFTER as the "changed" seed set -- narrowing
-# propagation to steps whose value actually changed, same as the old two-statement design.
+# Compute the new _implied_need and _tail_time for each step in check_after,
+# and apply them directly in the same statement
+# (which avoids a round trip through a separate, materialized update_after table).
+# RETURNING reports exactly the node ids that were written,
+# which the caller feeds into PROPAGATE_UPDATE_CHECK_AFTER as the "changed" seed set,
+# narrowing propagation to steps whose value actually changed.
 #
-# The CASE/EXISTS term elevates a step to at least TARGET when one of its attached,
-# non-volatile outputs is a target. Dependency sinks of a step are exactly its out_paths
-# (PLANNED/BUILT/OUTDATED) and vol_paths (VOLATILE), so excluding VOLATILE leaves exactly
-# the regular outputs. NOT onode.detached mirrors Workflow.reconcile_targets()'s
-# deliberate skipping of detached rows.
+# The CASE/EXISTS term elevates a step to at least TARGET
+# when one of its attached, non-volatile outputs is a target.
+# Dependency sinks of a step are exactly its out_paths (PLANNED/BUILT/OUTDATED)
+# and vol_paths (VOLATILE), so excluding VOLATILE leaves exactly the regular outputs.
+# NOT onode.detached mirrors Workflow.reconcile_targets()'s deliberate skipping of
+# detached rows.
 # Without targets, target_path (always created and populated in Scheduler.initialize())
-# is empty, so the EXISTS never matches and the term contributes Need.OPTIONAL --
-# the enum minimum, a no-op inside MAX. All probes in the EXISTS are indexed,
-# so this costs little on untargeted builds.
+# is empty, so the EXISTS never matches and the term contributes Need.OPTIONAL
+# (the enum minimum), which results in a no-op inside MAX.
+# All probes in the EXISTS are indexed, so this costs little on untargeted builds.
 #
-# The second WHEN arm elevates a step whose *declared* need is DEFAULT (step.need, not
-# _implied_need) when one of its attached, non-volatile outputs falls under a directory
-# target (label in [target_dir.path, target_dir.upper)). The step.need = DEFAULT guard
-# keeps directory targets from sweeping OPTIONAL steps into the build, unlike exact
-# targets. Without directory targets, target_dir (always created and populated in
-# Scheduler.initialize()) is empty, so this term is also a no-op.
+# The second WHEN arm elevates a step whose *declared* need is DEFAULT
+# (step.need, not _implied_need)
+# when one of its attached, non-volatile outputs falls under a directory target
+# (label in [target_dir.path, target_dir.upper)).
+# The step.need = DEFAULT guard keeps directory targets from sweeping OPTIONAL steps into
+# the build, unlike exact targets.
+# Without directory targets,
+# target_dir (always created and populated in Scheduler.initialize()) is empty,
+# so this term is also a no-op.
 UPDATE_CHECK_AFTER = f"""
 WITH cte AS (
     SELECT
@@ -243,15 +257,15 @@ DELETE FROM changed_after
 # Propagate the updates to all (recursive) sources of the updated steps.
 #
 # changed_after holds the step ids whose _implied_need/_tail_time actually changed in this
-# iteration (populated by the caller from UPDATE_CHECK_AFTER's RETURNING output) -- this is the
-# seed set that preserves the "only propagate from steps whose value actually changed" narrowing,
+# iteration (populated by the caller from UPDATE_CHECK_AFTER's RETURNING output).
+# It is the seed set that narrows propagation to steps whose value actually changed,
 # which keeps iteration counts down on real graphs.
 #
 # The two nested `IN` subqueries (rather than a plain JOIN chain starting from `changed_after`)
-# make the planner drive from `dependency`'s `dependency_sink_source` index seeded by
-# `changed_after`, instead of a full scan of `dependency` or `step`. A plain JOIN here lets the
-# planner pick either of those as the driving table, an O(n_dependencies) or O(n_steps) cost
-# regardless of how few steps changed.
+# make the planner drive from `dependency`'s `dependency_sink_source` index
+# seeded by `changed_after`, instead of a full scan of `dependency` or `step`.
+# A plain JOIN here lets the planner pick either of those as the driving table,
+# an O(n_dependencies) or O(n_steps) cost regardless of how few steps changed.
 PROPAGATE_UPDATE_CHECK_AFTER = """
 INSERT INTO check_after(i)
 SELECT DISTINCT source_step.node
@@ -278,10 +292,10 @@ WHERE _check_ready
 # Whether a step has at least one required resource that is currently undefined
 # or over-committed (i.e. cannot be run right now).
 # Named resources are only relevant to actual execution,
-# never to hash-checking -- see SELECT_NEXT_STEP.
-# Not shared with pending.py's similarly-shaped resource check: that one omits the
-# currently-RUNNING subtraction because it documents "assumed no RUNNING steps at this point"
-# (it runs after the builder has stopped),
+# never to hash-checking. (See SELECT_NEXT_STEP.)
+# Not shared with pending.py's similarly-shaped resource check:
+# that one runs after the builder has stopped
+# and therefore omits the currently-RUNNING subtraction,
 # so the two have different semantics despite the surface resemblance.
 RESOURCE_UNAVAILABLE = f"""
 SELECT 1 FROM step_resource AS req
@@ -306,35 +320,38 @@ WHERE req.node = node.i
 # Select the single highest-priority PENDING step ready for dispatch:
 # a hash-checkable step (no resource check needed) if one exists,
 # otherwise a step ready to execute (subject to resource availability).
-# Checkable steps always take priority over runnable ones --
-# checking is cheap and unlocks more work early --
+# Checkable steps always take priority over runnable ones
+# because checking is cheap and unlocks more work early,
 # regardless of relative _tail_time, hence `_has_hash DESC` leads the ORDER BY.
 #
-# This walks the step_dispatch partial index (defined in STEP_SCHEMA next to
-# STEP_DISPATCH_WHERE) in priority order and stops at the first eligible row, instead of
-# materializing and sorting the whole PENDING candidate set on every dispatch. That is only
-# possible because step._has_hash and step._ready are materialized, trigger-maintained
-# columns (see STEP_SCHEMA and Scheduler._update_meta_ready/RECOMPUTE_READY), so this query
-# needs no correlated UNAVAILABLE_INPUT/step_hash EXISTS check per candidate row.
+# This walks the step_dispatch partial index
+# (defined in STEP_SCHEMA, with STEP_DISPATCH_WHERE as its WHERE clause)
+# in priority order and stops at the first eligible row,
+# instead of materializing and sorting the whole PENDING candidate set on every dispatch.
+# That is only possible because step._has_hash and step._ready are
+# materialized, trigger-maintained columns
+# (see STEP_SCHEMA and Scheduler._update_meta_ready/RECOMPUTE_READY),
+# so this query needs no correlated UNAVAILABLE_INPUT/step_hash EXISTS check per candidate row.
 #
-# node.detached and the resource check are intentionally NOT part of step_dispatch's WHERE
-# clause (a partial index can only reference columns of the indexed table), so they are
-# re-checked lazily per examined index row instead -- cheap in practice since both rarely
-# reject, so this stays effectively O(1) even though it is not, strictly speaking, index-only.
+# `INDEXED BY` is required:
+# SQLite's planner does not pick step_dispatch voluntarily, even after ANALYZE
+# (measured separately).
+# It pins the plan and fails loudly (query error) if the index is ever missing,
+# which is acceptable since the index is part of the schema executed on every database open.
+# Do not add node.label or node.i to the ORDER BY:
+# any term outside the index forces a temp B-tree sort of all matching rows,
+# defeating this query's purpose.
+# The tie-break is therefore the index's implicit `step.node ASC` primary-key suffix,
+# which is deterministic but does not order by label.
+# (Claimed verified using SQlite 3.51.2.)
 #
-# `INDEXED BY` is required: SQLite's planner does not pick step_dispatch voluntarily, even
-# after ANALYZE (measured separately). It pins the plan and fails loudly (query error) if
-# the index is ever missing -- acceptable since the index is part of the schema executed on
-# every database open. Do not add node.label or node.i to the ORDER BY: any term outside
-# the index forces a temp B-tree sort of all matching rows, defeating this query's purpose.
-# The tie-break is therefore the index's implicit `step.node ASC` primary-key suffix
-# (deterministic, but a different order than the dropped `label ASC`).
-#
-# step._implied_need > ? (Workflow.need_threshold, bound by _get_next_step()) sits outside
-# STEP_DISPATCH_WHERE, which must stay static and textually match step_dispatch's WHERE
-# clause -- a per-build runtime value cannot appear there. Without targets the threshold is
-# OPTIONAL, which this term already implies via STEP_DISPATCH_WHERE, so behavior is
-# unchanged; with targets it is DEFAULT, making DEFAULT-need steps optional-in-effect.
+# step._implied_need > ? (Workflow.need_threshold, bound by _get_next_step())
+# sits outside STEP_DISPATCH_WHERE,
+# which must stay static and textually match step_dispatch's WHERE clause.
+# A per-build runtime value cannot appear there.
+# Without targets the threshold is OPTIONAL,
+# which this term already implies via STEP_DISPATCH_WHERE, so it then rejects nothing;
+# with targets it is DEFAULT, making DEFAULT-need steps optional-in-effect.
 SELECT_NEXT_STEP = f"""
 SELECT node.i, node.label, step._has_hash
 FROM step INDEXED BY step_dispatch
@@ -384,7 +401,7 @@ class Scheduler:
     """Whether to use the duration of steps to optimize the execution order."""
 
     on_hold: bool = attrs.field(init=False, default=False)
-    """Temporarily pause scheduling of jobs, e.g. interrupted by the user."""
+    """Whether the scheduling of new jobs is temporarily paused, e.g. after a user interrupt."""
 
     start_times: dict[int, int] = attrs.field(init=False, factory=dict)
     """Step node id -> `time.monotonic_ns()` at the moment it was dispatched to RUNNING.
@@ -396,21 +413,24 @@ class Scheduler:
     stop_times: dict[int, int] = attrs.field(init=False, factory=dict)
     """Step node id -> `time.monotonic_ns()` at the moment it reached SUCCEEDED.
 
-    In-memory only, pruned by `record_stop_time()`. See `start_times`.
+    In-memory only, pruned by `record_stop_time()`.
+    See `start_times`.
     """
 
     new_durations: dict[int, float] = attrs.field(init=False, factory=dict)
     """Step node id -> most recently measured job duration, not yet written to the database.
 
-    In-memory only. Populated by `job_completed()`, written and cleared by
-    `build_completed()` at the end of a build phase (see `Builder.finalize`/`Builder.stop`).
+    In-memory only.
+    Populated by `job_completed()`,
+    written and cleared by `build_completed()` at the end of a build phase.
     """
 
     jobs: dict[int, Step] = attrs.field(init=False, factory=dict)
     """`Job.job_i` -> `Step`, for every job that has been created but not yet completed.
 
-    Populated by `_derive_job()`, pruned by `job_completed()`. Used by `get_step()` to
-    resolve RPC calls made by a step's child process back to the `Step` that made them.
+    Populated by `_derive_job()`, pruned by `job_completed()`.
+    Used by `get_step()` to resolve RPC calls made by a step's child process
+    back to the `Step` that made them.
     """
 
     job_counter: int = attrs.field(init=False, default=0)
@@ -420,8 +440,7 @@ class Scheduler:
     """Number of jobs in the current build phase that executed a step's command.
 
     Jobs that only skip a step or validate its dynamic inputs are not counted,
-    so this is the number of steps the build actually had work for.
-    Reset by `build_completed()`, like `job_counter`.
+    so this is the number of jobs that actually ran a command.
     """
 
     write_joblog: bool = attrs.field(kw_only=True, default=False)
@@ -444,15 +463,16 @@ class Scheduler:
                     parse_resources(resources).items(),
                 )
             # check_after, changed_after, and safe_update are hot-path temp tables used by
-            # _update_meta_after()/_update_meta_safe(). Creating them once here, instead of on
-            # every call, avoids repeated schema-cookie bumps (which invalidate SQLite's
-            # prepared-statement cache) on the dispatch hot path.
+            # _update_meta_after()/_update_meta_safe().
+            # Creating them once here, instead of on every call,
+            # avoids repeated schema-cookie bumps
+            # (which invalidate SQLite's prepared-statement cache) on the dispatch hot path.
             self.workflow.db.execute(INIT_CHECK_AFTER)
             self.workflow.db.execute(INIT_CHANGED_AFTER)
             self.workflow.db.execute(INIT_SAFE_UPDATE)
             # target_path backs UPDATE_CHECK_AFTER's target-elevation check.
-            # Populated once here since Workflow.targets is
-            # immutable for the lifetime of the director process.
+            # Populated once here since Workflow.targets is immutable
+            # for the lifetime of the director process.
             self.workflow.db.execute(
                 "CREATE TEMPORARY TABLE IF NOT EXISTS target_path (path TEXT PRIMARY KEY)"
             )
@@ -462,8 +482,8 @@ class Scheduler:
                 ((str(path),) for path in sorted(self.workflow.targets)),
             )
             # target_dir backs UPDATE_CHECK_AFTER's directory-target elevation check.
-            # Populated once here since Workflow.target_dirs is
-            # immutable for the lifetime of the director process.
+            # Populated once here since Workflow.target_dirs is immutable
+            # for the lifetime of the director process.
             self.workflow.db.execute(
                 "CREATE TEMPORARY TABLE IF NOT EXISTS target_dir "
                 "(path TEXT PRIMARY KEY, upper TEXT NOT NULL)"
@@ -487,10 +507,9 @@ class Scheduler:
             return None
 
         # We're taking a rather long lock here,
-        # but this is needed because subsequent
-        # changes to the database are correlated.
-        # Allowing database changes in between would result
-        # in potential race conditions and inconsistencies.
+        # but this is needed because subsequent changes to the database are correlated.
+        # Allowing database changes in between
+        # would result in potential race conditions and inconsistencies.
         async with self.db:
             # A) Perform metadata updates for all steps whose changes have not been propagated
             #    into the metadata columns yet.
@@ -501,7 +520,7 @@ class Scheduler:
             self._update_meta_after()
             self._update_meta_ready()
 
-            # B) Identify the highest priority PENDING step that is ready for dispatch:
+            # B) Identify the highest-priority PENDING step that is ready for dispatch:
             #    a checkable step (stored hash, no resource check needed) if one exists,
             #    otherwise a runnable step (subject to resources).
             result = self._get_next_step()
@@ -562,11 +581,11 @@ class Scheduler:
         Returns
         -------
         overlapped
-            `True` when the producer's `stop_times` entry and the consumer's
-            `start_times` entry both exist and `start_time <= stop_time`, i.e. the
-            consumer's execution window overlapped the producer's (a tie counts as
-            overlapping: the conservative choice). `False` when either timestamp is
-            missing.
+            `True` when the producer's `stop_times` entry and the consumer's `start_times`
+            entry both exist and `start_time <= stop_time`,
+            i.e. the consumer's execution window overlapped the producer's
+            (a tie counts as overlapping: the conservative choice).
+            `False` when either timestamp is missing.
         """
         stop_time = self.stop_times.get(producer_i)
         start_time = self.start_times.get(consumer_i)
@@ -607,8 +626,9 @@ class Scheduler:
         first = True
         while ncheck > 0:
             logger.debug(f"Found {ncheck} sources to update (first={first})")
-            # The first iteration is different: irrespective of having changed metadata fields of
-            # the initial _check_after steps, we need to propagate at least once.
+            # The first iteration is different:
+            # we need to propagate at least once,
+            # regardless of whether the metadata fields of the initial _check_after steps changed.
             cur = db.execute(UPDATE_CHECK_AFTER, {"first": first})
             changed_ids = cur.fetchall()
             db.execute(EMPTY_CHECK_AFTER)
@@ -661,14 +681,14 @@ class Scheduler:
         return step
 
     def _derive_job(self, step: Step) -> RunJob | ValidateDynamicJob:
-        """Derive a Job instance for a step that is ready to be queued."""
+        """Derive a `Job` instance for a step that is ready to be queued."""
         dynamic_inputs_ready = True
         inp_hashes = {}
         db = self.workflow.db
         cur = db.execute(SELECT_INPUTS, (step.i,))
         for path, detached, fs_value, is_dynamic, hash_value in cur:
-            # All exception cases handled in this loop should have been filtered out
-            # by the SELECT_INPUTS query.
+            # All exception cases handled in this loop should have been ruled out before the step
+            # was selected for dispatch (see RECOMPUTE_READY and SELECT_NEXT_STEP).
             # We keep them here as sanity checks, because they indicate a serious internal error.
             file_state = FileState(fs_value)
 
@@ -676,7 +696,7 @@ class Scheduler:
             if file_state == FileState.VOLATILE:
                 # Volatile files should never be selected for queueing,
                 # as they are not even allowed as inputs.
-                raise RuntimeError(
+                raise ConsistencyError(
                     f"Step {step} has a volatile input {path}, but is selected for queueing"
                 )
 
@@ -689,15 +709,16 @@ class Scheduler:
             # Sanity checks
             if is_dynamic:
                 if not detached and file_state in (FileState.PLANNED, FileState.OUTDATED):
-                    # Attached dynamic inputs with state PLANNED or OUTDATED are not ready.
-                    # This should never have been selected for queueing.
-                    raise RuntimeError(
+                    # Attached dynamic inputs with state PLANNED or OUTDATED are not ready,
+                    # so the step should never have been selected for queueing.
+                    raise ConsistencyError(
                         f"Step {step} has a dynamic input {path} that is not ready yet, "
                         f"but is in an unexpected state {file_state}"
                     )
             else:
-                # Initial input not ready, which should never have been selected for queueing.
-                raise RuntimeError(
+                # An initial input is not ready,
+                # so the step should never have been selected for queueing.
+                raise ConsistencyError(
                     f"Step {step} has an initial input {path} that is not ready yet, "
                     f"but is in an unexpected state {file_state}"
                 )
@@ -705,7 +726,7 @@ class Scheduler:
             # If we reach this code path, the current input is dynamic and
             # (1) is detached or (2) has state MISSING.
             # In this case, we request to validate dynamic inputs first.
-            # This means that dynamic inputs will be discarded and rederived again
+            # This means that dynamic inputs will be discarded and rederived
             # if any of the initial or available dynamic inputs have changed.
             dynamic_inputs_ready = False
 
@@ -726,8 +747,8 @@ class Scheduler:
         else:
             # If the initial inputs are ready, but the dynamic inputs are not,
             # and there is a step hash, we need to validate the dynamic inputs first.
-            # If they are not available, and if the existing inputs have changed,
-            # they may also no longer be needed.
+            # When those dynamic inputs are unavailable and the initial inputs have changed,`
+            # they may no longer be needed at all.
             job = ValidateDynamicJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
         if self.write_joblog:
             write_joblog_record("CREATED", job_i, job.name)

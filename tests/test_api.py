@@ -217,7 +217,7 @@ def test_prepare_run_command_unbalanced_quotes(shell):
 
 
 def test_step_env_overrides_overlap_with_env():
-    with pytest.raises(ValueError, match="env dependency and a env_overrides override"):
+    with pytest.raises(ValueError, match="cannot be both an env dependency and an env_overrides"):
         step("./script.py", env=["FOO"], env_overrides={"FOO": "bar"})
 
 

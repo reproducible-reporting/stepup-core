@@ -1,1 +1,1 @@
-rm hello.txt  # File changed after workflow!
+rm hello.txt  # File changed after the workflow created it!

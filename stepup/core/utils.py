@@ -49,10 +49,10 @@ logger = logging.getLogger(__name__)
 
 
 class CaseSensitiveTemplate(string.Template):
-    """A case sensitive Template class suitable for StepUp.
+    """A case-sensitive `Template` class suitable for StepUp.
 
-    - Accepts named wildcards ${*foo}.
-    - Accepts upper and lower case variables.
+    - Accepts named wildcards `${*foo}`.
+    - Accepts upper- and lowercase variables.
     """
 
     flags = re.NOFLAG
@@ -60,6 +60,7 @@ class CaseSensitiveTemplate(string.Template):
 
 
 def format_digest(digest: bytes) -> str:
+    """Format a 32-byte digest as eight space-separated 8-character hex words."""
     hexdigest = digest.hex()
     return " ".join(hexdigest[i : i + 8] for i in range(0, 64, 8))
 
@@ -73,8 +74,9 @@ def format_command(executable: str) -> str:
     return shlex.quote(relative)
 
 
-# Matches a single leading `NAME=value` assignment in a command string, anchored at the scan
-# position. The value may be unquoted, single-quoted, or double-quoted (shell-style).
+# Matches a single leading `NAME=value` assignment in a command string,
+# anchored at the scan position.
+# The value may be unquoted, single-quoted, or double-quoted (shell-style).
 _LEADING_ASSIGNMENT = re.compile(
     r"""
     \s*                                    # optional leading whitespace
@@ -96,7 +98,7 @@ def extract_env_overrides(command: str) -> tuple[dict[str, str] | None, str]:
 
     Only assignments at the very start of the command are extracted.
     Scanning stops at the first token that is not an assignment (e.g. the executable),
-    so `./cmd FOO=bar` extracts nothing.
+    so nothing is extracted from `./cmd FOO=bar`.
     Values may be unquoted, single-quoted, or double-quoted, consistent with shell quoting.
 
     Parameters
@@ -107,7 +109,8 @@ def extract_env_overrides(command: str) -> tuple[dict[str, str] | None, str]:
     Returns
     -------
     env_overrides
-        A dictionary with the extracted environment variable overrides.
+        A dictionary with the extracted environment variable overrides,
+        or `None` when the command has no leading assignments.
     remaining
         The command string with the leading assignments removed, otherwise preserved verbatim.
     """
@@ -143,16 +146,17 @@ _ANSI_C_ESCAPES = {
 def escape_command_display(command: str) -> str:
     """Rewrite control characters in a command line as `$'...'`-quoted escapes.
 
-    An embedded control character (e.g. a literal newline) is spliced in as a
-    `$'\\n'`-style ANSI-C-quoted escape, closing and reopening whichever quote is
-    currently open around it. This keeps the result on a single line and, because
-    adjacent shell tokens with no separator are concatenated, copy-pasting it into
-    a POSIX shell reproduces `command` byte for byte.
+    An embedded control character (e.g. a literal newline)
+    is spliced in as a `$'\\n'`-style ANSI-C-quoted escape,
+    closing and reopening whichever quote is currently open around it.
+    This keeps the result on a single line and,
+    because adjacent shell tokens with no separator are concatenated,
+    copy-pasting it into a POSIX shell reproduces `command` byte for byte.
 
     Parameters
     ----------
     command
-        A shell command line, as passed to `step()` or `run()`.
+        A shell command line.
 
     Returns
     -------
@@ -161,11 +165,12 @@ def escape_command_display(command: str) -> str:
 
     Notes
     -----
-    This is a single-pass scanner that only tracks top-level single/double-quote
-    nesting and backslash escaping. It does not recurse into nested `$(...)` or
-    backtick command substitutions, so a control character embedded inside such a
-    substitution's own quotes may be spliced incorrectly. This only affects how the
-    command is displayed; the command is stored and executed verbatim.
+    This is a single-pass scanner that only tracks top-level single/double-quote nesting
+    and backslash escaping.
+    It does not recurse into nested `$(...)` or backtick command substitutions,
+    so a control character embedded inside such a substitution's own quotes
+    may be spliced incorrectly.
+    This only affects how the command is displayed.
     """
     pieces = []
     quote = None  # None, "'", or '"'
@@ -202,10 +207,10 @@ def format_subprocess(
 ) -> str:
     """Format a recorded subprocess invocation as a single, shell-pasteable line.
 
-    The result is informative, not authoritative: the command line is shown verbatim
-    (the wrapper that recorded it is responsible for quoting), an environment overlay becomes
-    a `VAR=value` assignment prefix, a non-default working directory is rendered with a
-    `(cd ... && ...)` shell wrapper (this is also reused to display failed step commands),
+    The result is informative, not authoritative:
+    the command line is shown verbatim (the wrapper that recorded it is responsible for quoting),
+    an environment overlay becomes a `VAR=value` assignment prefix,
+    a non-default working directory is rendered with a `(cd ... && ...)` shell wrapper,
     and a non-zero exit code is appended as a trailing shell comment.
 
     Parameters
@@ -221,8 +226,9 @@ def format_subprocess(
         The exit code of the subprocess, or `None` when the subprocess was not run.
     shell
         Whether `cmd` is a shell command line (as in `subprocess.run(..., shell=True)`).
-        When `True`, a `cd` wrapper groups `cmd` in an extra `(...)` so a compound command
-        stays gated on the `cd` succeeding; a single command needs no such grouping.
+        When `True`, a `cd` wrapper groups `cmd` in an extra `(...)`,
+        so a compound command stays gated on the `cd` succeeding;
+        a single command needs no such grouping.
 
     Returns
     -------
@@ -245,12 +251,15 @@ def format_subprocess(
 
 
 def parse_resources(s: str) -> dict[str, int]:
-    """Parse a resources string like 'cpu:4,gpu:1,memgb:16' into a dict.
+    """Parse a resources string like `cpu:4,gpu:1,memgb:16` into a dict.
+
+    An item with no value (e.g. `cpu`) is interpreted as `cpu:1`.
 
     Raises
     ------
     StepUpError
-        If a resource name is empty or a resource value is negative.
+        If a resource name is empty, a resource value is negative,
+        or a resource value is not an integer.
     """
     result = {}
     for item in s.split(","):
@@ -263,7 +272,10 @@ def parse_resources(s: str) -> dict[str, int]:
             raise StepUpError(f"Resource name cannot be empty: {item}")
         if value == "":
             value = "1"
-        value = int(value.strip())
+        try:
+            value = int(value.strip())
+        except ValueError as exc:
+            raise StepUpError(f"Resource value is not a valid integer: {item}") from exc
         if value < 0:
             raise StepUpError(f"Resource value cannot be negative: {item}")
         result[name] = value
@@ -271,13 +283,13 @@ def parse_resources(s: str) -> dict[str, int]:
 
 
 def merge_resources(base: str | None, override: str | None) -> str:
-    """Merge two comma-separated resource specs; *override* wins per resource name."""
+    """Merge two comma-separated resource specs. (`override` wins per resource name.)"""
     merged = {**parse_resources(base or ""), **parse_resources(override or "")}
     return ",".join(f"{k}:{v}" for k, v in merged.items())
 
 
 def positive_int(value):
-    """Check if the argument is a positive integer (> 0)."""
+    """Convert the argument to an integer, requiring it to be strictly positive (> 0)."""
     ivalue = int(value)
     if ivalue <= 0:
         raise ValueError(f"'{value}' is not strictly positive.")
@@ -285,15 +297,12 @@ def positive_int(value):
 
 
 def is_process_running(pid: int) -> bool:
-    """Whether a process with this pid exists (it may or may not be the director).
+    """Check whether a process with this pid exists. (It may or may not be the director.)
 
-    Used together with `query_director_log` to tell a live director from a stale socket:
-    by `get_socket` in `interact.py`, which keeps waiting for a director that is still
-    starting up, and by the stale-socket check in `tui.py`, which refuses to start a
-    build next to a director that may still be running.
+    Together with `query_director_log`, this tells a live director from a stale socket.
 
-    A pid can be recycled, so a `True` answer does not prove the process *is* the director.
-    Both call sites are conservative on purpose: waiting or refusing is harmless,
+    A pid can be recycled, so a `True` answer does not prove the process is the director.
+    Treat it conservatively: waiting for a director or refusing to start a build is harmless,
     two directors on one database are not.
     """
     try:
@@ -309,9 +318,6 @@ def is_process_running(pid: int) -> bool:
 def query_director_log(director_log: Path) -> tuple[Path | None, int | None, str]:
     """Look up the director's socket and pid in `DIRECTOR_LOG`.
 
-    This is the single place that reads the header lines
-    which `async_main` in `director.py` writes to `DIRECTOR_LOG`.
-
     Parameters
     ----------
     director_log
@@ -320,18 +326,13 @@ def query_director_log(director_log: Path) -> tuple[Path | None, int | None, str
     Returns
     -------
     socket_path
-        The socket path advertised by the director, if it exists on disk, `None` otherwise.
+        The socket path advertised by the director if it exists on disk, and `None` otherwise.
     pid
         The pid advertised by the director,
         or `None` when the log holds no usable `PID` line.
     message
         An explanation of why no existing socket was found, empty when one was.
     """
-    # The log is opened without testing for its existence first:
-    # a director starting up in parallel wipes `.stepup/` before writing its own log,
-    # so a file that exists when tested can be gone by the time it is opened.
-    # Any error is reported as a message, i.e. the caller's retry path,
-    # never as an exception escaping to the client's exit code.
     try:
         with open(director_log) as fh:
             line_socket = fh.readline()
@@ -339,18 +340,15 @@ def query_director_log(director_log: Path) -> tuple[Path | None, int | None, str
     except OSError as exc:
         return None, None, f"File {director_log} could not be read: {exc}"
 
-    # A non-empty path is the only degenerate case worth guarding:
-    # `async_main` writes each line in one shot (`sys.stderr` is line-buffered), so a short
-    # but non-empty tail cannot occur in practice. Reading them from the same file handle can
-    # at worst miss the `PID` line of a director that has just written the `SOCKET` line,
-    # which the next attempt picks up.
+    # Validate the header and return socket_path only if validated.
+    # PID can be useful even if the socket is stale, so it is returned regardless.
     pid = None
     if line_pid.startswith("PID"):
         with contextlib.suppress(ValueError):
             pid = int(line_pid[3:])
-
     if not line_socket.startswith("SOCKET"):
         return None, pid, f"File {director_log} does not start with SOCKET line."
+
     socket_path = Path(line_socket[6:].strip())
     if socket_path and socket_path.exists():
         return socket_path, pid, ""
@@ -374,18 +372,21 @@ DIRECTOR_LOG_CHECKS = (
 """Patterns for lines in `DIRECTOR_LOG` that betray an internal problem, each with a label.
 
 All but the last are verbatim CPython wordings for work that was left dangling:
-a coroutine that was never awaited, a `Future` or `Task` collected while holding an
-unhandled exception, a task destroyed while still pending, and an exception that escaped
-a callback, a thread or a `__del__` (the unraisable hook prints `Exception ignored ...`).
+a coroutine that was never awaited,
+a `Future` or `Task` collected while holding an unhandled exception,
+a task destroyed while still pending,
+and an exception that escaped a callback, a thread or a `__del__`
+(the unraisable hook prints `Exception ignored ...`).
 None of these make the director exit with a non-zero return code,
 which is precisely why the log must be scanned for them after the fact.
 They are matched case-sensitively, since they are copied from CPython's sources.
 
-The last pattern is of a different nature: it matches any log record at level `ERROR` or
-`CRITICAL`, following the `format`/`datefmt` that `async_main` (`director.py`) hands to
-`logging.basicConfig`. Matching the level *field* rather than the word anywhere in the line
-is what keeps the director's own header lines out of it: `LOG_LEVEL ERROR` is not an error,
-it is a build started with `--log-level=ERROR`.
+The last pattern is of a different nature:
+it matches any log record at level `ERROR` or `CRITICAL`,
+following the `format`/`datefmt` that `async_main` (`director.py`) hands to `logging.basicConfig`.
+Matching the level field rather than the word anywhere in the line
+is what keeps the director's own header lines out of it:
+`LOG_LEVEL ERROR` is not an error, it is a build started with `--log-level=ERROR`.
 It comes last because `scan_director_log` labels a line with the first check that matches,
 and the messages above are also logged at `ERROR` level when `asyncio` reports them,
 in which case the specific label is the more informative one.
@@ -411,10 +412,10 @@ def scan_director_log(path_director_log: Path) -> list[str]:
     -------
     findings
         One `"{label}: {line}"` string per matching line, in the order of the log.
-        Empty when the director log is clean, i.e. the expected outcome of every build.
+        Empty when the director log is clean, which is the expected outcome of every build.
     """
     # As in `query_director_log`, the log is opened without testing for its existence first,
-    # because a director starting up in parallel may remove it in between the two calls.
+    # because a director starting up in parallel may remove it between the test and the open.
     findings = []
     try:
         with open(path_director_log) as fh:
@@ -438,9 +439,9 @@ JOBLOG_COLUMNS = (
 
 
 def reset_joblog(njob: int) -> None:
-    """(Re)create `JOBLOG_CSV` and write its CSV header.
+    """(Re)create `JOBLOG_CSV`, writing its CSV header and an initial `INIT` record.
 
-    Called once at the start of each build phase, discarding recordings of any previous phase.
+    Any records of a previous build phase are discarded.
     """
     row = (monotonic_ns(), 0, "INIT", f"maximum concurrent jobs: {njob}")
     with open(JOBLOG_CSV, "w", newline="") as fh:
@@ -451,8 +452,7 @@ def reset_joblog(njob: int) -> None:
 def write_joblog_record(event: str, job_i: int, description: str) -> None:
     """Append one job-execution event to `JOBLOG_CSV` as a CSV row.
 
-    This is the single place that fixes the row format, so every call site
-    (in the scheduler and the executor) stays consistent.
+    This is the single place that fixes the row format, so every call site stays consistent.
 
     Parameters
     ----------
@@ -465,8 +465,9 @@ def write_joblog_record(event: str, job_i: int, description: str) -> None:
 
     Notes
     -----
-    The file is opened and closed for every call, so the write reaches disk synchronously and
-    events stay correctly ordered even when jobs complete only milliseconds apart.
+    The file is opened and closed for every call,
+    so the write reaches disk synchronously
+    and events stay correctly ordered even when jobs complete only milliseconds apart.
     Fields are quoted with `QUOTE_NONNUMERIC`, so `event` and `description` are always quoted
     (and thus unambiguous even if a description contains a comma or looks numeric),
     while the numeric columns stay bare.
@@ -482,16 +483,16 @@ def string_to_list(arg: Iterable[str] | str) -> list[str]:
 
 
 def string_to_bool(v: str | bool) -> bool:
-    """Convert a string to a boolean value, and return a boolean value unchanged.
+    """Convert a string to a boolean value, passing a boolean through unchanged.
 
     Parameters
     ----------
-    v : str or bool
+    v
         The value to convert to a boolean.
 
     Returns
     -------
-    bool
+    flag
         The boolean representation of the input value.
 
     Raises
@@ -503,13 +504,13 @@ def string_to_bool(v: str | bool) -> bool:
 
     Examples
     --------
-    >>> str2bool('yes')
+    >>> string_to_bool('yes')
     True
-    >>> str2bool('no')
+    >>> string_to_bool('no')
     False
-    >>> str2bool(True)
+    >>> string_to_bool(True)
     True
-    >>> str2bool(False)
+    >>> string_to_bool(False)
     False
     """
     if isinstance(v, bool):

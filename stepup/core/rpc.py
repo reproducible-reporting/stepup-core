@@ -49,7 +49,7 @@ __all__ = (
 
 
 def fmt_rpc_call(name: str, args: Collection, kwargs: dict) -> str:
-    """String format an RPC call with arguments."""
+    """Format an RPC call and its arguments as a string."""
     all_args = [repr(arg) for arg in args] + [f"{name}={value!r}" for name, value in kwargs.items()]
     return f"{name}({', '.join(all_args)})"
 
@@ -127,7 +127,7 @@ def _rebuild_exception(err: RemoteError) -> BaseException:
     try:
         return cls(err.message)
     except TypeError:
-        # A subclass with a richer constructor signature. None exist today.
+        # A subclass with a richer constructor signature.
         return RPCError(err.message)
 
 
@@ -162,19 +162,20 @@ def allow_rpc(func):
 
 
 async def _recv_rpc_message(reader: asyncio.StreamReader) -> tuple[int, bytes] | tuple[None, None]:
-    """Read a single RPC request.
+    """Read a single RPC message.
 
     Parameters
     ----------
     reader
-        The StreamReader to read the next message from.
+        The `asyncio.StreamReader` to read the next message from.
 
     Returns
     -------
     call_id
-        The call id of the message, used to label the response.
+        The call id of the message, used to pair a request with its response.
     body
-        The content of the message. None means the RPC loops should be stopped.
+        The content of the message.
+        `None` means the RPC loops should be stopped.
         In this case, no response is expected.
     """
     try:
@@ -190,17 +191,18 @@ async def _recv_rpc_message(reader: asyncio.StreamReader) -> tuple[int, bytes] |
 
 
 async def _send_rpc_message(writer: asyncio.StreamWriter, call_id: int, message: bytes | None):
-    """Send a single RPC response.
+    """Send a single RPC message.
 
     Parameters
     ----------
     writer
-        The StreamWriter to write the response to.
+        The `asyncio.StreamWriter` to write the message to.
     call_id
-        The call id of the message, used to label the response.
-        This must match the call id of the request to which is being responded.
+        The call id of the message, used to pair a request with its response.
+        A response must carry the call id of the request it answers.
     message
-        The content of the message. None means the RPC loops should be stopped.
+        The content of the message.
+        `None` means the RPC loops should be stopped.
     """
     writer.write(call_id.to_bytes(8))
     if message is None:
@@ -222,7 +224,7 @@ async def serve_rpc(
     writer: asyncio.StreamWriter,
     stop_event: asyncio.Event | None = None,
 ):
-    """Run an RPC server with async stream reader and writer until stop_event is set.
+    """Run an RPC server with an async stream reader and writer until `stop_event` is set.
 
     The reader and writer must be connected to an RPC client implemented in this module.
 
@@ -237,7 +239,7 @@ async def serve_rpc(
     stop_event
         The RPC loops keep running until the stop event is set.
         When not given, an internal event is created and
-        the client is responsible for closing the loop
+        the client is responsible for closing the loop.
     """
     if stop_event is None:
         stop_event = asyncio.Event()
@@ -268,22 +270,23 @@ async def _serve_rpc_recv_loop(
 async def _handle_request(handler, name: str, args: list, kwargs: dict) -> tuple[Any, bool]:
     """Handle an RPC request from the client."""
     try:
-        # print(fmt_rpc_call(name, args, kwargs))
-        # Get the function, or raise RPCError
+        # Get and check the remote procedure.
         try:
             call = getattr(handler, name)
         except AttributeError as exc:
             raise RPCError(f"Unknown remote procedure {name}") from exc
-        # Is this method allowed?
         if not getattr(call, "_allow_rpc", False):
             raise RPCError(f"Remote procedure {name} exists but is not allowed")
-        # Basic argument check (ignores type hints)
+
+        # Check arguments (ignores type hints)
         signature = inspect.signature(call)
         try:
             bound = signature.bind(*args, **kwargs)
         except TypeError as exc:
             raise RPCError(f"Invalid arguments: {fmt_rpc_call(name, args, kwargs)}") from exc
         bound.apply_defaults()
+
+        # Call or await.
         result = call(*bound.args, **bound.kwargs)
         if inspect.iscoroutinefunction(call):
             result = await result
@@ -304,7 +307,7 @@ async def _handle_request(handler, name: str, args: list, kwargs: dict) -> tuple
 
 
 def _queue_done(call_id: int, tasks: set[asyncio.Task], queue: asyncio.Queue, task: asyncio.Task):
-    """Put replies of completed tasks on queue for send loop."""
+    """Put replies of completed tasks on the queue for the send loop."""
     tasks.discard(task)
     queue.put_nowait((call_id, task))
 
@@ -312,7 +315,7 @@ def _queue_done(call_id: int, tasks: set[asyncio.Task], queue: asyncio.Queue, ta
 async def _serve_rpc_send_loop(
     writer: asyncio.StreamWriter, stop_event: asyncio.Event, queue: asyncio.Queue
 ):
-    """Send replies from completed tasks back to RPC client."""
+    """Send replies from completed tasks back to the RPC client."""
     async for call_id, task in stoppable_iterator(queue.get, stop_event):
         try:
             response = pickle.dumps(await task, protocol=pickle.HIGHEST_PROTOCOL)
@@ -372,7 +375,7 @@ async def serve_socket_rpc(handler, path: str, stop_event: asyncio.Event):
     server.close()
     await server.wait_closed()
     if sys.version_info < (3, 12, 1) and server._waiters is not None:
-        # Workaround for server.wait_closed() issue fixed in Python 3.12.1
+        # Workaround for a `server.wait_closed()` issue fixed in Python 3.12.1.
         # See https://github.com/python/cpython/issues/120866
         waiter = server.get_loop().create_future()
         server._waiters.append(waiter)
@@ -403,7 +406,7 @@ class CallInterface:
     func: Callable = attrs.field()
 
     def __getattr__(self, item):
-        """Return a function, with a pre-filled first argument name, that calls the remote function.
+        """Return a function that calls the remote function `item`.
 
         Parameters
         ----------
@@ -429,7 +432,7 @@ class BaseAsyncRPCClient:
         return self._call
 
     async def __call__(self, name: str, *args, **kwargs) -> Any:
-        """Call a function of the RPC server. This must be implemented in subclassses."""
+        """Call a function of the RPC server. This must be implemented in subclasses."""
         raise NotImplementedError
 
 
@@ -466,7 +469,7 @@ class AsyncRPCClient(BaseAsyncRPCClient):
 
     @_recv_task.default
     def _default_recv_task(self):
-        # Keep reference to task to prevent garbage collection while client is alive.
+        # Keep a reference to the task to prevent garbage collection while the client is alive.
         return asyncio.create_task(self._client_rpc_recv_loop(), name="client-rpc-recv-loop")
 
     async def _client_rpc_recv_loop(self):
@@ -504,22 +507,22 @@ class AsyncRPCClient(BaseAsyncRPCClient):
         Parameters
         ----------
         name
-            The name of the remote function to call
+            The name of the remote function to call.
         args
             Arguments for the remote function.
         kwargs
             Keyword arguments for the remote function.
+
+        Returns
+        -------
+        value
+            Whatever the remote function returns.
 
         Raises
         ------
         ConnectionResetError
             When the connection to the server is lost before the response is received,
             or when it was already lost before the call was made.
-
-        Returns
-        -------
-        value
-            Whatever the remote functions returns.
         """
         if self._recv_closed:
             raise ConnectionResetError(f"RPC connection lost before calling {name!r}")
@@ -565,10 +568,13 @@ class AsyncRPCClient(BaseAsyncRPCClient):
 
 @attrs.define
 class DummyAsyncRPCClient(BaseAsyncRPCClient):
-    """Dummy RPC client. This one just prints the RPC calls instead of sending them to a server."""
+    """Dummy asynchronous RPC client.
+
+    It prints the RPC calls instead of sending them to a server.
+    """
 
     async def __call__(self, name: str, *args, **kwargs):
-        """Call a function of the RPC server. See AsyncSocketRPCClient for details."""
+        """Call a function of the RPC server. See `AsyncRPCClient` for details."""
         print(fmt_rpc_call(name, args, kwargs))
 
 
@@ -590,9 +596,11 @@ class BaseSyncRPCClient:
 
     @property
     def call(self) -> CallInterface:
+        """Return the call interface to call remote functions."""
         return self._call
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+        """Call a function of the RPC server. This must be implemented in subclasses."""
         raise NotImplementedError
 
 
@@ -614,7 +622,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
 
     @property
     def socket(self):
-        """Create a socket and connect to the server."""
+        """The socket connected to the server, opened on first access."""
         if self._socket is None:
             self._socket = socket.socket(socket.AF_UNIX)
             self._socket.connect(self.path)
@@ -644,7 +652,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         Returns
         -------
         value
-            Whatever the remote functions returns.
+            Whatever the remote function returns.
         """
         if name.startswith("_"):
             raise ValueError("Methods starting with underscores are not allowed.")
@@ -697,17 +705,12 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         return self._readexactly(size)
 
     def _readexactly(self, size: int) -> bytes:
-        """Keep reading from the socket until (at least) size bytes were received.
+        """Keep reading from the socket until at least `size` bytes have been received.
 
         Parameters
         ----------
         size
             The length of the byte sequence to receive.
-
-        Raises
-        ------
-        ConnectionResetError
-            When the socket returns zero bytes, the connection is lost and this error is raised.
 
         Returns
         -------
@@ -715,6 +718,11 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
             The bytes read from the socket of the requested size.
             Any additional data received from the socket is stored for the
             following call to `_readexactly`.
+
+        Raises
+        ------
+        ConnectionResetError
+            When the socket returns zero bytes, the connection is lost and this error is raised.
         """
         while len(self._partial_recv) < size:
             fragment = self.socket.recv(4096)
@@ -728,8 +736,11 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
 
 @attrs.define
 class DummySyncRPCClient(BaseSyncRPCClient):
-    """Dummy RPC client. This one just prints the RPC calls instead of sending them to a server."""
+    """Dummy synchronous RPC client.
+
+    It prints the RPC calls instead of sending them to a server.
+    """
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs) -> Any:
-        """Call a function of the RPC server. See SocketSyncRPCClient for details."""
+        """Call a function of the RPC server. See `SocketSyncRPCClient` for details."""
         print(fmt_rpc_call(name, args, kwargs))

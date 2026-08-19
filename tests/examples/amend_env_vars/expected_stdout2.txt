@@ -4,7 +4,7 @@
    PHASE │ build
   NOSKIP │ ./demovars.py > output.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 54e4abce ➜ d60e3746, out_digest e358c01b ➜ (unset)
+Modified step hash   explained, inp_digest 3c64c076 ➜ e3fc8d25, out_digest e358c01b ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        demovars.py

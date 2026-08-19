@@ -46,10 +46,14 @@ def browse_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     Parameters
     ----------
     subparsers
-        The sub parser to add the browse tool to.
+        The subparser to add the browse tool to.
     loader
-        The configuration loader to override the default configuration with
-        config file values.
+        The configuration loader to override the default configuration with config file values.
+
+    Returns
+    -------
+    tool_func
+        The function to call with the parsed args to execute the browse command.
     """
     parser = subparsers.add_parser("browse", help="Browse the StepUp build graph.")
     parser.add_argument(
@@ -76,25 +80,25 @@ def browse_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 
 def browse_tool(args: argparse.Namespace):
     """Launch a web server to browse the build graph and print the URL to the console."""
-    # Copy the database in memory and work on the copy.
+    # Ugly hack to pass the database path to the request handler.
     root = Path(os.getenv("STEPUP_ROOT", "."))
     path_db = root / GRAPH_DB
     if not path_db.exists():
         raise FileNotFoundError(f"Graph database {path_db} does not exist.")
-    # Ugly hack to pass information to the request handler.
     GraphServer.path_db = path_db
-    # Standard library HTTP server.
+
+    # The server is started in a thread because a foreground browser would otherwise block the
+    # server from answering its own requests.
+    # (See below for more details.)
     server = HTTPServer(("localhost", args.port), GraphServer)
-    # Serve in a background thread and start it before opening the browser:
-    # some browsers (e.g. text-mode ones like lynx or w3m, launched by webbrowser.open()
-    # below) block the calling thread until they exit, which would otherwise prevent
-    # the server from ever answering their own requests.
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
     try:
         url = f"http://localhost:{args.port}"
         print(f"Server started {url}")
         print("Press Ctrl+C to stop the server.")
+
+        # Launch a browser
         if args.open_browser and args.browser is None:
             print("Set --browser or the BROWSER environment variable to pick a browser.")
         blocking = False
@@ -104,10 +108,9 @@ def browse_tool(args: argparse.Namespace):
             except webbrowser.Error:
                 browser = None
             # Generic (non-background) browsers, e.g. text-mode ones like lynx or w3m,
-            # run in the foreground and block webbrowser.open() below until the user quits
-            # them. In that case, exit as soon as they return instead of waiting for
-            # Ctrl+C. GUI browsers return immediately after launching, so keep serving
-            # until interrupted.
+            # run in the foreground and block browser.open() below until the user quits them.
+            # In that case, exit as soon as they return instead of waiting for Ctrl+C.
+            # GUI browsers return immediately after launching, so keep serving until interrupted.
             blocking = isinstance(browser, webbrowser.GenericBrowser) and not isinstance(
                 browser, webbrowser.BackgroundBrowser
             )
@@ -366,16 +369,18 @@ class GraphServer(BaseHTTPRequestHandler):
     con = None
 
     def log_message(self, fmt, *args):
-        # Suppress the default request logging to stderr: it clutters the terminal
-        # when a text-mode browser (e.g. lynx) is used to browse the graph there.
-        pass
+        """Suppress the default request logging to stderr.
+
+        Otherwise, BaseHTTPRequestHandler.log_message would clutter the terminal
+        in which a text-mode browser (e.g. lynx) shows the graph.
+        """
 
     def do_GET(self):
         # Basic URL parsing.
         parsed = urlparse(self.path)
         args = parse_qs(parsed.query)
 
-        # (Re)load the database if requested.
+        # (Re)load the database if requested, always in read-only mode.
         if "reload" in args or self.con is None:
             if self.con is not None:
                 self.con.close()
@@ -426,7 +431,7 @@ class GraphServer(BaseHTTPRequestHandler):
         self.send_header("Content-type", "text/html")
         self.end_headers()
 
-        # Put everything in the HTML template with standard header.
+        # Put everything in the HTML template with the standard header.
         template = env.from_string(HTML_TEMPLATE)
         template.filename = "<HTML_TEMPLATE>"
         args["reload"] = ["1"]
@@ -442,7 +447,7 @@ class GraphServer(BaseHTTPRequestHandler):
         (n_steps,) = self.con.execute("SELECT COUNT(*) FROM step").fetchone()
         (n_static_trees,) = self.con.execute("SELECT COUNT(*) FROM node WHERE kind='st'").fetchone()
 
-        # Get the top-level step plan.py
+        # Get the top-level plan.py step.
         label_entry = Step.adjust_label("./plan.py")
         (i_entry,) = self.con.execute(
             "SELECT i FROM node WHERE kind='step' AND label = ?", (label_entry,)
@@ -474,7 +479,7 @@ class GraphServer(BaseHTTPRequestHandler):
         display_label = escape_command_display(label) if kind == "step" else label
         yield f"<p><b>Label:</b> {html.escape(display_label)}</p>"
 
-        # Format the state (if a file or a step)
+        # Format the state, which exists only for files and steps.
         if kind == "step":
             sql_props = (
                 "SELECT state, need, duration, deferred, defer_count, shell, env_overrides, "
@@ -671,8 +676,8 @@ class GraphServer(BaseHTTPRequestHandler):
                 yield f"<p><b>Size:</b> {file_hash.size}</p>"
                 yield f"<p><b>Inode:</b> {file_hash.inode}</p>"
 
-        # Format the creator
-        yield "<h3>Provenance edges</h3>"
+        # Format the creator.
+        yield "<h3>Provenance Edges</h3>"
         creator = self.con.execute(
             f"SELECT kind, label, detached, {STATE_SQL} FROM node WHERE i = ?", (creator_i,)
         ).fetchone()
@@ -685,7 +690,7 @@ class GraphServer(BaseHTTPRequestHandler):
             )
             yield "</table>"
 
-        # Format the products
+        # Format the products.
         product_rows = self.con.execute(
             f"SELECT i, kind, label, {STATE_SQL} FROM node WHERE creator = ? ORDER BY kind, label",
             (node_i,),
@@ -697,9 +702,9 @@ class GraphServer(BaseHTTPRequestHandler):
                 yield f"{self._format_node(prod_i, prod_kind, prod_label, False, state)}"
             yield "</table>"
 
-        yield "<h3>Dependency edges</h3>"
+        yield "<h3>Dependency Edges</h3>"
 
-        # Format the sources
+        # Format the sources.
         source_rows = self.con.execute(
             f"SELECT node.i, kind, label, dependency.i IN dynamic_dep, {STATE_SQL} FROM node "
             "JOIN dependency ON dependency.source = node.i "
@@ -713,7 +718,7 @@ class GraphServer(BaseHTTPRequestHandler):
                 yield self._format_node(sup_i, sup_kind, sup_label, False, state, dynamic)
             yield "</table>"
 
-        # Format the sinks
+        # Format the sinks.
         sink_rows = self.con.execute(
             f"SELECT node.i, kind, label, dependency.i IN dynamic_dep, {STATE_SQL} FROM node "
             "JOIN dependency ON dependency.sink = node.i "

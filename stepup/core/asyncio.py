@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import os
 import sys
+from collections.abc import AsyncGenerator
 
 from path import Path
 
@@ -41,7 +42,7 @@ async def await_fd_readable(fd: int) -> None:
 
 
 #
-# Wait for first event to be set
+# Wait for (one of) multiple events to be set
 #
 
 
@@ -64,21 +65,21 @@ async def wait_for_events(*events: asyncio.Event, return_when):
 
 
 #
-# Stoppable async loop
+# Stoppable async loops
 #
 
 
 async def stoppable_iterator(get_next, stop_event: asyncio.Event, args=()):
-    """Iterate over messages received by calling awaitable get_next until stop_event is set.
+    """Iterate over the messages returned by `get_next`, until `stop_event` is set.
 
     Parameters
     ----------
     get_next
-        An awaitable that returns the next iteration.
+        A callable returning an awaitable that produces the next message.
     stop_event
-        When any of these events is set, the loop is interrupted.
+        When this event is set, the loop is interrupted.
     args
-        A list of arguments to pass into get_next.
+        Arguments to pass into `get_next`.
     """
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_task")
     while True:
@@ -92,6 +93,17 @@ async def stoppable_iterator(get_next, stop_event: asyncio.Event, args=()):
         yield await future
 
 
+async def wait_for_path(path: Path, stop_event: asyncio.Event):
+    """Wait until the path exists or `stop_event` is set."""
+    delay = 0.0
+    while not path.exists():
+        if stop_event.is_set():
+            break
+        if delay > 0:
+            await asyncio.sleep(delay)
+        delay += 0.1
+
+
 #
 # Setting up reader and writer pairs, other than those provided by asyncio.
 #
@@ -102,17 +114,15 @@ async def stdio(
 ) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
     """Create a reader and writer connected to stdin and stdout.
 
-    Adapted from:
-    https://stackoverflow.com/questions/52089869/
-    how-to-create-asyncio-stream-reader-writer-for-stdin-stdout
+    Adapted from: https://stackoverflow.com/questions/52089869/
 
     Parameters
     ----------
     limit
-        The maximum buffers size.
+        The maximum buffer size.
     loop
-        The event loop. When not given `asyncio.get_event_loop()` is
-        called, which is usually just fine.
+        The event loop.
+        When not given, `asyncio.get_event_loop()` is called, which is usually just fine.
 
     Returns
     -------
@@ -135,19 +145,18 @@ async def stdio(
 @contextlib.asynccontextmanager
 async def pipe(
     limit=asyncio.streams._DEFAULT_LIMIT, loop=None
-) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+) -> AsyncGenerator[tuple[asyncio.StreamReader, asyncio.StreamWriter]]:
     """Create a connected reader and writer through `os.pipe`.
 
-    This is mainly useful for testing, to setup an RPC client and server within one test function.
-    Testing the RPC code involves two of these pipes, to set up bidirectional communication.
+    This is mainly useful for testing, to set up an RPC client and server within one test function.
 
     Parameters
     ----------
     limit
-        The maximum buffers size.
+        The maximum buffer size.
     loop
-        The event loop. When not given `asyncio.get_event_loop()` is
-        called, which is usually just fine.
+        The event loop.
+        When not given, `asyncio.get_event_loop()` is called, which is usually just fine.
 
     Returns
     -------
@@ -169,14 +178,3 @@ async def pipe(
         )
         writer = asyncio.streams.StreamWriter(writer_transport, writer_protocol, None, loop)
         yield reader, writer
-
-
-async def wait_for_path(path: Path, stop_event: asyncio.Event):
-    """Wait until a path exists."""
-    time = 0.0
-    while not path.exists():
-        if stop_event.is_set():
-            break
-        if time > 0:
-            await asyncio.sleep(time)
-        time += 0.1

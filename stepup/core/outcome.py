@@ -12,7 +12,7 @@ __all__ = (
 
 @attrs.define(frozen=True)
 class ResourceUsage:
-    """CPU and wall time consumed by one process (or a process + its children)."""
+    """CPU and wall time consumed by one process (or a process and its children)."""
 
     utime: float = attrs.field(default=0.0)
     """User CPU time [s]."""
@@ -38,11 +38,11 @@ class ResourceUsage:
         Parameters
         ----------
         ru_self_start, ru_self_end
-            `resource.getrusage(resource.RUSAGE_SELF)` snapshots taken before and after
-            the measured work.
+            `resource.getrusage(resource.RUSAGE_SELF)` snapshots
+            taken before and after the measured work.
         ru_children_start, ru_children_end
-            `resource.getrusage(resource.RUSAGE_CHILDREN)` snapshots taken before and after
-            the measured work.
+            `resource.getrusage(resource.RUSAGE_CHILDREN)` snapshots
+            taken before and after the measured work.
         wtime_start, wtime_end
             Wall-clock time snapshots taken before and after the measured work.
 

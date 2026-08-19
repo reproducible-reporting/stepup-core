@@ -3,8 +3,7 @@
 """Resource-usage accounting for the director process and its children.
 
 Aggregates CPU time and peak cgroup memory across the director process
-and step-executed subprocess/forkserver children,
-for a compact summary report printed at director shutdown.
+and the subprocess and forkserver children that run steps, for a compact summary report.
 """
 
 import asyncio
@@ -37,12 +36,12 @@ class ResourceAccumulator:
     """Total accumulated system CPU time [s]."""
 
     def add(self, utime: float, stime: float) -> None:
-        """Add one child process's resource usage to the running totals."""
+        """Add one child process's user and system CPU time to the running totals."""
         self.utime += utime
         self.stime += stime
 
     def add_usage(self, usage: ResourceUsage) -> None:
-        """Add one child process's resource usage (as a `ResourceUsage`) to the running totals."""
+        """Add one child process's resource usage to the running totals."""
         self.add(usage.utime, usage.stime)
 
 
@@ -54,8 +53,9 @@ class CgroupMemorySampler:
     and every process descending from it
     (step subprocess children, forkserver children, and any further processes those in turn spawn).
     This relies on `cgroup_dir` being a cgroup dedicated to that process tree
-    (see `find_own_memory_cgroup()`), so that `memory.current`/`memory.peak` are not polluted
-    by unrelated processes and every descendant is covered automatically,
+    (see `find_own_memory_cgroup()`),
+    so that `memory.current`/`memory.peak` are not polluted by unrelated processes
+    and every descendant is covered automatically,
     including short-lived ones and grandchildren a step's own command might spawn,
     without any cooperation from the executor.
 
@@ -66,15 +66,16 @@ class CgroupMemorySampler:
     cgroup_dir: Path | None = attrs.field(default=None)
     """The dedicated cgroup to sample.
 
-    Pass `None` (the default) to auto-detect via `find_own_memory_cgroup()`
-    during `__attrs_post_init__`, which raises `CgroupError` if unavailable.
+    Pass `None` (the default) to auto-detect it with `find_own_memory_cgroup()`
+    when the sampler is constructed.
+    Construction raises `CgroupError` if cgroup memory accounting is unavailable.
     """
 
     interval: float = attrs.field(default=1.0)
     """Sampling period [s]."""
 
     peak_mib: float | None = attrs.field(init=False, default=None)
-    """The highest aggregate memory usage observed so far, in mibibytes."""
+    """The highest aggregate memory usage observed so far [MiB]."""
 
     def __attrs_post_init__(self) -> None:
         if self.cgroup_dir is None:
@@ -99,7 +100,7 @@ class CgroupMemorySampler:
             self.peak_mib = best_mib if self.peak_mib is None else max(self.peak_mib, best_mib)
 
     async def loop(self, stop_event: asyncio.Event) -> None:
-        """Sample memory usage periodically until `stop_event` is set."""
+        """Sample memory usage periodically until `stop_event` is set or the task is cancelled."""
         while not stop_event.is_set():
             try:
                 self.sample_once()
@@ -116,8 +117,26 @@ def format_resource_usage(
     step_accumulator: ResourceAccumulator,
     memory_sampler: CgroupMemorySampler | None,
 ) -> tuple[str, str]:
-    """Format a resource usage report as a table-like multi-line string for stderr."""
-    # `ru_maxrss` is reported in kilobytes on Linux, but in bytes on macOS.
+    """Format a resource-usage report.
+
+    Parameters
+    ----------
+    wtime_start
+        The wall-clock time when the director started, as returned by `time.perf_counter()`.
+    step_accumulator
+        The `ResourceAccumulator` that has been accumulating CPU times for all steps.
+    memory_sampler
+        The `CgroupMemorySampler` that has been sampling peak cgroup memory usage,
+        or `None` if no sampler was running.
+
+    Returns
+    -------
+    report
+        A table-like, multi-line overview of wall time, CPU times and peak memory.
+    summary
+        A one-line condensation of the same wall and CPU times.
+    """
+    # `ru_maxrss` is reported in kibibytes on Linux, but in bytes on macOS.
     ru_self = resource.getrusage(resource.RUSAGE_SELF)
     director_maxrss_mib = (
         ru_self.ru_maxrss / 1024 if sys.platform == "linux" else ru_self.ru_maxrss / 1048576

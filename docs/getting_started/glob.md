@@ -8,7 +8,7 @@ StepUp's [`glob()`][stepup.core.api.glob] function looks like
 [`static()`][stepup.core.api.static] with a pattern, but does not declare its matches static.
 
 `glob()` is a pure *query*.
-It scans the filesystem, records the pattern with the calling step,
+It scans the file system, records the pattern with the calling step,
 and returns the matches.
 It creates no node in the workflow and owns nothing it matches.
 However, every match must be declared static elsewhere, either by some `static()` call,

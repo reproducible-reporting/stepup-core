@@ -388,7 +388,7 @@ and will be updated with any further changes before the final release.
 
 - Previously computed file hashes of static files are now reused instead of recomputing them.
 - Simple user mistakes no longer dump a full Python traceback:
-    - A `TUIError` raised before the director starts
+    - A `ToolError` raised before the director starts
       (e.g. an invalid `stepup build` target) now prints a short `ERROR: ...` message.
     - A build target that resolves to a static file or a volatile output
       on a resumed database (invalid on a fresh database too, but previously only

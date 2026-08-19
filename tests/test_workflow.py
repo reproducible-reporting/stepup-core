@@ -270,7 +270,7 @@ root:
 step:cp foo.txt bar.txt
                state = SUCCEEDED
                 need = DEFAULT
-          inp_digest = fa0cc090 b1be8b9f c51d9037 4d828d82 bef5b405 d25b7eae 565b0e1b 683c8cfc
+          inp_digest = 34382035 af586a54 853762fe 5d990d98 7ff73e1d c2b19d68 ba446d0f a49e4b0e
           out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
              creator   root:
@@ -299,7 +299,7 @@ root:
 step:cp foo.txt bar.txt
                state = PENDING
                 need = DEFAULT
-          inp_digest = fa0cc090 b1be8b9f c51d9037 4d828d82 bef5b405 d25b7eae 565b0e1b 683c8cfc
+          inp_digest = 34382035 af586a54 853762fe 5d990d98 7ff73e1d c2b19d68 ba446d0f a49e4b0e
           out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
              creator   root:
@@ -3420,7 +3420,7 @@ async def test_confirm_static_then_absent(wfp: Workflow):
 async def test_hash_update_external_unconfirmed(wfp: Workflow):
     """Drive the (EXTERNAL, UNCONFIRMED, True/False) rows, a defensive fallback.
 
-    `scan_file_changes` (Phase 2) resolves stray UNCONFIRMED rows via CONFIRMED at startup,
+    `check_file_changes` (Phase 2) resolves stray UNCONFIRMED rows via CONFIRMED at startup,
     so this EXTERNAL/UNCONFIRMED path is not expected to be reachable there in practice.
     It is kept as a defensive fallback (see the comment on these entries in
     `_HASH_TRANSITIONS`) in case a non-detached UNCONFIRMED file ever survives into a

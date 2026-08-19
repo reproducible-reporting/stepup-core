@@ -37,7 +37,7 @@ def main() -> None:
         "They are loaded in the given order, "
         "so later variable definitions may overrule earlier ones. "
         "Python files have the advantage of supporting more types and logic. "
-        "path.Path instances are interpreted as relative to parent of the variable file.",
+        "path.Path instances are interpreted as relative to the parent of the variable file.",
     )
     parser.add_argument("path_out", type=Path, help="The output file")
     parser.add_argument(
@@ -48,11 +48,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--json",
-        help="Variables are given as a JSON string (overrules the variables files)",
+        help="Variables are given as a JSON string (overrules the variables defined in files)",
     )
     args = parser.parse_args()
 
-    # Local import to delay activation synchronous connection to StepUp directory until needed.
+    # Local import to delay setting up the synchronous connection
+    # to the StepUp director until it is needed.
     from stepup.core.api import amend, loadns  # noqa: PLC0415
 
     if args.mode == "plain":
@@ -68,7 +69,6 @@ def main() -> None:
     amend(inp=get_local_import_paths())
     if args.json is not None:
         variables.update(json.loads(args.json))
-    # Render the template
     result = render_jinja(args.path_in, variables, latex)
     with open(args.path_out, "w") as fh:
         fh.write(result)
@@ -78,31 +78,31 @@ def main() -> None:
 
 def render_jinja(
     path_template: str,
-    variables: dict[str, str],
+    variables: dict[str],
     latex: bool = False,
     *,
     str_in: str | None = None,
 ) -> str:
-    """The template is processed with jinja and returned after filling in variables.
+    """Render a template with Jinja2 and return the result.
 
     Parameters
     ----------
     path_template
-        The filename of the template to load, may be a mock
+        The filename of the template to load.
     variables
         A dictionary of variables to substitute into the template.
     latex
-        When True, the angle-version of the template codes is used, e.g. `<%` etc.
+        When `True`, angle-style delimiters are used, e.g. `<%` instead of `{%`.
     str_in
         The template string.
-        When given path_templates is not loaded and only used for error messages.
+        When given, `path_template` is not loaded and is only used in error messages.
 
     Returns
     -------
     str_out
         A string with the result.
     """
-    # Customize Jinja 2 environment
+    # Customize the Jinja2 environment
     env_kwargs = {
         "keep_trailing_newline": True,
         "trim_blocks": True,
@@ -123,7 +123,7 @@ def render_jinja(
         )
     env = jinja2.Environment(**env_kwargs)
 
-    # Load template and use it
+    # Load template, assign filename (for tracebacks) and render.
     if str_in is None:
         with open(path_template) as f:
             str_in = f.read()

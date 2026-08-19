@@ -46,7 +46,7 @@ RESERVED_ENV_VARS = frozenset(
 
 # Step-only predicates for the step_dispatch partial index (see STEP_SCHEMA below) and for
 # scheduler.SELECT_NEXT_STEP's WHERE clause, which must stay textually identical to this
-# fragment -- SQLite matches partial-index eligibility structurally against the query text.
+# fragment, because SQLite matches partial-index eligibility structurally against the query text.
 # node.detached and resource availability are deliberately excluded: both live outside the
 # step table (node/step_resource respectively), so a partial index on step cannot express
 # them; SELECT_NEXT_STEP re-checks them lazily per examined index row instead.
@@ -68,8 +68,8 @@ STEP_DISPATCH_WHERE = f"""step.state = {StepState.PENDING.value} AND
 # It references three aliases the enclosing query must provide:
 # `input_file` (file row), `input_node` (node row) and `dynamic_dep`
 # (LEFT JOINed dynamic_dep row, NULL for an initial dependency).
-# Shared verbatim by dispatch (RECOMPUTE_READY, via `unavailable_input_sql` below,
-# in scheduler.py) and by the end-of-build analysis in pending.py,
+# Shared verbatim by dispatch (RECOMPUTE_READY in scheduler.py, which builds its subquery
+# with `unavailable_input_sql` below) and by the end-of-build analysis in pending.py,
 # so the two can never disagree about what "blocked" means.
 UNAVAILABLE_INPUT_WHERE = f"""
 input_file.state = {FileState.VOLATILE.value} OR
@@ -94,14 +94,14 @@ def unavailable_input_sql(node_expr: str) -> str:
     """Return an `EXISTS`-ready subquery for the unavailable inputs of one step.
 
     Only ever used inside `EXISTS(...)`/`NOT EXISTS(...)`,
-    so the projected column is irrelevant to the result --
+    so the projected column is irrelevant to the result.
     `SELECT 1` avoids depending on an outer `node` alias that may not be in scope
     (e.g. `RECOMPUTE_READY`'s bare `UPDATE step ...`).
 
     Parameters
     ----------
     node_expr
-        The SQL expression identifying "this step's node id" in the enclosing query --
+        The SQL expression identifying "this step's node id" in the enclosing query:
         `node.i` when joined against `node`/`step`,
         or `step.node` when there is no `node` table in scope.
 
@@ -131,8 +131,8 @@ CREATE TABLE IF NOT EXISTS step (
         need IN ({Need.OPTIONAL.value}, {Need.DEFAULT.value}, {Need.PLAN.value})
     ),
     -- The need of the step, as defined in the Need enum.
-    -- TARGET is deliberately excluded: it is derived-elevation-only and lives
-    -- exclusively in _implied_need, never persisted here.
+    -- TARGET is deliberately excluded: target steps are derived, never stored in the need column.
+    -- The result lives exclusively in _implied_need and is never persisted here.
     duration REAL NOT NULL CHECK(duration >= 0) DEFAULT 1.0,
     -- An estimate of the wall time of the step in seconds.
     deferred INTEGER NOT NULL CHECK(deferred IN (0, 1)) DEFAULT 0,
@@ -170,8 +170,8 @@ CREATE TABLE IF NOT EXISTS step (
     ),
     -- The need that is implied by sinks, as defined in the Need enum.
     _tail_time REAL NOT NULL CHECK(_tail_time >= 0) DEFAULT 1.0,
-    -- The tail_time of this step, defined as the total duration of the critical path from this step
-    -- to the exit nodes of the workflow.
+    -- The tail_time of this step, defined as the total duration of the critical path
+    -- from this step to the exit nodes of the workflow.
     _check_after INTEGER NOT NULL CHECK(_check_after IN (0, 1)),
     -- Whether recent changes to this step require the recalculation of the _implied_need
     -- metadata of this step and its sources.
@@ -249,10 +249,11 @@ BEGIN
 END;
 
 -- Keep _check_ready in sync with file state changes, so the scheduler recomputes
--- readiness for every step that consumes this file as an input. File.set_state issues a
--- plain UPDATE (fires the _upd trigger); File.initialize's upsert fires the _upd trigger on
--- its conflict/update arm and the _ins trigger on its fresh-insert arm. The _ins arm
--- matters for recycled file nodes that may already have dependency edges.
+-- readiness for every step that consumes this file as an input.
+-- File.set_state issues a plain UPDATE (fires the _upd trigger);
+-- File.initialize_row's upsert fires the _upd trigger on its conflict/update arm
+-- and the _ins trigger on its fresh-insert arm.
+-- The _ins arm matters for recycled file nodes that may already have dependency edges.
 CREATE TRIGGER IF NOT EXISTS step_file_check_ready_upd AFTER UPDATE OF state ON file
 WHEN OLD.state != NEW.state
 BEGIN
@@ -291,33 +292,35 @@ BEGIN
 END;
 
 -- _holding only ever grows/shrinks while this step's own execution is live and RUNNING:
--- hold()/release() (Director.hold()/Director.release() in director.py) resolve their job_i
--- through Scheduler.get_step(), which only has an entry while a job is in flight. So a step
--- leaving RUNNING for any reason -- normal completion, a hash-check rerun, mark_step_pending(),
--- or a crash-recovery reset (startup.py resets RUNNING -> FAILED via a raw UPDATE, not
--- through Step.set_state(), which is exactly why this lives in a trigger instead of being
--- reset at each such call site) -- means the execution that owned the counter is gone, and any
--- leftover count must not survive into the step's next attempt. Firing on every UPDATE OF
--- state (rather than only the paths above) also makes this hold for call sites added later
--- without anyone needing to remember _holding exists.
+-- hold()/release() (DirectorHandler.hold()/DirectorHandler.release() in director.py)
+-- resolve their job_i through Scheduler.get_step(),
+-- which only has an entry while a job is in flight.
+-- So a step leaving RUNNING for any reason means the execution that owned the
+-- counter is gone, and any leftover count must not survive into the step's next attempt.
+-- The RUNNING state can be left for several reasons: normal completion, a hash-check rerun,
+-- mark_step_pending(), or a crash-recovery reset (startup.py resets RUNNING -> FAILED via a
+-- raw UPDATE, not through Step.set_state(), which is exactly why this lives in a trigger
+-- instead of being reset at each such call site).
+-- Firing on every UPDATE OF state (rather than only the paths above) also makes this hold
+-- for call sites added later without anyone needing to remember _holding exists.
 CREATE TRIGGER IF NOT EXISTS step_reset_holding AFTER UPDATE OF state ON step
 WHEN NEW.state != {StepState.RUNNING.value} AND NEW._holding != 0
 BEGIN
     UPDATE step SET _holding = 0 WHERE node = NEW.node;
 END;
 
--- Clear deferred once a step reaches a completed state, so a
--- stale defer note from a previous run does not keep gating schedulability after
--- it settles again.
+-- Clear deferred once a step reaches a completed state,
+-- so a stale defer note from a previous run does not keep gating schedulability
+-- after it settles again.
 CREATE TRIGGER IF NOT EXISTS step_clear_deferred AFTER UPDATE OF state ON step
 WHEN NEW.state IN ({StepState.SUCCEEDED.value}, {StepState.FAILED.value})
 BEGIN
     UPDATE step SET deferred = FALSE WHERE node = NEW.node;
 END;
 
--- Reset defer_count only on SUCCEEDED (not FAILED), so the cap measures
--- consecutive defer attempts since the last convergence, independent of
--- (broader) deferred SUCCEEDED-or-FAILED clearing above.
+-- Reset defer_count only on SUCCEEDED (not FAILED),
+-- so the cap measures consecutive defer attempts since the last convergence,
+-- independent of the broader clearing of deferred above, which also fires on FAILED.
 CREATE TRIGGER IF NOT EXISTS step_reset_defer_count AFTER UPDATE OF state ON step
 WHEN NEW.state = {StepState.SUCCEEDED.value}
 BEGIN
@@ -331,7 +334,7 @@ END;
 -- count_required_steps() only ever needs "succeeded" vs. "not succeeded",
 -- so PENDING/RUNNING/CHECKING/FAILED transitions
 -- among each other never have to touch this table at all.
--- Deliberately a temp table (like path_list/node_list in FILE_SCHEMA), not persisted: that
+-- Deliberately a temp table (like path_list/node_list in WORKFLOW_SCHEMA), not persisted: that
 -- sidesteps ever having to migrate/backfill it for on-disk databases written before this
 -- table existed. It starts empty on every fresh connection, so
 -- Workflow._rebuild_temp_tables() seeds it once from the steps that already exist before
@@ -401,9 +404,9 @@ END;
 -- step's node and are removed via ON DELETE CASCADE when the node row is deleted.
 
 -- Named glob pattern (with back-references) registered by this step; see NamedGlob.
--- pattern and regex are derived from data (deterministically, so never migrated), and are
--- stored in columns of their own so that per-declaration and per-file-event checks never
--- have to deserialize data, whose match set is unbounded.
+-- pattern and regex must be derived from data by Python code performing the INSERT,
+-- and are stored in columns of their own so that per-declaration and per-file-event checks
+-- never have to deserialize data, whose match set is unbounded.
 -- data is a JSON blob, see json_converter hooks for NamedGlob in cattrs.py.
 CREATE TABLE IF NOT EXISTS nglob (
     i INTEGER PRIMARY KEY,
@@ -423,9 +426,9 @@ CREATE TABLE IF NOT EXISTS dynamic_dep (
 ) WITHOUT ROWID;
 
 -- Keep _check_ready in sync with dynamic-dependency changes: a dynamic/initial
--- dependency edge is evaluated differently by the "unavailable input" test (see
--- scheduler.UNAVAILABLE_INPUT), so flag the sink step whenever a dependency's dynamic
--- status changes.
+-- dependency edge is evaluated differently by the "unavailable input" test
+-- (see UNAVAILABLE_INPUT_WHERE above),
+-- so flag the sink step whenever a dependency's dynamic status changes.
 CREATE TRIGGER IF NOT EXISTS dynamic_dep_check_ready_ins AFTER INSERT ON dynamic_dep
 BEGIN
     UPDATE step SET _check_ready = 1
@@ -613,7 +616,7 @@ class PathRecord:
     """One path yielded by `Step._paths()` and its wrapper methods."""
 
     path: str
-    """The path, relative to the workflow root or the step's work directory."""
+    """The path, relative to the workflow root."""
 
     state: FileState
     """The state of the file."""
@@ -635,7 +638,7 @@ class PathRecord:
 
 @attrs.define
 class Step(Node):
-    """A command in the workflow with with its input and/or output files."""
+    """A command in the workflow with its input and/or output files."""
 
     #
     # Override from base class
@@ -669,47 +672,58 @@ class Step(Node):
     ):
         """Create extra information in the database about this node.
 
-        If a step with this node already exists (i.e. a detached step is being recycled),
-        it is deleted before inserting the fresh row, rather than using `INSERT OR REPLACE`,
-        so the delete fires `step_need_count_del` like any other delete
-        instead of being silently skipped by `REPLACE`'s implicit conflict-delete
-        (which never fires delete triggers).
-
-        The `step_hash`/`step_outcome` satellite rows are untouched by either `DELETE` or `INSERT`,
-        since both only ever reference `node`, not `step`,
-        so a recycled step's stored hash remains available for
-        skip-checking after redeclaration instead of being discarded.
-        `_has_hash` must therefore be set explicitly here (rather than left to its `DEFAULT 0`),
-        since this statement never touches the `step_hash` table itself.
-
-        `_ready`/`_check_ready` need no explicit value.
-        Their `DEFAULT`s (0 and 1) are exactly the conservative "not yet known, must be recomputed"
-        state a new/recycled step should start in.
-
-        `_check_after` is always seeded to `1`, even though a fresh `OPTIONAL` step's
-        `_implied_need` already equals its seeded value (`OPTIONAL` is `Need`'s minimum, so there
-        is nothing to recompute) -- *unless* this is `Trellis.create()`'s partial-recycle branch
-        (`if node is not None:`), which cuts the node's sources but keeps its sinks.
-        A recycled `OPTIONAL` step can then inherit a stale sink whose downstream consumer would
-        elevate its true `_implied_need`, and nothing forces the recompute unless a *new* dependency
-        insert happens to touch this node afterward (see `step_dependency_check_after_ins`).
-        Seeding `1` unconditionally costs one extra (usually no-op) row in the first iteration of
-        `Scheduler._update_meta_after()`, in exchange for not depending on that unstated call-order
-        assumption.
-
-        `duration` falls back to `1.0` (matching the column's own `DEFAULT`) when not given,
-        since a brand-new step has no prior measurement to seed it with.
-
-        `_safe_ignoring_hold` is seeded to the same value as `_safe` (rather than left at its
-        own `DEFAULT 0`). A step created with `safe=True` -- in practice, only the root
-        `plan.py` step -- also gets `_check_safe = 0` at creation (not flagged for recompute),
-        unlike an ordinary step (`safe=False`, hence `check_safe = 1`, flagged immediately).
-        Without this seeding, the root step's `_safe_ignoring_hold` would sit at its unseeded
-        `DEFAULT 0` until its own state next changes and re-flags `_check_safe`. Every
-        top-level step's `_safe_ignoring_hold` chain is seeded from the root's, via
-        `creator_step._safe_ignoring_hold` in `SELECT_SAFE_UPDATE`.
+        Parameters
+        ----------
+        need
+            The need of the step, as defined in the Need enum.
+        shell
+            Whether the step command is executed via a shell (shell=True).
+        duration
+            An estimate of the wall time of the step in seconds. If not given, defaults to 1.0.
+        _safe
+            Whether this step is safe to run, meaning that all its (recursive) creators
+            are in a state that allows queuing this step (RUNNING or SUCCEEDED).
         """
+        # `DELETE` before an `INSERT` instead of `INSERT OR REPLACE`,
+        # so the delete fires `step_need_count_del` like any other delete
+        # instead of being silently skipped by `REPLACE`'s implicit conflict-delete
+        # (which never fires delete triggers).
         self.db.execute("DELETE FROM step WHERE node = :node", {"node": self.i})
+
+        # The `step_hash`/`step_outcome` satellite rows are untouched
+        # by either `DELETE` or `INSERT`, since both only ever reference `node`, not `step`,
+        # so a recycled step's stored hash remains available for
+        # skip-checking after redeclaration instead of being discarded.
+        # `_has_hash` must therefore be set explicitly here (rather than left to its `DEFAULT 0`),
+        # since this statement never touches the `step_hash` table itself.
+
+        # `_ready`/`_check_ready` need no explicit value.
+        # Their `DEFAULT`s (0 and 1) are exactly the conservative
+        # "not yet known, must be recomputed" state a new/recycled step should start in.
+
+        # `_check_after` is always seeded to `1`, even though a fresh `OPTIONAL` step's
+        # `_implied_need` already equals its seeded value (`OPTIONAL` is `Need`'s minimum, so there
+        # is nothing to recompute), *unless* this is `Trellis.create()`'s partial-recycle branch
+        # (`if node is not None:`), which cuts the node's sources but keeps its sinks.
+        # A recycled `OPTIONAL` step can then inherit a stale sink whose downstream consumer would
+        # elevate its true `_implied_need`, and nothing forces the recompute unless a new dependency
+        # insert happens to touch this node afterward (see `step_dependency_check_after_ins`).
+        # Seeding `1` unconditionally costs one extra (usually no-op) row in the first iteration of
+        # `Scheduler._update_meta_after()`, in exchange for not depending on that unstated
+        # call-order assumption.
+
+        # `duration` falls back to `1.0` (matching the column's own `DEFAULT`) when not given,
+        # since a brand-new step has no prior measurement to seed it with.
+
+        # `_safe_ignoring_hold` is seeded to the same value as `_safe`
+        # (rather than left at its own `DEFAULT 0`).
+        # A step created with `safe=True` (in practice, only the root `plan.py` step)
+        # also gets `_check_safe = 0` at creation (not flagged for recompute),
+        # unlike an ordinary step (`safe=False`, hence `check_safe = 1`, flagged immediately).
+        # Without this seeding, the root step's `_safe_ignoring_hold` would sit at its unseeded
+        # `DEFAULT 0` until its own state next changes and re-flags `_check_safe`.
+        # Every top-level step's `_safe_ignoring_hold` chain is seeded from the root's,
+        # via `creator_step._safe_ignoring_hold` in `SELECT_SAFE_UPDATE`.
         self.db.execute(
             "INSERT INTO step "
             "(node, state, need, duration, shell, _safe, _check_safe, _safe_ignoring_hold, "
@@ -730,7 +744,7 @@ class Step(Node):
         )
 
     def validate_row(self):
-        """Validate extra information about this node is present in the database."""
+        """Validate that extra information about this node is present in the database."""
         row = self.db.execute("SELECT 1 FROM step WHERE node = ?", (self.i,)).fetchone()
         if row is None:
             raise ValueError(f"Step node {self.key()} has no row in the step table.")
@@ -866,7 +880,7 @@ class Step(Node):
         *,
         upstream: bool,
     ) -> Iterator[str]:
-        """Iterate over sinks (or with upstream=True sources), formatted as `kind:label` keys.
+        """Iterate over sinks, or over sources when `upstream` is `True`, as `kind:label` keys.
 
         Detached edges are wrapped in parentheses
         and dynamic edges get an `" [dynamic]"` suffix.
@@ -1012,7 +1026,7 @@ class Step(Node):
         self.db.execute("UPDATE step SET env_overrides = ? WHERE node = ?", (value, self.i))
 
     def set_resources(self, resources: dict[str, int] | None) -> None:
-        """Replace this step's claimed named-resource units used by the scheduler.
+        """Replace the named-resource units claimed by this step.
 
         `resources` maps resource name (e.g. a GPU or license semaphore) to
         the number of units claimed, or is `None` to clear all claims.
@@ -1039,8 +1053,6 @@ class Step(Node):
         since their value is fixed by the step
         and they are therefore not external dependencies that can change between runs.
         """
-        # Ignore variables that this step overrides via env_overrides: their value is fixed by the
-        # step, so they are not external dependencies that can change between runs.
         env_overrides = self.get_env_overrides()
         rows = [(self.i, name, os.getenv(name)) for name in env_deps if name not in env_overrides]
         self.db.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
@@ -1105,7 +1117,8 @@ class Step(Node):
         if relation == "product":
             # There is no dependency row for a product, so `idep` is NULL, which makes the
             # dynamic-exists check below (and a `dynamic=True` filter) naturally resolve to
-            # "never amended" -- correct, since a declared static/missing path can't be amended.
+            # "never amended".
+            # This is correct, since a declared static/missing path can't be amended.
             sql = (
                 "WITH relevant AS (SELECT i AS node, NULL AS idep FROM node WHERE creator = :node)"
             )
@@ -1135,7 +1148,7 @@ class Step(Node):
         if not (raw or self.is_detached()):
             where += " AND NOT detached"
 
-        # Select only the initial files (not dynamic)
+        # Restrict to dynamic or to initial (non-dynamic) files.
         if dynamic is not None:
             if dynamic:
                 join += " JOIN dynamic_dep ON dynamic_dep.i = relevant.idep"
@@ -1145,7 +1158,7 @@ class Step(Node):
                     " WHERE dynamic_dep.i = relevant.idep)"
                 )
 
-        # Filter certain states
+        # Filter certain states.
         if len(states) > 0:
             where_states = []
             for i, state in enumerate(states):
@@ -1197,10 +1210,9 @@ class Step(Node):
     def reset_for_rerun(self):
         """Reset a step back to its freshly defined state, ready to run again.
 
-        This method discards everything that was produced dynamically by the step's
-        previous run (if any), so that a future (re)run starts from a clean slate.
-        It is called both right before actually re-executing a step, and whenever
-        a step is deferred and won't run again immediately.
+        Safe to call on a step that has never run.
+        Useful to call on a step that has not fully completed,
+        e.g. because it was interrupted or has failed.
 
         The following are dropped:
 
@@ -1231,10 +1243,10 @@ class Step(Node):
         self.db.executemany("DELETE FROM dynamic_dep WHERE i = ?", ((row[0],) for row in rows))
         self.del_sources([self.graph.node_from_row(i, kind, label) for _, i, label, kind in rows])
 
-        # Drop dynamic environment variables
+        # Drop dynamic environment variables.
         self.db.execute("DELETE FROM env_var WHERE node = ? AND dynamic = 1", (self.i,))
 
-        # Drop nglobs
+        # Drop nglobs.
         self.db.execute("DELETE FROM nglob WHERE node = ?", (self.i,))
 
         # Drop dynamic sinks and detach the corresponding sink nodes.
@@ -1256,7 +1268,7 @@ class Step(Node):
 
         self._detach_created_steps()
 
-        # Detach static file definitions
+        # Detach static file definitions.
         states = ", ".join(str(state.value) for state in FILE_STATES_BY_ROLE[FileRole.STATIC])
         sql = (
             "SELECT i, label FROM node JOIN file ON node.i = file.node "
@@ -1266,7 +1278,7 @@ class Step(Node):
             file = File(self.graph, i, label)
             file.detach()
 
-        # Detach static trees
+        # Detach static trees.
         sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'st'"
         for i, label in self.db.execute(sql, (self.i,)):
             st = StaticTree(self.graph, i, label)
@@ -1291,14 +1303,15 @@ class Step(Node):
     def _detach_created_steps(self):
         """Detach steps created by this step (e.g. via `run()`/`step()`).
 
-        Called unconditionally by `reset_for_rerun()`, and by `completed()` only when a
-        step reaches a genuine terminal `FAILED` state (not on an accepted defer):
+        Called unconditionally by `reset_for_rerun()`,
+        and by `mark_completed()` only when a step reaches a genuine terminal `FAILED` state
+        (not on an accepted defer):
         the failed run's children must not linger attached even before the creator's
-        actual rerun happens, which may be much later. Unlike
-        `reset_for_rerun()`, this does not touch dynamic dependencies, so a defer
-        triggered by an unavailable dynamic input does not sever the dependency edge
-        that `mark_pending()` relies on to wake the step up again once that input
-        becomes available.
+        actual rerun happens, which may be much later.
+        Unlike `reset_for_rerun()`, this does not touch dynamic dependencies,
+        so a defer triggered by an unavailable dynamic input does not sever the dependency edge
+        that `Workflow.mark_step_pending()` relies on to wake the step up again
+        once that input becomes available.
 
         A still-`RUNNING` detached step is not killed: it keeps running until its
         command terminates on its own, and is then recorded and reported like any
@@ -1335,11 +1348,11 @@ class Step(Node):
         Returns
         -------
         interrupted_defer
-            True if deferral has been interrupted due to cap being exceeded, False otherwise.
+            True if deferral has been interrupted because the cap was exceeded, False otherwise.
         """
         interrupted_defer = False
         if new_hash is None:
-            # Update states, needed for files that have not changed since previous run.
+            # Update states, needed for files that have not changed since the previous run.
             for file in self.products(File):
                 if file.get_state() == FileState.BUILT:
                     file.set_state(FileState.OUTDATED)
@@ -1352,10 +1365,10 @@ class Step(Node):
                         self.graph.defer_cap,
                         self.label,
                     )
-                    # We just set the state to PENDING.
-                    # However, it will not be scheduled as long as `deferred` is set to True.
-                    # Any later file changes relevant to the step will result in
-                    # a call to mark_pending(), which will clear the deferred flag.
+                    # The state is set to PENDING below.
+                    # However, the step will not be scheduled as long as `deferred` is True.
+                    # Any later file changes relevant to the step result in
+                    # a call to Workflow.mark_step_pending(), which clears the deferred flag.
                     # This makes the step eligible for scheduling again.
                     deferred = self.has_unavailable_dynamic_input()
                     self.set_state(StepState.PENDING, deferred)
@@ -1381,7 +1394,7 @@ class Step(Node):
         else:
             logger.info("Succeeded step: %s", self.label)
             self.set_state(StepState.SUCCEEDED)
-            # Update states, needed for files that have not changed since previous run.
+            # Update states, needed for files that have not changed since the previous run.
             for file in self.products(File):
                 if file.get_state() == FileState.OUTDATED:
                     file.set_state(FileState.BUILT)
@@ -1507,12 +1520,7 @@ class Step(Node):
         self.db.execute("DELETE FROM step_subprocess WHERE node = ?", (self.i,))
 
     def add_nglob(self, ng: NamedGlob) -> None:
-        """Store a `NamedGlob` pattern registered by this step.
-
-        The pattern and its regex are stored in columns of their own, so the checks that
-        run per declared output and per file-change event never have to deserialize
-        `data`, whose match set is unbounded.
-        """
+        """Store a `NamedGlob` pattern registered by this step."""
         data = (
             self.i,
             ng.pattern,
@@ -1538,5 +1546,5 @@ class Step(Node):
         self._flag_checks_with_products()
 
     def _flag_checks_with_products(self):
-        """Flag the _check_safe and _check_after fields of this step and its products."""
+        """Flag the `_check_safe` and `_check_after` fields of this step and its products."""
         self.db.execute(RECURSIVE_CHECK_WITH_PRODUCTS, (self.i,))

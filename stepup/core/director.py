@@ -83,57 +83,59 @@ class ServeConfig:
     # from a same-named noun elsewhere in the codebase (`do_clean`, `do_watch`);
     # otherwise a verb or adjective form is used.
     use_cgroup: bool = attrs.field(default=False)
-    """If True, the director tracks peak memory usage through cgroups."""
+    """Whether to track peak memory usage through cgroups."""
 
     do_clean: bool = attrs.field(default=True)
-    """If True, the director removes outdated output files."""
+    """Whether to remove outdated output files."""
 
     use_duration: bool = attrs.field(default=True)
-    """If True, the scheduler uses the duration of steps to optimize the execution order."""
+    """Whether to use the duration of steps to optimize the execution order."""
 
     explain_rerun: bool = attrs.field(default=False)
     """Report detailed diagnostics explaining why a step is rerun rather than skipped."""
 
     keep_going: bool = attrs.field(default=False)
-    """If True, keep dispatching new steps after another step has failed
-    (like `make -k`). If False (default), the scheduler is put on hold after
-    the first failure; steps already running are still allowed to finish."""
+    """Whether to keep dispatching new steps after another step has failed (like `make -k`).
+    If False (default), the scheduler is put on hold after the first failure;
+    steps already running are still allowed to finish."""
 
     fix_epoch: bool = attrs.field(default=True)
-    """If True, set the `SOURCE_DATE_EPOCH` environment variable for step child
-    processes (unless already set in the environment), for reproducible builds."""
+    """Whether to set the `SOURCE_DATE_EPOCH` environment variable for step child processes
+    (unless already set in the environment), for reproducible builds."""
 
     write_joblog: bool = attrs.field(default=False)
-    """If True, record job-execution events (created, started, ended, completed) to
-    `JOBLOG_CSV`, for diagnosing scheduler/executor dispatch overhead."""
+    """Whether to record job-execution events (init, created, started, ended, completed)
+    to `JOBLOG_CSV`, for diagnosing scheduler/executor dispatch overhead."""
 
     live_progress: bool = attrs.field(default=False)
-    """Whether the reporter is an interactive terminal that wants live step-count updates."""
+    """Whether the reporter's console is an interactive terminal
+    that wants live step-count updates."""
 
     do_watch: bool = attrs.field(default=False)
-    """If True, the director alternates between build and watch phases until
-    it receives an RPC to shutdown.
+    """Whether to alternate between build and watch phases
+    until an RPC to shut down is received.
     If False, the director exits after a single build phase."""
 
     watch_first: bool = attrs.field(default=False)
-    """If True, the builder restarts after the watcher sees the first file change."""
+    """Whether to restart the builder after the watcher sees the first file change."""
 
     available_resources: str | None = attrs.field(default=None)
-    """Named resources and their available quantities, e.g. `"cpu:4,gpu:1"`, or `None`
-    to declare no resources at all (any step that requests a named resource then
-    never becomes runnable)."""
+    """Named resources and their available quantities, e.g. `"cpu:4,gpu:1"`,
+    or `None` to declare no resources at all
+    (any step that requests a named resource then never becomes runnable)."""
 
     defer_cap: int = attrs.field(default=100)
-    """Maximum number of consecutive defers (since a step last succeeded) before
-    it is failed instead of parked pending again. A livelock guard."""
+    """Maximum number of consecutive defers (since a step last succeeded)
+    before it is failed instead of parked pending again.
+    A livelock guard."""
 
     targets: list[Path] = attrs.field(factory=list)
     """Restrict the build to steps needed to produce these output files.
     An empty list builds the full default workflow."""
 
     target_dirs: list[Path] = attrs.field(factory=list)
-    """Restrict the build to declared-DEFAULT steps whose output falls under one of
-    these directories."""
+    """Restrict the build to declared-DEFAULT steps
+    whose output falls under one of these directories."""
 
     def __attrs_post_init__(self) -> None:
         if self.njob < 1:
@@ -214,7 +216,7 @@ def parse_args() -> argparse.Namespace:
         "--explain-rerun",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Explain for every step with recording info why it cannot be skipped.",
+        help="Explain for every step with recorded info why it cannot be skipped.",
     )
     parser.add_argument(
         "--keep-going",
@@ -250,7 +252,7 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         help="Set the SOURCE_DATE_EPOCH environment variable to 315532800. "
         "This corresponds to 1980-01-01 00:00:00 UTC. "
-        "(If the variable is already set, it will be used as-is.) ",
+        "(If the variable is already set, it will be used as-is.)",
     )
     parser.add_argument(
         "--forkserver",
@@ -370,7 +372,7 @@ async def async_main(
     print(f"PID {os.getpid()}", file=sys.stderr)
     print(f"LOG_LEVEL {args.log_level}", file=sys.stderr)
     # To detect invalid usage of RPC_CLIENT in stepup.core.api within the director process,
-    # we set the STEPUP_DIRECTOR_SOCKET to an invalid value.
+    # we set STEPUP_DIRECTOR_SOCKET to an invalid value.
     os.environ["STEPUP_DIRECTOR_SOCKET"] = "_invalid_socket_for_director_process_"
     if args.yappi:
         if yappi is None:
@@ -422,12 +424,12 @@ SCHEDULER_CPU_ENV_VARS = ("SLURM_CPUS_PER_TASK", "PBS_NUM_PPN", "NCPUS")
 def _get_ncore() -> int:
     """Determine the number of CPU cores available to this process.
 
-    Cgroup v2 accounting (`cpuset.cpus.effective` / `cpu.max`) is tried first, since
-    that reflects the containment actually applied to this process, e.g. by Slurm
-    or PBS. Scheduler-provided environment variables are the fallback (they are
-    only advisory and can disagree with actual cgroup containment), then the
-    OS-reported core count, because a batch scheduler may allocate fewer cores
-    than are physically present on the node.
+    Cgroup v2 accounting (`cpuset.cpus.effective` / `cpu.max`) is tried first,
+    since that reflects the containment actually applied to this process, e.g. by Slurm or PBS.
+    Scheduler-provided environment variables come next
+    (they are only advisory and can disagree with the actual cgroup containment),
+    and the OS-reported core count comes last,
+    because a batch scheduler may allocate fewer cores than are physically present on the node.
     """
     try:
         return get_ncore_from_cgroup()
@@ -443,7 +445,7 @@ def _get_ncore() -> int:
 
 
 def interpret_jobs(jobs: Decimal) -> int:
-    """Convert the command-line argument jobs into an integer."""
+    """Convert the `jobs` command-line argument into an integer."""
     ncore = _get_ncore() if jobs.as_tuple().exponent < 0 else 1
     return int(ncore * jobs)
 
@@ -466,24 +468,24 @@ async def serve(
     director_socket_path
         The socket to listen to for remote calls.
     reporter
-        The reporter client for sending information back to
-        the terminal user interface.
+        The reporter client for sending information back to the terminal user interface.
     db
         The database session backing the workflow graph.
     mp_ctx
         A `multiprocessing` forkserver context for Python step execution and file hashing,
         or `None` to use plain subprocesses.
     handle_signals
-        If True, install handlers for `SIGINT` and `SIGTERM` that abort the build,
-        see `DirectorHandler.interrupt`.
+        Whether to install handlers for `SIGINT` and `SIGTERM` that abort the build.
+        See `DirectorHandler.interrupt`.
         Set to False when running the director inside another process (e.g. the test suite),
         where hijacking the process-wide signal handlers is not wanted.
 
     Returns
     -------
     result
-        The exit code of the director process, together with a resource-usage summary collected
-        over the lifetime of this call:
+        The exit code of the director process,
+        together with a resource-usage summary collected over the lifetime of this call:
+
         - wall time
         - CPU time (user/system)
         - peak memory for the director (and optionally its step child processes).
@@ -493,8 +495,8 @@ async def serve(
 
     # Environment variables exported to step child processes (and forkserver children).
     # These are passed explicitly to the executor rather than set in `os.environ`,
-    # so that running the director in-process (e.g. in the test suite) does not
-    # pollute the calling process's environment.
+    # so that running the director in-process (e.g. in the test suite)
+    # does not pollute the calling process's environment.
     infra_env = {
         "STEPUP_DIRECTOR_SOCKET": str(director_socket_path),
         "STEPUP_ROOT": str(Path.cwd()),
@@ -523,7 +525,7 @@ async def serve(
         stop_event=components.stop_event,
     )
 
-    # Define the initial plan.py as static file and create a step for it.
+    # Define the initial plan.py as a static file and create a step for it.
     async with db:
         initialized = components.workflow.initialize_boot()
     if initialized:
@@ -532,12 +534,8 @@ async def serve(
     else:
         await startup_from_db(components.workflow, db, reporter, components.builder)
 
-    # Validate targets against the (re)loaded graph and flag affected steps for
-    # recompute. Must run after the boot/resume block above: on a resumed database,
-    # startup_from_db's file scan is what marks a changed plan.py's step PENDING, which
-    # Workflow.reconcile_targets()'s creator-chain guard consults. Must run before the
-    # task gather below, since the builder loop (and thus the first dispatch) only
-    # starts there.
+    # Targets must be reconciled after the boot script is defined.
+    # See `Workflow.reconcile_targets()` for details.
     async with db:
         try:
             components.workflow.reconcile_targets()
@@ -570,11 +568,7 @@ async def serve(
 
 @attrs.define(frozen=True)
 class _Components:
-    """The long-lived objects that make up a running director.
-
-    The `DirectorHandler` is not one of them: it is the RPC facade over these objects,
-    constructed in `serve` once they exist.
-    """
+    """The long-lived objects that make up a running director."""
 
     workflow: Workflow = attrs.field()
     scheduler: Scheduler = attrs.field()
@@ -621,9 +615,9 @@ async def _create_components(
         write_joblog=config.write_joblog,
         infra_env=infra_env,
     )
-    # Builder is agnostic of watch mode; it is built first because the watcher needs
-    # builder.hash_queue, sharing the wake event that a hash-job submission uses to
-    # nudge a parked job_loop.
+    # Builder is agnostic of watch mode;
+    # it is built first because the watcher needs builder.hash_queue,
+    # which shares the wake event that a hash-job submission uses to nudge a parked job_loop.
     builder = Builder(
         njob=config.njob,
         scheduler=scheduler,
@@ -681,8 +675,9 @@ async def _run_tasks(
         coroutines.append(components.watcher.loop(components.stop_event))
         if watch_first:
             coroutines.append(watch_first_loop(components.watcher, handler, components.stop_event))
-    # Abort the build on a terminal signal, instead of dying with a KeyboardInterrupt
-    # traceback (SIGINT) or instantly and mid-transaction (SIGTERM).
+    # Abort the build on a terminal signal,
+    # instead of dying with a KeyboardInterrupt traceback (SIGINT)
+    # or instantly and mid-transaction (SIGTERM).
     loop = asyncio.get_running_loop()
     if handle_signals:
         for sig in (signal.SIGINT, signal.SIGTERM):
@@ -694,7 +689,8 @@ async def _run_tasks(
     finally:
         # In case of an exception, set the stop event, so other parts know they can stop waiting.
         components.stop_event.set()
-        # Regular shutdown. The signal handlers stay installed for its duration:
+        # Regular shutdown.
+        # The signal handlers stay installed for its duration:
         # a step ignoring the first interrupt is killed by a second one during `builder.stop()`.
         await components.builder.stop()
         exit_event.set()
@@ -733,7 +729,7 @@ async def build_loop(builder: Builder, watcher: Watcher | None, stop_event: asyn
 
 
 async def watch_first_loop(watcher: Watcher, handler: "DirectorHandler", stop_event: asyncio.Event):
-    """When a file of the watcher has changed, call the builder after 0.5 seconds delay."""
+    """Run pending steps 0.5 seconds after the watcher observes a file change."""
     changed_event = asyncio.Event()
     watcher.files_changed_events.add(changed_event)
     while True:
@@ -747,6 +743,8 @@ async def watch_first_loop(watcher: Watcher, handler: "DirectorHandler", stop_ev
 
 @attrs.define
 class DirectorHandler:
+    """A handler for managing the director's RPC interface."""
+
     scheduler: Scheduler = attrs.field(kw_only=True)
     workflow: Workflow = attrs.field(kw_only=True)
     db: DBSession = attrs.field(kw_only=True)
@@ -758,14 +756,16 @@ class DirectorHandler:
     _next_step_signal: signal.Signals = attrs.field(init=False, default=signal.SIGINT)
     """The signal the next escalating `shutdown` sends to running steps.
 
-    Starts at `SIGINT` and moves to `SIGKILL` once a `SIGINT` has been delivered to the
-    steps, by either `shutdown` or `_interrupt`.
-    Only `shutdown` reads it: `_interrupt` always opens with `SIGINT` and escalates on a
-    timer instead, see its docstring.
+    Starts at `SIGINT` and moves to `SIGKILL`
+    once a `SIGINT` has been delivered to the steps, by either `shutdown` or `_interrupt`.
+    Only `shutdown` reads it:
+    `_interrupt` always opens with `SIGINT` and escalates on a timer instead.
+    See its docstring.
     """
 
     _interrupt_count: int = attrs.field(init=False, default=0)
-    """The number of terminal signals received so far, see `interrupt`."""
+    """The number of terminal signals received so far.
+    See `interrupt`."""
 
     _interrupt_task: asyncio.Task | None = attrs.field(init=False, default=None)
     """The in-flight `_interrupt` task, kept alive here so it cannot be garbage-collected."""
@@ -774,19 +774,20 @@ class DirectorHandler:
     """Set by a second terminal signal, to cut the grace period of the first one short."""
 
     _resume_tasks: set[asyncio.Task] = attrs.field(init=False, factory=set)
-    """In-flight resume reports of `suspend`, kept alive here so they cannot be
-    garbage-collected mid-send (same rationale as `Executor._counts_flush_tasks`)."""
+    """In-flight resume reports of `suspend`,
+    kept alive here so they cannot be garbage-collected mid-send
+    (same rationale as `Executor._counts_flush_tasks`)."""
 
     #
     # Building the workflow
     #
 
     def _submit_to_check(self, to_check: Mapping[str, FileHash]) -> None:
-        """Submit a hash job for each `path: old_hash` entry, applied with `cause=CONFIRMED`.
+        """Submit a hash job with `cause=CONFIRMED` for each `path: old_hash` entry.
 
-        Fire-and-forget: the caller does not wait for these jobs. Each job's own
-        completion flips the file from `UNCONFIRMED` to `CONFIRMED` or `MISSING` and wakes
-        `job_loop`, which is what lets a step consuming the file become runnable.
+        Fire-and-forget: the caller does not wait for these jobs.
+        Each job's own completion flips the file from `UNCONFIRMED` to `CONFIRMED` or `MISSING`
+        and wakes `job_loop`, which is what lets a step consuming the file become runnable.
         """
         for path, old_hash in to_check.items():
             self.builder.hash_queue.submit(path, old_hash, HashUpdateCause.CONFIRMED)
@@ -806,27 +807,22 @@ class DirectorHandler:
         job_i
             The job index of the calling step.
         tree_paths
-            Directories, given literally or matched by a glob pattern: each becomes a
-            static tree. Sorted, so a parent is always registered before a child it
-            contains, which turns an overlap within one call into a no-op instead of a
-            "parent directory of an existing static tree" error.
+            Directories, given literally or matched by a glob pattern:
+            each becomes a static tree.
+            Sorted, so a parent is always registered before a child it contains,
+            which turns an overlap within one call into a no-op
+            instead of a "parent directory of an existing static tree" error.
         file_paths
-            Files to declare `UNCONFIRMED`, to be confirmed as `CONFIRMED` or `MISSING` by a
-            hash job submitted in the background. The `UNCONFIRMED` intermediate state
-            avoids unnecessary file hash calculations: when size, inode and mtime are
-            unchanged, the old hash is reused.
+            Files to declare `UNCONFIRMED`,
+            to be resolved to `CONFIRMED` or `MISSING` by a hash job submitted in the background.
+            The `UNCONFIRMED` intermediate state avoids unnecessary file hash calculations:
+            when size, inode and mtime are unchanged, the old hash is reused.
         patterns
             `(pattern, matches)` pairs, one per glob pattern given to `static()`.
-            The matches are recorded with the pattern, so a later run can tell
-            whether the match set changed. A pattern never carries a `subs` dict,
-            because `static()` takes no keyword arguments, so `NamedGlob(pattern)`
-            rebuilds exactly what the client globbed with.
-
-        Notes
-        -----
-        Everything happens in a single transaction, so the tree-before-file ordering
-        is a guarantee of this method rather than a convention spread over two round
-        trips from the client.
+            The matches are recorded with the pattern,
+            so a later run can tell whether the match set changed.
+            A pattern never carries a `subs` dict, because `static()` takes no keyword arguments,
+            so `NamedGlob(pattern)` rebuilds exactly what the client globbed with.
         """
         to_check = {}
         async with self.db:
@@ -845,16 +841,16 @@ class DirectorHandler:
         """Register a glob pattern with the calling step and validate its matches.
 
         A glob pattern is a pure query: it declares nothing and owns nothing.
-        The pattern is recorded so the calling step becomes pending when the match set
-        changes, and its matches are validated against what the graph already knows.
+        The pattern is recorded so the calling step becomes pending when the match set changes,
+        and its matches are validated against what the graph already knows.
 
         Parameters
         ----------
         job_i
             The job index of the calling step.
         pattern
-            The glob pattern, relative to `${STEPUP_ROOT}`, with its trailing separator
-            preserved when it is a directory pattern.
+            The glob pattern, relative to `${STEPUP_ROOT}`,
+            with its trailing separator preserved when it is a directory pattern.
         subs
             The sub-pattern of each named wildcard, as given to `glob()`.
         paths
@@ -905,9 +901,7 @@ class DirectorHandler:
                 duration=duration,
             )
         self._submit_to_check(to_check)
-        # The new step may already be runnable, but the builder's job loop may be parked,
-        # waiting for a running task to finish.
-        # Wake it up so it re-polls the scheduler instead of waiting for an unrelated task.
+        # The new step may already be runnable, so wake up the scheduler to check for it.
         self.builder.wake_job_loop.set()
 
     @allow_rpc
@@ -916,8 +910,9 @@ class DirectorHandler:
 
         Notes
         -----
-        This is an RPC wrapper for `Step.hold`, which is re-entrant: nested `hold()` calls
-        increment a counter, and children stay held back until the outermost `release()`.
+        This is an RPC wrapper for `Step.hold`, which is re-entrant:
+        nested `hold()` calls increment a counter,
+        and children stay held back until the outermost `release()`.
         No job-loop wake-up is needed here: holding never creates new runnable work.
         """
         async with self.db:
@@ -935,9 +930,7 @@ class DirectorHandler:
         async with self.db:
             step = self.scheduler.get_step(job_i)
             step.release()
-        # Previously held-back children may now be runnable, but the builder's job loop
-        # may be parked, waiting for a running task to finish.
-        # Wake it up so it re-polls the scheduler instead of waiting for an unrelated task.
+        # Wake up the scheduler because previously held-back children may now be runnable.
         self.builder.wake_job_loop.set()
 
     @allow_rpc
@@ -1030,7 +1023,7 @@ class DirectorHandler:
 
     @allow_rpc
     async def get_info(self, job_i: int) -> StepInfo:
-        """Return step information, consistent with return values of functions in stepup.core.api.
+        """Return step information, matching the return values of functions in `stepup.core.api`.
 
         For the sake of consistency, dynamic dependencies are not included.
         """
@@ -1045,8 +1038,8 @@ class DirectorHandler:
     def _stop_scheduling(self) -> None:
         """Stop dispatching new work and end the watch phase, without touching running steps.
 
-        Shared by both termination routes: `shutdown` (the `q` key) and
-        `interrupt` (a terminal signal).
+        Shared by both termination routes:
+        `shutdown` (the `q` key) and `interrupt` (a terminal signal).
         Whether and how running steps are then signalled is the caller's policy.
         """
         self.scheduler.on_hold = True
@@ -1058,8 +1051,8 @@ class DirectorHandler:
     async def shutdown(self) -> None:
         """Shut down the director, escalating if called repeatedly.
 
-        The first call puts the scheduler on hold and stops the build/watch loops
-        gracefully: steps already running are left to finish on their own.
+        The first call puts the scheduler on hold and stops the build/watch loops gracefully:
+        steps already running are left to finish on their own.
         A second call interrupts running steps with `SIGINT`;
         a third and any further call escalates to `SIGKILL`.
 
@@ -1087,8 +1080,9 @@ class DirectorHandler:
 
         Unlike `shutdown` (the `q` key), this never waits for running steps:
         the user asked for everything to stop, so the build ends as soon as the steps do.
-        The escalation to `SIGKILL` is on a timer (`INTERRUPT_GRACE`) rather than on further
-        signals, so that a single Ctrl-C is always enough to get the shell prompt back.
+        The escalation to `SIGKILL` is on a timer (`INTERRUPT_GRACE`)
+        rather than on further signals,
+        so that a single Ctrl-C is always enough to get the shell prompt back.
         A second signal only cuts that grace period short.
 
         This is a plain callback (not a coroutine), as required by `add_signal_handler`.
@@ -1107,13 +1101,15 @@ class DirectorHandler:
         )
         self._stop_scheduling()
         # Steps run in a session of their own, so the terminal does not signal them:
-        # this is the only thing that stops them, on every route (Ctrl-C, SIGTERM, or a
-        # SIGINT sent to the terminal user interface alone).
+        # this is the only thing that stops them, on every route
+        # (Ctrl-C, SIGTERM, or a SIGINT sent to the terminal user interface alone).
         self.executor.interrupt(signal.SIGINT)
         # A `q` press after this must escalate to SIGKILL, not re-send SIGINT.
         self._next_step_signal = signal.SIGKILL
-        # Give the steps a moment to wind down on their own. Polling keeps this simple and
-        # lets shutdown proceed immediately once the last step is gone, which is the common case.
+        # Give the steps a moment to wind down on their own.
+        # Polling keeps this simple
+        # and lets shutdown proceed immediately once the last step is gone,
+        # which is the common case.
         loop = asyncio.get_running_loop()
         deadline = loop.time() + INTERRUPT_GRACE
         while len(self.builder.running_tasks) > 0 and not self._interrupt_escalate.is_set():
@@ -1131,23 +1127,25 @@ class DirectorHandler:
         just like `interrupt`, this is the only thing that reaches them.
         Stopping this process is done by re-raising `SIGTSTP` with the default disposition,
         the canonical way for a program to honour a suspension, rather than by `SIGSTOP`:
-        the shell tracks the terminal user interface as a job, and `fg` continues the whole
-        process group, this process included.
+        the shell tracks the terminal user interface as a job,
+        and `fg` continues the whole process group, this process included.
 
-        The steps are resumed on the line after the self-stop instead of from a `SIGCONT`
-        handler, which keeps both halves in one readable block. It also degrades gracefully
-        when this process group is orphaned (`setsid stepup build`): the kernel then
-        discards the re-raised `SIGTSTP`, `os.kill` returns straight away and the steps are
-        resumed immediately, matching the terminal user interface, which is not stopped
-        in that situation either.
+        The steps are resumed in the `finally` block right after the self-stop,
+        instead of from a `SIGCONT` handler, which keeps both halves in one readable block.
+        It also degrades gracefully when this process group is orphaned (`setsid stepup build`):
+        the kernel then discards the re-raised `SIGTSTP`, `os.kill` returns straight away
+        and the steps are resumed immediately,
+        matching the terminal user interface, which is not stopped in that situation either.
 
-        Nothing is reported here: the reporter socket is served by the terminal user
-        interface, which is stopping at this very moment, so awaiting it would block this
-        process on its way down. The user-visible message is sent on resume instead.
+        Nothing is reported here:
+        the reporter socket is served by the terminal user interface,
+        which is stopping at this very moment,
+        so awaiting it would block this process on its way down.
+        The user-visible message is sent on resume instead.
 
         This is a plain callback (not a coroutine), as required by `add_signal_handler`.
-        Blocking the event loop is the point: the process must not do anything else while
-        it is suspended.
+        Blocking the event loop is the point:
+        the process must not do anything else while it is suspended.
         """
         loop = asyncio.get_running_loop()
         self.executor.suspend()
@@ -1179,21 +1177,17 @@ class DirectorHandler:
     # Interactive use
     #
 
-    async def _wait_watch_active(self) -> None:
-        """Block until the watch phase starts or the director stops.
-
-        Returns immediately when the director runs without a watcher.
-        """
-        if self.watcher is None:
-            return
-        await wait_for_events(
-            self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
-        )
+    async def _wait_for_end_build_phase(self) -> None:
+        """Block until the build phase ends (or the watch phase starts when using `--watch`)."""
+        events = [self.stop_event]
+        if self.watcher is not None:
+            events.append(self.watcher.active)
+        await wait_for_events(*events, return_when=asyncio.FIRST_COMPLETED)
 
     async def _watch_change(self, path: str, observed: set[Path]) -> None:
         """Block until `path` shows up in `observed`, a live set owned by the watcher."""
         path = Path(path).normpath()
-        await self._wait_watch_active()
+        await self._wait_for_end_build_phase()
         event = asyncio.Event()
         self.watcher.files_changed_events.add(event)
         try:
@@ -1207,25 +1201,23 @@ class DirectorHandler:
 
     @allow_rpc
     async def drain(self) -> None:
-        """Do not start new steps and switch to the watch phase after the build phase completes.
+        """Stop dispatching new steps and wait until running steps have completed.
 
-        Notes
-        -----
-        This RPC blocks until all running steps have completed.
+        When using the `--watch` option,
+        StepUp switches to the watch phase when there are no more running steps.
         """
         self.scheduler.on_hold = True
-        await self._wait_watch_active()
+        await self._wait_for_end_build_phase()
 
     @allow_rpc
     async def join(self) -> None:
-        """Block until the builder completed all (runnable) steps and shut down."""
-        if self.watcher is not None:
-            await self._wait_watch_active()
-            await self.shutdown()
+        """Block until the builder has completed all (runnable) steps, then shut down."""
+        await self._wait_for_end_build_phase()
+        await self.shutdown()
 
     @allow_rpc
     async def graph(self, prefix: str) -> None:
-        """Write out the graph in text format."""
+        """Write out the graph in text and dot formats."""
         async with self.db:
             with open(f"{prefix}.txt", "w") as fh:
                 print(self.workflow.format_str(), file=fh)
@@ -1249,7 +1241,7 @@ class DirectorHandler:
         if self.watcher is None or not self.watcher.active.is_set():
             return
         async with self.db:
-            # Make all failed steps pending again for rerun
+            # Make all failed steps pending again for rerun.
             for step in self.workflow.steps(StepState.FAILED):
                 self.workflow.mark_step_pending(step)
         self.watcher.interrupt.set()
@@ -1261,20 +1253,20 @@ class DirectorHandler:
 
     @allow_rpc
     async def watch_update(self, path: str) -> None:
-        """Block until the watcher observed an update of the file."""
+        """Block until the watcher has observed an update of the file."""
         if self.watcher is not None:
             await self._watch_change(path, self.watcher.updated)
 
     @allow_rpc
     async def watch_delete(self, path: str) -> None:
-        """Block until the watcher observed the deletion of the file."""
+        """Block until the watcher has observed the deletion of the file."""
         if self.watcher is not None:
             await self._watch_change(path, self.watcher.deleted)
 
     @allow_rpc
     async def wait(self) -> None:
-        """Block until the builder completed all (runnable) steps."""
-        await self._wait_watch_active()
+        """Block until the builder has completed all (runnable) steps."""
+        await self._wait_for_end_build_phase()
 
 
 if __name__ == "__main__":

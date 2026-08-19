@@ -2,10 +2,8 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """File and step hashing.
 
-Hash computation is the only blocking work the director does. `ThreadWorker` runs it in a
-dedicated thread, one per hash computation, so the director's event loop stays responsive;
-`compute_inp_hashes` / `compute_out_hashes` / `compute_both_hashes` are the pure functions run
-inside such a thread.
+Because the hash computation is performed in threads to avoid blocking the director process,
+the functions `compute_inp_hashes`, `compute_out_hashes` and `compute_both_hashes` must be pure.
 """
 
 import hashlib
@@ -25,6 +23,7 @@ from .exceptions import HashCancelledError, HashFailedError
 __all__ = (
     "HASH_CHUNK_SIZE",
     "FileHash",
+    "HashComputeResult",
     "HashWords",
     "InpInfo",
     "OutInfo",
@@ -40,14 +39,37 @@ __all__ = (
 )
 
 
-HASH_CHUNK_SIZE = 1 << 18  # 256 KiB — matches hashlib.file_digest's own internal buffer size.
+# 256 KiB is the `_bufsize` default of `hashlib.file_digest`,
+# unchanged since CPython 3.11 introduced it (still so on the 3.15 development branch).
+HASH_CHUNK_SIZE = 1 << 18
 
 
 @attrs.define
 class HashWords:
+    """An incremental SHA-256 hash of a sequence of words.
+
+    Every word is preceded by a marker for its type,
+    so that consecutive words remain distinguishable
+    and an empty word differs from a missing one.
+    """
+
     _hash = attrs.field(init=False, factory=hashlib.sha256)
 
     def update(self, word: str | bytes | None):
+        """Add a word to the hash.
+
+        Parameters
+        ----------
+        word
+            The word to add.
+            A `str` is encoded as UTF-8.
+            `None` stands for a missing word and contributes only its marker.
+
+        Raises
+        ------
+        TypeError
+            When `word` is not a `str`, `bytes` or `None`.
+        """
         if isinstance(word, bytes):
             self._hash.update(b"\0\0")
             self._hash.update(word)
@@ -60,6 +82,13 @@ class HashWords:
             raise TypeError(f"Not supported by HashWords: {type(word)}")
 
     def digest(self):
+        """Compute the hash of the words added so far.
+
+        Returns
+        -------
+        digest
+            A 32-byte SHA-256 hash.
+        """
         return self._hash.digest()
 
 
@@ -83,7 +112,7 @@ def compute_file_digest(
     Returns
     -------
     digest
-        A 32 bytes SHA-256 hash.
+        A 32-byte SHA-256 hash.
 
     Raises
     ------
@@ -99,12 +128,13 @@ def compute_file_digest(
     if path.is_dir():
         raise HashFailedError(f"File digests of directories are not supported: {path}")
     # Expensive part:
-    # Not using hashlib.file_digest, same algorithm reimplemented here with a cancellation check.
+    # hashlib.file_digest is not used here:
+    # the same algorithm is reimplemented with a cancellation check.
     digest = hashlib.sha256()
     buf = bytearray(HASH_CHUNK_SIZE)
     view = memoryview(buf)
     # With buffering=0, readinto performs at most one syscall,
-    # so nread may be smaller than the buffer for pipes or network filesystems;
+    # so nread may be smaller than the buffer for pipes or network file systems;
     # only nread == 0 means EOF.
     with open(path, "rb", buffering=0) as fh:
         while True:
@@ -118,6 +148,19 @@ def compute_file_digest(
 
 
 def fmt_file_hash_diff(old_hash: "FileHash", new_hash: "FileHash") -> str | None:
+    """Summarize the differences between two hashes of the same file.
+
+    Parameters
+    ----------
+    old_hash, new_hash
+        The hashes to compare.
+
+    Returns
+    -------
+    diff
+        A parenthesized summary of the changed digest, size and mode,
+        or `None` when none of these three differ.
+    """
     changes = []
     if old_hash.digest != new_hash.digest:
         changes.append(f"digest {fmt_digest(old_hash.digest)} ➜ {fmt_digest(new_hash.digest)}")
@@ -129,6 +172,22 @@ def fmt_file_hash_diff(old_hash: "FileHash", new_hash: "FileHash") -> str | None
 
 
 def fmt_digest(digest: bytes | None) -> str:
+    """Format a digest for display.
+
+    Parameters
+    ----------
+    digest
+        A 32-byte SHA-256 hash,
+        the one-byte placeholder of a hash that could not be computed,
+        or `None` when there is no digest at all.
+
+    Returns
+    -------
+    formatted
+        The first eight hexadecimal characters of the digest,
+        `(unset)` for `None`, `UNKNOWN` for the placeholder `b"u"`
+        and `?` for any other one-byte placeholder.
+    """
     if digest is None:
         return "(unset)"
     if len(digest) == 1:
@@ -139,6 +198,18 @@ def fmt_digest(digest: bytes | None) -> str:
 
 
 def fmt_env_value(value: str | None) -> str:
+    """Format the value of an environment variable for display.
+
+    Parameters
+    ----------
+    value
+        The value of the variable, or `None` when the variable is not defined.
+
+    Returns
+    -------
+    formatted
+        The quoted value preceded by an equals sign, or `(unset)`.
+    """
     return "(unset)" if value is None else f"='{value}'"
 
 
@@ -146,14 +217,15 @@ def fmt_env_value(value: str | None) -> str:
 class FileHash:
     """A hash of a file's content and file properties.
 
-    For existing (regular) files, the digest attribute is a SHA-256 hash of the file content,
+    For existing (regular) files, the `digest` attribute is a SHA-256 hash of the file content,
     and the mode of the file is also stored as "part of the hash".
-    When either contents, size or mode changes, the file is considered changed.
+    When the contents, the size or the mode changes, the file is considered changed.
 
-    If the file does not exist, the digest is set to b"u".
+    If the file does not exist, the hash is unknown:
+    the digest is set to `b"u"` and all other properties to zero.
 
-    In addition to the digest and mode, some more properties are stored
-    to decide if the recomputation of a file hash is necessary:
+    In addition to the digest and the mode, some more properties are stored
+    to decide whether the digest must be recomputed:
 
     - the last modification time
     - the file size
@@ -162,7 +234,8 @@ class FileHash:
     If all three (and also the mode) remained the same, the digest is not recomputed.
     """
 
-    # File properties whose changes are relevant
+    # File properties whose changes are relevant.
+
     _digest: bytes = attrs.field(converter=bytes, repr=fmt_digest)
     """The SHA-256 hash of the file's content."""
     _mode: int = attrs.field(converter=int, repr=stat.filemode)
@@ -170,6 +243,10 @@ class FileHash:
 
     # Properties that are only used to detect changes.
     # If these have not changed, the digest is not recomputed.
+
+    # Note that _mtime and _inode are not used for sorting,
+    # to ensure deterministic order across builds when sorting by FileHash instance.
+
     _mtime: float = attrs.field(converter=float, repr=False, eq=False)
     """The last modification time."""
 
@@ -181,6 +258,7 @@ class FileHash:
 
     @classmethod
     def unknown(cls):
+        """Create the hash of a file that does not exist."""
         return cls(b"u", 0, 0.0, 0, 0)
 
     def regen(self, path: str, cancel_event: threading.Event | None = None) -> Self:
@@ -189,9 +267,9 @@ class FileHash:
         Parameters
         ----------
         path
-            Path to a file or directory.
+            Path to a file.
             If the file or directory does not exist, the hash is set to "unknown",
-            i.e. the digest is set to b"u" and the mode to 0.
+            i.e. the digest is set to `b"u"` and the mode to 0.
         cancel_event
             When given, passed on to `compute_file_digest`
             so a digest computation in progress can be aborted promptly.
@@ -199,7 +277,8 @@ class FileHash:
         Returns
         -------
         evolved
-            The new hash. If the file has not changed, no new hash is created and self is returned.
+            The new hash.
+            If the file has not changed, no new hash is created and `self` is returned.
             For a proper comparison between hashes, use the `==` operator, not the `is` operator.
             Two hashes are considered the same if their content, size and mode are the same,
             but timestamps and inodes may differ.
@@ -209,16 +288,16 @@ class FileHash:
         HashCancelledError
             When `cancel_event` was set before the whole file was hashed.
         HashFailedError
-            When `path` is a directory.
+            When `path` is a directory or ends with a directory separator.
         """
         # Check for cancellation early.
         if cancel_event is not None and cancel_event.is_set():
             raise HashCancelledError(path)
-        # Check if the file exists and is a regular file.
+        # A file that does not exist has an unknown hash.
         path = Path(path)
         if not path.exists():
             return self if self.is_unknown else self.unknown()
-        # Check if the hash computation can be skipped.
+        # Collect the file properties and reject directories.
         st = path.stat()
         mode = st.st_mode
         if path.is_dir():
@@ -228,7 +307,7 @@ class FileHash:
         mtime = st.st_mtime
         size = st.st_size
         inode = st.st_ino
-        # Decide if the digest computation can be skipped
+        # Decide whether the digest computation can be skipped.
         if (
             self._mode == mode
             and self._mtime == mtime
@@ -241,26 +320,32 @@ class FileHash:
 
     @property
     def digest(self) -> bytes:
+        """The SHA-256 hash of the file's content, or `b"u"` when the hash is unknown."""
         return self._digest
 
     @property
     def mode(self) -> int:
+        """The file mode, in the encoding of `os.stat_result.st_mode`."""
         return self._mode
 
     @property
     def mtime(self) -> float:
+        """The last modification time, in seconds since the epoch."""
         return self._mtime
 
     @property
     def size(self) -> int:
+        """The file size in bytes."""
         return self._size
 
     @property
     def inode(self) -> int:
+        """The inode number of the file on the file system."""
         return self._inode
 
     @property
     def is_unknown(self):
+        """Whether the digest is the placeholder for a file that does not exist."""
         return self._digest == b"u"
 
     def to_json(self) -> str | None:
@@ -279,7 +364,7 @@ class FileHash:
 
 @attrs.define
 class InpInfo:
-    """Details of ingredients used to compute the inp_digest of a StepHash."""
+    """Details of the ingredients used to compute the `inp_digest` of a `StepHash`."""
 
     inp_hashes: dict[str, FileHash] = attrs.field(factory=dict)
     env_values: dict[str, str | None] = attrs.field(factory=dict)
@@ -288,14 +373,24 @@ class InpInfo:
 
 @attrs.define
 class OutInfo:
-    """Details of ingredients used to compute the out_digest of a StepHash."""
+    """Details of the ingredients used to compute the `out_digest` of a `StepHash`."""
 
     out_hashes: dict[str, FileHash] = attrs.field(factory=dict)
 
 
 @attrs.define
 class StepHash:
-    """A hash used to detect if a step can be skipped or not."""
+    """A hash used to detect whether a step can be skipped.
+
+    The input digest covers everything a step depends on:
+    its key, whether it is a shell command,
+    its input files and the environment variables and overrides it uses.
+    The output digest covers the files the step has created.
+
+    A step hash is either compact or extended.
+    An extended hash also keeps the ingredients of both digests (`InpInfo` and `OutInfo`),
+    so that a difference between two hashes can be explained in detail.
+    """
 
     _inp_digest: bytes = attrs.field()
     _inp_info: InpInfo | None = attrs.field(default=None)
@@ -333,12 +428,10 @@ class StepHash:
         for env_var, value in sorted(env_values.items()):
             hw.update(env_var)
             hw.update(value)
-        # Only mix in env_overrides when present, so steps without overrides keep their digest.
-        if env_overrides:
-            hw.update("__env_overrides__")
-            for name, value in sorted(env_overrides.items()):
-                hw.update(name)
-                hw.update(value)
+        hw.update("__env_overrides__")
+        for name, value in sorted(env_overrides.items()):
+            hw.update(name)
+            hw.update(value)
         inp_digest = hw.digest()
         inp_info = (
             InpInfo(dict(inp_hashes), dict(env_values), dict(env_overrides)) if extended else None
@@ -364,18 +457,22 @@ class StepHash:
 
     @property
     def inp_digest(self) -> bytes:
+        """The digest of the step's inputs."""
         return self._inp_digest
 
     @property
     def inp_info(self) -> InpInfo | None:
+        """The ingredients of `inp_digest`, or `None` for a compact hash."""
         return self._inp_info
 
     @property
     def out_digest(self) -> bytes | None:
+        """The digest of the step's outputs, or `None` when they have not been hashed yet."""
         return self._out_digest
 
     @property
     def out_info(self) -> OutInfo | None:
+        """The ingredients of `out_digest`, or `None` for a compact or output-less hash."""
         return self._out_info
 
     def to_json(self) -> str:
@@ -391,6 +488,21 @@ class StepHash:
 
 
 def compare_step_hashes(old_hash: StepHash, new_hash: StepHash) -> tuple[str, str]:
+    """Explain the differences between two hashes of the same step.
+
+    Parameters
+    ----------
+    old_hash, new_hash
+        The hashes to compare.
+
+    Returns
+    -------
+    changed, same
+        Two multi-line reports, one for the ingredients that differ
+        and one for those that are identical.
+        Input and output ingredients are only detailed when both hashes are extended.
+        Files and environment variables are listed in sorted order.
+    """
     chl = []
     sml = []
     _compare_step_digests(chl, sml, old_hash, new_hash)
@@ -530,7 +642,7 @@ def _explain_env_dict_changes(
 class HashComputeResult:
     """The result of a hash computation.
 
-    This is used as a return value of the `compute_...` functions below.
+    This is the return value of the `compute_inp_hashes` and `compute_out_hashes` functions.
     """
 
     messages: list[str] = attrs.field()
@@ -557,16 +669,16 @@ def compute_inp_hashes(
 
     Returns
     -------
-    HashComputeResult
+    result
         The result of the hash computation.
-        The messages attribute contains a list of unexpected input changes or vanished inputs.
+        The `messages` attribute contains a list of unexpected input changes or vanished inputs.
         The paths are processed in sorted order, so the messages are reported deterministically
         and both hash dictionaries are ordered by path.
 
     Raises
     ------
     HashCancelledError
-        When `cancel_event` was set before the whole file was hashed.
+        When `cancel_event` was set before all files were hashed.
     HashFailedError
         When an input turned out to be a directory.
     """
@@ -604,15 +716,15 @@ def compute_out_hashes(
 
     Returns
     -------
-    HashComputeResult
+    result
         The result of the hash computation.
-        The messages attribute contains a list of missing output paths.
+        The `messages` attribute contains a list of missing output paths.
         The paths are processed in sorted order, as in `compute_inp_hashes`.
 
     Raises
     ------
     HashCancelledError
-        When `cancel_event` was set before the whole file was hashed.
+        When `cancel_event` was set before all files were hashed.
     HashFailedError
         When an output turned out to be a directory.
     """
@@ -655,7 +767,7 @@ def compute_both_hashes(
     Raises
     ------
     HashCancelledError
-        When `cancel_event` was set before the whole file was hashed.
+        When `cancel_event` was set before all files were hashed.
     HashFailedError
         When an input or output turned out to be a directory.
     """

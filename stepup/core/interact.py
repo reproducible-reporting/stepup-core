@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Collection of tools to interact with the StepUp director.
 
-Most of these tools are used for testing purposes
+Most of these tools are used for testing purposes.
 They can also be employed to create keyboard shortcuts within your IDE,
 or to interact with StepUp running in the background on a remote server.
 """
@@ -20,7 +20,7 @@ from .api import get_rpc_client
 from .config import ConfigLoader
 from .constants import DIRECTOR_LOG
 from .enums import ReturnCode
-from .exceptions import InteractError, RPCError, UsageError
+from .exceptions import RPCError, ToolError, UsageError
 from .utils import is_process_running, query_director_log
 
 # The subcommands are referenced by string in `pyproject.toml`'s `stepup.tools` entry points.
@@ -51,9 +51,9 @@ GET_SOCKET_INTERVAL = 0.5
 
 
 def _report_errors(tool: Callable) -> Callable:
-    """Turn an error while contacting the director into a short message on stderr.
+    """Turn a failed director call into a short message on stderr.
 
-    The wrapped tool exits with `ReturnCode.INTERNAL` instead of raising,
+    Upon a failed call, the wrapped tool exits with `ReturnCode.INTERNAL` instead of raising,
     so that a missing or vanished director does not confront the user with a traceback.
     """
 
@@ -61,8 +61,8 @@ def _report_errors(tool: Callable) -> Callable:
     def wrapper(args: argparse.Namespace):
         try:
             return tool(args)
-        except (InteractError, UsageError) as exc:
-            # A `UsageError` reaches this point when the director rejected the call itself.
+        except (ToolError, UsageError) as exc:
+            # A `UsageError` reaches this point when the director itself rejected the call.
             # It carries a short, self-contained message, so it is printed as is,
             # unlike the `RPCError` below, which is about not reaching the director at all.
             message = str(exc)
@@ -79,11 +79,6 @@ def _report_errors(tool: Callable) -> Callable:
 def get_socket() -> Path:
     """Block until the director socket is known and return it.
 
-    The wait is only bounded by `GET_SOCKET_TIMEOUT` as long as `DIRECTOR_LOG`
-    shows no sign of a live director process.
-    A director that is still scanning files at startup may take much longer than that
-    to create its socket, and is waited for without a deadline.
-
     Returns
     -------
     socket_path
@@ -91,7 +86,7 @@ def get_socket() -> Path:
 
     Raises
     ------
-    InteractError
+    ToolError
         If `DIRECTOR_LOG` did not name a live director process
         within `GET_SOCKET_TIMEOUT` seconds,
         e.g. because no director is running.
@@ -118,7 +113,7 @@ def get_socket() -> Path:
                 print(f"StepUp director (pid {pid}) is starting up.", file=sys.stderr)
                 reported_startup = True
         elif time.monotonic() >= deadline:
-            raise InteractError(f"{message}  Giving up: StepUp does not seem to be running.")
+            raise ToolError(f"{message}  Giving up: StepUp does not seem to be running.")
         else:
             print(message, file=sys.stderr)
         time.sleep(GET_SOCKET_INTERVAL)
@@ -131,6 +126,7 @@ def shutdown_tool(args: argparse.Namespace):
 
 
 def shutdown_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Add the `shutdown` subcommand to the parser."""
     subparsers.add_parser(
         "shutdown",
         help="Put the scheduler on hold, wait for running steps to complete and then exit StepUp. "
@@ -146,6 +142,7 @@ def drain_tool(args: argparse.Namespace):
 
 
 def drain_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Add the `drain` subcommand to the parser."""
     subparsers.add_parser(
         "drain",
         help="Put the scheduler on hold. (No new steps are started.)",
@@ -157,11 +154,13 @@ def drain_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 def join_tool(args: argparse.Namespace):
     """Wait for the builder to become idle and stop the director.
 
-    This is the same as `wait()` followed by `shutdown()`."""
+    This is the same as `stepup wait` followed by `stepup shutdown`.
+    """
     get_rpc_client(get_socket()).call.join(_rpc_timeout=-1)
 
 
 def join_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Add the `join` subcommand to the parser."""
     subparsers.add_parser(
         "join",
         help="Wait for the builder to become idle and stop the director.",
@@ -176,6 +175,7 @@ def graph_tool(args: argparse.Namespace):
 
 
 def graph_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Add the `graph` subcommand to the parser."""
     parser = subparsers.add_parser(
         "graph",
         help="Write the workflow graph files in text and dot formats.",
@@ -196,6 +196,7 @@ def run_tool(args: argparse.Namespace):
 
 
 def run_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Add the `run` subcommand to the parser."""
     subparsers.add_parser(
         "run",
         help="Exit the watch phase and start the build phase.",
@@ -210,6 +211,7 @@ def watch_update_tool(args: argparse.Namespace):
 
 
 def watch_update_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Add the `watch-update` subcommand to the parser."""
     parser = subparsers.add_parser(
         "watch-update",
         help="Block until the watcher has observed an update of the file.",
@@ -228,6 +230,7 @@ def watch_delete_tool(args: argparse.Namespace):
 
 
 def watch_delete_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Add the `watch-delete` subcommand to the parser."""
     parser = subparsers.add_parser(
         "watch-delete",
         help="Block until the watcher has observed the deletion of the file.",
@@ -246,6 +249,7 @@ def wait_tool(args: argparse.Namespace):
 
 
 def wait_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Add the `wait` subcommand to the parser."""
     subparsers.add_parser(
         "wait",
         help="Block until the builder has become idle.",

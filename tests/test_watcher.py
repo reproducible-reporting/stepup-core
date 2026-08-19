@@ -91,7 +91,7 @@ async def test_watch_changes_reports_unchanged_and_updates_only_the_changed_file
         watcher.interrupt.set()
         watcher.updated.update(["same.txt", "changed.txt"])
 
-        await watcher.watch_changes(asyncio.Queue(), asyncio.Event())
+        await watcher.watch_changes(asyncio.Queue())
 
         # "UPDATED" is reported by record_change() for the raw inotify event, not by the
         # hash-confirmation loop under test here (which only ever reports "UNCHANGED");
@@ -129,7 +129,7 @@ async def test_watch_changes_drain_records_missing_file(wfp: Workflow, tmpdir):
 
         watcher = _make_watcher(wfp)
         watcher.interrupt.set()
-        await watcher.watch_changes(change_queue, asyncio.Event())
+        await watcher.watch_changes(change_queue)
 
         async with wfp.db:
             assert ghost.get_state() == FileState.CONFIRMED

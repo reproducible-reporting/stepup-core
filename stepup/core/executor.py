@@ -3,12 +3,13 @@
 """In-process execution of steps.
 
 The `Executor` runs each step directly inside the director's event loop as an asyncio task.
-Launching the step's command (subprocess or forkserver child, see `stepup.core.run`) and
-hashing its inputs/outputs (in a dedicated thread, see `stepup.core.hash`) are delegated to
-their own modules; the `Executor` ties the results into the step lifecycle.
+Launching the step's command (subprocess or forkserver child, see `stepup.core.run`)
+and hashing its inputs/outputs (in a dedicated thread, see `stepup.core.hash`)
+are delegated to their own modules;
+the `Executor` ties the results into the step lifecycle.
 
 A single `Executor` instance serves all concurrent steps.
-A per-step mutable state lives in a `Run` created for each job.
+Per-step mutable state lives in a `Run` created for each job.
 """
 
 import asyncio
@@ -17,7 +18,7 @@ import multiprocessing
 import os
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from typing import Any
 
@@ -49,12 +50,8 @@ from .workflow import Workflow
 __all__ = ("Executor",)
 
 
-ROLE_COLUMN = 20
-"""Width of the role column in `Executor._format_provenance`, as in `Trellis.format_str`."""
-
-
 #
-# Helper class to block accidental overwrites in the running steps dict
+# Helper class to block accidental overwrites in the dict of running jobs
 #
 
 
@@ -76,12 +73,15 @@ class NoOverwriteDict(dict):
 class Executor:
     """Run steps in the director process as asyncio tasks.
 
-    One shared instance serves all concurrent steps. Its external API:
+    One shared instance serves all concurrent steps.
+    Its external API:
 
     - `validate_dynamic_job`, `try_skip_job` and `execute_job` are the coroutines
       created for each job.
+    - `run_hash_job` is the coroutine created for each hash job.
     - `defer` marks a running job as deferred for later execution.
     - `interrupt` signals every currently running job.
+    - `suspend` and `resume` stop and continue the running step commands.
     """
 
     # References to other StepUp components.
@@ -103,7 +103,7 @@ class Executor:
     """A reporter to send progress and terminal output to."""
 
     mp_ctx: multiprocessing.context.BaseContext | None = attrs.field(kw_only=True, default=None)
-    """Forkserver multiprocessing context, or None to use plain subprocesses."""
+    """Forkserver multiprocessing context, or `None` to use plain subprocesses."""
 
     # Boolean configuration flags
 
@@ -111,7 +111,7 @@ class Executor:
     """Flag to explain why a step is rerun rather than skipped, or vice versa."""
 
     keep_going: bool = attrs.field(kw_only=True)
-    """If True, do not put the scheduler on hold when a step fails."""
+    """If `True`, do not put the scheduler on hold when a step fails."""
 
     live_progress: bool = attrs.field(kw_only=True)
     """Whether the reporter is an interactive terminal that wants live step-count updates."""
@@ -129,8 +129,9 @@ class Executor:
     running: NoOverwriteDict[int, Run | HashJob] = attrs.field(init=False, factory=NoOverwriteDict)
     """The `Run`/`HashJob` instances currently in flight, keyed by `job_i`.
 
-    `Executor.interrupt()` only ever reads `.worker` from the values here, so a `HashJob`
-    (which has no `.step`) can share this dict with `Run` without issue.
+    `interrupt`, `suspend` and `resume` only read `.worker` from the values here,
+    so a `HashJob` (which has no `.step`) can share this dict with `Run` without issue.
+    `defer` does read step-specific attributes, but only ever gets the `job_i` of a step.
     """
 
     step_accumulator: ResourceAccumulator = attrs.field(init=False, factory=ResourceAccumulator)
@@ -146,14 +147,15 @@ class Executor:
     """
 
     _counts_flush_tasks: set[asyncio.Task] = attrs.field(init=False, factory=set)
-    """In-flight step-counts flush tasks, kept alive here so they cannot be garbage-collected
-    mid-send (same rationale as `ReporterClient._flush_tasks`)."""
+    """In-flight step-counts flush tasks,
+    kept alive here so they cannot be garbage-collected mid-send
+    (same rationale as `ReporterClient._flush_tasks`)."""
 
     suspended_total: float = attrs.field(init=False, default=0.0)
     """Total wall time [s] spent suspended since the director started.
 
-    `_run_command` samples this before and after launching a child process, so that time
-    spent suspended is not counted as the step's wall time.
+    `_run_command` samples this before and after launching a child process,
+    so that time spent suspended is not counted as the step's wall time.
     """
 
     _suspend_start: float | None = attrs.field(init=False, default=None)
@@ -199,9 +201,10 @@ class Executor:
     def suspend(self) -> None:
         """Stop the child process of every running step, for the duration of a suspension.
 
-        This is not a variation on `interrupt`: `ThreadWorker.interrupt` cancels its
-        computation instead of signalling a process, which is the opposite of what a
-        suspension needs. Hash threads are left alone here, see `ThreadWorker.suspend`.
+        This is not a variation on `interrupt`:
+        `ThreadWorker.interrupt` cancels its computation instead of signalling a process,
+        which is the opposite of what a suspension needs.
+        Hash threads are left alone here, see `ThreadWorker.suspend`.
         """
         if self._suspend_start is not None:
             return
@@ -247,9 +250,9 @@ class Executor:
         env_deps: list[str],
         step_hash: StepHash,
     ):
-        """Test if the inputs (hashes) have changed, which would invalidate the dynamic step info.
+        """Test whether the input hashes changed, which would invalidate the dynamic step info.
 
-        If the job can be validated, it is put back in the pending state,
+        If the dynamic step info is still valid, the step is put back in the pending state,
         so that it can be re-queued when new inputs arrive.
         """
         run, new_hash = await self._new_run(job_i, step, inp_hashes, env_deps)
@@ -257,7 +260,7 @@ class Executor:
             # Step failed early due to unexpected input changes, error already reported.
             return
         if step_hash.inp_digest != new_hash.inp_digest:
-            # Inputs have changed, so discard dynamic info
+            # Inputs have changed, so discard dynamic info.
             await self._outdated_dynamic(run, step_hash, new_hash)
             await self._reset_step_to_pending(step)
             return
@@ -321,7 +324,6 @@ class Executor:
     ):
         """Execute a step (no skipping).
 
-        The command is never skipped in this method.
         If it wants to be deferred (unavailable or unfresh dynamic inputs)
         but the defer cap has been exceeded,
         the step fails instead of being scheduled for another execution attempt.
@@ -358,11 +360,11 @@ class Executor:
                 # Erase error info to keep the screen output concise.
                 run.outcome = None
             if run.outcome is not None:
-                # Persist the captured output in the same transaction as completed(),
+                # Persist the captured output in the same transaction as `mark_completed()`,
                 # so a crash cannot leave a completed step without its output (or vice versa).
-                # outcome.stdout/outcome.stderr stay untruncated.
-                # set_outcome truncates a copy internally,
-                # so report() below still forwards the full text to the TUI.
+                # `run.outcome` itself stays untruncated,
+                # because `set_outcome` only truncates what it writes to the database,
+                # so `_report_run` below still forwards the full text to the TUI.
                 max_bytes = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
                 step.set_outcome(run.outcome, max_bytes=max_bytes)
         self._report_step_counts()
@@ -415,7 +417,7 @@ class Executor:
         if unexpected_input_changes:
             # This is the worst case: inputs should never change while a step is running.
             # If they do, fail hard and stop ASAP.
-            # Some of the stopping logic is found in `execute_job`, after this classification.
+            # The rest of the stopping logic runs after this classification, in `execute_job()`.
             run.success = False
             new_hash = None
             # Clear the dynamic inputs to mark the step as failed instead of pending.
@@ -424,7 +426,7 @@ class Executor:
             wants_defer = False
             self.workflow.update_file_hashes(new_inp_hashes, cause=HashUpdateCause.FAILED)
         elif wants_defer:
-            # Rescheduling in the completed() method needs the new hash to be None,
+            # Rescheduling in the `mark_completed()`` method needs the new hash to be None,
             # so the step is not marked as succeeded.
             run.success = False
             new_hash = None
@@ -438,9 +440,10 @@ class Executor:
         """Request a step-state counts report, coalescing with any already pending.
 
         This is a no-op when the reporter has no live progress display to feed
-        (`live_progress` is `False`). Otherwise, it schedules `_flush_step_counts`
-        `PROGRESS_REFRESH_DELAY` from now, unless a flush is already pending, so that a
-        burst of calls (e.g. several steps completing in the same event-loop iteration)
+        (`live_progress` is `False`).
+        Otherwise, it schedules `_flush_step_counts` `PROGRESS_REFRESH_DELAY` from now,
+        unless a flush is already pending,
+        so that a burst of calls (e.g. several steps completing in the same event-loop iteration)
         collapses into a single `count_required_steps()` scan and RPC call.
 
         Mirrors `ReporterClient._request_jobs_flush`'s coalescing timer.
@@ -465,7 +468,7 @@ class Executor:
         await self.reporter.update_counts(nsuccess, ntotal)
 
     async def _reset_step_to_pending(self, step: Step) -> None:
-        """Discard a step's stored hash and transition it back to PENDING for re-execution."""
+        """Discard a step's stored hash and transition it back to `PENDING` for re-execution."""
         async with self.db:
             step.reset_for_rerun()
             step.delete_hash()
@@ -505,10 +508,13 @@ class Executor:
             return run, new_step_hash
 
         # Either the hash computation was cancelled because the build is shutting down
-        # (see `Executor.interrupt`), in which case `new_inp_hashes` is empty and `run` has
-        # already been marked failed by `_run_work_thread`, or the hashes of the input files
-        # on disk differ from those in the database, or some inputs were deleted. The latter
-        # breaks the workflow, so the step is flagged as failed and the scheduler held.
+        # (see `Executor.interrupt`),
+        # in which case `new_inp_hashes` is empty
+        # and `run` has already been marked failed by `_run_work_thread`,
+        # or the hashes of the input files on disk differ from those in the database,
+        # or some inputs were deleted.
+        # The latter two break the workflow,
+        # so the step is flagged as failed and the scheduler held.
         unexpected_input_changes = len(new_inp_hashes) > 0
         if unexpected_input_changes:
             async with self.db:
@@ -541,8 +547,8 @@ class Executor:
         """Run a GIL-releasing computation in a thread.
 
         Returns `None` if the computation was cancelled by an interrupted shutdown
-        (see `Executor.interrupt`) or failed outright, in which case `run` has already been
-        marked failed.
+        (see `Executor.interrupt`) or failed outright,
+        in which case `run` has already been marked failed.
         """
         with self._track_running(run):
             worker = ThreadWorker(work=work, job_i=run.job_i)
@@ -555,11 +561,13 @@ class Executor:
                 )
                 return None
             except Exception as exc:  # noqa: BLE001
-                # Must not propagate as a task exception: that would crash job_loop via
-                # handle_done_tasks, tearing down the whole director over one bad file
-                # (e.g. HashFailedError when a step's output turned out to be a directory,
-                # or a PermissionError from stat()). Treat it as this step's own failure
-                # instead, mirroring `_run_hash_job`'s handling of the same class of error.
+                # Must not propagate as a task exception:
+                # that would crash `job_loop` via `handle_done_tasks`,
+                # tearing down the whole director over one bad file
+                # (e.g. `HashFailedError` when a step's output turned out to be a directory,
+                # or a `PermissionError` from `stat()`).
+                # Treat it as this step's own failure instead,
+                # mirroring `_run_hash_job`'s handling of the same class of error.
                 self._fail_run_with_message(run, f"Hash computation failed: {exc}")
                 return None
             finally:
@@ -578,8 +586,8 @@ class Executor:
             run.outcome = attrs.evolve(run.outcome, stderr=stderr)
 
     @contextmanager
-    def _track_running(self, job: Run | HashJob):
-        """Context manager to track a `Run` or `HashJob` as running."""
+    def _track_running(self, job: Run | HashJob) -> Generator[None, None, None]:
+        """Track a `Run` or `HashJob` as running for the duration of the context."""
         if job.job_i in self.running:
             raise RuntimeError(f"Job {job.job_i} is already tracked as running.")
         self.running[job.job_i] = job
@@ -591,9 +599,9 @@ class Executor:
     async def run_hash_job(self, hash_job: HashJob) -> None:
         """Run `hash_job`, bracketed by progress-bar start/stop calls.
 
-        The bracket lives here, rather than at the three call sites
-        (`Builder.start_hash_task`, `Builder.run_promoted_hash_jobs` and `gather_hashes`),
+        The bracket lives here, rather than at the places where a hash job is started,
         so a hash job is equally visible however it got claimed.
+
         `"H"` is its letter in the progress bar, and `HashJob.job_i` is negative
         (see `hash_queue.py`), so it can never collide with a real `Step.i` in the
         reporter/progress-bar dict, which is keyed by whatever int it is given.
@@ -623,13 +631,16 @@ class Executor:
                 await self.reporter("ERROR", f"Hash cancelled for {hash_job.path}")
                 return
             except Exception as exc:  # noqa: BLE001
-                # E.g. PermissionError from stat(), or a directory mistakenly used as a file input.
-                # Must not propagate as a task exception: that would crash job_loop via
-                # handle_done_tasks, tearing down the whole director over one bad file.
-                # Instead, borrow on_hold's existing visibility/effect: stop dispatching new steps
-                # and report the error loudly (mirroring handle_done_tasks' own on_hold +
-                # report_completion's "Scheduler is put on hold" warning),
-                # while letting already-running/queued work wind down normally.
+                # E.g. a `PermissionError` from `stat()`,
+                # or a directory mistakenly used as a file input.
+                # Must not propagate as a task exception:
+                # that would crash `job_loop` via `handle_done_tasks`,
+                # tearing down the whole director over one bad file.
+                # Instead, borrow `on_hold`'s existing visibility and effect:
+                # stop dispatching new steps and report the error loudly
+                # (mirroring `handle_done_tasks`' own `on_hold`
+                # and `report_completion`'s "Scheduler is put on hold" warning),
+                # while letting already-running or queued work wind down normally.
                 # The file is left UNCONFIRMED.
                 # A fire-and-forget submitter never awaits this future,
                 # so on_hold and the reported error are what surface the failure to the user.
@@ -647,7 +658,8 @@ class Executor:
             # The CONFIRMED cause must be applied even when unchanged:
             # only the update flips UNCONFIRMED -> CONFIRMED/MISSING.
             # Unchanged results under other causes are deliberately NOT applied:
-            # e.g. (EXTERNAL, CONFIRMED, known) would call handle_external_update
+            # e.g. the transition for (EXTERNAL, CONFIRMED, known)
+            # would call `handle_external_update`
             # and needlessly mark all sinks pending. (They should already be pending.)
             async with self.db:
                 self.workflow.update_file_hashes({hash_job.path: new_hash}, cause=hash_job.cause)
@@ -673,6 +685,7 @@ class Executor:
             A single `(title, body)` page, or no page at all when the workflow has no record
             of `path`, e.g. when the file node was removed while the hash was running.
         """
+        role_column = 20
         async with self.db:
             file = self.workflow.find(File, path)
             if file is None:
@@ -684,12 +697,12 @@ class Executor:
             )
             lines = []
             for role, node in related:
-                lines.append(f"{role:>{ROLE_COLUMN}s}   {node.key()}")
+                lines.append(f"{role:>{role_column}s}   {node.key()}")
                 declarer = node.creator()
                 # Only a step declarer is worth a line: it names the script to fix.
                 # A non-step creator (the root node) adds nothing the user can act on.
                 if isinstance(declarer, Step):
-                    lines.append(f"{'declared by':>{ROLE_COLUMN}s}   {declarer.key()}")
+                    lines.append(f"{'declared by':>{role_column}s}   {declarer.key()}")
         return [(f"Provenance of {path}", "\n".join(lines))]
 
     async def _compute_inp_step_hash(
@@ -735,7 +748,7 @@ class Executor:
         step_hash
             `None` if the hash computation was cancelled by an interrupted shutdown.
         new_out_hashes
-            The output file hashes that differed from what was expected before the step ran.
+            The new hashes of the outputs whose hash differs from the one in the workflow.
         """
         async with self.db:
             out_hashes = {rec.path: rec.hash for rec in run.step.out_paths()}
@@ -821,7 +834,7 @@ class Executor:
         env["STEPUP_STEP_NEED"] = need.name
         env["ROOT"] = str(Path.cwd().relpath(workdir))
         env["HERE"] = str(Path(workdir).relpath())
-        # Note: the variables defined here should be listed in stepup.core.api.getenv
+        # Note: the variables defined here must be listed in `RESERVED_ENV_VARS`.
 
         suspended_before = self.suspended_total
         with self._track_running(run):
@@ -830,9 +843,11 @@ class Executor:
             )
         # A suspension stops the child but not the monotonic clock, on either launch path,
         # so it would otherwise be recorded as time the step spent working.
-        # This assumes a stopped step makes no progress, which holds for work that needs the
-        # CPU. A step waiting on a timer is the exception: the kernel keeps its deadline
-        # running while it is stopped, so part of the discounted time was progress after all.
+        # This assumes a stopped step makes no progress,
+        # which holds for work that needs the CPU.
+        # A step waiting on a timer is the exception:
+        # the kernel keeps its deadline running while it is stopped,
+        # so part of the discounted time was progress after all.
         suspended = self.suspended_total - suspended_before
         if suspended > 0.0:
             usage = attrs.evolve(outcome.usage, wtime=max(0.0, outcome.usage.wtime - suspended))
@@ -848,6 +863,7 @@ class Executor:
     #
 
     async def _report_run(self, run: Run):
+        """Report the result of a step's execution."""
         pages = await self._build_report_pages(run)
         action = self._determine_action(run)
         if action == "FAIL" and not self.keep_going:
@@ -862,8 +878,9 @@ class Executor:
             (len(run.unavailable) == 0 and len(run.unfresh) == 0) or run.interrupted_defer
         )
         if not (run.success or needs_defer):
-            # Format command for display (can be copied and pasted into a shell); a non-zero
-            # return code is appended as a trailing `# exit=N` comment by format_subprocess.
+            # Format the command for display, so it can be copied and pasted into a shell.
+            # A non-zero return code is appended
+            # as a trailing `# exit=N` comment by `format_subprocess`.
             async with self.db:
                 shell = run.step.uses_shell()
             pages.append(
@@ -911,6 +928,7 @@ class Executor:
         return "FAIL"
 
     async def _skip(self, run: Run, step_hash: StepHash):
+        """Report a skipped step."""
         pages = []
         if self.explain_rerun:
             page_change, page_same = compare_step_hashes(step_hash, step_hash)
@@ -923,6 +941,7 @@ class Executor:
         await self.reporter("SKIP", run.description, pages)
 
     async def _noskip(self, run: Run, old_hash: StepHash, new_hash: StepHash):
+        """Report a step that was not skipped."""
         if self.explain_rerun:
             pages = []
             if len(run.out_missing) > 0:
@@ -935,6 +954,7 @@ class Executor:
             await self.reporter("NOSKIP", run.description, pages)
 
     async def _outdated_dynamic(self, run: Run, old_hash: StepHash, new_hash: StepHash):
+        """Report a step whose dynamic inputs have changed."""
         if self.explain_rerun:
             page_change, page_same = compare_step_hashes(old_hash, new_hash)
             pages = [("Outdated dynamic dependencies", page_change)]

@@ -30,16 +30,16 @@ __all__ = ("PROGRESS_REFRESH_DELAY", "ReporterClient", "ReporterHandler")
 PROGRESS_REFRESH_DELAY = 0.3
 PROGRESS_REFRESH_INTERVAL = 1.0
 ACTION_COLORS = {
-    # blue
+    # Neutral action
     "START": "blue",
-    # red
+    # Problems
     "ERROR": "red",
     "FAIL": "red",
-    # green
-    "SUCCESS": "green",
-    # yellow
+    # Potential problems
     "WARNING": "yellow",
-    # cyan
+    # Successes
+    "SUCCESS": "green",
+    # Workflow-related details
     "DELETED": "cyan",
     "DROPAMEND": "cyan",
     "NOSKIP": "cyan",
@@ -48,12 +48,12 @@ ACTION_COLORS = {
     "SKIP": "cyan",
     "UNCHANGED": "cyan",
     "UPDATED": "cyan",
-    # magenta
+    # Events outside the workflow
     "DIRECTOR": "magenta",
     "KEYBOARD": "magenta",
     "STARTUP": "magenta",
-    # (default)
-    "PHASE": "",
+    # Separation between phases
+    "PHASE": "",  # default color
 }
 
 
@@ -68,7 +68,7 @@ class ReporterClient:
     _start_job_buffer: dict[int, tuple[str, str]] = attrs.field(init=False, factory=dict)
     """Buffered `start_job` signals not yet sent, keyed by `job_i`.
 
-    A `job_i` present here means its start was not yet flushed to the server.
+    An entry is removed again when `stop_job` arrives before the flush.
     """
 
     _stop_job_buffer: set[int] = attrs.field(init=False, factory=set)
@@ -80,14 +80,11 @@ class ReporterClient:
     """
 
     _flush_jobs_handle: asyncio.TimerHandle | None = attrs.field(init=False, default=None)
-    """Handle for the scheduled `_flush_jobs` call, or `None` when none is pending.
-
-    Mirrors `StepUpProgressBar._refresh_handle`'s coalescing pattern.
-    """
+    """Handle for the scheduled `_flush_jobs` call, or `None` when none is pending."""
 
     _flush_tasks: set[asyncio.Task] = attrs.field(init=False, factory=set)
-    """In-flight `_flush_jobs` tasks, kept alive here so they cannot be garbage-collected
-    mid-send (same rationale as the `tasks` set in `rpc.py::_serve_rpc_recv_loop`)."""
+    """In-flight `_flush_jobs` tasks, kept alive here so they cannot be garbage-collected mid-send
+    (same rationale as the `tasks` set in `rpc.py::_serve_rpc_recv_loop`)."""
 
     @classmethod
     @contextlib.asynccontextmanager
@@ -181,7 +178,7 @@ class ReporterClient:
 
 
 class StepUpProgressBar(ProgressBar):
-    """Custom progress bar to handle the case where the console is not a terminal."""
+    """Progress bar that also lists the steps currently running, with coalesced refreshes."""
 
     def __init__(self, *args, **kwargs):
         self._njob: int = 0
@@ -223,15 +220,16 @@ class StepUpProgressBar(ProgressBar):
             self._running[job_i] = (now, letter, description)
         for job_i in stops:
             self._running.pop(job_i, None)
-        # No need to coalesce here, since this is already called from a coalesced `_flush_jobs`.
+        # The batch of signals is already coalesced, so refresh immediately.
         self.do_refresh()
 
     def shift_starts(self, seconds: float) -> None:
         """Move the start of every running job forward, to discount a suspension.
 
-        The elapsed time shown per job is a wall-clock difference, which keeps growing
-        while the steps are stopped. Shifting their starts keeps the display consistent
-        with the wall time recorded for the steps, see `Executor.suspended_total`.
+        The elapsed time shown per job is a wall-clock difference,
+        which keeps growing while the steps are stopped.
+        Shifting their starts keeps the display consistent
+        with the wall time recorded for the steps (see `Executor.suspended_total`).
         """
         self._running = {
             job_i: (start + seconds, letter, description)
@@ -272,8 +270,9 @@ class ReporterHandler:
     live_progress: bool = attrs.field(init=False)
     """Whether progress can be shown live, i.e. wanted **and** possible.
 
-    This is the single decision behind the progress bar: `progress_bar` and `task_id_step`
-    exist iff this is true. `tui.py` also forwards it to the director (`--live-progress`),
+    This is the single decision behind the progress bar:
+    `progress_bar` and `task_id_step` exist iff this is true.
+    `tui.py` also forwards it to the director (`--live-progress`),
     so the director does not send updates that would be dropped here anyway.
     """
 
@@ -289,11 +288,11 @@ class ReporterHandler:
     _first_build_phase: bool = attrs.field(init=False, default=True)
     """Whether the next `PHASE build` report is the first one of this director's lifetime.
 
-    The log files are already fresh at that point: `tui.py`'s `_reset_stepup_dir` clears
-    them before the director is even spawned. Skipping the wipe on this first occurrence
-    preserves `STARTUP`-phase errors (e.g. a file that could not be hashed), which would
-    otherwise be reported to `fail.log` and then immediately erased before the first
-    `job_loop` runs.
+    The log files are already fresh at that point:
+    `tui.py`'s `_reset_stepup_dir` clears them before the director is even spawned.
+    Skipping the wipe on this first occurrence preserves `STARTUP`-phase errors
+    (e.g. a file that could not be hashed), which would otherwise be reported to `fail.log`
+    and then immediately erased before the first `job_loop` runs.
     """
 
     @console.default
@@ -332,10 +331,8 @@ class ReporterHandler:
 
     @allow_rpc
     def report(self, action: str, description: str, pages: list[tuple[str, str]]):
-        # Action info
-        action_color = ACTION_COLORS[action]
-
         # Print action with extra info
+        action_color = ACTION_COLORS[action]
         description = escape_markup(description)
         line = f"[bold {action_color}]{action:>8s}[/] │ "
         if action == "START":
@@ -399,8 +396,8 @@ class ReporterHandler:
                 completed=nsuccess,
                 total=ntotal,
             )
-            # The caller of update_counts is expected to coalesce multiple calls,
-            # as it also increases efficiency on the caller's side.
+            # Callers of `update_counts` are expected to coalesce their calls,
+            # which also saves work on their side.
             self.progress_bar.do_refresh()
 
     @allow_rpc

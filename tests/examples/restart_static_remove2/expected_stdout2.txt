@@ -5,7 +5,7 @@
    PHASE │ build
 DROPAMEND │ ./plan.py
 ──────────────────────── Outdated dynamic dependencies ─────────────────────────
-Modified step hash   compact ➜ explained, inp_digest b56210be ➜ b082c4f1, out_digest b19341b7 ➜ (unset)
+Modified step hash   compact ➜ explained, inp_digest 0a37b5ac ➜ dc7cd356, out_digest b19341b7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./plan.py
  SUCCESS │ ./plan.py

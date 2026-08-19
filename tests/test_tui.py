@@ -23,7 +23,7 @@ from stepup.core.config import ConfigLoader
 from stepup.core.constants import PERF_DATA
 from stepup.core.director import DirectorHandler
 from stepup.core.enums import ReturnCode
-from stepup.core.exceptions import PathError, TUIError
+from stepup.core.exceptions import PathError, ToolError
 from stepup.core.rpc import allow_rpc, serve_socket_rpc
 from stepup.core.tui import (
     _KEY_ACTIONS,
@@ -228,7 +228,7 @@ def test_normalize_targets_existing_directory_is_file_target(path_tmp: Path) -> 
 
 
 def test_normalize_targets_empty_string(path_tmp: Path) -> None:
-    with contextlib.chdir(path_tmp), pytest.raises(TUIError):
+    with contextlib.chdir(path_tmp), pytest.raises(ToolError):
         _normalize_targets([""], path_tmp)
 
 
@@ -303,12 +303,12 @@ def test_async_build_resolves_relative_stepup_root(
 def test_check_no_running_director_live_pid_raises(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A socket advertised by a still-live pid raises `TUIError` naming the pid."""
+    """A socket advertised by a still-live pid raises `ToolError` naming the pid."""
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", path_tmp / "director.log")
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
     (path_tmp / "director.log").write_text(f"SOCKET{stale_socket}\nPID{os.getpid()}\n")
-    with pytest.raises(TUIError, match=f"pid {os.getpid()}"):
+    with pytest.raises(ToolError, match=f"pid {os.getpid()}"):
         _check_no_running_director()
 
 
@@ -333,7 +333,7 @@ def test_check_no_running_director_missing_pid_line_raises(
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
     (path_tmp / "director.log").write_text(f"SOCKET{stale_socket}\n")
-    with pytest.raises(TUIError, match="may still be running"):
+    with pytest.raises(ToolError, match="may still be running"):
         _check_no_running_director()
 
 
@@ -393,7 +393,7 @@ def test_reset_stepup_dir_keeps_log_when_director_runs(
     (dir_stepup / "other.log").touch()
     monkeypatch.setattr("stepup.core.tui.STEPUP_DIR", dir_stepup)
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)
-    with pytest.raises(TUIError, match="may still be running"):
+    with pytest.raises(ToolError, match="may still be running"):
         _reset_stepup_dir()
     assert director_log.is_file()
     assert (dir_stepup / "other.log").is_file()
@@ -936,10 +936,10 @@ def test_terminal_broadcasts_without_controlling_terminal(monkeypatch: pytest.Mo
 def test_build_tool_tui_error_prints_short_message(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
-    """A `TUIError` raised before the director starts must not dump a traceback."""
+    """A `ToolError` raised before the director starts must not dump a traceback."""
 
     async def raise_tui_error(args: argparse.Namespace) -> None:
-        raise TUIError("Target is foobar: foobar.txt")
+        raise ToolError("Target is foobar: foobar.txt")
 
     monkeypatch.setattr("stepup.core.tui._async_build", raise_tui_error)
     assert _build_tool(argparse.Namespace(targets=["foobar.txt"])) == ReturnCode.INTERNAL.value
@@ -1103,7 +1103,7 @@ def test_keyboard_reports_unreachable_director(
     Regression test: `AsyncRPCClient.socket` raises `FileNotFoundError` (or
     `ConnectionRefusedError`) in the ordinary shutdown window. Catching it at the
     per-keystroke connect keeps it from escaping `keyboard`, `asyncio.gather`, and
-    `_build_tool`'s `except TUIError` as a traceback instead of the exit code.
+    `_build_tool`'s `except ToolError` as a traceback instead of the exit code.
     """
     monkeypatch.setattr("stepup.core.tui._iter_keystrokes", _fixed_keystrokes(["r"]))
     fake_reporter_handler = FakeReporterHandler()

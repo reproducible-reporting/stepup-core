@@ -5,7 +5,7 @@
    PHASE │ build
   NOSKIP │ ./prep.py run
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest efa49ef2 ➜ 61153830, out_digest 864068d4 ➜ (unset)
+Modified step hash   explained, inp_digest 6beba447 ➜ 934c7dd6, out_digest 864068d4 ➜ (unset)
 Modified inp hash    inp1.txt (digest 0111f755 ➜ e10a1287)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        prep.py
@@ -15,7 +15,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
  SUCCESS │ ./prep.py run
   NOSKIP │ ./work.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest dd0f23ea ➜ a58e9543, out_digest 23f5864d ➜ (unset)
+Modified step hash   explained, inp_digest 175bd52f ➜ c7bcd584, out_digest 23f5864d ➜ (unset)
 Modified inp hash    inp2.txt (digest 333d36c1 ➜ 65f653be)
 Modified inp hash    out1.txt (digest 0111f755 ➜ e10a1287)
 ────────────────────────────── Remained the same ───────────────────────────────

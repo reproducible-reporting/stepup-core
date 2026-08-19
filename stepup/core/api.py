@@ -2,13 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Application programming interface to the director.
 
-To keep things simple, it is assumed that one Python process only communicates with one director.
-
-This module should not be imported by other stepup.core modules, safe for some notable exceptions:
-
-- `stepup.core.interact`
-- `stepup.core.extapi`
-- Inside some functions, e.g. `driver()` in `stepup.core.call`.
+To keep things simple, it is assumed that one Python process communicates with only one director.
 
 All path arguments accept either a `str` or any `os.PathLike` object (such as a `pathlib.Path`).
 Note that `pathlib` normalizes away leading `./` and trailing `/` affixes at construction time.
@@ -108,48 +102,50 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     *paths
         One or more paths to declare as static, relative to the current working directory.
         Arguments may also be iterables of strings, or a `NamedGlob` instance
-        (as returned by `glob()`). Each string can be one of:
+        (as returned by `glob()`).
+        Each string can be one of:
 
-        1. A literal path, containing no glob wildcards: it must refer to an existing
-           file or directory.
+        1. A literal path, containing no glob wildcards:
+           it must refer to an existing file or directory.
            A file is declared immediately as a static path,
            unless it already belongs to a static tree registered by the same step,
            in which case this is a no-op and the tree remains the file's owner.
-           A directory is registered as a static tree; files within it are lazily
-           declared static the first time they are used as step inputs.
-        2. A glob pattern with anonymous (`*`, `?`, `[abc]`) or named (`${*name}`)
-           wildcards: it is expanded locally, and every match is classified the same
-           way a literal path is, by what it is on disk.
+           A directory is registered as a static tree;
+           files within it are lazily declared static the first time they are used as step inputs.
+        2. A glob pattern with anonymous (`*`, `?`, `[abc]`) or named (`${*name}`) wildcards:
+           it is expanded locally,
+           and every match is classified the same way a literal path is, by what it is on disk.
            Zero matches is not an error.
-           The pattern is registered with the calling step, so the step becomes
-           pending when the set of matches changes, the same way `glob()` matches are
-           tracked.
+           The pattern is registered with the calling step,
+           so the step becomes pending when the set of matches changes,
+           the same way `glob()` matches are tracked.
            A recursive `**` wildcard is accepted, except as the final path component,
            see `Raises` below.
-           `static()` takes no keyword arguments, so a named wildcard always uses its
-           default subpattern `*`; use `static(glob(pattern, **subs))` when the
-           captures or a constrained subpattern are needed.
+           `static()` takes no keyword arguments,
+           so a named wildcard always uses its default sub-pattern `*`;
+           use `static(glob(pattern, **subs))` when the captures
+           or a constrained sub-pattern are needed.
 
-        A `NamedGlob` argument contributes its matches (`ng.files()`) the same way a
-        pattern's matches do, without registering its pattern again:
+        A `NamedGlob` argument contributes its matches (`ng.files()`)
+        the same way a pattern's matches do, without registering its pattern again:
         `glob()` already did that when it produced the object.
 
-        Within a single `static()` call, directory arguments and matches are always
-        registered before file arguments and matches, regardless of the order in which
-        they were given.
-        This still matters for `static("data/", "other/file.txt")`, where `data/` must
-        exist as a tree before `other/file.txt` is checked against it, and for
-        `static("data/", "data/sub/")`, where the parent tree must be registered before
-        a nested one.
+        Within a single `static()` call,
+        directory arguments and matches are always registered before file arguments and matches,
+        regardless of the order in which they were given.
+        This still matters for `static("data/", "other/file.txt")`,
+        where `data/` must exist as a tree before `other/file.txt` is checked against it,
+        and for `static("data/", "data/sub/")`,
+        where the parent tree must be registered before a nested one.
         It does not decide the outcome of mixing a tree with a file it contains:
-        a single call declaring both is a no-op in either argument order, the same as
-        declaring them in two separate calls in either order.
+        a single call declaring both is a no-op in either argument order,
+        the same as declaring them in two separate calls in either order.
 
     Returns
     -------
     paths
-        A sorted list of the files declared and the static tree roots registered by
-        this call, tree roots with a trailing slash.
+        A sorted list of the files declared and the static tree roots registered by this call,
+        tree roots with a trailing slash.
         Relative to the caller's working directory.
 
     Raises
@@ -164,8 +160,8 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
         or when a path contains an invalid variable identifier.
     GraphError
         When a directory overlaps with an existing static tree of another creator,
-        when it already contains a file declared by another step, or when a file is
-        declared inside another step's static tree.
+        when it already contains a file declared by another step,
+        or when a file is declared inside another step's static tree.
 
     Notes
     -----
@@ -174,37 +170,42 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     These substitutions are based on the state of `os.environ` in the calling script,
     at the time this function is called, not when the step is executed.
 
-    A glob metacharacter (`*`, `?`, `[`) in a literal argument is significant: a file
-    named `table[1].csv` cannot be declared by spelling it out, since the
-    argument is read as a pattern. Use `glob.escape()` from the standard library
-    (`glob.escape("table[1].csv")`) to declare such a file by name.
+    A glob metacharacter (`*`, `?`, `[`) in a literal argument is significant:
+    a file named `table[1].csv` cannot be declared by spelling it out,
+    since the argument is read as a pattern.
+    Use `glob.escape()` from the standard library (`glob.escape("table[1].csv")`)
+    to declare such a file by name.
 
-    A pattern's matches are re-scanned on every run, so a zero-match pattern is not an
-    error: it registers the pattern anyway, which is what lets a later run detect a
-    newly created match.
+    A pattern's matches are re-scanned on every run,
+    so a zero-match pattern is not an error:
+    it registers the pattern anyway,
+    which is what lets a later run detect a newly created match.
 
-    Declaring a static file or a static tree that the same step already declared is a
-    silent no-op, so overlapping patterns and `static(glob(pattern))` compose within
-    one plan instead of raising. This also covers a file inside a static tree the same
-    step registered, in either declaration order: the tree remains the file's owner.
-    The one exception is a step *output* inside the step's own static tree, which still
-    raises, since an output is not a static declaration.
+    Declaring a static file or a static tree that the same step already declared is a silent no-op,
+    so overlapping patterns and `static(glob(pattern))` compose within one plan instead of raising.
+    This also covers a file inside a static tree the same step registered,
+    in either declaration order: the tree remains the file's owner.
+    The one exception is a step *output* inside the step's own static tree,
+    which still raises, since an output is not a static declaration.
 
-    Named wildcards (`${*name}`) are accepted, but their captured substrings are not
-    part of the return value, and every named wildcard uses the default subpattern `*`
-    because `static()` takes no keyword arguments. Use `glob()` to get either.
+    Named wildcards (`${*name}`) are accepted,
+    but their captured substrings are not part of the return value,
+    and every named wildcard uses the default sub-pattern `*`
+    because `static()` takes no keyword arguments.
+    Use `glob()` to get either.
     """
     # Flatten the arguments and substitute environment variables in one pass.
-    # A single `subs_env_vars()` context is used so the env vars are passed in amend() once.
+    # A single `subs_env_vars()` context is used,
+    # so the referenced environment variables are amended in one call.
     su_lit_paths = []
     su_pattern_matches = []
     su_match_paths = []
     with subs_env_vars() as subs:
         for arg in _iter_static_args(paths):
             if isinstance(arg, NamedGlob):
-                # glob() already registered this pattern with the calling step and
-                # its matches come from a filesystem scan, so they need neither
-                # registration nor substitution here.
+                # glob() already registered this pattern with the calling step
+                # and its matches come from a file system scan,
+                # so they need neither registration nor substitution here.
                 su_match_paths.extend(arg.files())
                 continue
             su_arg = _keep_affixes(subs(arg), Path.normpath)
@@ -216,18 +217,19 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
             else:
                 su_lit_paths.append(su_arg)
 
-    # Literal arguments must exist; a match is guaranteed to exist by the scan that
-    # produced it, so it is only classified, never checked.
+    # Literal arguments must exist;
+    # a match is guaranteed to exist by the scan that produced it,
+    # so it is only classified, never checked.
     su_lit_files, su_lit_dirs = _check_inp_paths(su_lit_paths, allow_dirs=True)
     su_match_files = []
     su_match_dirs = []
     for su_path in su_match_paths:
         (su_match_dirs if su_path.is_dir() else su_match_files).append(su_path)
 
-    # Translate to the director's working directory. Trailing separators are preserved
-    # for the patterns and their matches, because the director re-globs the pattern on a
-    # later run and compares against these matches, where a directory carries a
-    # trailing separator (see NamedGlob.glob).
+    # Translate to the director's working directory.
+    # Trailing separators are preserved for the patterns and their matches,
+    # because the director re-globs the pattern on a later run and compares against these matches,
+    # where a directory carries a trailing separator (see NamedGlob.glob).
     # The tree paths are sorted so a parent is registered before a child it contains.
     tr_trees = sorted({translate(su_path) for su_path in su_lit_dirs + su_match_dirs})
     tr_files = sorted({translate(su_path) for su_path in su_lit_files + su_match_files})
@@ -239,8 +241,8 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
         for su_pattern, su_matches in su_pattern_matches
     ]
 
-    # A pattern without matches must still reach the director, so it can make this step
-    # pending when a match appears later.
+    # A pattern without matches must still reach the director,
+    # so it can make this step pending when a match appears later.
     if len(tr_trees) + len(tr_files) + len(tr_patterns) > 0:
         RPC_CLIENT.call.static(get_job_i(), tr_trees, tr_files, tr_patterns)
 
@@ -252,15 +254,18 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
 
 
 def glob(pattern: StrPath, **subs: str) -> NamedGlob:
-    """Match a glob pattern against the filesystem, without declaring anything.
+    """Match a glob pattern against the file system, without declaring anything.
 
-    `glob()` is a pure query: it scans the filesystem, registers the pattern with the
-    calling step so the step becomes pending when the match set changes, and returns
-    the matches. It creates no graph node and owns nothing it matches.
+    `glob()` is a pure query:
+    it scans the file system,
+    registers the pattern with the calling step so the step becomes pending
+    when the match set changes,
+    and returns the matches.
+    It creates no graph node and owns nothing it matches.
 
-    Every match must already be justified some other way: inside a static tree
-    declared with `static()`, or declared static by another plan. Use `static()`
-    instead of `glob()` when the matches still need to be declared.
+    Every match must already be justified some other way:
+    inside a static tree declared with `static()`, or declared static by another plan.
+    Use `static()` instead of `glob()` when the matches still need to be declared.
 
     Parameters
     ----------
@@ -294,9 +299,10 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
     These substitutions are based on the state of `os.environ` in the calling script,
     at the time this function is called, not when the step is executed.
 
-    A wildcard-free `pattern` is a convenient existence probe: `glob()` never raises
-    for a zero-match pattern, so `if glob("data.txt"):` tests whether the file exists
-    without declaring it. Declare it only once the probe succeeds:
+    A wildcard-free `pattern` is a convenient existence probe:
+    `glob()` never raises for a zero-match pattern,
+    so `if glob("data.txt"):` tests whether the file exists without declaring it.
+    Declare it only once the probe succeeds:
 
     ```python
     if glob("data.txt"):
@@ -304,15 +310,12 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
         ...
     ```
 
-    A match that is not (yet) justified by a `static()` declaration is not rejected
-    here: the plan that would declare it may not have run yet. It is instead checked
-    once at the end of the build phase, and reported as a warning, without affecting
-    the return code, if it is still unjustified by then.
+    A match that is not (yet) justified by a `static()` declaration is not rejected here:
+    the plan that would declare it may not have run yet.
+    It is instead checked once at the end of the build phase (if not other errors occurred),
+    and reported as a warning if it is still unjustified by then.
     """
     # Substitute environment variables.
-    # `_keep_affixes` re-applies the leading `./` and trailing `/` that `normpath()`
-    # and `translate()` would otherwise strip, and a trailing separator is what
-    # distinguishes a directory pattern.
     with subs_env_vars() as subs_path:
         su_pattern = _keep_affixes(subs_path(pattern), Path.normpath)
     tr_pattern = _keep_affixes(su_pattern, translate)
@@ -322,15 +325,14 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
     ng.glob()
 
     # `ng.files()` is sorted and deduplicated, which keeps the payload deterministic.
-    # Directory matches keep their trailing separator, which is how the director
-    # tells them apart from file matches without a second, redundant list.
+    # Directory matches keep their trailing separator,
+    # which is how the director tells them apart from file matches
+    # without a second, redundant list.
     tr_paths = [_keep_affixes(path, translate) for path in ng.files()]
 
-    # The director records the pattern with the calling step and validates the
-    # matches: a match that is a known build product, or lies under `.stepup`, raises.
+    # The director records the pattern with the calling step and validates the matches:
+    # a match that is a known build product, or lies under `.stepup`, raises.
     RPC_CLIENT.call.glob(get_job_i(), tr_pattern, subs, tr_paths)
-
-    # Done
     return ng
 
 
@@ -354,9 +356,10 @@ def step(
     ----------
     command
         Command to execute (in the given working directory).
-        The command is sent to the director verbatim: no placeholder or environment-variable
-        substitution is performed on it. Use [`shq()`][stepup.core.api.shq] to embed `inp`,
-        `out`, or `vol` paths, e.g. `step(f"cat {shq(inp)} > {shq(out)}", inp=inp, out=out)`.
+        The command is sent to the director verbatim:
+        no placeholder or environment-variable substitution is performed on it.
+        Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths,
+        e.g. `step(f"cat {shq(inp)} > {shq(out)}", inp=inp, out=out)`.
         A callable may be given instead of the command text,
         to build the command from the step's own paths
         without first assigning those paths to a variable.
@@ -390,6 +393,7 @@ def step(
     need
         The level of necessity for the step.
         Three values are allowed:
+
         - `Need.OPTIONAL` = only execute the step if some of its outputs are (indirectly) needed
           by a non-optional step.
         - `Need.DEFAULT` = execute the step unless the user specifies targets.
@@ -399,7 +403,8 @@ def step(
         One may also provide the resources as a string, e.g. `"gpu:1,memgb:4"`.
         The step will not be scheduled until the required units are available,
         taking into account the units already held by other running steps.
-        Resources not listed in `--resources` / `STEPUP_RESOURCES` are treated as unavailable.
+        Resources not listed in `--resources` / `STEPUP_BUILD_RESOURCES`
+        are treated as unavailable.
         The required units must be strictly positive and default to 1 when not given,
         e.g. `"gpu"` is equivalent to `"gpu:1"`.
     env_overrides
@@ -407,16 +412,17 @@ def step(
         e.g. `{"OMP_NUM_THREADS": "4"}`.
         These overrides (the variable **values** for the child process)
         are distinct from `env` (the variable **names** the step is sensitive to):
-        a variable may not appear in both, otherwise a `StepUpError` is raised.
-        [`run()`][stepup.core.api.run] and [`plan()`][stepup.core.api.plan] populate this
-        automatically from leading `VAR=value` assignments in `command`;
-        callers of `step()` directly must pass this argument explicitly.
+        a variable may not appear in both; otherwise a `StepUpError` is raised.
+        [`run()`][stepup.core.api.run] and [`plan()`][stepup.core.api.plan]
+        populate this automatically from leading `VAR=value` assignments in `command`;
+        direct callers of `step()` must pass this argument explicitly.
     duration
-        An initial estimate of the step's wall time in seconds, used by the scheduler
-        (when `--duration` is enabled) to prioritize execution order before any measurement
-        is available. Once the step has run, the scheduler overwrites this with the measured
-        duration. When not given, a new step starts with a default estimate of `1.0`; a
-        recycled step keeps its previously measured (or given) duration.
+        An initial estimate of the step's wall time in seconds,
+        used by the scheduler (when `--duration` is enabled)
+        to prioritize execution order before any measurement is available.
+        Once the step has run, the scheduler overwrites this with the measured duration.
+        When not given, a new step starts with a default estimate of `1.0`;
+        a recycled step keeps its previously measured (or given) duration.
 
     Returns
     -------
@@ -425,13 +431,16 @@ def step(
 
     Raises
     ------
-    StepUpError
-        When `command` is empty, when a command callable declares an unsupported parameter,
-        when an env override collides with an `env` dependency
-        or a reserved variable name, when a resource quantity is not a strictly
-        positive integer, or when `duration` is not a finite non-negative number.
     PathError
         When `inp`, `out`, or `vol` contain a directory.
+    StepUpError
+        When `command` is empty,
+        when a command callable declares an unsupported parameter,
+        when an env override collides with an `env` dependency or a reserved variable name,
+        when a resource quantity is not a strictly positive integer,
+        or when `duration` is not a finite non-negative number.
+    TypeError
+        When `resources` is not a `dict`, a `str`, or `None`.
 
     Notes
     -----
@@ -452,7 +461,7 @@ def step(
 
     # Validate the duration.
     # `bool` is a subclass of `int`, so it is excluded explicitly to catch callers confusing
-    # this keyword-only argument for one of `step()`'s several `bool` flags (e.g. `optional`).
+    # this keyword-only argument with a `bool` flag such as `shell`.
     # `inf` is rejected too: an infinite duration estimate cannot be a genuine measurement
     # and almost certainly indicates a caller bug, e.g. an unguarded division.
     if duration is not None and (
@@ -469,7 +478,7 @@ def step(
         overlap = set(env_deps) & set(env_overrides)
         if overlap:
             raise StepUpError(
-                "Variable(s) cannot be both an env dependency and a env_overrides override: "
+                "Variable(s) cannot be both an env dependency and an env_overrides value: "
                 + ", ".join(sorted(overlap))
             )
         reserved = set(env_overrides) & RESERVED_ENV_VARS
@@ -526,9 +535,11 @@ def step(
                 file=sys.stderr,
             )
 
-    # Finally create the step. Any inputs matching a static tree are declared UNCONFIRMED
-    # and hashed/confirmed by the director in the background; a step consuming one simply
-    # does not become runnable until that resolves (see scheduler.py).
+    # Finally create the step.
+    # Any inputs matching a static tree are declared UNCONFIRMED
+    # and hashed/confirmed by the director in the background;
+    # a step consuming one simply does not become runnable until that resolves
+    # (see scheduler.py).
     RPC_CLIENT.call.step(
         get_job_i(),
         command,
@@ -543,8 +554,6 @@ def step(
         env_overrides,
         duration,
     )
-
-    # Return a StepInfo instance to facilitate the definition of follow-up steps
     return StepInfo(command, su_inp_paths, env_deps, su_out_paths, su_vol_paths, tr_workdir)
 
 
@@ -599,8 +608,8 @@ def call(
     args_file
         Full filename for the serialized arguments.
         When given, arguments are written to this file (format inferred from extension)
-        and passed via `--inp=<args_file>`; when absent, a JSON string is embedded
-        directly in the command.
+        and passed via `--inp=<args_file>`;
+        when absent, a JSON string is embedded directly in the command.
     duration
         See [`step()`][stepup.core.api.step] for more information.
     **kwargs
@@ -650,9 +659,10 @@ def call(
     if executable_.isabs():
         raise PathError(f"executable_ must not be an absolute path, got: {executable_!r}")
 
-    # Validate the function name. A valid Python identifier that is not a reserved
-    # keyword can never contain shell metacharacters, so it is safe to interpolate
-    # unquoted into the command below.
+    # Validate the function name.
+    # A valid Python identifier that is not a reserved keyword
+    # can never contain shell metacharacters,
+    # so it is safe to interpolate unquoted into the command below.
     if not (function_.isidentifier() and not keyword.iskeyword(function_)):
         raise StepUpError(f"function_ must be a valid Python function name, got: {function_!r}")
 
@@ -702,7 +712,7 @@ def call(
 
 
 # A history used to avoid amending the same information twice.
-# This effectively reduces the amount of amend API calls.
+# This effectively reduces the number of amend API calls.
 AMEND_HISTORY = {
     "inp": set(),
     "env": set(),
@@ -714,8 +724,8 @@ AMEND_HISTORY = {
 class _HoldState:
     """How many `hold()` blocks the current process is nested inside of.
 
-    Incremented/decremented by `hold()`'s `__enter__`/`__exit__`. `amend()` only checks
-    `holding > 0`, so re-entrant nesting is transparent to it.
+    Incremented and decremented by `hold()`.
+    `amend()` only checks `holding > 0`, so re-entrant nesting is transparent to it.
     """
 
     holding = 0
@@ -759,20 +769,20 @@ def amend(
     InputNotFoundError
         When dynamic inputs are not yet available.
         Let this exception propagate — do not catch it.
-        The director defers the step once the missing inputs become available.
-        Note this call blocks until any dynamic input matching an unconfirmed file is hashed,
+        The director defers the step until the missing inputs become available.
+        Note that this call blocks until any dynamic input matching an unconfirmed file is hashed,
         so it may take a while for large files.
     AmendWhileHoldingError
         When `inp` is non-empty and this is called anywhere in the calling step's execution
         while a `with hold():` block of that same step is still open.
         This holds even for an input that would have resolved instantly and harmlessly:
-        the check does not look at whether the input is actually available, only at whether
-        the calling step is holding.
-        `env`, `out`, and `vol` are never involved in this check: unlike `inp`, none of them
-        can depend on a held-back step's output, so an `env`/`out`/`vol`-only amend can never
-        deadlock and is always allowed, even while holding.
-        Move the code that calls `amend(inp=...)` before entering the `with hold():` block
-        instead.
+        the check does not look at whether the input is actually available,
+        only at whether the calling step is holding.
+        `env`, `out`, and `vol` are never involved in this check:
+        unlike `inp`, none of them can depend on a held-back step's output,
+        so an `env`/`out`/`vol`-only amend can never deadlock and is always allowed,
+        even while holding.
+        Move the code that calls `amend(inp=...)` before entering the `with hold():` block instead.
 
     Notes
     -----
@@ -790,8 +800,9 @@ def amend(
     since it avoids the wasted work of a deferred step.
 
     For additional output files, `amend(out=...)` or `amend(vol=...)` is required before writing.
-    These will raise an exception if dynamic outputs collide with files declared elsewhere
-    in the workflow, preventing accidental overwrites of other step's files.
+    These will raise an exception
+    if dynamic outputs collide with files declared elsewhere in the workflow,
+    preventing accidental overwrites of other steps' files.
 
     Repeated calls are safe: dynamic dependencies known from prior calls are silently skipped,
     and so is information that the step's plan already declared for it.
@@ -804,18 +815,20 @@ def amend(
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_deps, out_paths, vol_paths]):
-        # Nothing is actually being amended: e.g. `run.py`/`render_jinja.py` call
-        # `amend(inp=get_local_import_paths())` unconditionally after a Python step runs,
-        # and that list can be empty. Such a no-op call must not trip the hold() guard
-        # below, or an unrelated held step could fail through no fault of its own code.
+        # Nothing is actually being amended:
+        # e.g. `run.py`/`render_jinja.py` call `amend(inp=get_local_import_paths())`
+        # unconditionally after a Python step runs, and that list can be empty.
+        # Such a no-op call must not trip the hold() guard below,
+        # or an unrelated held step could fail through no fault of its own code.
         return
     if _HOLD_STATE.holding > 0 and len(inp_paths) > 0:
-        # Only `inp` can deadlock a hold(): the director can only defer an amend() over
-        # unavailable/unfresh *inputs* (see `Workflow.amend_step`), and the input's producer
-        # could be a step held back by this same `hold()` block. `env`, `out`, and `vol` are
-        # never checked against another step's output, so they can never trigger that
-        # deferral and are safe to amend while holding, e.g. internal callers such as
-        # `getenv()` (env-only) and `dumpns()` (out-only).
+        # Only `inp` can deadlock a hold():
+        # the director can only defer an amend() over unavailable/unfresh *inputs*
+        # (see `Workflow.amend_step`),
+        # and the input's producer could be a step held back by this same `hold()` block.
+        # `env`, `out`, and `vol` are never checked against another step's output,
+        # so they can never trigger that deferral and are safe to amend while holding,
+        # e.g. internal callers such as `getenv()` (env-only) and `dumpns()` (out-only).
         raise AmendWhileHoldingError(
             "amend() cannot be called with `inp` while this step has an open hold() block. "
             "Call the amend-triggering code before entering the `with hold():` block."
@@ -826,8 +839,9 @@ def amend(
         su_out_paths = {subs(out_path).normpath() for out_path in out_paths}
         su_vol_paths = {subs(vol_path).normpath() for vol_path in vol_paths}
     # The checks use the substituted paths, not the translated ones below:
-    # they look at the file system, which this process sees relative to its own
-    # working directory, not relative to the director's.
+    # they look at the file system,
+    # which this process sees relative to its own working directory,
+    # not relative to the director's.
     _check_no_directories(su_inp_paths)
     _check_no_directories(su_out_paths)
     _check_no_directories(su_vol_paths)
@@ -849,9 +863,11 @@ def amend(
     ):
         return
 
-    # Finally, amend for real. This call may block while the director hashes any dynamic
-    # input that still matches an unconfirmed static file, which can exceed
-    # STEPUP_SYNC_RPC_TIMEOUT for a large file, hence the disabled socket timeout.
+    # Finally, amend for real.
+    # This call may block while the director hashes any dynamic input
+    # that still matches an unconfirmed static file,
+    # which can exceed `STEPUP_SYNC_RPC_TIMEOUT` for a large file,
+    # hence the disabled socket timeout.
     job_i = get_job_i()
     carry_on = RPC_CLIENT.call.amend(
         job_i,
@@ -864,10 +880,10 @@ def amend(
     if carry_on is False:
         raise InputNotFoundError("Dynamic inputs are not available yet.")
 
-    # Double check that all inputs are indeed present.
+    # Double-check that all inputs are indeed present.
     _check_inp_paths(su_inp_paths)
 
-    # Update the amendment history
+    # Update the amendment history.
     AMEND_HISTORY["inp"].update(tr_inp_paths)
     AMEND_HISTORY["env"].update(env_deps)
     AMEND_HISTORY["out"].update(tr_out_paths)
@@ -880,26 +896,31 @@ def hold() -> Iterator[None]:
 
     Use this to wrap a batch of `run()`/`step()`/`plan()` calls (typically in a `plan.py`)
     so the whole batch becomes simultaneously eligible for dispatch once the block closes,
-    instead of each child being dispatched as soon as it is declared. This lets the existing
-    duration-based scheduling order the batch by cost, rather than by declaration order.
+    instead of each child being dispatched as soon as it is declared.
+    This lets the existing duration-based scheduling order the batch by cost,
+    rather than by declaration order.
 
-    `hold()` is re-entrant: nesting `with hold():` blocks (directly, or through a helper
-    function called while already holding) is safe. Children declared anywhere in the nested
-    scopes stay held back until the **outermost** block exits, not the innermost one.
+    `hold()` is re-entrant:
+    nesting `with hold():` blocks
+    (directly, or through a helper function called while already holding) is safe.
+    Children declared anywhere in the nested scopes stay held back
+    until the **outermost** block exits, not the innermost one.
 
-    No `amend(inp=...)` call may be made anywhere in the calling step's execution while any
-    `hold()` block is open, not even one that would resolve instantly and harmlessly:
+    No `amend(inp=...)` call may be made anywhere in the calling step's execution
+    while any `hold()` block is open,
+    not even one that would resolve instantly and harmlessly:
     it would risk a deadlock, since the step cannot release the hold without the dynamic input,
     and the input's producer cannot run until the hold is released.
     See `amend()`'s `AmendWhileHoldingError`.
     `amend(env=..., out=..., vol=...)` carries no such risk and remains allowed while holding,
     since none of those can depend on a held-back step's output.
 
-    If the block raises, releasing the hold is still attempted, but a failure of that release
-    call never replaces the original exception: it is logged instead, so the real cause of the
-    failure is not masked by an unrelated RPC problem. `_HOLD_STATE.holding` is only decremented
-    once `release()` is confirmed to have succeeded, so `amend()`'s guard correctly stays active
-    if the release call could not be confirmed.
+    If the block raises, releasing the hold is still attempted,
+    but a failure of that release call never replaces the original exception:
+    it is logged instead,
+    so the real cause of the failure is not masked by an unrelated RPC problem.
+    `_HOLD_STATE.holding` is only decremented once `release()` is confirmed to have succeeded,
+    so `amend()`'s guard correctly stays active if the release call could not be confirmed.
     """
     job_i = get_job_i()
     RPC_CLIENT.call.hold(job_i)
@@ -907,9 +928,10 @@ def hold() -> Iterator[None]:
     try:
         yield
     finally:
-        # Capture this before the nested try/except below: once that except clause catches a
-        # release() failure, sys.exc_info() would reflect that new exception instead of one
-        # already propagating from `yield`.
+        # Capture this before the nested try/except below:
+        # once that except clause catches a release() failure,
+        # sys.exc_info() would reflect that new exception
+        # instead of one already propagating from `yield`.
         had_exception = sys.exc_info()[0] is not None
         try:
             RPC_CLIENT.call.release(job_i)
@@ -1013,21 +1035,22 @@ def run(
           the script is executed via a Python wrapper
           that auto-detects local imports.
           Shell features are not available in this mode.
-        - If `shell=False` and the first word is a bare command name (no slashes) that
-          matches a `console_scripts` entry point in the current Python environment:
+        - If `shell=False` and the first word is a bare command name (no slashes)
+          that matches a `console_scripts` entry point in the current Python environment:
           the entry point is called in-process via the forkserver when available,
           avoiding subprocess overhead.
-          If the entry point belongs to a different Python environment, a warning is
-          logged and the command falls back to direct subprocess execution.
+          If the entry point belongs to a different Python environment,
+          a warning is logged and the command falls back to direct subprocess execution.
         - Otherwise: the command is executed directly without a shell.
           This is faster and safer than the shell mode.
 
         When `shell=False`, the command may start with one or more `VAR=value` assignments,
-        e.g. `OMP_NUM_THREADS=4 ./run.py`. These are stripped from the command and applied as
-        step-specific environment variable overrides when the step runs (see `step()`'s
-        `env_overrides`). With `shell=True`, assignments are left in the command for the
-        shell to interpret.
-        Putting the same variable in both the shell prefix and env is invalid
+        e.g. `OMP_NUM_THREADS=4 ./run.py`.
+        These are stripped from the command
+        and applied as step-specific environment variable overrides when the step runs
+        (see `step()`'s `env_overrides`).
+        With `shell=True`, assignments are left in the command for the shell to interpret.
+        Putting the same variable in both the `VAR=value` prefix and `env` is invalid
         and only detected with `shell=False`.
 
         When the first word, after stripping any leading `VAR=value` assignments,
@@ -1039,8 +1062,8 @@ def run(
         so it works even when the script does not yet exist (e.g. it is an output of another step).
         `shell=True` takes precedence and disables Python auto-detection.
 
-        Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the
-        command, e.g. `run(f"./script.py {shq(inp)}", inp=inp)`.
+        Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the command,
+        e.g. `run(f"./script.py {shq(inp)}", inp=inp)`.
 
         A callable may be given instead of the command text,
         to build the command from the step's own paths
@@ -1053,8 +1076,8 @@ def run(
         The callable is invoked once, while the step is being defined.
         The callable's `inp` holds only the paths passed to `run()`,
         not the local executable that is detected in the command and added as an input:
-        that executable is derived from the command, which does not exist yet
-        when the callable is called.
+        that executable is derived from the command,
+        which does not exist yet when the callable is called.
         This is also what one wants, since the executable already appears in the command itself.
         (The returned `step_info.inp` does include the executable.)
     inp, env, out, vol, workdir, optional, resources, duration
@@ -1101,8 +1124,9 @@ def plan(
 ) -> StepInfo:
     """Run a planning script.
 
-    The main difference with [`run()`][stepup.core.api.run] is that the step is flagged
-    as planner internally, which will give it higher priority than non-planner steps.
+    The main difference with [`run()`][stepup.core.api.run]
+    is that the step is flagged as a planner internally,
+    which will give it higher priority than non-planner steps.
     This results in earlier knowledge of the workflow, which improves scheduling efficiency.
 
     Compared to the `run()` function, this function imposes `optional=False` and `shell=False`.
@@ -1123,13 +1147,15 @@ def plan(
         The command must always be a relative path to a local executable script.
 
         The command may start with one or more `VAR=value` assignments,
-        e.g. `OMP_NUM_THREADS=4 ./plan.py`. These are stripped from the command and applied as
-        step-specific environment variable overrides when the step runs (see `step()`'s
-        `env_overrides`).
-        Putting the same variable in both the shell prefix and env is invalid and raises an error.
+        e.g. `OMP_NUM_THREADS=4 ./plan.py`.
+        These are stripped from the command
+        and applied as step-specific environment variable overrides when the step runs
+        (see `step()`'s `env_overrides`).
+        Putting the same variable in both the `VAR=value` prefix and `env` is invalid
+        and raises an error.
 
-        Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the
-        command, e.g. `plan(f"./plan.py {shq(inp)}", inp=inp)`.
+        Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the command,
+        e.g. `plan(f"./plan.py {shq(inp)}", inp=inp)`.
 
         A callable may be given instead of the command text,
         to build the command from the step's own paths
@@ -1142,8 +1168,8 @@ def plan(
         The callable is invoked once, while the step is being defined.
         The callable's `inp` holds only the paths passed to `plan()`,
         not the local executable that is detected in the command and added as an input:
-        that executable is derived from the command, which does not exist yet
-        when the callable is called.
+        that executable is derived from the command,
+        which does not exist yet when the callable is called.
         This is also what one wants, since the executable already appears in the command itself.
         (The returned `step_info.inp` does include the executable.)
     inp, env, out, vol, workdir, resources, duration
@@ -1244,16 +1270,16 @@ def getenv(
     default
         The value to return when the environment variable is unset.
     path
-        Set to True if the variable taken from the environment is assumed to be a path.
-        A Path instance will be returned.
+        Set to `True` if the variable taken from the environment is assumed to be a path.
+        A `Path` instance will be returned.
         Shell variables are substituted (once) in such paths.
     back
-        Set to True to translate the path back to the working directory of the caller.
-        If the path is relative, it is assumed to be relative to the StepUp's working directory.
+        Set to `True` to translate the path back to the working directory of the caller.
+        If the path is relative, it is assumed to be relative to StepUp's working directory.
         It will be translated to become relative to the working directory of the caller.
         This implies `path=True`.
     multi
-        Set to True if the variable is a list of paths.
+        Set to `True` if the variable is a list of paths.
         The paths are split on the colon character and returned as a list of `Path` instances.
         This implies `path=True`.
 
@@ -1278,7 +1304,7 @@ def getenv(
         default = coerce_str(default)
     value = os.getenv(name, default)
     # Do not amend environment variables set for the step by the executor.
-    # See stepup.core.executor.Executor._run_command
+    # See `stepup.core.executor.Executor._run_command`.
     if name not in RESERVED_ENV_VARS:
         amend(env=name)
 
@@ -1323,7 +1349,7 @@ def script(
     resources: dict[str, int] | str | None = None,
     duration: float | None = None,
 ) -> StepInfo:
-    """Run the executable with a single argument `plan` in a working directory.
+    """Run the executable with `plan` as its first argument, in the given working directory.
 
     !!! warning
 
@@ -1338,10 +1364,11 @@ def script(
     executable
         The path of a local executable that will be called with the argument `plan`.
         The file must be executable.
-        The path of the script is assumed to be relative to this directory.
+        The path of the script is assumed to be relative to `workdir`.
     step_info
-        When given, the steps generated in the plan part of the executable are written
-        to this `step_info` file. (See [stepup.core.stepinfo][] module for the file format.)
+        When given, the steps generated in the plan part of the executable
+        are written to this `step_info` file.
+        (See [stepup.core.stepinfo][] module for the file format.)
         This filename is relative to the work directory.
     inp, env, out, vol, workdir, optional, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
@@ -1356,8 +1383,8 @@ def script(
     - The arguments `inp`, `env`, `out` and `vol` are rarely needed for script steps.
       They only apply to the plan stage of the script, not the run stage.
     - The `inp` argument may be useful when the planning is configured by some input files.
-    - The optional argument never applies to the plan stage,
-      and is passed on the the run stage.
+    - The `optional` argument never applies to the plan stage,
+      and is passed on to the run stage.
     """
     # Normalize the executable, preserving any prefix/suffix for later re-application.
     executable = coerce_path(executable)
@@ -1392,27 +1419,28 @@ def script(
 def loadns(
     *paths_variables: StrPath, dir_out: StrPath | None = None, do_amend: bool = True
 ) -> SimpleNamespace:
-    """Load variable from Python, JSON, TOML or YAML files and put them in a namespace.
+    """Load variables from Python, JSON, TOML or YAML files and put them in a namespace.
 
     Parameters
     ----------
     paths_variables
-        paths of Python, JSON, TOML or YAML files containing variable definitions.
-        They are loaded in the given order, so later variable definitions may overrule earlier ones.
+        Paths of Python, JSON, TOML or YAML files containing variable definitions.
+        They are loaded in the given order,
+        so later variable definitions may override earlier ones.
         Environment variables in path names are substituted.
     dir_out
-        This is used to translate paths defined in the variables files
-        (relative to parent of the variable file)
+        This is used to translate paths defined in the variable files
+        (relative to the parent of the variable file)
         to paths relative to `dir_out`.
         If not given, the current working directory is used.
         This is only relevant for variables loaded from Python files.
     do_amend
-        If ``True``, the current step is amended with the loaded files as input dependencies.
+        If `True`, the current step is amended with the loaded files as input dependencies.
 
     Returns
     -------
     variables
-        A SimpleNamespace instance with the variables, which can be accessed as attributes.
+        A `SimpleNamespace` instance with the variables, which can be accessed as attributes.
 
     Raises
     ------
@@ -1515,7 +1543,7 @@ def render_jinja(
     ----------
     args
         The first argument is the path to the template file.
-        All the following position arguments can be one of the following two types:
+        All the following positional arguments can be one of two types:
 
         - Paths to Python, JSON, TOML or YAML files with variable definitions.
           Variables defined in later files take precedence.
@@ -1528,7 +1556,7 @@ def render_jinja(
     mode
         The format of the Jinja placeholders:
 
-        - The default (auto) selects either `plain` or `latex`,
+        - The default (`auto`) selects either `plain` or `latex`,
           based on the extension of the output file.
         - The `plain` format is the default Jinja style with curly brackets: `{{ }}` etc.
         - The `latex` style replaces curly brackets by angle brackets: `<< >>` etc.
@@ -1545,10 +1573,10 @@ def render_jinja(
     StepUpError
         When `mode` is not one of `'auto'`, `'plain'`, or `'latex'`,
         or when no variables are given, neither as a file nor as a dictionary.
-
-    Notes
-    -----
-    At least some variables must be given, either as a file containing variables or as a dictionary.
+    TypeError
+        When the first argument is not a path to a template,
+        or when the last argument is not a path to a destination,
+        or when any of the variable arguments is neither a path nor a dictionary.
     """
     # Parse the positional arguments
     if len(args) < 3:
@@ -1653,9 +1681,10 @@ def _iter_static_args(
 ) -> Iterator[StrPath | NamedGlob]:
     """Flatten one level of nesting in `static()`'s arguments, keeping `NamedGlob`s whole.
 
-    `coerce_paths2` cannot be used here: iterating a `NamedGlob` yields
-    `NamedGlobMatch` objects (not `os.PathLike`) when the pattern has named
-    wildcards, so the flattening has to know about the type.
+    `coerce_paths2` cannot be used here:
+    iterating a `NamedGlob` yields `NamedGlobMatch` objects (not `os.PathLike`)
+    when the pattern has named wildcards,
+    so the flattening has to know about the type.
     """
     for arg in args:
         if isinstance(arg, (str, os.PathLike, NamedGlob)):
@@ -1667,8 +1696,8 @@ def _iter_static_args(
 def _keep_affixes(path: StrPath, transform: Callable[[Path], Path]) -> Path:
     """Apply `transform` to `path`, restoring its leading `./` and trailing `/`.
 
-    Both `Path.normpath()` and `translate()` normalize these affixes away, while a
-    trailing separator is what distinguishes a directory path or pattern in StepUp.
+    Both `Path.normpath()` and `translate()` normalize these affixes away,
+    while a trailing separator is what distinguishes a directory path or pattern in StepUp.
     """
     prefix, suffix = get_affixes(path)
     return apply_affixes(transform(coerce_path(path)), prefix, suffix)
@@ -1722,7 +1751,7 @@ def _check_no_directories(paths: Iterable[Path], workdir: StrPath = "."):
 
 
 # The parameter names a command callable may declare.
-# Extending this mapping later is backward compatible,
+# Extending this tuple later is backward compatible,
 # since a callable only receives the parameters it declares.
 _COMMAND_PARAM_NAMES = ("inp", "out", "vol")
 
@@ -1792,8 +1821,9 @@ def _resolve_run_command(
     """Resolve a `run()`/`plan()` command before the local executable is detected.
 
     `run()` and `plan()` cannot leave the resolution of a callable command to `step()`:
-    they need the command **text** to detect the local executable that is added as an
-    implicit input, and that executable is the first word of the command text.
+    they need the command **text**
+    to detect the local executable that is added as an implicit input,
+    and that executable is the first word of the command text.
     See the documentation of `run()` for the consequences for the callable.
 
     Parameters
@@ -1817,7 +1847,8 @@ def _resolve_run_command(
     vol_paths = coerce_paths(vol)
     if callable(command):
         # The environment variable substitution is repeated in `step()` (on the same paths),
-        # which is idempotent. The repeated `amend(env=...)` is filtered out by AMEND_HISTORY.
+        # which is idempotent.
+        # The repeated `amend(env=...)` is filtered out by `AMEND_HISTORY`.
         with subs_env_vars() as subs:
             su_inp_paths = [subs(inp_path).normpath() for inp_path in inp_paths]
             su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
@@ -1833,8 +1864,8 @@ def _prepare_run_command(
 ) -> tuple[str, str | None, dict[str, str] | None]:
     """Pre-process a `run()`/`plan()` command string.
 
-    Extracts leading `VAR=value` assignments (unless `shell`) and detects a local relative
-    executable as the first word following any such assignments.
+    Extracts leading `VAR=value` assignments (unless `shell`)
+    and detects a local relative executable as the first word following any such assignments.
 
     Parameters
     ----------
@@ -1842,19 +1873,13 @@ def _prepare_run_command(
         The raw command string.
     shell
         When `True`, leading `VAR=value` assignments are left in the command for the shell
-        to interpret, and no overrides are extracted. They are still skipped over when
-        looking for the executable, so their values are not mistaken for it.
+        to interpret, and no overrides are extracted.
+        They are still skipped over when looking for the executable,
+        so their values are not mistaken for it.
     need_relative_exe
         When `True`, require the first word of the command to be a local relative executable
         (it contains a path separator and is not absolute), raising a `PathError` otherwise.
         When `False`, a missing relative executable is silently ignored.
-
-    Raises
-    ------
-    StepUpError
-        When the command cannot be split into words with `shlex` (e.g. unbalanced quotes).
-    PathError
-        When `need_relative_exe` is `True` and the first word is not a local relative executable.
 
     Returns
     -------
@@ -1864,6 +1889,13 @@ def _prepare_run_command(
         The local relative executable to add as an input, or `None`.
     env_overrides
         The extracted environment overrides, or `None`.
+
+    Raises
+    ------
+    StepUpError
+        When the command cannot be split into words with `shlex` (e.g. unbalanced quotes).
+    PathError
+        When `need_relative_exe` is `True` and the first word is not a local relative executable.
     """
     command = coerce_str(command)
     env_overrides, remaining = extract_env_overrides(command)
@@ -1892,7 +1924,7 @@ def _prepare_run_command(
 
 
 def get_rpc_client(socket: str | None = None) -> DummySyncRPCClient | SocketSyncRPCClient:
-    """Try setting up a Synchronous RPC client or fall back to the dummy client if that fails."""
+    """Return a synchronous RPC client, or a dummy client when no director socket is configured."""
     stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET", socket)
     if stepup_director_socket == "_invalid_socket_for_director_process_":
         raise RuntimeError("The RPC client is being used within the director process.")
@@ -1912,7 +1944,18 @@ if isinstance(RPC_CLIENT, SocketSyncRPCClient):
 
 
 def get_job_i() -> int:
-    """Get the current job id from the STEPUP_JOB_I environment variable."""
+    """Get the current job id from the `STEPUP_JOB_I` environment variable.
+
+    Returns
+    -------
+    job_i
+        The job id, or -1 if the variable is unset and the RPC client is the dummy one.
+
+    Raises
+    ------
+    RuntimeError
+        When the variable is unset and the RPC client is not the dummy one.
+    """
     job_i = os.getenv("STEPUP_JOB_I")
     if job_i is None:
         if not isinstance(RPC_CLIENT, SocketSyncRPCClient):

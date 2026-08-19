@@ -3,14 +3,14 @@
    PHASE │ build
   NOSKIP │ cp -p inp.txt out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest e64b7eef ➜ 967f4788, out_digest 2f680146 ➜ (unset)
+Modified step hash   explained, inp_digest b0137971 ➜ d6d49a57, out_digest 2f680146 ➜ (unset)
 Modified inp hash    inp.txt (digest de3b107b ➜ 26725e7b)
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p inp.txt out.txt
  SUCCESS │ cp -p inp.txt out.txt
   NOSKIP │ cp -p out.txt final.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 203a1142 ➜ f901126e, out_digest 0901a370 ➜ (unset)
+Modified step hash   explained, inp_digest b907c333 ➜ ec2e46c2, out_digest 0901a370 ➜ (unset)
 Modified inp hash    out.txt (digest de3b107b ➜ 26725e7b)
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p out.txt final.txt

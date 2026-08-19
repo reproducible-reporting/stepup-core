@@ -7,7 +7,7 @@
 `Builder.job_loop` drains it with priority over the SQL-poll job path,
 since a hash job's runnability never depends on the workflow database.
 `gather_hashes()` is the direct-drain counterpart used outside a build phase
-(startup, watch phase), when `job_loop` is not running to pump the queue.
+(startup and watch phases), when `job_loop` is not running to pump the queue.
 """
 
 import asyncio
@@ -51,12 +51,12 @@ class HashJob:
     """
 
     job_i: int = attrs.field()
-    """Unique id of this job, from `HashQueue`'s own counter.
+    """Unique negative id of this job, from `HashQueue`'s own counter.
 
-    Disjoint from `Scheduler.job_counter`'s ids: hash jobs also run between build phases,
-    when `Scheduler.job_counter` has been reset, so reusing that counter could collide with
-    a live entry in `Executor.running`. Only used for tracking/logging, never for RPC
-    resolution.
+    Disjoint from `Scheduler.job_counter`'s ids:
+    hash jobs also run between build phases, when `Scheduler.job_counter` has been reset,
+    so reusing that counter could collide with a live entry in `Executor.running`.
+    Only used for tracking/logging, never for RPC resolution.
     """
 
     future: asyncio.Future[FileHash] = attrs.field(init=False)
@@ -79,12 +79,7 @@ class HashJob:
 
 @attrs.define
 class HashQueue:
-    """Pending hash jobs plus a path-keyed dedup registry.
-
-    Owned by nothing in particular: a single instance is created in the composition root
-    (`director.py:serve()`) and shared by every component that needs to submit or drain
-    hash jobs, keeping `Scheduler` and `Builder` themselves free of this bookkeeping.
-    """
+    """Pending hash jobs plus a path-keyed dedup registry."""
 
     wake: asyncio.Event = attrs.field()
     """Set whenever a job is submitted, so a parked `Builder.job_loop` wakes up.
@@ -104,11 +99,7 @@ class HashQueue:
     """
 
     _job_counter: int = attrs.field(init=False, default=0)
-    """Counter for `HashJob.job_i`.
-
-    Decremented so hash-job ids stay negative,
-    disjoint from `Scheduler.job_counter`'s (positive) ids.
-    """
+    """Negative counter for `HashJob.job_i`."""
 
     def submit(self, path: str, old_hash: FileHash, cause: HashUpdateCause) -> HashJob:
         """Enqueue a hash job for `path`, or return its already in-flight job.
@@ -123,8 +114,7 @@ class HashQueue:
         cause
             Why the hash is being (re)computed.
             Ignored if a job for `path` is already in flight:
-            by construction, concurrent submitters for the same path
-            want the same confirmation.
+            concurrent submitters for the same path want the same answer.
 
         Returns
         -------
@@ -146,8 +136,9 @@ class HashQueue:
         """Retire the job for `path` when its future resolves, however it resolved."""
         self.in_flight.pop(path, None)
         if not future.cancelled():
-            # Retrieving the exception (if any) only marks it as retrieved: it stays on the
-            # future for submitters that do await it (`Builder.run_promoted_hash_jobs`).
+            # Retrieving the exception (if any) only marks it as retrieved:
+            # it stays on the future for submitters that do await it
+            # (`Builder.run_promoted_hash_jobs`).
             # `Executor.run_hash_job` has already reported it and put the scheduler on hold,
             # while most submitters are fire-and-forget (`DirectorHandler._submit_to_check`),
             # so without this, asyncio would log "Future exception was never retrieved"
@@ -157,9 +148,9 @@ class HashQueue:
     def claim(self, job: HashJob) -> bool:
         """Atomically flip `job.started` from `False` to `True`.
 
-        Lets a promoted, direct runner and the regular queue consumer (`pop_nowait()`) race safely:
-        the loser just skips the job.
-        Single-threaded asyncio makes a plain check-and-set atomic enough, no lock needed.
+        Lets a promoted, direct runner and the regular queue consumer (`pop_nowait()`)
+        race safely: the loser just skips the job.
+        Single-threaded asyncio makes a plain check-and-set atomic enough; no lock is needed.
 
         Returns
         -------
@@ -172,10 +163,7 @@ class HashQueue:
         return True
 
     def _drain_claimed(self) -> Iterator[HashJob]:
-        """Pop all jobs that have already been claimed by a promoted, direct runner.
-
-        This is a convenience for `Builder.job_loop`, which only wants to run unclaimed jobs.
-        """
+        """Pop queued jobs one by one, yielding the ones this call manages to claim."""
         while True:
             try:
                 job = self.queue.get_nowait()
@@ -188,8 +176,8 @@ class HashQueue:
     def pop_nowait(self) -> HashJob | None:
         """Pop the next unclaimed job from the queue.
 
-        Jobs already claimed by a promoted, direct runner are discarded silently
-        (they are being run outside the queue) instead of being returned again.
+        Jobs already claimed by a promoted, direct runner are discarded silently,
+        since they are being run outside the queue.
 
         Returns
         -------
@@ -203,8 +191,9 @@ class HashQueue:
         """Cancel the futures of all not-yet-started jobs, and drain the queue.
 
         Prevents awaiters of a queued-but-never-started job from hanging forever.
-        Already-started jobs are left alone: their cancellation is handled by
-        `Executor.interrupt()`, through the `HashJob.worker` they registered.
+        Already-started jobs are left alone:
+        their cancellation is handled by `Executor.interrupt()`,
+        through the `HashJob.worker` they registered.
         """
         for job in self._drain_claimed():
             job.future.cancel()
@@ -220,8 +209,8 @@ async def gather_hashes(
     """Submit hash jobs for `path_hash_causes` and run them with bounded concurrency.
 
     Used by the startup scan and the watcher to drain a batch of hash jobs directly,
-    independent of `Builder.job_loop`, which is not running during those phases
-    (build, startup and watch phases are mutually exclusive, see `tmp/overview.md`).
+    independent of `Builder.job_loop`, which is not running during those phases.
+    (Build, startup and watch phases are mutually exclusive.)
     A single call may mix jobs with different causes
     (e.g. the startup scan's `CONFIRMED` and `EXTERNAL` batches),
     which lets them interleave under one shared `njob` budget
@@ -240,21 +229,20 @@ async def gather_hashes(
         `(path, old_hash, cause)` triples to (re)hash;
         see `HashJob.old_hash` and `HashJob.cause`.
     njob
-        Maximum number of jobs this call runs concurrently. Jobs already claimed by
-        another submitter (e.g. a duplicate path within `path_hash_causes`, or, once amend()
-        promotion lands, a blocked RPC racing this drain) are not run here, and therefore
-        do not count against this budget; only their shared future is awaited.
+        Maximum number of jobs this call runs concurrently.
+        Jobs already claimed by another submitter (e.g. a duplicate path within `path_hash_causes`)
+        are not run here, and therefore do not count against this budget.
+        Only their shared future is awaited.
 
     Returns
     -------
     path_hashes
         The new hash of every path in `path_hash_causes`, keyed by path, in input order.
-        (The input stays a sequence of triples, since a single call may carry several causes.)
-        A path whose hash could not be computed (e.g. a directory used as a file, or a
-        `stat` error) is **absent** from the result: `Executor.run_hash_job` has already
-        reported the error and put the scheduler on hold, and neither caller (startup nor
-        watcher) can do anything with that path, so raising here would only take down the
-        director over one bad file.
+        A path whose hash could not be computed (e.g. a directory used as a file, or a `stat` error)
+        is **absent** from the result:
+        `Executor.run_hash_job` has already reported the error and put the scheduler on hold,
+        and neither caller (startup nor watcher) can do anything with that path,
+        so raising here would only take down the director over one bad file.
     """
     sem = asyncio.Semaphore(njob)
     ntotal = len(path_hash_causes)
@@ -288,10 +276,11 @@ async def gather_hashes(
         try:
             new_hash = await asyncio.shield(job.future)
         except Exception:  # noqa: BLE001
-            # Already reported by `Executor.run_hash_job`, which also put the scheduler on
-            # hold. Dropping the path from the result is what keeps one unhashable file from
-            # aborting the whole startup scan or watch cycle. A cancelled job raises
-            # `CancelledError`, which is not an `Exception` and still propagates, as it must.
+            # Already reported by `Executor.run_hash_job`, which also put the scheduler on hold.
+            # Dropping the path from the result is what keeps one unhashable file
+            # from aborting the whole startup scan or watch cycle.
+            # A cancelled job raises `CancelledError`,
+            # which is not an `Exception` and still propagates, as it must.
             return None
         nsuccess += 1
         request_counts_flush()

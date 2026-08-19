@@ -89,9 +89,19 @@ All English text in this repo — comments (including SQL comments), docstrings,
 Markdown documentation, commit messages, etc. — is wrapped using **semantic line breaks**:
 break after sentences or logical units, not at a fixed character count.
 See <https://sembr.org/>.
+Sentences always start on a new line,
+but multiple clauses within one sentence can be on the same line if they fit.
 This makes diffs to prose easier to review,
 since editing one sentence doesn't reflow unrelated lines.
 The 100-character line length (see Linting below) is a hard cap, not a target to fill.
+
+### Avoid En and Em dashes
+
+Write sentences without en or em dashes.
+They should never be used in any prose (code comments, docstrings, Markdown, ...),
+neither in their UTF-8 glyph form (–, —) nor in ASCII form (--, ---).
+Subclauses should be made explicit (e.g. "which", "because", "that")
+or split into separate sentences.
 
 ### Prose That Ages Well
 
@@ -134,21 +144,20 @@ Use **NumPy-style** sections (`Parameters`, `Returns`, `Raises`, ...)
 Some conventions specific to this codebase:
 
 - Docstrings are written in Markdown, not reStructuredText! Some important gotcha's:
-    - Use `**bold**` for emphasis, not `*italics*` (which is reserved for parameter names).
-    - Use single backticks for inline code and parameter names, not double backticks.
+    - Do not use italics for parameter names, return values, or exception names.
+      Use single backticks instead.
+    - Use single backticks for all inline code, not double backticks.
     - Use triple backticks for code blocks,
       and specify the language for syntax highlighting (e.g., ```python).
-- Lines are wrapped using semantic breaks, per
-  [Semantic Line Breaks](#semantic-line-breaks) above.
+- Lines are wrapped using semantic breaks, per [Semantic Line Breaks](#semantic-line-breaks) above.
 - Use the imperative mood for function descriptions
   (e.g., "Compute the hash of a file."),
   except for `@property` getters where the description should be a noun phrase
   (e.g., "The parent directory path.").
 - Do not repeat type annotations in the docstring — they are already in the function signature.
-- In `Parameters` sections, use the **parameter name** as the heading for each parameter,
-  not the type. Grouping closely related parameters under a combined heading
-  (e.g., `stdout, stderr`) is allowed when the mkdocs rendering supports it and
-  the parameters share the same description.
+- In `Parameters` sections, use the **parameter name** as the heading for each parameter.
+  Grouping closely related parameters under a combined heading
+  (e.g., `stdout, stderr`) is allowed when parameters are better described together.
 
 - In `Returns` sections, use a **semantic name** for the return value, not the type,
   as these are already in the function signature.

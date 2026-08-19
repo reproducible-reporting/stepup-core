@@ -8,11 +8,11 @@
  SUCCESS │ ./plan.py
     SKIP │ cp -p inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest 4e6353a4, out_digest 9e7bd348
+Same step hash       compact, inp_digest fea55a2f, out_digest 9e7bd348
 ────────────────────────────────────────────────────────────────────────────────
     SKIP │ cp -p out2.txt foo2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest 2fafb296, out_digest 810dcef4
+Same step hash       compact, inp_digest a34240ac, out_digest 810dcef4
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 2 outdated output(s)

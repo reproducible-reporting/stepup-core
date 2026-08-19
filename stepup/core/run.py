@@ -2,8 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Launch a step's command as a child process and report back its `ChildOutcome`.
 
-Also defines `Worker`, the base class for the in-flight work of a `Run` that can be
-interrupted.
+Also defines `Worker`, the base class for the in-flight work of a `Run` that can be interrupted.
 """
 
 import asyncio
@@ -59,12 +58,14 @@ logger = logging.getLogger(__name__)
 
 @attrs.define
 class Worker:
-    """Base class for a subprocess or forkserver child process that is the in-flight work
-    of a `Run` and can be interrupted with a signal.
+    """Base class for a subprocess or forkserver child process
+    that is the in-flight work of a `Run` and can be interrupted with a signal.
 
-    Subclasses implement `_describe` and `_signal`; `interrupt` supplies the shared logging
-    and error handling around them. A worker with different interrupt semantics (e.g. a
-    thread computation, which has no OS process to signal) may override `interrupt` instead.
+    Subclasses implement `_describe` and `_signal`;
+    `interrupt` supplies the shared logging and error handling around them.
+    A worker with different interrupt semantics
+    (e.g. a thread computation, which has no OS process to signal)
+    may override `interrupt` instead.
     """
 
     job_i: int = attrs.field(kw_only=True)
@@ -81,10 +82,7 @@ class Worker:
     def suspend(self) -> None:
         """Stop the in-flight work until `resume` is called.
 
-        `SIGSTOP` is used rather than `SIGTSTP` because every step runs in a session of its
-        own, which makes its process group orphaned: its group leader's parent (the director)
-        lives in another session. The kernel discards `SIGTSTP` for an orphaned process group
-        whose members have the default disposition, while `SIGSTOP` always works.
+        Uses `SIGSTOP` rather than `SIGTSTP`; see `_signal_process_group` for why.
         """
         with contextlib.suppress(ProcessLookupError):
             logger.info("Suspending %s (job %d)", self._describe(), self.job_i)
@@ -97,7 +95,7 @@ class Worker:
             self._signal(signal.SIGCONT)
 
     def _describe(self) -> str:
-        """A short human-readable description of the worker, for logging."""
+        """Return a short human-readable description of the worker, for logging."""
         raise NotImplementedError
 
     def _signal(self, sig: int) -> None:
@@ -115,18 +113,16 @@ class ThreadWorker(Worker):
     """A computation running in a dedicated thread.
 
     Computationally intensive work must be designed to release the GIL.
-    This is primarily used for hashing now.
-    It may later also be used to offload other CPU-bound work from the director.
     Threads should never be used for client-specific commands.
     """
 
     work: Callable[[threading.Event], Any] = attrs.field(kw_only=True)
-    """The callable to run in the thread, which can be canceled by a `threading.Event`."""
+    """The callable to run in the thread, which can be cancelled by a `threading.Event`."""
 
     # Internal state
 
     _cancel_event: threading.Event = attrs.field(init=False, factory=threading.Event)
-    """The event that tells the hash thread to stop at the next opportunity."""
+    """The event that tells the thread to stop at the next opportunity."""
 
     _loop: asyncio.AbstractEventLoop = attrs.field(init=False)
     """The event loop that created this thread, used to resolve the future."""
@@ -143,13 +139,13 @@ class ThreadWorker(Worker):
         self._thread = threading.Thread(target=self._run, daemon=True)
 
     async def run_in_thread(self) -> Any:
-        """Wait for the thread to finish and return its result, re-raising its exception."""
+        """Start the thread, wait for its result and return it, re-raising its exception."""
         self._thread.start()
         try:
             return await self._future
         finally:
             self._cancel_event.set()
-            # Try to join without wait, or join in a threadpool if needed.
+            # Try to join without waiting, or join in a thread pool if needed.
             self._thread.join(timeout=0)
             if self._thread.is_alive():
                 await asyncio.get_running_loop().run_in_executor(None, self._thread.join)
@@ -159,26 +155,34 @@ class ThreadWorker(Worker):
         self._cancel_event.set()
 
     def suspend(self) -> None:
-        """Do nothing: this thread runs inside the director, which is suspended as a whole."""
+        """Ignore the suspend call.
+
+        This thread runs inside the director, which already suspends as a whole,
+        together with its threads.
+        """
 
     def resume(self) -> None:
-        """Do nothing, the counterpart of `suspend`."""
+        """Ignore the resume call.
+
+        See `suspend` docstring for details.
+        """
 
     def _run(self) -> None:
         try:
             outcome, error = self.work(self._cancel_event), None
         except BaseException as exc:  # noqa: BLE001
             outcome, error = None, exc
-        # The loop is guaranteed to still be running: run_in_thread joins this
-        # thread in its finally clause before the coroutine (and thus the loop) can
-        # wind down. suppress is cheap insurance against abnormal loop teardown.
+        # The loop is guaranteed to still be running:
+        # `run_in_thread` joins this thread in its `finally` clause
+        # before the coroutine (and thus the loop) can wind down.
+        # Suppressing `RuntimeError` is cheap insurance against abnormal loop teardown.
         with contextlib.suppress(RuntimeError):
             self._loop.call_soon_threadsafe(self._resolve, outcome, error)
 
     def _resolve(self, outcome: Any, error: BaseException | None) -> None:
-        # The future may already be cancelled if the surrounding asyncio task was
-        # cancelled independently; set_result/set_exception would then raise
-        # InvalidStateError.
+        # The future may already be cancelled
+        # if the surrounding asyncio task was cancelled independently;
+        # `set_result`/`set_exception` would then raise `InvalidStateError`.
         if self._future.done():
             return
         if error is None:
@@ -195,15 +199,25 @@ class ThreadWorker(Worker):
 def _signal_process_group(pid: int, sig: int) -> None:
     """Deliver `sig` to the process group led by `pid`, falling back to `pid` itself.
 
-    Every step runs in a session of its own, so the pid of the process StepUp started is
-    also its process group id. Signalling the group (instead of just that one process)
-    is what reaches the actual work when a step is a shell command whose pipeline or
-    `&&`-chain keeps the shell around as a wrapper.
+    Every step runs in a session of its own:
+    `start_new_session=True` for subprocesses, `os.setsid()` at the top of
+    `_forkserver_entry` for forkserver children.
+    This makes the pid of the process StepUp started double as its process group id,
+    and signalling that group (instead of just the one process) is what reaches the actual
+    work when a step is a shell command whose pipeline or `&&`-chain keeps the shell around
+    as a wrapper.
+    It also detaches the step from the terminal's session, so a Ctrl-C reaches only the
+    director, which is then the only thing that decides when to stop a running step.
+    The same holds for a Ctrl-Z: the director suspends a step with `SIGSTOP` rather than
+    `SIGTSTP` (see `Worker.suspend`), because every step's process group is orphaned by
+    construction — its leader's parent (the director) lives in another session — and the
+    kernel discards `SIGTSTP` for an orphaned process group whose members have the default
+    disposition.
 
-    The fallback covers the short window in which a forkserver child has been forked but
-    has not called `os.setsid` yet, so that its group does not exist.
+    The fallback to signalling `pid` directly covers the short window in which a forkserver
+    child has been forked but has not called `os.setsid` yet, so its group does not exist yet.
     A process that has already exited raises `ProcessLookupError` from both calls,
-    which `Worker.interrupt` ignores.
+    which `Worker` methods ignore.
 
     Parameters
     ----------
@@ -251,13 +265,9 @@ class ForkserverWorker(Worker):
 #
 
 
-@attrs.define(eq=False)
+@attrs.define()
 class Run:
-    """Mutable state for a single step while it is being executed or skipped.
-
-    Instances use identity-based equality and hashing so they can be tracked in a set
-    of currently running steps.
-    """
+    """Mutable state for a single step while it is being executed or skipped."""
 
     step: Step = attrs.field()
     """The step being executed."""
@@ -265,8 +275,8 @@ class Run:
     job_i: int = attrs.field()
     """Unique id of this run attempt, assigned by `Scheduler` when the job was created.
 
-    Unlike `step.i`, which stays the same across every (re)attempt of a deferred step, this
-    id is unique per attempt, so RPC calls can be matched to the attempt that made them.
+    Unlike `step.i`, which stays the same across every (re)attempt of a deferred step,
+    this id is unique per attempt, so RPC calls can be matched to the attempt that made them.
     """
 
     description: str = attrs.field(init=False)
@@ -277,12 +287,13 @@ class Run:
         return escape_command_display(self.step.label)
 
     outcome: ChildOutcome | None = attrs.field(init=False, default=None)
+    """The outcome of the child process, once it has finished."""
 
     inp_messages: list[str] = attrs.field(init=False, factory=list)
     """Messages related to input validation issues: unexpected changes and deleted inputs."""
 
     inp_digest: bytes = attrs.field(init=False, default=b"")
-    """The input digest, which can be useful for some steps."""
+    """The input digest, which some steps may use to decide whether cached results are valid."""
 
     out_missing: list[str] = attrs.field(init=False, factory=list)
     """List of expected output files that were not created."""
@@ -294,18 +305,18 @@ class Run:
     """Dynamic inputs that failed the freshness check, if the step was deferred."""
 
     interrupted_defer: bool = attrs.field(init=False, default=False)
-    """Set to True when the step has reached its defer cap."""
+    """Set to `True` when the step has reached its defer cap."""
 
     success: bool = attrs.field(init=False, default=True)
     """Flag indicating whether the step was handled successfully.
 
-    A nonzero returncode sets it False,
+    A nonzero returncode sets it `False`,
     but so do independent conditions like missing outputs or unfresh dynamic inputs.
     """
 
     worker: Worker | None = attrs.field(init=False, default=None)
-    """The subprocess, forkserver child, or hash thread currently doing this run's
-    in-flight work, if any.
+    """The subprocess, forkserver child, or hash thread
+    currently doing this run's in-flight work, if any.
     """
 
 
@@ -315,7 +326,7 @@ class Run:
 
 
 def _check_executable(executable: Path, shebang: str | None = None) -> str | None:
-    """Check if the executable looks fine.
+    """Check whether the executable can plausibly be run as a step command.
 
     Parameters
     ----------
@@ -329,25 +340,22 @@ def _check_executable(executable: Path, shebang: str | None = None) -> str | Non
     message
         `None` when the executable is acceptable, otherwise a human-readable error message.
     """
-    # Normalize away redundant `.` components, e.g. `cwd / script` doubling up a leading
-    # `./` when `cwd` is itself `.`. `path.Path.__truediv__` does not collapse these on its
-    # own, unlike `pathlib`.
+    # Normalize away redundant `.` components,
+    # e.g. `cwd / script` doubling up a leading `./` when `cwd` is itself `.`.
+    # `path.Path.__truediv__` does not collapse these on its own, unlike `pathlib`.
     executable = executable.normpath()
     # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29
     if not executable.is_file():
-        # The executable is probably in the PATH,
-        # i.e. not a custom script, so not checking
+        # The executable is probably in the PATH, i.e. not a custom script,
+        # so there is nothing to check.
         return None
-    # Check if the file is executable
     if not executable.access(os.X_OK):
-        # This is not a script, so not checking the shebang.
         return f"File is not executable: {executable}"
     # Check if the file is binary.
     # https://stackoverflow.com/a/7392391
     with open(executable, "rb") as fh:
         head = fh.read(1024)
     printable_text_chars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
-    # Check if the file is binary by translating non-text characters
     if bool(head.translate(None, printable_text_chars)):
         # This is unlikely to be a script, so not checking the shebang.
         return None
@@ -366,7 +374,7 @@ def _check_executable(executable: Path, shebang: str | None = None) -> str | Non
 
 @functools.cache
 def _get_console_script_entry_points():
-    """The `console_scripts` entry points of all installed distributions, scanned once.
+    """Return the `console_scripts` entry points of all installed distributions, scanned once.
 
     Returns
     -------
@@ -380,10 +388,10 @@ def _executable_uses_same_python(path_exec: str) -> bool:
     """Check if an executable script's shebang resolves to the same Python as the current process.
 
     This detects console_script wrappers installed in PATH-extended locations
-    (e.g., additional environment modules loaded on top of the base Python module)
+    (e.g. additional environment modules loaded on top of the base Python module)
     whose shebang points to the same Python executable as `sys._base_executable`.
-    When true, the executable and the forkserver use the same interpreter and inherit
-    the same environment variables, so their behavior is equivalent.
+    When true, the executable and the forkserver use the same interpreter
+    and inherit the same environment variables, so their behavior is equivalent.
 
     Parameters
     ----------
@@ -433,7 +441,7 @@ def _executable_compatible_with_current_python(which_path: str) -> bool:
     Parameters
     ----------
     which_path
-        Path to the executable to check, as e.g. returned by `shutil.which`.
+        Path to the executable to check, e.g. as returned by `shutil.which`.
 
     Returns
     -------
@@ -468,7 +476,7 @@ def _detect_python_entrypoint(cmd: str) -> str | None:
 
     Raises
     ------
-    ValueError
+    RunError
         When `cmd` is registered as a console_script but cannot be found on `PATH`,
         which indicates a broken installation.
     """
@@ -501,11 +509,12 @@ def _detect_python_entrypoint(cmd: str) -> str | None:
 def _start_drain(read_all: Callable[[], bytes]) -> Callable[[], bytes]:
     """Start a daemon thread that calls `read_all`, which blocks until EOF.
 
-    Returns a callable that joins the thread and returns the bytes it read. Isolates the
-    "read on a background thread, join later" pattern shared by `_communicate_wait4` and
-    `_redirect_os_fds`. Both dodge a pipe-full deadlock this way: a writer end of the pipe
-    stays open elsewhere (in this process or a child one) while the thread drains the
-    corresponding reader end.
+    Returns a callable that joins the thread and returns the bytes it read.
+    Isolates the "read on a background thread, join later" pattern
+    shared by `_communicate_wait4` and `_redirect_os_fds`.
+    Both dodge a pipe-full deadlock this way:
+    a writer end of the pipe stays open elsewhere (in this process or a child one)
+    while the thread drains the corresponding reader end.
     """
     result = b""
 
@@ -537,7 +546,7 @@ def _communicate_wait4(
 ) -> tuple[bytes, bytes, ResourceUsage]:
     """Communicate with `proc` and return `(stdout, stderr, usage)`.
 
-    Reads stdout and stderr concurrently in threads to avoid pipe-full deadlock,
+    Reads stdout and stderr concurrently in threads to avoid a pipe-full deadlock,
     then calls `os.wait4` to reap the child and capture its individual CPU usage.
     """
     stdout_join = _start_drain(proc.stdout.read) if proc.stdout is not None else None
@@ -569,14 +578,14 @@ async def _exec_subprocess(
 ) -> ChildOutcome:
     """Run `cmd` as a subprocess and return a `ChildOutcome`.
 
-    The process is created synchronously so that `run.worker` can be set immediately for
-    interrupts.
+    The process is created synchronously
+    so that `run.worker` can be set immediately for interrupts.
     Blocking I/O and the `os.wait4` reap are offloaded to a thread-pool executor
     so the event loop stays responsive.
 
     Using `subprocess.Popen` (rather than `asyncio.create_subprocess_*`)
     means asyncio's child watcher never registers this PID,
-    so our `os.wait4` call captures per-process CPU time without racing against the watcher.
+    so the `os.wait4` call captures per-process CPU time without racing against the watcher.
     """
     stdin = subprocess.PIPE if stdin_data is not None else subprocess.DEVNULL
     wtime_start = time.perf_counter()
@@ -589,10 +598,7 @@ async def _exec_subprocess(
             stderr=subprocess.PIPE,
             env=env,
             cwd=cwd,
-            # Put the step in its own session, so that a Ctrl-C in the terminal does not
-            # reach it directly and the director alone decides when to stop it.
-            # This also makes the whole process tree of the step signallable as one group,
-            # which a `sh -c` wrapper around a pipeline would otherwise hide.
+            # Put the step in its own session; see `_signal_process_group`.
             start_new_session=True,
         )
     except OSError as exc:
@@ -617,13 +623,7 @@ async def _run_subprocess(
     run: Run,
     stdin_data: bytes | None = None,
 ) -> ChildOutcome:
-    """Run `cmd` as a subprocess with or without a shell.
-
-    Returns a `ChildOutcome` whose `payload` is `(rc, stdout, stderr)`,
-    with `stdout`/`stderr` decoded to `str`.
-
-    Actual execution is performed by `_exec_subprocess`.
-    """
+    """Run `cmd` as a subprocess with or without a shell."""
     first_arg = shlex.split(cmd)[0] if isinstance(cmd, str) else cmd[0]
     message = _check_executable(cwd / Path(first_arg))
     if message is not None:
@@ -675,7 +675,7 @@ def _lost_child_outcome(exitcode: int | None) -> ChildOutcome:
         returncode = exitcode
     else:
         # A child that exits without sending anything (e.g. a step calling `os._exit`)
-        # never gets here with exitcode 0, but a failed run must not report success.
+        # can never get here with exitcode 0, but a failed run must not report success.
         reason = f"exit code {exitcode}"
         returncode = exitcode if exitcode else 1
     return ChildOutcome(
@@ -692,10 +692,10 @@ async def _exec_in_forkserver(
     """Run `target(*args, conn)` in a forkserver child and return the `ChildOutcome` it sends back.
 
     The child's pid is recorded on `run` so a running step can be interrupted.
-    A child that dies without sending an outcome (typically because the build was aborted
-    and it was killed with `SIGKILL`) yields a failed outcome describing how it died,
-    just like a subprocess killed by a signal, instead of an `EOFError` escaping as an
-    internal director error.
+    A child that dies without sending an outcome
+    (typically because the build was aborted and it was killed with `SIGKILL`)
+    yields a failed outcome describing how it died, just like a subprocess killed by a signal,
+    instead of an `EOFError` escaping as an internal director error.
     """
     parent_conn, child_conn = mp_ctx.Pipe(duplex=False)
     proc = mp_ctx.Process(target=target, args=(*args, child_conn))
@@ -717,13 +717,15 @@ async def _exec_in_forkserver(
 
 @contextlib.contextmanager
 def _redirect_os_fds(stdout_buf: io.StringIO, stderr_buf: io.StringIO):
-    """Capture OS-level fd 1/2 output (subprocesses, C extensions) that a `sys.stdout` /
-    `sys.stderr` `StringIO` redirect does not see.
+    """Capture OS-level fd 1/2 output (subprocesses, C extensions)
+    that a `sys.stdout` / `sys.stderr` `StringIO` redirect does not see.
 
-    Redirects fds 1 and 2 to pipes drained on background threads for the duration of the
-    `with` block, then restores the original fds and appends whatever the drain threads
-    read to `stdout_buf` / `stderr_buf`. Restoring (rather than closing) the original fds
-    is what signals EOF to the drain threads, which is what unblocks their join.
+    Redirects fds 1 and 2 to pipes drained on background threads
+    for the duration of the `with` block,
+    then restores the original fds
+    and appends whatever the drain threads read to `stdout_buf` / `stderr_buf`.
+    Restoring (rather than closing) the original fds is what signals EOF to the drain threads,
+    which is what unblocks their join.
     """
     saved_out_fd = os.dup(1)
     saved_err_fd = os.dup(2)
@@ -736,8 +738,9 @@ def _redirect_os_fds(stdout_buf: io.StringIO, stderr_buf: io.StringIO):
 
     def _read_fd_to_eof(fd: int) -> bytes:
         # Blocks until EOF, i.e. until every writer of this pipe end has closed it.
-        # Same semantics as _communicate_wait4: a step that leaves a daemon holding
-        # the inherited fd open will keep this thread (and the join below) waiting.
+        # Same semantics as `_communicate_wait4`:
+        # a step that leaves a daemon holding the inherited fd open
+        # will keep this thread (and the join that waits for it) waiting.
         with os.fdopen(fd, "rb") as f:
             return f.read()
 
@@ -763,18 +766,17 @@ def _forkserver_entry(
     ep_value: str | None,
     result_conn,
 ) -> None:
-    """Entry point for forkserver-launched Python executions.
+    """Run a Python script or console_script entry point in a forkserver child.
 
-    This function runs in a forked child process and sends a `ChildOutcome` back via
-    `result_conn`, whose `payload` is a `(returncode, stdout, stderr)` tuple.
+    This function runs in a forked child process
+    and sends a `ChildOutcome` back via `result_conn`.
     When `ep_value` is `None`, `cmd` is a Python script path run via `runpy.run_path`,
     with local imports auto-detected and registered as dynamic inputs.
-    When `ep_value` is a `module:attr` string, the corresponding console_script function
-    is imported and called directly without import tracking.
+    When `ep_value` is a `module:attr` string,
+    the corresponding console_script function is imported and called directly
+    without import tracking.
     """
-    # Put the step in its own session, the counterpart of `start_new_session` on the
-    # subprocess path, so that both kinds of steps are signalled the same way: as a process
-    # group, by the director alone. See `_signal_process_group`.
+    # Put the step in its own session; see `_signal_process_group`.
     # This cannot fail: a freshly forked child is never a process group leader.
     os.setsid()
     # Note that the time needed to start/stop the forkserver child is not counted,
@@ -785,9 +787,9 @@ def _forkserver_entry(
     returncode = 0
     ru_self_start = resource.getrusage(resource.RUSAGE_SELF)
     ru_children_start = resource.getrusage(resource.RUSAGE_CHILDREN)
-    # The inner try/except must run inside the `with` block, so that the fd restore and
-    # append (in the `with` block's teardown) happen after the traceback (if any) has
-    # already been written to stderr_buf, not before.
+    # The inner try/except must run inside the `with` block,
+    # so that the fd restore and append (in the `with` block's teardown)
+    # happen after the traceback (if any) has already been written to `stderr_buf`, not before.
     with _redirect_os_fds(stdout_buf, stderr_buf):
         try:
             os.environ.clear()
@@ -810,31 +812,35 @@ def _forkserver_entry(
                     exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
                 )
             finally:
-                # Run atexit handlers before sending the result so that any amend() calls
-                # from atexit handlers are processed while the step is still RUNNING.
-                # There is no public API for this in CPython; _run_exitfuncs is a stable
-                # private implementation detail present in every CPython release since 2.0.
+                # Run `atexit` handlers before sending the result,
+                # so that any `amend()` calls from `atexit` handlers
+                # are processed while the step is still RUNNING.
+                # There is no public API for this in CPython;
+                # `_run_exitfuncs` is a stable private implementation detail,
+                # present in every CPython release from 2.0 to 3.14 (last checked 2026-08).
                 with contextlib.suppress(AttributeError):
                     atexit._run_exitfuncs()
                 if ep_value is None:
                     # Must be imported ONLY in the forked process:
                     # it opens a new connection to the director socket,
-                    # which should happen in the forked process, not its parent.
+                    # which must not happen in the parent.
                     from stepup.core.api import amend  # noqa: PLC0415
 
                     amend(inp=get_local_import_paths(script_path=Path(cmd)))
         except BaseException as exc:  # noqa: BLE001
-            # All exceptions must be caught here, to be able to send the corresponding
-            # output and return code back to the director process.
+            # All exceptions must be caught here,
+            # to be able to send the corresponding output and return code
+            # back to the director process.
             # Otherwise, the parent process would just see a connection error.
             # This path catches the exception itself, so `sys.excepthook` never runs
-            # and the shortening must be requested explicitly.
+            # and the traceback shortening must be requested explicitly.
             print_step_traceback(exc, stderr_buf)
             returncode = 1
         finally:
-            # Snapshot in a `finally`: a step failing with an uncaught exception skips the
-            # tail of the `try` body, which would otherwise leave the usage at zero even
-            # though the step did consume CPU time.
+            # Snapshot in a `finally`:
+            # a step failing with an uncaught exception skips the tail of the `try` body,
+            # which would otherwise leave the usage at zero
+            # even though the step did consume CPU time.
             ru_self_end = resource.getrusage(resource.RUSAGE_SELF)
             ru_children_end = resource.getrusage(resource.RUSAGE_CHILDREN)
     wtime_end = time.perf_counter()
@@ -914,9 +920,10 @@ async def launch_command(
 ) -> ChildOutcome:
     """Launch a step's command and return its `ChildOutcome`.
 
-    Dispatches between a shell, a Python script (`*.py`), a Python console_script
-    entry point, or a plain (non-shell) exec. Python scripts and entry points run in a
-    forkserver child when `mp_ctx` is not `None`, and as a plain subprocess otherwise.
+    Dispatches to a shell, a Python script (`*.py`), a Python console_script entry point,
+    or a plain (non-shell) exec.
+    Python scripts and entry points run in a forkserver child when `mp_ctx` is not `None`,
+    and as a plain subprocess otherwise.
 
     Parameters
     ----------
@@ -937,6 +944,11 @@ async def launch_command(
     -------
     outcome
         The `ChildOutcome` of the launched command.
+
+    Raises
+    ------
+    ValueError
+        When `command` is empty, which is a programming error in the director.
     """
     parts = shlex.split(command)
     if not parts:

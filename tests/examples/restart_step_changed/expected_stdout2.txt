@@ -4,7 +4,7 @@
    PHASE │ build
   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 00434501 ➜ 1e93fd57, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest cfa397e5 ➜ 36bb0581, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest b104d3a9 ➜ d80d3927)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
@@ -15,7 +15,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
  SUCCESS │ echo 2 > original.txt
   NOSKIP │ cp -p original.txt copy.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest b6023ed3 ➜ a8ff1cad, out_digest a1ae8bce ➜ (unset)
+Modified step hash   explained, inp_digest 069e021a ➜ 9c7d6100, out_digest a1ae8bce ➜ (unset)
 Modified inp hash    original.txt (digest 4355a46b ➜ 53c234e5)
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p original.txt copy.txt

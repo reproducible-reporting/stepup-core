@@ -31,8 +31,8 @@ class Job:
     env_deps: list[str] = attrs.field()
     """The names of (externally defined) environment variables that are used by the step."""
 
-    step_hash: "StepHash" = attrs.field()
-    """The hash of the step if it was previously executed, or None if it was not."""
+    step_hash: "StepHash | None" = attrs.field()
+    """The hash of the step if it was previously executed, or `None` if it was not."""
 
     create_time: float = attrs.field(factory=perf_counter)
     """The creation time of the job, used for scheduling optimization."""
@@ -40,8 +40,9 @@ class Job:
     job_i: int = attrs.field(kw_only=True)
     """Unique id of this job, assigned by `Scheduler` when the job is created.
 
-    Unlike `step.i`, which stays the same across every (re)attempt of a deferred step, this
-    id is unique per job, so RPC calls can be matched to the attempt that made them.
+    Unlike `step.i`, which stays the same across every (re)attempt of a deferred step,
+    this id is unique per job,
+    so RPC calls can be matched to the attempt that made them.
     """
 
     @property
@@ -56,32 +57,31 @@ class Job:
 
     @property
     def letter(self) -> str:
-        """The single character identifying the kind of job in the progress bar."""
+        """The single character identifying the job kind, first letter of prefix."""
         return self.prefix[0]
 
     @property
     def prefix(self) -> str:
-        """The kind of job, spelled out in full for log lines such as `RUN: echo hi`.
-
-        Only its first character, exposed as `letter`, reaches the progress bar.
-        """
+        """The kind of job, spelled out in full for log lines such as `RUN: echo hi`."""
         raise NotImplementedError
 
     def coro(self, executor: "Executor"):
-        """Return a coroutine, of which the builder will make an asyncio.Task."""
+        """Return a coroutine that carries out this job on `executor`."""
         raise NotImplementedError
 
-    def duration(self) -> float | None:
-        """Return the duration of the job since the creation time."""
+    def duration(self) -> float:
+        """Return the time elapsed since the job was created."""
         return perf_counter() - self.create_time
 
 
 @attrs.define(frozen=True)
 class ValidateDynamicJob(Job):
-    """Validate that dynamic inputs have not changed yet, or enforce a full rerun.
+    """Validate that the dynamic inputs are still up to date, or enforce a full rerun.
 
     This job checks whether the inputs of a step have changed since the last run,
-    in which case the dynamic inputs may be outdated. When that is the case:
+    because such a change may have made the dynamic inputs outdated.
+    When the inputs have changed:
+
     - The step cannot be skipped and the step hash should be discarded.
     - The dynamic inputs need to be recreated by running the step.
     """
@@ -99,10 +99,10 @@ class ValidateDynamicJob(Job):
 
 @attrs.define(frozen=True)
 class RunJob(Job):
-    """Skip or execute a job
+    """Skip or execute a job.
 
     When `step_hash` is set, the job is skipped if that hash is still valid,
-    i.e. meaning that inputs, environment variables and output have not changed.
+    i.e. if the inputs, the environment variables and the outputs have not changed.
     """
 
     @property

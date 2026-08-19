@@ -20,13 +20,13 @@ logger = logging.getLogger(__name__)
 
 
 def cgroup_scope_prefix() -> list[str]:
-    """Return an argv prefix that launches a command in its own `systemd-run --scope`.
+    """Return an argv prefix that launches a command in its own `systemd-run --scope` cgroup.
 
     Returns
     -------
     argv_prefix
-        A list of strings that can be prepended to a command to launch it in its own
-        `systemd-run --scope` cgroup.
+        A list of strings that can be prepended to a command
+        to launch it in its own `systemd-run --scope` cgroup.
 
     Raises
     ------
@@ -59,15 +59,17 @@ def cgroup_scope_prefix() -> list[str]:
 
 
 def _own_cgroup_path() -> Path:
-    """Return this process's cgroup v2 path, relative to the cgroup mount.
+    """Return this process's cgroup v2 path, relative to the cgroup v2 mount point.
 
     Parses `/proc/self/cgroup` for the unified-hierarchy line (`"0::/path"`).
-    Raises on any other layout (e.g. a cgroup v1 system, where that file
-    has one line per legacy controller instead) or if the file cannot be read.
+    The kernel always writes `path` with a leading slash,
+    but it is relative to the cgroup v2 mount point, not an absolute file system path.
+    The leading slash is stripped here so it can safely be joined onto a cgroup v2 mount point.
 
-    The kernel always writes `path` with a leading slash, but it is relative to
-    the cgroup v2 mount point, not an absolute filesystem path.
-    The leading slash is stripped here so callers can safely join it onto `cgroup_root`.
+    Returns
+    -------
+    own_path
+        The cgroup v2 path of this process, relative to the cgroup v2 mount point.
 
     Raises
     ------
@@ -75,6 +77,7 @@ def _own_cgroup_path() -> Path:
         If `/proc/self/cgroup` cannot be read.
     CgroupError
         If the file is read but does not contain a unified-hierarchy line.
+        (e.g. a cgroup v1 system, where that file has one line per legacy controller instead)
     """
     with open("/proc/self/cgroup") as fh:
         for line in fh:
@@ -89,8 +92,8 @@ def _own_cgroup_dir(cgroup_root: str) -> Path:
     Parameters
     ----------
     cgroup_root
-        The cgroup v2 mount point. Overridable so tests can point this at a fake
-        tree instead of the real `/sys/fs/cgroup`.
+        The cgroup v2 mount point.
+        Overridable so tests can point this at a fake tree instead of the real `/sys/fs/cgroup`.
 
     Returns
     -------
@@ -100,7 +103,8 @@ def _own_cgroup_dir(cgroup_root: str) -> Path:
     Raises
     ------
     CgroupError
-        If not running on Linux, or if `/proc/self/cgroup` cannot be read.
+        If not running on Linux,
+        or if `/proc/self/cgroup` cannot be read or has no unified-hierarchy line.
     """
     if sys.platform != "linux":
         raise CgroupError("Cgroups unavailable: not running on Linux.")
@@ -115,19 +119,15 @@ def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> Path:
     """Return this process's cgroup directory, if memory accounting is usable there.
 
     This does not create or modify any cgroup;
-    it is on the caller (`tui.py` builds the director's command line with
-    `cgroup_scope_prefix()` for exactly this reason)
-    to arrange for this process to already be the sole occupant of its own cgroup,
+    it is on the caller to arrange for this process
+    to already be the sole occupant of its own cgroup,
     e.g. by launching it via `systemd-run --scope`.
-
-    Any failure (not Linux, not cgroup v2, memory accounting not active for this cgroup, ...)
-    will raise an exception.
 
     Parameters
     ----------
     cgroup_root
-        The cgroup v2 mount point. Overridable so tests can point this at a fake
-        tree instead of the real `/sys/fs/cgroup`.
+        The cgroup v2 mount point.
+        Overridable so tests can point this at a fake tree instead of the real `/sys/fs/cgroup`.
 
     Returns
     -------
@@ -137,10 +137,11 @@ def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> Path:
     Raises
     ------
     CgroupError
-        If cgroup memory accounting is unavailable for any reason.
+        If cgroup memory accounting is unavailable for any reason:
+        not Linux, not cgroup v2, memory accounting not active for this cgroup, etc.
     """
     own_dir = _own_cgroup_dir(cgroup_root)
-    # Verify that the director is alone in the cgroup.
+    # Verify that this process is alone in the cgroup.
     try:
         with open(own_dir / "cgroup.procs") as fh:
             pids = [int(line) for line in fh if line.strip()]
@@ -159,7 +160,7 @@ def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> Path:
 
 
 def _count_cpu_list(text: str) -> int:
-    """Count the number of CPU ids in a cgroup CPU-list string, e.g. `"0-3,7,9-10"`."""
+    """Count the number of CPU IDs in a cgroup CPU-list string, e.g. `"0-3,7,9-10"`."""
     total = 0
     for token in text.strip().split(","):
         token = token.strip()
@@ -202,20 +203,22 @@ def _read_cpu_max_ncore(own_dir: Path) -> float | None:
 def get_ncore_from_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> int:
     """Determine the number of CPU cores available to this process, from cgroup v2 accounting.
 
-    Combines `cpuset.cpus.effective` (cores pinned to this cgroup) and `cpu.max`
-    (a fractional CPU-time quota) via the minimum of whichever is readable, since
-    either constraint can independently reduce the effective core budget.
+    Combines `cpuset.cpus.effective` (cores pinned to this cgroup)
+    and `cpu.max` (a fractional CPU-time quota),
+    taking the minimum over whichever of the two is readable,
+    since either constraint can independently reduce the effective core budget.
 
-    Unlike `find_own_memory_cgroup()`, this does not require the calling process
-    to be the sole occupant of its cgroup: a Slurm or PBS job's cgroup is normally
-    shared by all of the job's processes, so requiring exclusivity would defeat
-    the purpose of using this to detect scheduler-imposed core limits.
+    Unlike `find_own_memory_cgroup()`,
+    this does not require the calling process to be the sole occupant of its cgroup:
+    a Slurm or PBS job's cgroup is normally shared by all of the job's processes,
+    so requiring exclusivity would defeat the purpose of using this
+    to detect scheduler-imposed core limits.
 
     Parameters
     ----------
     cgroup_root
-        The cgroup v2 mount point. Overridable so tests can point this at a fake
-        tree instead of the real `/sys/fs/cgroup`.
+        The cgroup v2 mount point.
+        Overridable so tests can point this at a fake tree instead of the real `/sys/fs/cgroup`.
 
     Returns
     -------
@@ -226,8 +229,8 @@ def get_ncore_from_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> int:
     Raises
     ------
     CgroupError
-        If cgroups are unavailable, or if neither `cpuset.cpus.effective`
-        nor `cpu.max` can be read.
+        If cgroups are unavailable,
+        or if neither `cpuset.cpus.effective` nor `cpu.max` can be read.
     """
     own_dir = _own_cgroup_dir(cgroup_root)
     candidates = [

@@ -25,42 +25,32 @@ def _convert_to_strs(words: Iterable[str]) -> list[str]:
 
 @attrs.define
 class StepInfo:
-    """The `step()` function returns an instance of this class to help defining follow-up steps.
+    """Information about a step in a StepUp build, intended for defining follow-up steps.
 
-    This object will not contain any dynamic dependency information.
+    This object does not contain any dynamic dependency information.
     It only holds initial dependencies known at the time the step is defined.
 
-    All paths and environment variables are stored in sorted order to ensure consistency.
+    All paths and environment variable names are stored in sorted order to ensure consistency.
+    If paths are relative, they should be relative to the work directory.
     """
 
     command: str = attrs.field(converter=str)
-    """The command to be executed of the step."""
+    """The command executed by the step."""
 
     inp: list[Path] = attrs.field(converter=_convert_to_paths)
-    """List of input paths of the step.
-
-    If relative, they are relative to the work directory.
-    """
+    """List of input paths of the step."""
 
     env: list[str] = attrs.field(converter=_convert_to_strs)
-    """List of environment values used by the step."""
+    """List of names of environment variables to which the step is sensitive."""
 
     out: list[Path] = attrs.field(converter=_convert_to_paths)
-    """List of output paths of the step.
-
-    If relative, they are relative to the work directory.
-    """
+    """List of output paths of the step."""
 
     vol: list[Path] = attrs.field(converter=_convert_to_paths)
-    """List of volatile output paths of the step.
-
-    If relative, they are relative to the work directory.
-    """
+    """List of volatile output paths of the step."""
 
     workdir: Path = attrs.field(converter=coerce_path)
-    """The work directory of the step.
-
-    If relative, it is relative to the StepUp root."""
+    """The work directory of the step."""
 
     def filter_inp(self, pattern: str, **subs: str) -> NamedGlob:
         """Return a `NamedGlob` object with matching results from `self.inp`."""
@@ -82,7 +72,7 @@ class StepInfo:
 
 
 def load_step_info(filename: StrPath) -> StepInfo | list[StepInfo]:
-    """Load one or more step info object from a JSON file.
+    """Load one or more step info objects from a JSON file.
 
     The file should contain a single JSON object or a JSON array of such objects.
     """

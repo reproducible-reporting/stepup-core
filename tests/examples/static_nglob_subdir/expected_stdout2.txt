@@ -7,11 +7,11 @@
  SUCCESS │ ./plan.py  # wd=sub
     SKIP │ cp -p inp1.txt out1.txt  # wd=sub
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest 9d6882a0, out_digest 003961e1
+Same step hash       compact, inp_digest 8f6fee9c, out_digest 003961e1
 ────────────────────────────────────────────────────────────────────────────────
     SKIP │ cp -p inp2.txt out2.txt  # wd=sub
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest 571a6c85, out_digest c2c4c1bb
+Same step hash       compact, inp_digest b736f5c0, out_digest c2c4c1bb
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p inp3.txt out3.txt  # wd=sub
  SUCCESS │ cp -p inp3.txt out3.txt  # wd=sub

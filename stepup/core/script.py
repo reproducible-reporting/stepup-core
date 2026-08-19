@@ -52,7 +52,7 @@ class ScriptWrapper:
     """
 
     @_has_single.default
-    def _default_has_singe(self) -> bool:
+    def _default_has_single(self) -> bool:
         get_info = getattr(self._object, "info", None)
         if get_info is None:
             return False
@@ -89,12 +89,12 @@ class ScriptWrapper:
 
     @property
     def has_single(self) -> bool:
-        """Does the script have a info() function? (single run)"""
+        """Whether the script defines an `info()` function (single run)."""
         return self._has_single
 
     @property
     def has_cases(self) -> bool:
-        """Does the script have a case_info() function? (run several cases)"""
+        """Whether the script defines a `case_info()` function (several cases)."""
         return self._has_cases
 
     # Wrapper methods
@@ -117,7 +117,7 @@ class ScriptWrapper:
         -------
         static_paths
             A list of files that (only) this script declares to be static.
-            When static files are used by multiple steps, take care to declare it static only once.
+            When a static file is used by multiple steps, take care to declare it static only once.
         inp_paths
             A list of input paths.
         out_paths
@@ -131,14 +131,14 @@ class ScriptWrapper:
         )
 
     def generate_cases(self) -> Iterator[tuple[list[Any], dict[str, Any]]]:
-        """Run the `cases` generator and normalize the iterates.
+        """Run the `cases` generator and normalize the items it yields.
 
         Yields
         ------
         args
-            Unnamed arguments for the `info` function.
+            Positional arguments for the `case_info` function.
         kwargs
-            Named arguments for the `info` function.
+            Keyword arguments for the `case_info` function.
         """
         if not self._has_cases:
             raise NotImplementedError("generate_cases only works for scripts with multiple cases")
@@ -158,7 +158,7 @@ class ScriptWrapper:
                 yield [case], {}
 
     def format(self, *args: Any, **kwargs: Any) -> str:
-        """Convert a (normalized) iterate from the `cases` function into a string."""
+        """Convert a normalized item from the `cases` generator into a string."""
         if not self._has_cases:
             raise NotImplementedError("format only works for scripts with multiple cases")
         if not isinstance(self._object.CASE_FMT, str):
@@ -176,7 +176,7 @@ class ScriptWrapper:
         return result.fixed, result.named
 
     def get_case_info(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
-        """Get the return value of the `info` function."""
+        """Get the return value of the `case_info` function."""
         if not self._has_cases:
             raise NotImplementedError("get_case_info only works for scripts with multiple cases")
         info = self._object.case_info(*args, **kwargs)
@@ -193,7 +193,7 @@ class ScriptWrapper:
         -------
         static_paths
             A list of files that (only) this script declares to be static.
-            When static files are used by multiple steps, take care to declare it static only once.
+            When a static file is used by multiple steps, take care to declare it static only once.
         inp_paths
             A list of input paths.
         out_paths
@@ -220,7 +220,7 @@ def driver(obj: Any = None) -> None:
     """Implement script protocol.
 
     The most common usage is to call `driver()` from a script
-    that defines `info()` and `run()` function, e.g.:
+    that defines an `info()` and a `run()` function, e.g.:
 
     ```python
     #!/usr/bin/env python3
@@ -242,8 +242,8 @@ def driver(obj: Any = None) -> None:
     Parameters
     ----------
     obj
-        When not provided, the namespace of the module where `driver` is defined
-        will be searched for names like 'info' and 'run' to implement the script protocol.
+        When not provided, the namespace of the module from which `driver` is called
+        will be searched for names like `info` and `run` to implement the script protocol.
         When an object is given as a parameter, its attributes are searched instead.
     """
     frame = inspect.currentframe().f_back
@@ -292,20 +292,23 @@ def parse_args(script_path: str) -> argparse.Namespace:
     sub_parsers.add_parser("cases", description="Print all ways to run the script.")
 
     # run
-    run_parser = sub_parsers.add_parser("run", description="Print all ways to run the script.")
+    run_parser = sub_parsers.add_parser(
+        "run", description="Run the script for the given parameters."
+    )
     run_parser.add_argument(
         "string",
         default="",
         nargs="?",
-        help="A string describing the parameters with which to run the script",
+        help="A string describing the parameters with which to run the script.",
     )
 
     return parser.parse_args()
 
 
 def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper) -> None:
-    """Create the step to plan the run part of the script."""
-    # Local import to delay activation synchronous connection to StepUp directory until needed.
+    """Create the steps that run the script."""
+    # Local import to delay setting up the synchronous connection
+    # to the StepUp director until it is needed.
     from stepup.core.api import run, static  # noqa: PLC0415
 
     # Plan the script.
@@ -340,7 +343,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
 
 
 def _driver_cases(script_path: str, wrapper: ScriptWrapper) -> None:
-    """Print all commands on script that can be used to run the script."""
+    """Print all commands that can be used to run the script."""
     local_script = "." / Path(script_path)
     if wrapper.has_single:
         print(f"{local_script} run")
@@ -354,7 +357,6 @@ def _driver_cases(script_path: str, wrapper: ScriptWrapper) -> None:
 
 def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper) -> None:
     """Call the `run` function with the appropriate arguments."""
-    # Local import because the StepUp client is not always needed.
     if args.string == "":
         if not wrapper.has_single:
             raise RuntimeError(f"Script has no info function: {script_path}")

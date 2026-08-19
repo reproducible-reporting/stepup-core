@@ -4,7 +4,7 @@
    PHASE │ build
   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest ccb71a9d ➜ fab12b5b, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest aa628263 ➜ 83196464, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 9753a824 ➜ 02f52b71, size 100 ➜ 45)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)

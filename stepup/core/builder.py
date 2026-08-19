@@ -2,13 +2,17 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """The `Builder` drives the build by pulling runnable jobs and sending them to the executor.
 
-`Builder` always runs a single **build phase** per `run_phase()` call: it waits for the
-`resume` event, executes all currently runnable jobs via `job_loop`, and ends with
-`finalize`, which reports pending/failed steps and, unless cleanup is skipped,
+`Builder` always runs a single **build phase** per `run_phase()` call:
+it waits for the `resume` event,
+executes all currently runnable jobs via `job_loop`,
+and ends with `finalize`,
+which reports pending and failed steps and,
+unless cleanup is skipped,
 reverts optional steps and removes outdated outputs.
-`Builder` has no notion of watch mode; repeating build phases and
-deciding what happens between them (e.g. handing control to a `Watcher`) is the caller's
-responsibility, see `build_loop` in `director.py`.
+`Builder` has no notion of watch mode:
+repeating build phases and deciding what happens between them
+(e.g. handing control to a `Watcher`) is the caller's responsibility.
+See `build_loop` in `director.py`.
 
 The work done by `finalize` is implemented in `finalize.py`, not here.
 """
@@ -42,8 +46,7 @@ logger = logging.getLogger(__name__)
 AnyJob = Job | HashJob
 """Any unit of work the builder tracks as an asyncio task.
 
-Only `job_i` is common to both; everything beyond that is handled by the branches in
-`start_task`/`start_hash_task` and `handle_done_tasks`.
+Only `job_i` is common to both.
 """
 
 
@@ -87,17 +90,21 @@ class Builder:
     """Event that is set whenever `job_loop` should re-poll the scheduler.
 
     Triggers include:
+
     - A running task finished (freeing a slot).
     - A new step was defined, which may already be runnable.
     - Files were confirmed static, meaning depending steps may start.
+
+    Check the call sites for a full list.
+    The builder's `job_loop` waits on this event and does not poll the scheduler on its own,
+    meaning that any external cause that may make a job runnable must set this wake event.
     """
 
-    hash_queue: HashQueue = attrs.field(kw_only=True)
-    """The hash-job queue, drained with priority over `scheduler.pop_runnable_job()`.
+    # The builder creates the hash_queue itself, so this field must stay after `wake_job_loop`:
+    # attrs evaluates defaults in field order and the default below reads that event.
 
-    The builder creates the queue itself, so this field must stay after `wake_job_loop`:
-    attrs evaluates defaults in field order and the default below reads that event.
-    """
+    hash_queue: HashQueue = attrs.field(init=False)
+    """The hash-job queue, drained with priority over `scheduler.pop_runnable_job()`."""
 
     @hash_queue.default
     def _default_hash_queue(self) -> HashQueue:
@@ -153,18 +160,20 @@ class Builder:
         if self.executor.write_joblog:
             reset_joblog(self.njob)
 
-        # Get step jobs and run them as asyncio tasks.
+        # Drain runnable work (done tasks, hash jobs, step jobs) as asyncio tasks.
         while True:
             # Handle exceptions of done tasks,
             # and give feedback to the scheduler about completed jobs.
             await self.handle_done_tasks()
 
-            # Hash jobs jump the queue: their runnability never depends on the workflow
-            # database, so there is no reason to make them wait behind a SQL poll. This
-            # must not be skipped while scheduler.on_hold is set ("start no new steps"):
-            # pending hash jobs are bookkeeping for work already under way and must finish
-            # for the phase to end cleanly, which falls out naturally here since on_hold is
-            # only enforced inside scheduler.pop_runnable_job().
+            # Hash jobs jump the queue:
+            # their runnability never depends on the workflow database,
+            # so there is no reason to make them wait behind a SQL poll.
+            # This must not be skipped while scheduler.on_hold is set ("start no new steps"):
+            # pending hash jobs are bookkeeping for work already under way
+            # and must finish for the phase to end cleanly,
+            # which falls out naturally here
+            # since on_hold is only enforced inside scheduler.pop_runnable_job().
             if len(self.running_tasks) < self.njob:
                 hash_job = self.hash_queue.pop_nowait()
                 if hash_job is not None:
@@ -192,19 +201,20 @@ class Builder:
             self.wake_job_loop.clear()
 
     async def finalize(self):
-        """Final steps after the builder has executed a bunch of jobs."""
+        """Wrap up the build phase after the builder has executed its jobs."""
         await self.reporter("DIRECTOR", f"Ran {self.scheduler.run_counter} job(s).")
         self.returncode = await report_completion(
             self.db, self.workflow, self.scheduler, self.reporter
         )
-        # Reverting optional steps resets their outputs in the database, which only makes sense
-        # paired with removing the files from disk, so it shares the guard below with the rest
-        # of the cleanup.
+        # Reverting optional steps resets their outputs in the database,
+        # which only makes sense paired with removing the files from disk,
+        # so it shares the guard below with the rest of the cleanup.
         #
-        # A build restricted to targets leaves the outputs of every step outside the target's
-        # dependencies OUTDATED, so cleaning up would delete results the user never asked to
-        # rebuild. `ReturnCode.WARNING` is masked out below because a warning on its own does
-        # not make the build incomplete.
+        # A build restricted to targets leaves the outputs of every step
+        # outside the targets' dependencies OUTDATED,
+        # so cleaning up would delete results the user never asked to rebuild.
+        # `ReturnCode.WARNING` is masked out below
+        # because a warning on its own does not make the build incomplete.
         if len(self.workflow.targets) > 0 or len(self.workflow.target_dirs) > 0:
             await self.reporter(
                 "WARNING", "Skipping file cleanup for a build restricted to targets"
@@ -234,11 +244,12 @@ class Builder:
     async def _run_with_progress(self, job: Job):
         """Run `job` on the executor, bracketed by progress-bar start/stop calls.
 
-        The bracket lives here, around the whole job coroutine, rather than at the
-        individual start/stop points inside `Executor`: that guarantees a `stop_job` for
-        every `start_job`, regardless of which internal path the job takes (skip, rerun,
-        early failure, ...), and it shows the job as running from the moment its task
-        begins, including input hash computation, not just once the command itself starts.
+        The bracket lives here, around the whole job coroutine,
+        rather than at the individual start/stop points inside `Executor`:
+        that guarantees a `stop_job` for every `start_job`,
+        regardless of which internal path the job takes (skip, rerun, early failure, ...),
+        and it shows the job as running from the moment its task begins,
+        including input hash computation, not just once the command itself starts.
 
         Hash jobs get the same treatment from `Executor.run_hash_job` itself,
         since they are also started outside this class (see `gather_hashes`).
@@ -252,9 +263,11 @@ class Builder:
     def start_hash_task(self, hash_job: HashJob) -> None:
         """Start an asyncio task that runs `hash_job` on the executor.
 
-        Sibling of `start_task`, sharing the `running_tasks`/`done_tasks` bookkeeping with
-        it. Only the parts that genuinely differ stay separate: a hash job is named after
-        its path instead of after a step, and it is not logged as a step being run.
+        Sibling of `start_task`, sharing the `running_tasks`/`done_tasks` bookkeeping with it.
+        It differs from `start_task` in only two respects:
+
+        1. A hash job is named after its path instead of after a step
+        2. It is not logged as a step being run.
         """
         task = asyncio.create_task(
             self.executor.run_hash_job(hash_job), name=f"HASH: {hash_job.path}"
@@ -267,10 +280,12 @@ class Builder:
     ) -> None:
         """Submit and run hash jobs immediately, bypassing `job_loop`'s `njob` budget.
 
-        Used by `amend()` when a step blocks on still-`UNCONFIRMED` inputs: the awaiting
-        step already holds a slot and is idle while it waits, so running its hash jobs
-        outside the budget (instead of queuing them, where `njob` steps all blocked in
-        `amend()` could starve them forever) keeps real concurrent work roughly at `njob`.
+        Promoted when a step blocks on still-`UNCONFIRMED` inputs:
+        the awaiting step already holds a slot and is idle while it waits,
+        so running its hash jobs outside the budget
+        (instead of queuing them, where `njob` steps all blocked in `amend()`
+        could starve them forever)
+        keeps real concurrent work roughly at `njob`.
 
         Parameters
         ----------
@@ -286,8 +301,8 @@ class Builder:
                 await self.executor.run_hash_job(job)
             # Await (rather than just check) the shared future even after running it here:
             # `run_hash_job` swallows per-file errors into the future instead of raising,
-            # so this is what lets an exception (e.g. a stat error) propagate to the
-            # `amend()` caller instead of being silently lost.
+            # so this is what lets an exception (e.g. a stat error) propagate
+            # to the `amend()` caller instead of being silently lost.
             await asyncio.shield(job.future)
 
         await asyncio.gather(*(run_one(path, old_hash) for path, old_hash in paths_hashes.items()))
@@ -298,7 +313,7 @@ class Builder:
         self.wake_job_loop.set()
 
     async def handle_done_tasks(self):
-        """Check whether done tasks raised exceptions and propagate them when found."""
+        """Retire done tasks: propagate their exceptions and report completions to the scheduler."""
         while len(self.done_tasks) > 0:
             task, job = self.done_tasks.popitem()
             exc = task.exception()
@@ -307,15 +322,16 @@ class Builder:
 
                 msg = f"Exception in task {task.get_name()}"
                 raise RuntimeError(msg) from exc
-            # Hash jobs get no Scheduler bookkeeping: they never went through
-            # scheduler.pop_runnable_job(), so job.job_i isn't a key in
-            # scheduler.jobs, and there is no Step to record a duration for.
+            # Hash jobs get no Scheduler bookkeeping:
+            # they never went through scheduler.pop_runnable_job(),
+            # so job.job_i isn't a key in scheduler.jobs,
+            # and there is no Step to record a duration for.
             if not isinstance(job, HashJob):
                 await self.scheduler.job_completed(job)
             self.wake_job_loop.set()
 
     async def stop(self):
-        """Cancel any still-running step tasks and signal their child processes."""
+        """Cancel any still-running tasks, signal their child processes and flush step durations."""
         self.executor.interrupt(signal.SIGTERM)
         # Started hash jobs are covered by executor.interrupt() above, through Executor.running.
         # This covers the queued-but-not-yet-started jobs,
@@ -326,8 +342,9 @@ class Builder:
             task.cancel()
         if len(tasks) > 0:
             await asyncio.gather(*tasks, return_exceptions=True)
-        # Best-effort rescue of durations accumulated during and refresh derived tail times
-        # if the build phase ended without reaching the `finalize()` method,
+        # Best-effort rescue of the durations accumulated during the phase,
+        # and refresh of the derived tail times,
+        # if the build phase ended without reaching `finalize()`,
         # e.g. because a step task raised an unexpected exception.
         # Never let a flush failure mask the original error or block shutdown.
         try:
