@@ -107,9 +107,8 @@ and will be updated with any further changes before the final release.
   collecting utilities previously buried in `stepup.core.utils`.
   See [stepup.core.extapi](reference/stepup.core.extapi.md) for the full reference
   and [Custom API Functions](extending/api.md) for usage guidance.
-  A few utilities aimed at extension developers stay in `stepup.core.api`,
-  because `stepup.core.extapi` is built on top of it:
-  `subs_env_vars`, `get_rpc_client` and `get_job_i`.
+  One utility aimed at extension developers stays in `stepup.core.api`,
+  because `stepup.core.extapi` is built on top of it: `subs_env_vars`.
 - Extension wrapper steps can now record the exact subprocess invocations they make,
   using `run_subprocess` in `stepup.core.extapi`,
   which executes the subprocess and records its invocation.
@@ -211,7 +210,12 @@ and will be updated with any further changes before the final release.
 - Redesigned `call()` interface:
   the old inp/out/pickle argument modes are replaced
   by explicit function dispatch and optional `args_file` support for file-based argument passing.
+  The executable and function name are positional-only parameters, `executable` and `function`,
+  so that keyword arguments with those names can be forwarded to the called function.
   See [Function Calls](getting_started/call.md) for details.
+- `subs_env_vars()` yields an `EnvSubstitutor` instead of a plain function.
+  It is still called the same way, but it now also normalizes the substituted path.
+  Use its `keep_affixes()` method when a leading `./` or a trailing `/` is significant.
 - The `getinfo()` function has been renamed to `get_info()`.
 - File hashes are computed in concurrent hash jobs instead of the old serial client-side delegation.
   Similarly, the director uses the same mechanism to compute file hashes in parallel on startup.

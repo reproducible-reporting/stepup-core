@@ -169,13 +169,13 @@ def test_get_rpc_client_no_socket(no_cached_rpc_client):
 
 
 def test_get_rpc_client_explicit_none(no_cached_rpc_client):
-    client = get_rpc_client(socket=None)
+    client = get_rpc_client(path=None)
     assert isinstance(client, DummySyncRPCClient)
 
 
 def test_get_rpc_client_invalid_socket(no_cached_rpc_client):
     with pytest.raises(RuntimeError, match="director process"):
-        get_rpc_client(socket=DIRECTOR_SOCKET_SENTINEL)
+        get_rpc_client(path=DIRECTOR_SOCKET_SENTINEL)
 
 
 def test_get_rpc_client_is_created_once(no_cached_rpc_client):
@@ -565,40 +565,28 @@ def test_hold_genuine_exception_not_masked_by_release_failure(monkeypatch, caplo
     assert any("release" in record.message for record in caplog.records)
 
 
-def test_check_inp_path_file(path_tmp):
-    path_foo = path_tmp / "foo.txt"
-    path_foo.write_text("content")
-    assert api._check_inp_path(path_foo) is None
-    assert api._check_inp_path(path_foo, return_dir=True) is False
-
-
-def test_check_inp_path_dir_disallowed(path_tmp):
-    with pytest.raises(PathError, match="Directory inputs are not supported"):
-        api._check_inp_path(path_tmp)
-
-
-def test_check_inp_path_dir_allowed(path_tmp):
-    assert api._check_inp_path(path_tmp, return_dir=True) is True
-
-
-def test_check_inp_path_missing(path_tmp):
-    path_missing = path_tmp / "missing.txt"
-    with pytest.raises(PathError, match="Path does not exist"):
-        api._check_inp_path(path_missing)
-    with pytest.raises(PathError, match="Path does not exist"):
-        api._check_inp_path(path_missing, return_dir=True)
-
-
 def test_check_inp_paths_splits_files_and_dirs(path_tmp):
     path_foo = path_tmp / "foo.txt"
     path_foo.write_text("content")
     path_sub = path_tmp / "sub"
     path_sub.mkdir()
-    file_paths, dir_paths = api._check_inp_paths([path_foo, path_sub], allow_dirs=True)
+    file_paths, dir_paths = api._check_inp_paths([path_foo, path_sub])
     assert file_paths == [path_foo]
     assert dir_paths == [path_sub]
-    with pytest.raises(PathError, match="Directory inputs are not supported"):
-        api._check_inp_paths([path_foo, path_sub])
+
+
+def test_check_inp_paths_missing(path_tmp):
+    path_missing = path_tmp / "missing.txt"
+    with pytest.raises(PathError, match="Path does not exist"):
+        api._check_inp_paths([path_missing])
+
+
+def test_check_no_directories_rejects_dir(path_tmp):
+    """Directories are rejected by `_check_no_directories()`, not by `_check_inp_paths()`."""
+    with pytest.raises(PathError, match="Directories are not allowed"):
+        api._check_no_directories([path_tmp])
+    with pytest.raises(PathError, match="Directories are not allowed"):
+        api._check_no_directories([Path("sub/")])
 
 
 @attrs.define

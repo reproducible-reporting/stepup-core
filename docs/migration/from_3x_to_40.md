@@ -667,7 +667,7 @@ from stepup.core.utils import filter_dependencies, get_local_import_paths
 from stepup.core.extapi import filter_dependencies, get_local_import_paths
 ```
 
-`subs_env_vars` and `get_rpc_client` stay in
+`subs_env_vars` stays in
 [`stepup.core.api`](../reference/stepup.core.api.md).
-They cannot move to `stepup.core.extapi`,
+It cannot move to `stepup.core.extapi`,
 because that module now imports `stepup.core.api` at module level.

@@ -374,6 +374,11 @@ because a step that fails before its first RPC call must still get a shortened t
 
 `extapi.py` collects utilities for authors of StepUp extension packages.
 It is a curated surface, not a layer:
-`get_rpc_client`, `get_job_i` and `subs_env_vars` are equally meant for extension authors,
-yet live in `api.py` because `extapi.py` imports from it.
-`docs/reference/stepup.core.api.md` documents them under a separate heading.
+`subs_env_vars` (and the `EnvSubstitutor` it yields) is equally meant for extension authors,
+yet lives in `api.py` because `extapi.py` imports from it.
+`docs/reference/stepup.core.api.md` documents it under a separate heading.
+
+`get_rpc_client` and `get_job_i` are **not** part of that surface.
+They are internal to StepUp Core, and only appear in `api.__all__`
+because other core modules (`extapi.py`, `interact.py`) import them.
+An extension talks to the director through the API functions, not through the RPC client.

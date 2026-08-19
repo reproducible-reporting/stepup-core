@@ -9,6 +9,16 @@ Note that `pathlib` normalizes away leading `./` and trailing `/` affixes at con
 For arguments where these affixes are significant
 (the `dst` of `copy`, local executables, and the path variants of `getenv`),
 pass a `str` or a `path.Path` to preserve them.
+
+Local variables holding a path use a prefix to state which form the path is in:
+
+- `su_`: after environment variable substitution and normalization,
+  still relative to the working directory of the caller.
+- `tr_`: after translation to the working directory of the director,
+  which is the only form sent over RPC.
+
+A path without such a prefix is in neither form yet:
+it is the argument as given by the caller.
 """
 
 import contextlib
@@ -27,6 +37,7 @@ from runpy import run_path
 from types import SimpleNamespace
 from typing import Any
 
+import attrs
 import yaml
 from path import Path
 
@@ -207,7 +218,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     su_lit_paths = []
     su_pattern_matches = []
     su_match_paths = []
-    with subs_env_vars() as subs:
+    with subs_env_vars() as subs_env:
         for arg in _iter_static_args(paths):
             if isinstance(arg, NamedGlob):
                 # glob() already registered this pattern with the calling step
@@ -215,8 +226,8 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
                 # so they need neither registration nor substitution here.
                 su_match_paths.extend(arg.files())
                 continue
-            su_arg = _keep_affixes(subs(arg), Path.normpath)
-            if _classify_static_arg(su_arg):
+            su_arg = subs_env.keep_affixes(arg)
+            if _is_glob_pattern(su_arg):
                 ng = NamedGlob(su_arg)
                 ng.glob()
                 su_pattern_matches.append((su_arg, ng.files()))
@@ -227,7 +238,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     # Literal arguments must exist;
     # a match is guaranteed to exist by the scan that produced it,
     # so it is only classified, never checked.
-    su_lit_files, su_lit_dirs = _check_inp_paths(su_lit_paths, allow_dirs=True)
+    su_lit_files, su_lit_dirs = _check_inp_paths(su_lit_paths)
     su_match_files = []
     su_match_dirs = []
     for su_path in su_match_paths:
@@ -323,8 +334,8 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
     and reported as a warning if it is still unjustified by then.
     """
     # Substitute environment variables.
-    with subs_env_vars() as subs_path:
-        su_pattern = _keep_affixes(subs_path(pattern), Path.normpath)
+    with subs_env_vars() as subs_env:
+        su_pattern = subs_env.keep_affixes(pattern)
     tr_pattern = _keep_affixes(su_pattern, translate)
 
     # Collect all matches.
@@ -496,11 +507,11 @@ def step(
                 "Variable(s) set by StepUp cannot be overridden: " + ", ".join(sorted(reserved))
             )
 
-    with subs_env_vars() as subs:
-        su_inp_paths = [subs(inp_path).normpath() for inp_path in inp_paths]
-        su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
-        su_vol_paths = [subs(vol_path).normpath() for vol_path in vol_paths]
-        su_workdir = subs(workdir).normpath()
+    with subs_env_vars() as subs_env:
+        su_inp_paths = [subs_env(inp_path) for inp_path in inp_paths]
+        su_out_paths = [subs_env(out_path) for out_path in out_paths]
+        su_vol_paths = [subs_env(vol_path) for vol_path in vol_paths]
+        su_workdir = subs_env(workdir)
 
     # Build the command text from the substituted paths when a callable is given.
     command = _resolve_command(command, su_inp_paths, su_out_paths, su_vol_paths)
@@ -567,8 +578,9 @@ def step(
 
 
 def call(
-    executable_: StrPath,
-    function_: str,
+    executable: StrPath,
+    function: str,
+    /,
     *,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
@@ -586,12 +598,15 @@ def call(
 
     Parameters
     ----------
-    executable_
+    executable
         Path to the script or binary to invoke.
         Must contain a path separator (e.g. `./script.py` or `sub/script.py`)
         and must not be an absolute path.
-    function_
+        Positional-only, so that a same-named keyword argument
+        can be forwarded to the called function.
+    function
         Name of the function to invoke (first positional CLI argument).
+        Positional-only, for the same reason as `executable`.
     inp
         Files declared as inputs to this step. Normalized to `list[str]`.
         Also forwarded to the function as `inp`.
@@ -634,69 +649,66 @@ def call(
     ------
     StepUpError
         When `optional` and `planning` are both `True`,
-        when `function_` is not a valid Python function name,
+        when `function` is not a valid Python function name,
         when the inline JSON string exceeds 128 KiB (use `args_file` instead),
         or when `args_file` has an unrecognized extension.
     PathError
-        When `executable_` does not contain a path separator or is absolute.
+        When `executable` does not contain a path separator or is absolute.
     """
     # Validate mutually exclusive flags.
     if optional and planning:
         raise StepUpError("optional and planning are mutually exclusive")
 
-    # Normalize the executable, preserving any prefix/suffix for later re-application.
-    executable_ = coerce_path(executable_)
-    prefix, suffix = get_affixes(executable_)
-    executable_ = apply_affixes(executable_.normpath(), prefix, suffix)
+    # Normalize the executable, keeping the affixes that mark it as a local executable.
+    executable = _keep_affixes(executable, Path.normpath)
 
     # Perform environment variable substitutions before building the command.
     # This is somewhat redundant with the substitutions performed in `step()`.
-    with subs_env_vars() as subs:
-        inp = [subs(inp_path).normpath() for inp_path in coerce_paths(inp)]
-        out = [subs(out_path).normpath() for out_path in coerce_paths(out)]
-        workdir = subs(workdir).normpath()
-        if args_file is not None:
-            args_file = subs(args_file).normpath()
+    with subs_env_vars() as subs_env:
+        su_inp_paths = [subs_env(inp_path) for inp_path in coerce_paths(inp)]
+        su_out_paths = [subs_env(out_path) for out_path in coerce_paths(out)]
+        su_workdir = subs_env(workdir)
+        su_args_file = subs_env(args_file)
 
     # Validate executable path format.
-    if os.sep not in executable_:
+    if os.sep not in executable:
         raise PathError(
-            f"executable_ must contain a path separator (e.g. './script.py'), got: {executable_!r}"
+            f"executable must contain a path separator (e.g. './script.py'), got: {executable!r}"
         )
 
     # Validate the executable is not absolute.
-    if executable_.isabs():
-        raise PathError(f"executable_ must not be an absolute path, got: {executable_!r}")
+    if executable.isabs():
+        raise PathError(f"executable must not be an absolute path, got: {executable!r}")
 
     # Validate the function name.
     # A valid Python identifier that is not a reserved keyword
     # can never contain shell metacharacters,
     # so it is safe to interpolate unquoted into the command below.
-    if not (function_.isidentifier() and not keyword.iskeyword(function_)):
-        raise StepUpError(f"function_ must be a valid Python function name, got: {function_!r}")
+    if not (function.isidentifier() and not keyword.iskeyword(function)):
+        raise StepUpError(f"function must be a valid Python function name, got: {function!r}")
 
     # Build the forwarded kwargs dict (inp and out are included when not empty).
     forwarded = kwargs.copy()
-    if len(inp) > 0:
-        forwarded["inp"] = inp
-    if len(out) > 0:
-        forwarded["out"] = out
+    if len(su_inp_paths) > 0:
+        forwarded["inp"] = su_inp_paths
+    if len(su_out_paths) > 0:
+        forwarded["out"] = su_out_paths
 
     # Build command and step inputs depending on args_file mode.
-    if args_file is None:
+    if su_args_file is None:
         unstructured = json_converter.unstructure(forwarded)
         json_str = json.dumps(unstructured)
         if len(json_str.encode()) > 128 * 1024:
             raise StepUpError(
                 "serialized call arguments exceed 128 KiB; pass args_file= to use a file instead"
             )
-        command = f"{shlex.quote(executable_)} {function_} {shlex.quote(json_str)}"
-        step_inp = [executable_, *inp]
+        command = f"{shlex.quote(executable)} {function} {shlex.quote(json_str)}"
+        step_inp = [executable, *su_inp_paths]
     else:
         # dumpns(do_amend=True) calls amend(out=args_file) before writing.
-        dumpns(args_file, forwarded)
-        command = f"{shlex.quote(executable_)} {function_} --inp={shlex.quote(args_file)}"
-        step_inp = [executable_, *inp, args_file]
+        dumpns(su_args_file, forwarded)
+        command = f"{shlex.quote(executable)} {function} --inp={shlex.quote(su_args_file)}"
+        step_inp = [executable, *su_inp_paths, su_args_file]
 
     # Map optional/planning flags to Need enum.
     if optional:
@@ -710,45 +722,31 @@ def call(
     return step(
         command,
         inp=step_inp,
-        out=out,
+        out=su_out_paths,
         vol=vol,
         env=env,
-        workdir=workdir,
+        workdir=su_workdir,
         need=need,
         resources=resources,
         duration=duration,
     )
 
 
-@contextlib.contextmanager
-def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
-    """Substitute environment variables in paths and record which variables are used.
+@attrs.define
+class EnvSubstitutor:
+    """Substitute environment variables in paths, recording the variables used.
 
-    The context manager yields a function, `subs`,
-    which takes a path or string with variables and returns the substituted form.
-    All used variables are recorded and sent to the director with `amend(env=...)`.
-    For example:
-
-    ```python
-    with subs_env_vars() as subs:
-        path_inp = subs(path_inp)
-        path_out = subs(path_out)
-    ```
-
-    This is intended for authors of StepUp extensions,
-    who need it in custom API functions that accept paths with environment variables.
-
-    Raises
-    ------
-    EnvVarError
-        When a path contains invalid shell variable identifiers,
-        or references an environment variable that is not defined.
+    Calling an instance substitutes and normalizes a path.
+    Use `keep_affixes()` instead when a leading `./` or trailing `/` is significant.
+    Instances are created by [`subs_env_vars()`][stepup.core.api.subs_env_vars],
+    which amends the recorded variables when its context closes.
     """
-    used_env = set()
 
-    def subs(path: StrPath | None) -> Path | None:
-        if path is None:
-            return None
+    used_env: set[str] = attrs.field(factory=set)
+    """The names of the environment variables substituted so far."""
+
+    def _substitute(self, path: StrPath) -> Path:
+        """Substitute the environment variables in a path, without normalizing it."""
         template = CaseSensitiveTemplate(coerce_str(path))
         if not template.is_valid():
             raise EnvVarError("The path contains invalid shell variable identifiers.")
@@ -761,17 +759,91 @@ def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
                 if value is None:
                     raise EnvVarError(f"Undefined shell variable: {name}")
                 mapping[name] = value
-                used_env.add(name)
+                self.used_env.add(name)
         return Path(path if len(mapping) == 0 else template.substitute(mapping))
 
-    yield subs
-    if len(used_env) > 0:
-        amend(env=used_env)
+    def __call__(self, path: StrPath | None) -> Path | None:
+        """Substitute the environment variables in a path and normalize the result.
+
+        Parameters
+        ----------
+        path
+            The path to substitute, or `None`.
+
+        Returns
+        -------
+        su_path
+            The substituted and normalized path, or `None` when `path` is `None`.
+            A leading `./` or trailing `/` is normalized away.
+
+        Raises
+        ------
+        EnvVarError
+            When the path contains invalid shell variable identifiers,
+            or references an environment variable that is not defined.
+        """
+        return None if path is None else self._substitute(path).normpath()
+
+    def keep_affixes(self, path: StrPath | None) -> Path | None:
+        """Substitute and normalize a path, restoring its leading `./` and trailing `/`.
+
+        The affixes are taken from the substituted path,
+        so an affix introduced by an environment variable is preserved too,
+        e.g. `${DATA_DIR}` holding `data/`.
+
+        Parameters
+        ----------
+        path
+            The path to substitute, or `None`.
+
+        Returns
+        -------
+        su_path
+            The substituted and normalized path with its affixes,
+            or `None` when `path` is `None`.
+
+        Raises
+        ------
+        EnvVarError
+            When the path contains invalid shell variable identifiers,
+            or references an environment variable that is not defined.
+        """
+        return None if path is None else _keep_affixes(self._substitute(path), Path.normpath)
+
+
+@contextlib.contextmanager
+def subs_env_vars() -> Iterator[EnvSubstitutor]:
+    """Substitute environment variables in paths and record which variables are used.
+
+    The context manager yields an [`EnvSubstitutor`][stepup.core.api.EnvSubstitutor],
+    which takes a path or string with variables and returns the substituted form.
+    All used variables are recorded and sent to the director with `amend(env=...)`.
+    For example:
+
+    ```python
+    with subs_env_vars() as subs_env:
+        su_path_inp = subs_env(path_inp)
+        su_path_out = subs_env(path_out)
+    ```
+
+    This is intended for authors of StepUp extensions,
+    who need it in custom API functions that accept paths with environment variables.
+
+    Raises
+    ------
+    EnvVarError
+        When a path contains invalid shell variable identifiers,
+        or references an environment variable that is not defined.
+    """
+    subs_env = EnvSubstitutor()
+    yield subs_env
+    if len(subs_env.used_env) > 0:
+        amend(env=subs_env.used_env)
 
 
 # A history used to avoid amending the same information twice.
 # This effectively reduces the number of amend API calls.
-AMEND_HISTORY = {
+_AMEND_HISTORY = {
     "inp": set(),
     "env": set(),
     "out": set(),
@@ -892,10 +964,10 @@ def amend(
             "Call the amend-triggering code before entering the `with hold():` block."
         )
     env_deps = set(env_deps)
-    with subs_env_vars() as subs:
-        su_inp_paths = {subs(inp_path).normpath() for inp_path in inp_paths}
-        su_out_paths = {subs(out_path).normpath() for out_path in out_paths}
-        su_vol_paths = {subs(vol_path).normpath() for vol_path in vol_paths}
+    with subs_env_vars() as subs_env:
+        su_inp_paths = {subs_env(inp_path) for inp_path in inp_paths}
+        su_out_paths = {subs_env(out_path) for out_path in out_paths}
+        su_vol_paths = {subs_env(vol_path) for vol_path in vol_paths}
     # The checks use the substituted paths, not the translated ones below:
     # they look at the file system,
     # which this process sees relative to its own working directory,
@@ -908,10 +980,10 @@ def amend(
     tr_vol_paths = {translate(vol_path) for vol_path in su_vol_paths}
 
     # Filter out previously given dynamic dependencies.
-    tr_inp_paths.difference_update(AMEND_HISTORY["inp"])
-    env_deps.difference_update(AMEND_HISTORY["env"])
-    tr_out_paths.difference_update(AMEND_HISTORY["out"])
-    tr_vol_paths.difference_update(AMEND_HISTORY["vol"])
+    tr_inp_paths.difference_update(_AMEND_HISTORY["inp"])
+    env_deps.difference_update(_AMEND_HISTORY["env"])
+    tr_out_paths.difference_update(_AMEND_HISTORY["out"])
+    tr_vol_paths.difference_update(_AMEND_HISTORY["vol"])
 
     if (
         len(tr_inp_paths) == 0
@@ -939,13 +1011,14 @@ def amend(
         raise InputNotFoundError("Dynamic inputs are not available yet.")
 
     # Double-check that all inputs are indeed present.
+    # Only the existence check matters here: the directories were already rejected above.
     _check_inp_paths(su_inp_paths)
 
     # Update the amendment history.
-    AMEND_HISTORY["inp"].update(tr_inp_paths)
-    AMEND_HISTORY["env"].update(env_deps)
-    AMEND_HISTORY["out"].update(tr_out_paths)
-    AMEND_HISTORY["vol"].update(tr_vol_paths)
+    _AMEND_HISTORY["inp"].update(tr_inp_paths)
+    _AMEND_HISTORY["env"].update(env_deps)
+    _AMEND_HISTORY["out"].update(tr_out_paths)
+    _AMEND_HISTORY["vol"].update(tr_vol_paths)
 
 
 @contextlib.contextmanager
@@ -1026,8 +1099,15 @@ def get_info() -> StepInfo:
 
 
 def graph(prefix: StrPath) -> None:
-    """Write the workflow graph files in text and dot formats."""
-    return get_rpc_client().call.write_graph(coerce_path(prefix))
+    """Write the workflow graph files in text and dot formats.
+
+    Parameters
+    ----------
+    prefix
+        The common prefix of the files to write: `<prefix>.txt` and `<prefix>.dot`.
+        If relative, it is interpreted in the working directory of the director.
+    """
+    get_rpc_client().call.write_graph(coerce_path(prefix))
 
 
 def shq(paths: StrPath | Iterable[StrPath]) -> str:
@@ -1055,9 +1135,8 @@ def shq(paths: StrPath | Iterable[StrPath]) -> str:
     e.g. `shq(inp[:3])` and `shq(inp[3:])` to spread `inp` over two different
     command-line options.
     """
-    su_paths = coerce_paths(paths)
-    with subs_env_vars() as subs:
-        su_paths = [subs(path).normpath() for path in su_paths]
+    with subs_env_vars() as subs_env:
+        su_paths = [subs_env(path) for path in coerce_paths(paths)]
     return shlex.join(su_paths)
 
 
@@ -1294,16 +1373,15 @@ def copy(
     These substitutions are based on the state of `os.environ` in the calling script,
     at the time this function is called, not when the copy is actually made.
     """
-    with subs_env_vars() as subs:
-        src = subs(src).normpath()
-        dst = subs(dst)
-    prefix, suffix = get_affixes(dst)
-    dst = apply_affixes(dst.normpath(), prefix, suffix)
-    dst = make_path_out(src, dst, None)
+    with subs_env_vars() as subs_env:
+        su_src = subs_env(src)
+        # The trailing slash of `dst` is significant: it marks a destination directory.
+        su_dst = subs_env.keep_affixes(dst)
+    su_dst = make_path_out(su_src, su_dst, None)
     return step(
-        f"cp -p {shq(src)} {shq(dst)}",
-        inp=src,
-        out=dst,
+        f"cp -p {shq(su_src)} {shq(su_dst)}",
+        inp=su_src,
+        out=su_dst,
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
         shell=False,
@@ -1354,8 +1432,9 @@ def getenv(
     Raises
     ------
     EnvVarError
-        When `path`, `back`, or `multi` is `True` and the environment variable is unset
-        and no `default` is given.
+        When `path` or `back` is `True` (without `multi`),
+        the environment variable is unset and no `default` is given.
+        With `multi`, an unset variable without `default` yields an empty list instead.
     """
     path = path or back or multi
     if default is not None:
@@ -1369,28 +1448,18 @@ def getenv(
     if multi:
         if value is None:
             return []
-        parts = value.split(":")
-        value = []
-        with subs_env_vars() as subs:
-            for item in parts:
+        su_items = []
+        with subs_env_vars() as subs_env:
+            for item in value.split(":"):
                 item = item.strip()
                 if len(item) > 0:
-                    item = subs(item)
-                    prefix, suffix = get_affixes(item)
-                    item = item.normpath()
-                    if back:
-                        item = translate_back(item)
-                    value.append(apply_affixes(item, prefix, suffix))
-    elif path:
+                    su_items.append(_translate_back_env_path(subs_env, item, back))
+        return su_items
+    if path:
         if value is None:
             raise EnvVarError(f"Undefined shell variable: {name}. Cannot create path.")
-        with subs_env_vars() as subs:
-            value = subs(value)
-        prefix, suffix = get_affixes(value)
-        value = value.normpath()
-        if back:
-            value = translate_back(value)
-        value = apply_affixes(value, prefix, suffix)
+        with subs_env_vars() as subs_env:
+            return _translate_back_env_path(subs_env, value, back)
     return value
 
 
@@ -1444,10 +1513,8 @@ def script(
     - The `optional` argument never applies to the plan stage,
       and is passed on to the run stage.
     """
-    # Normalize the executable, preserving any prefix/suffix for later re-application.
-    executable = coerce_path(executable)
-    prefix, suffix = get_affixes(executable)
-    executable = apply_affixes(executable.normpath(), prefix, suffix)
+    # Normalize the executable, keeping the affixes that mark it as a local executable.
+    executable = _keep_affixes(executable, Path.normpath)
 
     # Start building the command and the step inputs.
     command = format_command(executable) + " plan"
@@ -1460,18 +1527,18 @@ def script(
         command += " --optional"
     inp = coerce_paths(inp)
     inp.append(executable)
-    step_kwargs = {
-        "inp": inp,
-        "env": env,
-        "out": out,
-        "vol": vol,
-        "workdir": workdir,
-        "need": Need.PLAN,
-        "resources": resources,
-        "duration": duration,
-    }
     # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
-    return step(command, **step_kwargs)
+    return step(
+        command,
+        inp=inp,
+        env=env,
+        out=out,
+        vol=vol,
+        workdir=workdir,
+        need=Need.PLAN,
+        resources=resources,
+        duration=duration,
+    )
 
 
 def loadns(
@@ -1487,11 +1554,13 @@ def loadns(
         so later variable definitions may override earlier ones.
         Environment variables in path names are substituted.
     dir_out
-        This is used to translate paths defined in the variable files
-        (relative to the parent of the variable file)
-        to paths relative to `dir_out`.
+        The directory that `Path` variables are made relative to.
         If not given, the current working directory is used.
         This is only relevant for variables loaded from Python files.
+        A relative `Path` in such a file is interpreted
+        relative to the current working directory,
+        not relative to the parent of the variable file,
+        even though the file itself is executed with that parent as working directory.
     do_amend
         If `True`, the current step is amended with the loaded files as input dependencies.
 
@@ -1508,13 +1577,12 @@ def loadns(
     """
     # Process arguments
     dir_out = Path.cwd() if dir_out is None else coerce_path(dir_out)
-    with subs_env_vars() as subs:
-        paths_variables = [subs(path_var).normpath() for path_var in paths_variables]
+    with subs_env_vars() as subs_env:
+        su_paths_variables = [subs_env(path_var) for path_var in paths_variables]
 
     # Build a dictionary of variables
     variables = {}
-    for path_var in paths_variables:
-        path_var = Path(path_var)
+    for path_var in su_paths_variables:
         if path_var.suffix == ".json":
             with open(path_var) as fh:
                 variables.update(json.load(fh))
@@ -1542,7 +1610,7 @@ def loadns(
         else:
             raise StepUpError(f"unsupported variable file format: {path_var}")
     if do_amend:
-        amend(inp=paths_variables)
+        amend(inp=su_paths_variables)
 
     # Return as a namespace
     return SimpleNamespace(**variables)
@@ -1568,24 +1636,23 @@ def dumpns(path: StrPath, data: dict[str, Any] | SimpleNamespace, *, do_amend: b
     StepUpError
         When the file extension is not `.json`, `.yaml`, or `.yml`.
     """
-    with subs_env_vars() as subs:
-        path = subs(path).normpath()
+    with subs_env_vars() as subs_env:
+        su_path = subs_env(path)
     if do_amend:
-        amend(out=path)
+        amend(out=su_path)
     if isinstance(data, SimpleNamespace):
         data = vars(data)
-    path_obj = Path(path)
-    if path_obj.suffix == ".json":
+    if su_path.suffix == ".json":
         unstructured = json_converter.unstructure(data)
-        with open(path_obj, "w") as fh:
+        with open(su_path, "w") as fh:
             json.dump(unstructured, fh, indent=2)
             fh.write("\n")
-    elif path_obj.suffix in (".yaml", ".yml"):
+    elif su_path.suffix in (".yaml", ".yml"):
         unstructured = yaml_converter.unstructure(data)
-        with open(path_obj, "w") as fh:
+        with open(su_path, "w") as fh:
             yaml.dump(unstructured, fh)
     else:
-        raise StepUpError(f"dumpns: unsupported file format: {path_obj.suffix!r}")
+        raise StepUpError(f"dumpns: unsupported file format: {su_path.suffix!r}")
 
 
 def render_jinja(
@@ -1669,13 +1736,13 @@ def render_jinja(
     paths_inp = [path_template, *paths_variables]
 
     # Create the command
-    args = ["sc-render-jinja", shq(paths_inp), shq(path_out)]
+    words = ["sc-render-jinja", shq(paths_inp), shq(path_out)]
     if mode != "auto":
-        args.append(f"--mode={mode}")
+        words.append(f"--mode={mode}")
     if len(variables) > 0:
-        args.append("--json=" + shlex.quote(json.dumps(variables)))
+        words.append("--json=" + shlex.quote(json.dumps(variables)))
     return step(
-        " ".join(args),
+        " ".join(words),
         inp=paths_inp,
         out=path_out,
         need=Need.OPTIONAL if optional else Need.DEFAULT,
@@ -1689,48 +1756,35 @@ def render_jinja(
 #
 
 
-def _check_inp_path(inp_path: Path, return_dir: bool = False) -> bool | None:
-    """Check the validity of a single input path.
+def _check_inp_paths(inp_paths: Iterable[Path]) -> tuple[list[Path], list[Path]]:
+    """Check that the input paths exist, splitting files from directories.
+
+    A directory is reported as such, never rejected.
+    Rejecting one is the job of `_check_no_directories()`,
+    which describes it in terms of where it was given
+    instead of merely as a path that is not a file.
 
     Parameters
     ----------
-    inp_path
-        The input path to check.
-    return_dir
-        Whether to allow directories as valid input paths.
-        If set, a boolean is returned indicating whether the input path is a directory.
+    inp_paths
+        The input paths to check, relative to the current working directory.
 
     Returns
     -------
-    is_dir
-        Whether `inp_path` is a directory, or `None` when `return_dir` is not set.
+    file_paths, dir_paths
+        The given paths, split by what they are on disk.
 
     Raises
     ------
     PathError
-        If the input path is a directory and `return_dir` is not set,
-        or if the input path does not exist.
+        When an input path does not exist.
     """
-    is_dir = inp_path.is_dir()
-    if not return_dir:
-        if inp_path.endswith(os.sep):
-            raise PathError(f"Directory inputs are not supported: {inp_path}")
-        if is_dir:
-            raise PathError(f"Directory inputs are not supported: {inp_path}")
-    if not inp_path.exists():
-        raise PathError(f"Path does not exist: {inp_path}")
-    return is_dir if return_dir else None
-
-
-def _check_inp_paths(
-    inp_paths: Iterable[Path], allow_dirs: bool = False
-) -> tuple[list[Path], list[Path]]:
-    """Check the validity of the input paths, splitting files from directories."""
     file_paths = []
     dir_paths = []
     for inp_path in inp_paths:
-        is_dir = _check_inp_path(inp_path, return_dir=allow_dirs)
-        (dir_paths if is_dir else file_paths).append(inp_path)
+        if not inp_path.exists():
+            raise PathError(f"Path does not exist: {inp_path}")
+        (dir_paths if inp_path.is_dir() else file_paths).append(inp_path)
     return file_paths, dir_paths
 
 
@@ -1761,7 +1815,17 @@ def _keep_affixes(path: StrPath, transform: Callable[[Path], Path]) -> Path:
     return apply_affixes(transform(coerce_path(path)), prefix, suffix)
 
 
-def _classify_static_arg(su_arg: Path) -> bool:
+def _translate_back_env_path(subs_env: EnvSubstitutor, path: StrPath, back: bool) -> Path:
+    """Substitute and normalize an environment variable path, optionally translating it back.
+
+    The leading `./` and trailing `/` are preserved throughout,
+    since a path read from the environment may rely on them.
+    """
+    su_path = subs_env.keep_affixes(path)
+    return _keep_affixes(su_path, translate_back) if back else su_path
+
+
+def _is_glob_pattern(su_arg: Path) -> bool:
     """Return whether a `static()` argument is a glob pattern rather than a literal path.
 
     Raises
@@ -1906,11 +1970,11 @@ def _resolve_run_command(
     if callable(command):
         # The environment variable substitution is repeated in `step()` (on the same paths),
         # which is idempotent.
-        # The repeated `amend(env=...)` is filtered out by `AMEND_HISTORY`.
-        with subs_env_vars() as subs:
-            su_inp_paths = [subs(inp_path).normpath() for inp_path in inp_paths]
-            su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
-            su_vol_paths = [subs(vol_path).normpath() for vol_path in vol_paths]
+        # The repeated `amend(env=...)` is filtered out by `_AMEND_HISTORY`.
+        with subs_env_vars() as subs_env:
+            su_inp_paths = [subs_env(inp_path) for inp_path in inp_paths]
+            su_out_paths = [subs_env(out_path) for out_path in out_paths]
+            su_vol_paths = [subs_env(vol_path) for vol_path in vol_paths]
         command = _resolve_command(command, su_inp_paths, su_out_paths, su_vol_paths)
     else:
         command = coerce_str(command)
@@ -1991,9 +2055,9 @@ def _is_step_under_director() -> bool:
     return socket is not None and socket != DIRECTOR_SOCKET_SENTINEL
 
 
-def _make_rpc_client(socket: str | None) -> BaseSyncRPCClient:
+def _make_rpc_client(path: str | None) -> BaseSyncRPCClient:
     """Create a synchronous RPC client, or a dummy client when no director socket is known."""
-    stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET", socket)
+    stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET", path)
     if stepup_director_socket == DIRECTOR_SOCKET_SENTINEL:
         raise RuntimeError("The RPC client is being used within the director process.")
     if stepup_director_socket is None:
@@ -2009,7 +2073,7 @@ def _get_cached_rpc_client() -> BaseSyncRPCClient:
     return _make_rpc_client(None)
 
 
-def get_rpc_client(socket: str | None = None) -> BaseSyncRPCClient:
+def get_rpc_client(path: str | None = None) -> BaseSyncRPCClient:
     """Return a synchronous RPC client.
 
     Without arguments, the client of the current process is returned.
@@ -2021,7 +2085,7 @@ def get_rpc_client(socket: str | None = None) -> BaseSyncRPCClient:
 
     Parameters
     ----------
-    socket
+    path
         The path of the director's RPC socket, for a caller that knows it up front.
         It is only used when the `STEPUP_DIRECTOR_SOCKET` environment variable is unset.
         Without either, the result is a dummy client that prints the calls
@@ -2030,7 +2094,7 @@ def get_rpc_client(socket: str | None = None) -> BaseSyncRPCClient:
     Returns
     -------
     rpc_client
-        The RPC client of the current process when `socket` is `None`,
+        The RPC client of the current process when `path` is `None`,
         a newly created one otherwise.
 
     Raises
@@ -2038,9 +2102,9 @@ def get_rpc_client(socket: str | None = None) -> BaseSyncRPCClient:
     RuntimeError
         When called within the director process, which must not call itself over RPC.
     """
-    if socket is None:
+    if path is None:
         return _get_cached_rpc_client()
-    return _make_rpc_client(socket)
+    return _make_rpc_client(path)
 
 
 if _is_step_under_director():

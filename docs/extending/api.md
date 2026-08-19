@@ -88,18 +88,24 @@ because it is mutually recursive with `amend()`.
 
 Use [`subs_env_vars()`][stepup.core.api.subs_env_vars] in any custom API function that
 accepts path arguments that may contain shell variable references (e.g. `${MYDIR}/file.txt`).
-It yields a `subs` function that performs the substitution and automatically tracks which
-variables were used, amending the current step's environment dependencies accordingly:
+It yields an [`EnvSubstitutor`][stepup.core.api.EnvSubstitutor] that performs the substitution
+and automatically tracks which variables were used,
+amending the current step's environment dependencies accordingly:
 
 ```python
 from stepup.core.api import subs_env_vars
 
 def my_api_function(path_inp, path_out):
-    with subs_env_vars() as subs:
-        path_inp = subs(path_inp)
-        path_out = subs(path_out)
-    # path_inp and path_out are now resolved Path objects
+    with subs_env_vars() as subs_env:
+        su_path_inp = subs_env(path_inp)
+        su_path_out = subs_env(path_out)
+    # su_path_inp and su_path_out are now substituted and normalized Path objects
 ```
+
+Calling the substitutor normalizes the result,
+which removes a leading `./` and a trailing `/`.
+When such an affix is significant, e.g. because a trailing slash marks a destination
+directory, use `subs_env.keep_affixes(path)` instead.
 
 ### Dependency filtering
 
