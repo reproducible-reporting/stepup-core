@@ -140,9 +140,10 @@ The rules for when a role determines a state, and why `UNDECLARED` is not simply
 ### Graph Determinism
 
 **The graph must be a deterministic function of the source files and the plan/step code,
-never of scheduling order or job count.**
+never of scheduling details: dispatch order, job count, resource limits or step durations.**
 Running the same project with `-j1` and `-j16` must produce the same graph,
-and so must two consecutive runs that change nothing.
+and so must two runs that change nothing,
+whether the second starts from scratch or resumes a valid workflow database.
 This constrains the *provenance* half of the graph as much as the dependency half:
 which node is recorded as the creator of a file may not depend on
 which of two concurrent steps happened to declare it first.

@@ -305,12 +305,17 @@ class Node:
         return self.graph.node_from_row(i, kind, label), detached
 
     def products(self, node_type: type[NodeType] | None = None) -> Iterator[NodeType]:
-        """Iterate over the products of this node, optionally filtered by node type."""
+        """Iterate over the products of this node, optionally filtered by node type.
+
+        Products are yielded ordered by `kind`, then `label`,
+        which is a total order because `node_kind_label` is unique.
+        """
         query = "SELECT i, kind, label FROM node WHERE creator = ?"
         data = [self.i]
         if node_type is not None:
             query += " AND kind = ?"
             data.append(node_type.kind())
+        query += " ORDER BY kind, label"
         for i, kind, label in self.db.execute(query, data):
             yield self.graph.node_from_row(i, kind, label)
 
