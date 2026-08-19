@@ -996,11 +996,6 @@ class DirectorHandler:
         return carry_on
 
     @allow_rpc
-    async def defer_step(self, job_i: int, missing: list[str]) -> None:
-        """Defer a step due to unavailable dependencies."""
-        self.executor.defer(job_i, unavailable=missing)
-
-    @allow_rpc
     async def record_subprocess(
         self,
         job_i: int,

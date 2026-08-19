@@ -13,17 +13,67 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
-             product   file:work.py
-             product   step:./work.py
+             product   file:driver.py
+             product   file:wait_for.py
+             product   step:./driver.py
+             product   step:./wait_for.py go1.txt gate1.txt
+             product   step:./wait_for.py go2.txt gate2.txt
 
-file:work.py
+file:driver.py
                state = CONFIRMED
              creator   step:./plan.py
-                sink   step:./work.py
+                sink   step:./driver.py
 
-step:./work.py
+file:wait_for.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./wait_for.py go1.txt gate1.txt
+                sink   step:./wait_for.py go2.txt gate2.txt
+                sink   step:./wait_for.py trigger_driver.txt trigger_work.txt
+
+step:./driver.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
-              source   file:work.py
+              source   file:driver.py
+              source   file:gate1.txt [dynamic]
+              source   file:gate2.txt [dynamic]
+             product   step:./wait_for.py trigger_driver.txt trigger_work.txt
+
+step:./wait_for.py go1.txt gate1.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./plan.py
+              source   file:wait_for.py
+             product   file:gate1.txt
+                sink   file:gate1.txt
+
+file:gate1.txt
+               state = BUILT
+             creator   step:./wait_for.py go1.txt gate1.txt
+              source   step:./wait_for.py go1.txt gate1.txt
+                sink   step:./driver.py
+
+step:./wait_for.py go2.txt gate2.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./plan.py
+              source   file:wait_for.py
+             product   file:gate2.txt
+                sink   file:gate2.txt
+
+file:gate2.txt
+               state = BUILT
+             creator   step:./wait_for.py go2.txt gate2.txt
+              source   step:./wait_for.py go2.txt gate2.txt
+                sink   step:./driver.py
+
+step:./wait_for.py trigger_driver.txt trigger_work.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./driver.py
+              source   file:wait_for.py
