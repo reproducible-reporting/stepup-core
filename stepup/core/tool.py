@@ -1,6 +1,16 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Shared infrastructure for the subcommands of the `stepup` command line interface."""
+"""Shared infrastructure for the subcommands of the `stepup` command line interface.
+
+A subcommand is registered through a `stepup.tools` entry point named after the subcommand,
+which points at a function `add_<name>_subcommand(subparsers, loader) -> ToolFunc`.
+It adds a parser named `<name>` to `subparsers` and returns the `ToolFunc` that runs the
+subcommand with the arguments that parser produces.
+A subcommand with settings that a config file or an environment variable may decide
+also calls `ConfigLoader.patch_parser` on its parser.
+One without such settings ignores `loader`,
+which keeps its section out of the configuration altogether.
+"""
 
 import argparse
 import sqlite3

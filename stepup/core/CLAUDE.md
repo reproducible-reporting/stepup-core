@@ -76,7 +76,7 @@ and `__main__.py` is the only module that prints an error and picks an exit code
   since showing a problem on the line of the setting it concerns is what the tool is for.
 
 The point of concentrating this in `main()` is that a tool needs no error handling of its own.
-A helper such as `interact.py`'s `_translate_connection_errors` restates one exception as
+A helper such as `interact.py`'s `_connect_director` restates one exception as
 another, but never prints, exits, or decides whether a traceback is warranted.
 
 ## Step Launching and Interruption (`run.py`)

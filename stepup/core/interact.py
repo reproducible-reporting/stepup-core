@@ -2,15 +2,15 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Collection of tools to interact with the StepUp director.
 
-Most of these tools are used for testing purposes.
-They can also be employed to create keyboard shortcuts within your IDE,
+They can be employed to create keyboard shortcuts within your IDE,
 or to interact with StepUp running in the background on a remote server.
 """
 
 import argparse
-import functools
+import contextlib
 import sys
 import time
+from collections.abc import Generator
 
 from path import Path
 
@@ -19,6 +19,7 @@ from .config_loader import ConfigLoader
 from .constants import DIRECTOR_LOG
 from .exceptions import RPCError, ToolError
 from .path import get_stepup_root
+from .rpc import SocketSyncRPCClient
 from .tool import SubParsers, ToolFunc
 from .utils import is_process_running, query_director_log
 
@@ -32,40 +33,33 @@ __all__ = (
 )
 
 
-GET_SOCKET_TIMEOUT = 10.0
+#
+# Connecting to the director
+#
+
+
+WAIT_FOR_SOCKET_TIMEOUT = 10.0
 """Seconds to wait for evidence in `DIRECTOR_LOG` that a director process exists.
 
 This deadline only covers the gap between the TUI truncating `DIRECTOR_LOG`
 and the director writing its `SOCKET` and `PID` lines into it.
-Once those lines name a live process, `get_socket` waits without a deadline:
+Once those lines name a live process, `wait_for_director_socket` waits without a deadline:
 the director creates its socket only after its startup file scan,
 whose duration is proportional to the size of the workflow and has no useful upper bound.
 """
 
-GET_SOCKET_INTERVAL = 0.5
+WAIT_FOR_SOCKET_INTERVAL = 0.5
 """Seconds between two attempts to read the socket path from `DIRECTOR_LOG`."""
 
+NO_RPC_TIMEOUT = -1.0
+"""The `_rpc_timeout` of a call that the director answers only when the workflow is ready for it.
 
-def _translate_connection_errors(tool: ToolFunc) -> ToolFunc:
-    """Restate a failure to reach the director as a `ToolError`.
-
-    A `UsageError` raised by the director itself passes through:
-    the call did reach the director, which rejected it with a message of its own.
-    """
-
-    @functools.wraps(tool)
-    def wrapper(args: argparse.Namespace) -> None:
-        try:
-            tool(args)
-        except (ConnectionError, FileNotFoundError, RPCError) as exc:
-            raise ToolError(f"Could not connect to the StepUp director: {exc}") from exc
-        except TimeoutError as exc:
-            raise ToolError(f"Timeout while connecting to the StepUp director: {exc}") from exc
-
-    return wrapper
+How long that takes is a property of the workflow, not of the connection,
+so the default timeout of the RPC client would only cut off a healthy wait.
+"""
 
 
-def get_socket() -> Path:
+def wait_for_director_socket() -> Path:
     """Block until the director socket is known and return it.
 
     Returns
@@ -77,57 +71,73 @@ def get_socket() -> Path:
     ------
     ToolError
         If `DIRECTOR_LOG` did not name a live director process
-        within `GET_SOCKET_TIMEOUT` seconds,
+        within `WAIT_FOR_SOCKET_TIMEOUT` seconds,
         e.g. because no director is running.
     """
-    stepup_root = get_stepup_root()
-    director_log = stepup_root / DIRECTOR_LOG
-    deadline = time.monotonic() + GET_SOCKET_TIMEOUT
-    first = True
-    reported_startup = False
+    director_log = get_stepup_root() / DIRECTOR_LOG
+    deadline = time.monotonic() + WAIT_FOR_SOCKET_TIMEOUT
+    # The last thing said about the situation, `None` as long as nothing was said at all.
+    reported = None
     while True:
         socket_path, pid, message = query_director_log(director_log)
         if socket_path is not None:
             return socket_path
-        if first:
+        if reported is None:
             print("Trying to contact StepUp director process.", file=sys.stderr)
-            first = False
         if pid is not None and is_process_running(pid):
             # The director exists but has not created its socket yet,
             # i.e. it is still busy with its startup file scan.
             # A pid recycled by an unrelated process only makes the client wait
             # instead of raising, which is harmless.
-            # Say so once: this may take a while and repeating it adds nothing.
-            if not reported_startup:
-                print(f"StepUp director (pid {pid}) is starting up.", file=sys.stderr)
-                reported_startup = True
+            message = f"StepUp director (pid {pid}) is starting up."
         elif time.monotonic() >= deadline:
             raise ToolError(f"{message}  Giving up: StepUp does not seem to be running.")
-        else:
+        # Only report a situation that differs from the last one reported:
+        # the same line repeated every `WAIT_FOR_SOCKET_INTERVAL` seconds adds nothing.
+        if message != reported:
             print(message, file=sys.stderr)
-        time.sleep(GET_SOCKET_INTERVAL)
+            reported = message
+        time.sleep(WAIT_FOR_SOCKET_INTERVAL)
 
 
-@_translate_connection_errors
-def shutdown_tool(args: argparse.Namespace) -> None:
-    """Drain the scheduler, wait for running steps to complete and then exit StepUp."""
-    get_rpc_client(get_socket()).call.shutdown()
+@contextlib.contextmanager
+def _connect_director() -> Generator[SocketSyncRPCClient]:
+    """Wait for the director and hand out a client for a single conversation with it.
+
+    The socket path is always known here, so the client is never the dummy one
+    that `get_rpc_client` hands out when there is no director to talk to.
+    The connection is opened by the first call made on the client.
+
+    Yields
+    ------
+    client
+        The client to call the director's remote procedures with.
+
+    Raises
+    ------
+    ToolError
+        If the director could not be reached.
+        A `UsageError` raised by the director itself passes through:
+        the call did reach the director, which rejected it with a message of its own.
+    """
+    client = get_rpc_client(wait_for_director_socket())
+    try:
+        yield client
+    except (ConnectionError, FileNotFoundError, RPCError) as exc:
+        raise ToolError(f"Could not connect to the StepUp director: {exc}") from exc
+    except TimeoutError as exc:
+        raise ToolError(f"Timeout while connecting to the StepUp director: {exc}") from exc
+    # Closing tells the director's side of the connection to wind down,
+    # which is a courtesy and not a requirement.
+    # A director that has just accepted a shutdown may be gone before the message arrives,
+    # so a broken connection at this point is not worth reporting.
+    with contextlib.suppress(OSError):
+        client.close()
 
 
-def add_shutdown_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
-    """Add the `shutdown` subcommand to the parser."""
-    subparsers.add_parser(
-        "shutdown",
-        help="Drain the scheduler, wait for running steps to complete and then exit StepUp. "
-        "Call again to kill running steps.",
-    )
-    return shutdown_tool
-
-
-@_translate_connection_errors
-def drain_tool(args: argparse.Namespace) -> None:
-    """Drain the scheduler. (No new steps are started.)"""
-    get_rpc_client(get_socket()).call.drain()
+#
+# Subcommands
+#
 
 
 def add_drain_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
@@ -136,31 +146,12 @@ def add_drain_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFu
         "drain",
         help="Drain the scheduler. (No new steps are started.)",
     )
+
+    def drain_tool(args: argparse.Namespace) -> None:
+        with _connect_director() as client:
+            client.call.drain()
+
     return drain_tool
-
-
-@_translate_connection_errors
-def join_tool(args: argparse.Namespace) -> None:
-    """Wait for the builder to become idle and stop the director.
-
-    This is the same as `stepup wait` followed by `stepup shutdown`.
-    """
-    get_rpc_client(get_socket()).call.wait_and_shutdown(_rpc_timeout=-1)
-
-
-def add_join_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
-    """Add the `join` subcommand to the parser."""
-    subparsers.add_parser(
-        "join",
-        help="Wait for the builder to become idle and stop the director.",
-    )
-    return join_tool
-
-
-@_translate_connection_errors
-def graph_tool(args: argparse.Namespace) -> None:
-    """Write the workflow graph files in text and dot formats."""
-    get_rpc_client(get_socket()).call.write_graph(args.prefix)
 
 
 def add_graph_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
@@ -174,14 +165,27 @@ def add_graph_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFu
         help="Prefix for the output files. The files will be named "
         "<prefix>.txt, <prefix>_provenance.dot, and <prefix>_dependency.dot.",
     )
-    loader.patch_parser(parser)
+
+    def graph_tool(args: argparse.Namespace) -> None:
+        with _connect_director() as client:
+            client.call.write_graph(args.prefix)
+
     return graph_tool
 
 
-@_translate_connection_errors
-def rebuild_tool(args: argparse.Namespace) -> None:
-    """Exit the watch phase and start the build phase."""
-    get_rpc_client(get_socket()).call.start_build_phase()
+def add_join_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
+    """Add the `join` subcommand to the parser."""
+    subparsers.add_parser(
+        "join",
+        help="Wait for the builder to become idle and stop the director.",
+    )
+
+    def join_tool(args: argparse.Namespace) -> None:
+        """Do the same as `stepup wait` followed by `stepup shutdown`, in one call."""
+        with _connect_director() as client:
+            client.call.wait_and_shutdown(_rpc_timeout=NO_RPC_TIMEOUT)
+
+    return join_tool
 
 
 def add_rebuild_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
@@ -190,19 +194,27 @@ def add_rebuild_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> Tool
         "rebuild",
         help="Exit the watch phase and start the build phase.",
     )
+
+    def rebuild_tool(args: argparse.Namespace) -> None:
+        with _connect_director() as client:
+            client.call.start_build_phase()
+
     return rebuild_tool
 
 
-@_translate_connection_errors
-def wait_tool(args: argparse.Namespace) -> None:
-    """Block until the builder becomes idle, or until a watched path changes."""
-    client = get_rpc_client(get_socket())
-    if args.update is not None:
-        client.call.wait_for_update(args.update, _rpc_timeout=-1)
-    elif args.delete is not None:
-        client.call.wait_for_delete(args.delete, _rpc_timeout=-1)
-    else:
-        client.call.wait_for_idle(_rpc_timeout=-1)
+def add_shutdown_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
+    """Add the `shutdown` subcommand to the parser."""
+    subparsers.add_parser(
+        "shutdown",
+        help="Drain the scheduler, wait for running steps to complete and then exit StepUp. "
+        "Call again to kill running steps.",
+    )
+
+    def shutdown_tool(args: argparse.Namespace) -> None:
+        with _connect_director() as client:
+            client.call.shutdown()
+
+    return shutdown_tool
 
 
 def add_wait_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
@@ -228,4 +240,14 @@ def add_wait_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFun
         help="Block until the watcher has observed the deletion of PATH, "
         "instead of waiting for the builder to become idle.",
     )
+
+    def wait_tool(args: argparse.Namespace) -> None:
+        with _connect_director() as client:
+            if args.update is not None:
+                client.call.wait_for_update(args.update, _rpc_timeout=NO_RPC_TIMEOUT)
+            elif args.delete is not None:
+                client.call.wait_for_delete(args.delete, _rpc_timeout=NO_RPC_TIMEOUT)
+            else:
+                client.call.wait_for_idle(_rpc_timeout=NO_RPC_TIMEOUT)
+
     return wait_tool
