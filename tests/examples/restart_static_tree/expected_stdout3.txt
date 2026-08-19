@@ -1,4 +1,4 @@
- STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Watching 2 directories
  STARTUP │ Checking 3 file(s) for changes
  UPDATED │ static/foo.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
    PHASE │ build

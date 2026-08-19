@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 4 file(s) for changes
  UPDATED │ plan.py (digest 04f162d6 ➜ 7800367b, size 264 ➜ 111)
  DELETED │ inp.txt

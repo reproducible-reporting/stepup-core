@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 3 file(s) for changes
  UPDATED │ input.txt (mode -rw-r--r-- ➜ -rwxr-xr-x)
    PHASE │ build

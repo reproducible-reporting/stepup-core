@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 6 file(s) for changes
    PHASE │ build
    START │ cp -p input.txt other.txt

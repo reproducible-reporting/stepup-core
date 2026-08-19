@@ -1,4 +1,4 @@
- STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Watching 2 directories
  STARTUP │ Checking 6 file(s) for changes
  UPDATED │ a_input.txt (digest 2c8b08da ➜ f6936912, size 4 ➜ 6)
    PHASE │ build

@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 3 file(s) for changes
  UPDATED │ plan.py (digest 3eb66c71 ➜ 66781fbe, size 220 ➜ 268)
    PHASE │ build

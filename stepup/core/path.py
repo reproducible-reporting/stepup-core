@@ -20,6 +20,7 @@ __all__ = (
     "get_affixes",
     "get_stepup_root",
     "make_path_out",
+    "parent_dir",
     "short_path",
     "translate",
     "translate_back",
@@ -125,6 +126,27 @@ def apply_affixes(path: StrPath, leading: str, trailing: str) -> Path:
             raise PathError(f"Path already has a trailing slash: {path}")
         path = path + trailing
     return coerce_path(path)
+
+
+def parent_dir(path: StrPath) -> str:
+    """The directory containing `path`, with the project root written as `.`.
+
+    A path ending in a separator names a directory,
+    and its parent is then that same directory without the trailing separator.
+    Strip the trailing separator before calling
+    to get the directory one level up instead.
+
+    Parameters
+    ----------
+    path
+        A path relative to the project root.
+
+    Returns
+    -------
+    parent
+        The parent directory, never empty and without a trailing separator.
+    """
+    return str(coerce_path(path).parent) or "."
 
 
 def make_path_out(

@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 3 file(s) for changes
  DELETED │ copy.txt
    PHASE │ build

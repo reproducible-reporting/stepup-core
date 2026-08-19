@@ -31,7 +31,7 @@ from .exceptions import ConsistencyError, GraphError
 from .file import REGULAR_OUTPUT_WHERE, File
 from .hash import FileHash, fmt_digest
 from .nglob import NamedGlob, glob_base_dir, has_any_wildcards
-from .path import dir_range_upper
+from .path import dir_range_upper, parent_dir
 from .sqlite3 import prefix_clause
 from .static_tree import StaticTree
 from .step import RESERVED_ENV_VARS, Step
@@ -953,7 +953,7 @@ class Workflow(Trellis):
         when `define_step`/`amend_step`/`declare_static_files` are actually called,
         which does not happen for a database-resumed run against an unchanged `plan.py`.
         Call this once at director startup:
-        after the boot/resume step (`serve`'s `Workflow.initialize_boot`/`startup_from_db`),
+        after the boot/resume step (`serve`'s `Workflow.initialize_boot`/`resume_from_db`),
         so that a changed `plan.py` has already been marked `PENDING`;
         after `Scheduler.initialize()` has created and populated the `target_dir` temp table;
         and before the first scheduler tick.
@@ -1142,14 +1142,20 @@ class Workflow(Trellis):
         nsucceeded, ntotal = self.db.execute(sql, (self.need_threshold.value,)).fetchone()
         return nsucceeded, ntotal
 
-    def steps(self, state: StepState) -> Iterator[Step]:
-        """Iterate over all steps with the given state."""
+    def steps(self, state: StepState) -> list[Step]:
+        """Return all steps with the given state.
+
+        The result is a list instead of a lazy cursor,
+        because callers routinely change `state` while working through it.
+        SQLite leaves it undefined whether a running query observes rows modified underneath it,
+        and `state` is indexed (`step_state` in `STEP_SCHEMA`),
+        so a row updated mid-scan could be skipped or visited twice.
+        """
         sql = (
             "SELECT i, label FROM node JOIN step ON node.i = step.node "
             "WHERE state = ? AND NOT detached"
         )
-        for i, label in self.db.execute(sql, (state.value,)):
-            yield Step(self, i, label)
+        return [Step(self, i, label) for i, label in self.db.execute(sql, (state.value,))]
 
     #
     # State propagation
@@ -2273,12 +2279,44 @@ class Workflow(Trellis):
 
         step.add_nglob(ng)
 
-        # Watch directories that could produce a new match: the parent of every current match,
-        # and the pattern's base directory,
-        # so a zero-match pattern still notices its first match appearing.
-        for path in paths:
-            self.watch_dir(Path(path.rstrip(os.sep)).parent)
-        self.watch_dir(glob_base_dir(ng.pattern))
+        self.watch_nglob_dirs(ng)
+
+    def watch_nglob_dirs(self, ng: NamedGlob) -> set[str]:
+        """Watch the directories in which `ng` could gain or lose a match.
+
+        These are the parent of every current match,
+        plus the pattern's base directory,
+        so a zero-match pattern still notices its first match appearing.
+
+        Returns
+        -------
+        dirs
+            The directories handed to `watch_dir`.
+        """
+        # A directory match is watched one level up, unlike a declared directory node,
+        # because the pattern selects the directory itself and not what it contains.
+        dirs = {parent_dir(path.rstrip(os.sep)) for path in ng.files()}
+        dirs.add(glob_base_dir(ng.pattern))
+        for path in dirs:
+            self.watch_dir(path)
+        return dirs
+
+    def persist_nglob_matches(self, nglob_i: int, step: Step, ng: NamedGlob):
+        """Store the new matches of one registration and make its step run again.
+
+        Parameters
+        ----------
+        nglob_i
+            The row identifier in the `nglob` table, as yielded by `nglob_registrations`.
+        step
+            The step that registered the pattern.
+        ng
+            The pattern with its new matches.
+        """
+        step.delete_hash()
+        data = (json.dumps(json_converter.unstructure(ng)), nglob_i)
+        self.db.execute("UPDATE nglob SET data = ? WHERE i = ?", data)
+        self.mark_step_pending(step)
 
     def _raise_if_glob_match(self, step_label: str, product_paths: Collection[str]) -> None:
         """Raise when a registered glob pattern matches a path a step is about to build.
@@ -2427,10 +2465,7 @@ class Workflow(Trellis):
             # or could gain a new match among the updated files.
             evolved = ng.will_change(deleted, updated)
             if evolved is not None:
-                step.delete_hash()
-                data = (json.dumps(json_converter.unstructure(evolved)), i)
-                self.db.execute("UPDATE nglob SET data = ? WHERE i = ?", data)
-                self.mark_step_pending(step)
+                self.persist_nglob_matches(i, step, evolved)
 
     #
     # Watch phase

@@ -47,7 +47,7 @@ from .reporter import ReporterClient
 from .rpc import SocketRPCServer, allow_rpc
 from .scheduler import Scheduler
 from .sqlite3 import DBSession, SQLLog
-from .startup import startup_from_db
+from .startup import resume_from_db
 from .stepinfo import StepInfo
 from .usage import CgroupMemorySampler, finalize_resource_usage
 from .utils import positive_int
@@ -530,9 +530,10 @@ async def serve(
         initialized = handler.workflow.initialize_boot()
     if initialized:
         await reporter("STARTUP", "(Re)initialized boot script")
-        handler.builder.resume.set()
     else:
-        await startup_from_db(handler.workflow, reporter, handler.builder)
+        await resume_from_db(handler.workflow, reporter, handler.builder)
+    # Every step that must run again is pending now, so the builder can start.
+    handler.builder.resume.set()
 
     # Targets must be reconciled after the boot script is defined.
     # See `Workflow.reconcile_targets()` for details.

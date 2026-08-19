@@ -15,7 +15,7 @@ from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NamedGlob
 from stepup.core.reporter import ReporterClient
 from stepup.core.scheduler import Scheduler
-from stepup.core.startup import check_file_changes, check_nglob_changes, populate_dir_queue
+from stepup.core.startup import rescan_files, rescan_nglobs, watch_known_dirs
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
@@ -79,17 +79,17 @@ class _FakeReporter:
         pass
 
 
-async def test_check_file_changes_does_nothing_when_nothing_to_check(wfs: Workflow):
+async def test_rescan_files_does_nothing_when_nothing_to_check(wfs: Workflow):
     """An empty/no-eligible-rows scan must not report anything."""
     builder = _make_builder(wfs)
     reporter = _FakeReporter()
 
-    await check_file_changes(wfs, reporter, builder)
+    await rescan_files(wfs, reporter, builder)
 
     assert reporter.calls == []
 
 
-async def test_check_file_changes_confirms_unchanged_stray_unconfirmed_row(wfs: Workflow, tmpdir):
+async def test_rescan_files_confirms_unchanged_stray_unconfirmed_row(wfs: Workflow, tmpdir):
     """A stray UNCONFIRMED row (crash while its confirming hash job was still queued or in
     flight) whose cached hash still matches disk must become CONFIRMED directly, via
     `CONFIRMED`, without depending on a step rerun and without an UPDATED/DELETED report
@@ -109,14 +109,14 @@ async def test_check_file_changes_confirms_unchanged_stray_unconfirmed_row(wfs: 
         builder = _make_builder(wfs)
         reporter = _FakeReporter()
 
-        await check_file_changes(wfs, reporter, builder)
+        await rescan_files(wfs, reporter, builder)
 
         assert reporter.calls == [("STARTUP", "Checking 1 file(s) for changes")]
         async with wfs.db:
             assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
 
 
-async def test_check_file_changes_confirms_deleted_stray_unconfirmed_row(wfs: Workflow, tmpdir):
+async def test_rescan_files_confirms_deleted_stray_unconfirmed_row(wfs: Workflow, tmpdir):
     """A stray UNCONFIRMED row whose file is now absent must become MISSING, reported
     as DELETED -- same reporting as a regular CONFIRMED file being externally deleted."""
     with contextlib.chdir(tmpdir):
@@ -131,7 +131,7 @@ async def test_check_file_changes_confirms_deleted_stray_unconfirmed_row(wfs: Wo
         builder = _make_builder(wfs)
         reporter = _FakeReporter()
 
-        await check_file_changes(wfs, reporter, builder)
+        await rescan_files(wfs, reporter, builder)
 
         assert reporter.calls == [
             ("STARTUP", "Checking 1 file(s) for changes"),
@@ -141,7 +141,7 @@ async def test_check_file_changes_confirms_deleted_stray_unconfirmed_row(wfs: Wo
             assert wfs.find(File, "foo.txt").get_state() == FileState.MISSING
 
 
-async def test_check_file_changes_reports_externally_updated_static_file(wfs: Workflow, tmpdir):
+async def test_rescan_files_reports_externally_updated_static_file(wfs: Workflow, tmpdir):
     """A regular (non-UNCONFIRMED) CONFIRMED file that changed on disk must still be picked
     up via the EXTERNAL cause, reported as UPDATED, and get its new hash applied."""
     with contextlib.chdir(tmpdir):
@@ -156,7 +156,7 @@ async def test_check_file_changes_reports_externally_updated_static_file(wfs: Wo
         builder = _make_builder(wfs)
         reporter = _FakeReporter()
 
-        await check_file_changes(wfs, reporter, builder)
+        await rescan_files(wfs, reporter, builder)
 
         assert reporter.calls == [
             ("STARTUP", "Checking 1 file(s) for changes"),
@@ -170,13 +170,13 @@ async def test_check_file_changes_reports_externally_updated_static_file(wfs: Wo
             assert wfs.find(File, "foo.txt").get_hash() != old_hash
 
 
-async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpdir):
+async def test_rescan_nglobs_persists_readable_matches(wfp: Workflow, tmpdir):
     """A restart-detected nglob change (files added/removed while the director was not
     running) must persist matches in the same format later reads expect.
 
     Every read path (`Workflow.nglobs`, `Step.nglobs`, `browse.py`) expects the
     `nglob.data` column to hold JSON, via `json_converter` (see `stepup.core.cattrs`), so
-    `check_nglob_changes` must persist with the same encoding rather than `pickle.dumps`.
+    `rescan_nglobs` must persist with the same encoding rather than `pickle.dumps`.
     A mismatch would be invisible in the integration examples, because the owning step
     (typically the perpetually-rerunning `PLAN` step) usually re-registers its nglob with
     correct JSON before anything reads the row again -- but a read in that window (e.g. a
@@ -203,7 +203,7 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
             pass
 
         reporter = _FakeReporter()
-        await check_nglob_changes(wfp, reporter)
+        await rescan_nglobs(wfp, reporter)
 
         assert reporter.calls == [
             ("STARTUP", "Checking 1 nglob(s) for new or deleted matches"),
@@ -222,7 +222,7 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
             assert new_nglobs[0].files() == ["inp1.txt", "inp3.txt"]
 
 
-async def test_populate_dir_queue_includes_glob_base_dirs(wfp: Workflow, tmpdir):
+async def test_watch_known_dirs_includes_glob_base_dirs(wfp: Workflow, tmpdir):
     """A directory that only ever appears as a glob pattern's base directory (no
     static() declaration, no recorded match) must still be watched after a restart, or
     a directory that only ever contained glob matches would go unwatched.
@@ -234,12 +234,12 @@ async def test_populate_dir_queue_includes_glob_base_dirs(wfp: Workflow, tmpdir)
             wfp.register_nglob(plan, NamedGlob("data/*.txt"))
 
         # Drain what fixture setup and register_nglob already queued, so only
-        # populate_dir_queue's own contribution is observed below.
+        # watch_known_dirs's own contribution is observed below.
         while not wfp.dir_queue.empty():
             wfp.dir_queue.get_nowait()
 
         reporter = _FakeReporter()
-        await populate_dir_queue(wfp, reporter)
+        await watch_known_dirs(wfp, reporter)
 
         watched = set()
         while not wfp.dir_queue.empty():

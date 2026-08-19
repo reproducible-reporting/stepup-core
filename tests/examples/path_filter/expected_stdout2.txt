@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  UPDATED │ STEPUP_PATH_FILTER (unset) ➜ =''
  STARTUP │ Checking 1 file(s) for changes
    PHASE │ build

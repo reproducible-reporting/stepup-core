@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 5 file(s) for changes
  UPDATED │ a_input.txt (digest 0111f755 ➜ 333d36c1)
  UPDATED │ b_input.txt (digest e10a1287 ➜ 65f653be)

@@ -3467,7 +3467,7 @@ async def test_confirm_static_then_absent(wfp: Workflow):
 async def test_hash_update_external_unconfirmed(wfp: Workflow):
     """Drive the (EXTERNAL, UNCONFIRMED, True/False) rows, a defensive fallback.
 
-    `check_file_changes` (Phase 2) resolves stray UNCONFIRMED rows via CONFIRMED at startup,
+    `rescan_files` (Phase 2) resolves stray UNCONFIRMED rows via CONFIRMED at startup,
     so this EXTERNAL/UNCONFIRMED path is not expected to be reachable there in practice.
     It is kept as a defensive fallback (see the comment on these entries in
     `_HASH_TRANSITIONS`) in case a non-detached UNCONFIRMED file ever survives into a

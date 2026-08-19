@@ -1,4 +1,4 @@
- STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Watching 2 directories
  STARTUP │ Checking 5 file(s) for changes
  UPDATED │ plan.py (digest 79bd0d52 ➜ 33fdf48c, size 141 ➜ 112)
  DELETED │ static/foo.txt

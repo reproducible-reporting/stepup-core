@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 2 file(s) for changes
  UPDATED │ inp.txt (digest UNKNOWN ➜ 5891b5b5, size 0 ➜ 6, mode ?--------- ➜ -rw-r--r--)
    PHASE │ build

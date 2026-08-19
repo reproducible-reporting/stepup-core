@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 3 file(s) for changes
    ERROR │ Could not hash data.txt: File digests of directories are not supported: data.txt
 ──────────────────────────── Provenance of data.txt ────────────────────────────

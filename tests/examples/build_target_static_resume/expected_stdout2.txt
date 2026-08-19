@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 3 file(s) for changes
    ERROR │ Invalid build target: A build target cannot be a static file: input.txt
  WARNING │ Check logs: .stepup/fail.log

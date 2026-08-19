@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 7 file(s) for changes
  DELETED │ data1.txt
  DELETED │ log.txt

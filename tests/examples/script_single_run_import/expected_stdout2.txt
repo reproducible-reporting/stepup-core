@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 4 file(s) for changes
  UPDATED │ helper.py (digest 9fbd9814 ➜ b649ae50, size 38 ➜ 39)
    PHASE │ build

@@ -1,4 +1,4 @@
- STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Watching 2 directories
  STARTUP │ Checking 10 file(s) for changes
    PHASE │ build
 DIRECTOR │ Ran 0 job(s).

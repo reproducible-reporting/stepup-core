@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 6 file(s) for changes
  UPDATED │ inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
    PHASE │ build

@@ -1,4 +1,4 @@
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 7 file(s) for changes
  DELETED │ inp1.txt
  STARTUP │ Checking 1 nglob(s) for new or deleted matches

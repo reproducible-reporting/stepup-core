@@ -1,5 +1,4 @@
 DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
- STARTUP │ Watching 1 director(y|ies)
  STARTUP │ Checking 1 file(s) for changes
    PHASE │ build
 DIRECTOR │ Ran 0 job(s).

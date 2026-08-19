@@ -1,5 +1,5 @@
  STARTUP │ Making failed steps pending
- STARTUP │ Watching 1 director(y|ies)
+ STARTUP │ Watching 1 directory
  STARTUP │ Checking 2 file(s) for changes
  UPDATED │ plan.py (digest 0936ce70 ➜ f4be1aff)
    PHASE │ build

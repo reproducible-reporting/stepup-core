@@ -1,4 +1,4 @@
- STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Watching 2 directories
  STARTUP │ Checking 6 file(s) for changes
  STARTUP │ Checking 1 nglob(s) for new or deleted matches
  UPDATED │ sub/inp3.txt

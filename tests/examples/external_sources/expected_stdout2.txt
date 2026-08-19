@@ -1,5 +1,5 @@
 Changing to ${CASE}/project
- STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Watching 2 directories
  STARTUP │ Checking 3 file(s) for changes
  UPDATED │ ../pkgs/helper.py (digest d88d2a0e ➜ 31b25e5b)
    PHASE │ build
