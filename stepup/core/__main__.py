@@ -11,20 +11,54 @@ from importlib.metadata import version as get_version
 
 from path import Path
 
-from .config import ConfigLoader
+from .config import (
+    ConfigLoader,
+    format_config_problems,
+    print_config_error,
+    print_config_problems,
+)
+from .enums import ReturnCode
+from .exceptions import ConfigError
 from .utils import is_debug
 
 __all__ = ("main", "sb_main")
 
 
+SHOW_CONFIG = "show-config"
+"""The subcommand that runs despite a broken configuration, because it explains it."""
+
+
 def main():
-    parser, tool_funcs = build_parser()
+    """Run a StepUp subcommand, reporting a `ConfigError` as a message instead of a traceback.
+
+    `STEPUP_DEBUG` keeps the traceback, as it does for any other usage error.
+    """
+    try:
+        _main()
+    except ConfigError as exc:
+        if is_debug():
+            raise
+        print_config_error(str(exc))
+        sys.exit(ReturnCode.INTERNAL.value)
+
+
+def _main():
+    """Parse the command line and run the requested subcommand, if the configuration allows it."""
+    parser, tool_funcs, loader = build_parser()
     args = parser.parse_args()
     tool_func = tool_funcs.get(args.tool)
-    if tool_func is not None:
-        sys.exit(tool_func(args))
-    else:
+    if tool_func is None:
         parser.print_help()
+        return
+    if args.tool != SHOW_CONFIG:
+        problems = loader.problems()
+        if len(problems) > 0:
+            hint = f"Run 'stepup {SHOW_CONFIG}' to inspect the configuration."
+            if is_debug():
+                raise ConfigError(f"{format_config_problems(problems)}\n{hint}")
+            print_config_problems(problems, hint)
+            sys.exit(ReturnCode.INTERNAL.value)
+    sys.exit(tool_func(args))
 
 
 def sb_main():
@@ -33,7 +67,19 @@ def sb_main():
     main()
 
 
-def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Callable]]:
+def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Callable], ConfigLoader]:
+    """Create the StepUp parser, with all subcommands registered and configured.
+
+    Returns
+    -------
+    parser
+        The top-level argument parser.
+    tool_funcs
+        The function implementing each subcommand, keyed by subcommand name.
+    loader
+        The configuration loader, patched into every parser.
+        Call `ConfigLoader.check` on it to find out what is wrong with the configuration.
+    """
     # Configuration loader
     stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
     loader = ConfigLoader(
@@ -73,7 +119,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Callable]]:
         tool = tool_ep.load()
         tool_funcs[tool_ep.name] = tool(subparsers, loader)
 
-    return parser, tool_funcs
+    return parser, tool_funcs, loader
 
 
 if __name__ == "__main__":

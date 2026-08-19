@@ -5,6 +5,7 @@
 __all__ = (
     "AmendWhileHoldingError",
     "CgroupError",
+    "ConfigError",
     "ConsistencyError",
     "CyclicError",
     "EnvVarError",
@@ -49,6 +50,19 @@ class AmendWhileHoldingError(GraphError):
     and the input's producer cannot run until the hold is released.
     Call the amend-triggering code before entering the `with hold():` block.
     `amend(env=..., out=..., vol=...)` cannot deadlock this way and does not raise this error.
+    """
+
+
+class ConfigError(UsageError, ValueError):
+    """A configuration file or environment variable holds something StepUp cannot use.
+
+    `ValueError` is kept in the bases because most of the underlying problems
+    (a bad TOML syntax, a value of the wrong type, a value outside the allowed choices)
+    surface as a `ValueError` before being wrapped in this class.
+
+    The command-line interface reports these without a traceback,
+    because the raise site says nothing a user could act on:
+    the message names the config file or environment variable to fix.
     """
 
 

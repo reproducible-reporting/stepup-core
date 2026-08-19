@@ -45,7 +45,87 @@ including comments about the source of each setting.
 Positional command-line arguments (targets to build or paths to clean)
 cannot be set through configuration files or environment variables.
 
-## Internal environment variables
+## Configuration Errors
+
+A subcommand refuses to start when anything is wrong with a configuration file:
+invalid TOML syntax, an unknown section, a key that is not a setting
+of the section it appears in, or a value that a setting cannot use.
+The value of an environment variable is checked in the same way,
+but its **name** is not: see [Unrecognized Environment Variables](#unrecognized-environment-variables).
+All problems are reported at once, so that a single run tells you everything to fix.
+Each one names the config file the way `stepup show-config` does,
+relative to the working directory when it lies below it:
+
+```text
+$ sb
+ERROR: Problems with the StepUp configuration:
+  ./stepup.toml: unsupported key 'speed' in section [build]
+  ./stepup.toml: unknown section [buidl] (did you mean 'build'?)
+Run 'stepup show-config' to inspect the configuration.
+```
+
+This sets the first bit of the [return code](returncode.md),
+without a Python traceback unless `STEPUP_DEBUG` is set.
+Problems are shown in red when the terminal supports color.
+
+The `stepup show-config` subcommand is the one exception:
+it still prints the configuration it loaded, with the source of each setting.
+This makes it usable precisely when the configuration is broken.
+Each problem is shown on the line of the setting, section or config file it concerns,
+for the same `stepup.toml` as above:
+
+```toml
+# Config files (lowest to highest priority):
+#   MISSING: /etc/stepup.toml
+#   MISSING: ~/.config/stepup.toml
+#   MISSING: .stepup.toml
+#   FOUND:   ./stepup.toml
+#   MISSING: ./pyproject.toml
+#   MISSING: ./stepup-local.toml
+# Environment variables: STEPUP_*
+
+[buidl]  # <-- ERROR: ./stepup.toml: unknown section [buidl] (did you mean 'build'?)
+jobs = 2  # ./stepup.toml
+
+[build]
+speed = 4  # ./stepup.toml  <-- ERROR: unsupported key 'speed' in section [build]
+```
+
+The problems are written in comments, so the output remains valid TOML.
+A problem that has no line of its own is listed afterwards on standard error.
+This happens when a config file with a higher priority overrides the setting at fault,
+and when a line already carries another problem,
+because a second comment cannot be opened on the same line.
+
+## Unrecognized Environment Variables
+
+A misspelled key in a config file is an error, but a misspelled `STEPUP_*` variable is not.
+The `STEPUP_*` namespace is shared with the variables that configure StepUp's internals,
+listed under [StepUp Core Module Environment Variables](#stepup-core-module-environment-variables),
+which no subcommand defines an option for.
+Rejecting every name that is not a setting would therefore reject StepUp's own environment.
+
+To make a typo visible anyway, `stepup show-config` lists the `STEPUP_*` variables
+in three groups, by what each of them does:
+
+```toml
+# Configuration environment variables:
+#   STEPUP_BUILD_JOBS = "4"
+
+# StepUp Core module environment variables:
+#   STEPUP_ROOT = "/home/user/project"
+
+# Unrecognized environment variables, without effect:
+#   STEPUP_BUILD_JBOS = "4"
+```
+
+When a setting does not take effect, the last group is the first place to look.
+It holds every `STEPUP_*` variable that StepUp does not act on,
+which for a variable you set deliberately means a misspelled name.
+Variables of an extension package appear there as well
+when they configure that package's internals rather than one of its settings.
+
+## StepUp Core Module Environment Variables
 
 Some environment variables affect StepUp's internals even when it is just imported as a Python library.
 These can only be set via environment variables,
@@ -93,7 +173,7 @@ and cannot be configured through config files or command-line options.
     The default is 300 seconds.
     Set this to a smaller value if you want to detect deadlocks more quickly.
 
-## Settings for all subcommands
+## Settings for All Subcommands
 
 Each entry below lists the config file key, environment variable, and command-line option
 separated by slashes, where applicable.

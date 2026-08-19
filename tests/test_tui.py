@@ -134,10 +134,13 @@ def test_jobs_accepts_fractional() -> None:
 
 
 def test_jobs_env_var_rejected_cleanly() -> None:
-    """An invalid `STEPUP_BUILD_JOBS` env var raises `ValueError` mentioning the env var name."""
+    """An invalid `STEPUP_BUILD_JOBS` env var is reported as a problem naming the env var."""
     loader = ConfigLoader("stepup", environ={"STEPUP_BUILD_JOBS": "abc"})
-    with pytest.raises(ValueError, match="STEPUP_BUILD_JOBS"):
-        _build_test_build_parser(loader)
+    parser = _build_test_build_parser(loader)
+    (message,) = loader.check()
+    assert message.startswith("$STEPUP_BUILD_JOBS: ")
+    # The rejected value does not reach the director: the parser keeps its own default.
+    assert parser.parse_args(["build"]).jobs == Decimal("1.0")
 
 
 def test_perf_rejects_non_integer(capsys: pytest.CaptureFixture) -> None:
@@ -163,10 +166,12 @@ def test_perf_bare_flag_uses_default_frequency() -> None:
 
 
 def test_perf_env_var_rejected_cleanly() -> None:
-    """An invalid `STEPUP_BUILD_PERF` env var raises `ValueError` mentioning the env var name."""
+    """An invalid `STEPUP_BUILD_PERF` env var is reported as a problem naming the env var."""
     loader = ConfigLoader("stepup", environ={"STEPUP_BUILD_PERF": "abc"})
-    with pytest.raises(ValueError, match="STEPUP_BUILD_PERF"):
-        _build_test_build_parser(loader)
+    parser = _build_test_build_parser(loader)
+    (message,) = loader.check()
+    assert message.startswith("$STEPUP_BUILD_PERF: ")
+    assert parser.parse_args(["build"]).perf is None
 
 
 def test_build_parser_help_lists_groups(capsys: pytest.CaptureFixture) -> None:

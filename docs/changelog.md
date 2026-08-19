@@ -28,6 +28,19 @@ and will be updated with any further changes before the final release.
   See [Configuration files](reference/configuration.md) for details.
 - The `stepup show-config` command shows the current configuration,
   as the result of merging all config files and environment variables.
+  It also lists the `STEPUP_*` environment variables in three groups,
+  separating the ones it recognizes as settings from the ones used internally
+  and from the ones without any effect,
+  because the name of an environment variable cannot be checked the way a config key is.
+- Mistakes in a config file or a `STEPUP_*` environment variable are reported as a list of
+  short messages instead of a Python traceback, and stop the subcommand with return code `1`.
+  All problems are listed at once, each naming the file or variable to fix.
+  Unknown sections and keys are now also detected, with a suggestion where a key belongs
+  or how it is spelled correctly.
+  The `stepup show-config` command is the exception that still runs,
+  so the configuration can be inspected precisely when it is broken.
+  It shows each problem on the line of the setting, section or config file it concerns.
+  Problems are shown in red when the terminal supports color.
 - `stepup build [targets...]` restricts the build to the steps needed to produce
   the given output files (and their dependencies), instead of the full default workflow.
   A target cannot name a volatile output or a static file, and a target that is never

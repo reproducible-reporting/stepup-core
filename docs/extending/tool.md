@@ -46,13 +46,17 @@ The examples below assume that you want to add a tool called `fancy` to the Step
         )
         parser.add_argument(...)
         ...
-        loader.patch_parser(parser, "fancy")
+        loader.patch_parser(parser)
         return fancy_tool
     ```
 
     The `subparsers` argument is the sub-parsers object from the main `stepup` argument parser.
     The `loader` argument is a `ConfigLoader` instance that can be used to patch the parser
     with configuration file values (see existing tools in `stepup.core` for examples).
+    The section it reads is the last word of the parser's `prog`, here `[fancy]`.
+    Patching never raises on a bad configuration:
+    the problems are collected and reported by `stepup` itself,
+    before it calls the tool, see [Configuration](../reference/configuration.md).
 
 3. Create an entry point in `pyproject.toml` pointing to this function:
 

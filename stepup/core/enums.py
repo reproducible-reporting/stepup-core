@@ -25,7 +25,11 @@ __all__ = (
 
 class ReturnCode(Flag):
     INTERNAL = auto()
-    """Internal exception raised in the director, unrelated to failing steps in the workflow"""
+    """The build could not be completed for a reason unrelated to the workflow.
+
+    Set for a mistake in the configuration or the command line, which stops a subcommand
+    before it does any work, and for an exception raised inside the director.
+    """
 
     INTERRUPTED = auto()
     """The build was aborted by a terminal signal (Ctrl-C or `SIGTERM`).

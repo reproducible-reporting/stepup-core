@@ -3,13 +3,18 @@
 """Tests for stepup.core.config."""
 
 import argparse
+import os
+import sys
+import tomllib
 from decimal import Decimal
 
 import pytest
 from path import Path
 
-from stepup.core.__main__ import build_parser
-from stepup.core.config import ConfigLoader
+from stepup.core.__main__ import build_parser, main
+from stepup.core.config import CORE_ENV_VARS, ConfigLoader
+from stepup.core.enums import ReturnCode
+from stepup.core.exceptions import ConfigError
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -39,6 +44,19 @@ def plugin_parser() -> argparse.ArgumentParser:
     p.add_argument("--quality", default=None)
     p.add_argument("--num-jobs", dest="num_jobs", type=int, default=1)
     return p
+
+
+@pytest.fixture
+def clean_env(monkeypatch, path_tmp):
+    """Hide the developer's own configuration, so it cannot reach the output under test.
+
+    Both the StepUp environment variables and `~/.config/stepup.toml` are put out of reach.
+    The system-wide `/etc/stepup.toml` is the one config file that cannot be hidden this way.
+    """
+    for name in list(os.environ):
+        if name.startswith("STEPUP_"):
+            monkeypatch.delenv(name)
+    monkeypatch.setenv("HOME", path_tmp)
 
 
 @pytest.fixture
@@ -80,7 +98,21 @@ def test_load_file_missing(path_tmp: Path, loader: ConfigLoader):
 def test_load_file_unsupported_format(path_tmp: Path, loader: ConfigLoader):
     cfg = path_tmp / "stepup.ini"
     cfg.write_text("[stepup]\njobs = 4\n")
-    with pytest.raises(ValueError, match="Unsupported config file format"):
+    with pytest.raises(ConfigError, match="unsupported config file format"):
+        loader._load_file(cfg)
+
+
+def test_load_file_invalid_toml(path_tmp: Path, loader: ConfigLoader):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"this is not toml\n")
+    with pytest.raises(ConfigError, match="invalid TOML syntax"):
+        loader._load_file(cfg)
+
+
+def test_load_file_pyproject_section_not_a_table(path_tmp: Path, loader: ConfigLoader):
+    cfg = path_tmp / "pyproject.toml"
+    cfg.write_bytes(b"[tool]\nstepup = 3\n")
+    with pytest.raises(ConfigError, match=r"'tool\.stepup' is configured as a value"):
         loader._load_file(cfg)
 
 
@@ -171,8 +203,8 @@ def test_patch_parser_unsupported_config_key(path_tmp, parser):
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b"unsupported_key = 42\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    with pytest.raises(ValueError, match="Unsupported config key"):
-        loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(parser, use_section=False)
+    assert loader.check() == [f"{cfg}: unsupported key 'unsupported_key' at the top level"]
 
 
 # ---------------------------------------------------------------------------
@@ -446,8 +478,12 @@ def test_patch_parser_choices_invalid_from_file(path_tmp):
     cfg = path_tmp / "app.toml"
     cfg.write_bytes(b'mode = "turbo"\n')
     loader = ConfigLoader("app", config_paths=[cfg], environ={})
-    with pytest.raises(ValueError, match=r"'turbo'.*mode.*in .*app\.toml"):
-        loader.patch_parser(p, use_section=False)
+    loader.patch_parser(p, use_section=False)
+    (message,) = loader.check()
+    assert message.startswith(f"{cfg}: mode at the top level: ")
+    assert "'turbo'" in message
+    # The parser keeps its own default, so the rejected value cannot reach the tool.
+    assert p.parse_args([]).mode == "fast"
 
 
 def test_patch_parser_choices_valid_from_env():
@@ -462,8 +498,11 @@ def test_patch_parser_choices_invalid_from_env():
     p = argparse.ArgumentParser()
     p.add_argument("--mode", choices=["fast", "slow"], default="fast")
     loader = ConfigLoader("app", environ={"APP_MODE": "turbo"})
-    with pytest.raises(ValueError, match=r"'turbo'.*mode.*from APP_MODE"):
-        loader.patch_parser(p, use_section=False)
+    loader.patch_parser(p, use_section=False)
+    (message,) = loader.check()
+    assert message.startswith("$APP_MODE: ")
+    assert "'turbo'" in message
+    assert p.parse_args([]).mode == "fast"
 
 
 # ---------------------------------------------------------------------------
@@ -495,13 +534,14 @@ def test_patches_accumulate_across_calls(parser, plugin_parser, loader):
     assert loader._patches[1][0] == "plugin"
 
 
-def test_patches_not_recorded_on_error(path_tmp, parser):
+def test_patches_recorded_despite_error(path_tmp, parser):
+    """A parser with a bad config is still recorded, so `show-config` can report on it."""
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b"unknown_key = 1\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    with pytest.raises(ValueError):
-        loader.patch_parser(parser, use_section=False)
-    assert loader._patches == []
+    loader.patch_parser(parser, use_section=False)
+    assert len(loader._patches) == 1
+    assert len(loader.check()) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -556,6 +596,199 @@ def test_env_to_toml_map_multiple_sections():
 
 
 # ---------------------------------------------------------------------------
+# check
+# ---------------------------------------------------------------------------
+
+
+def test_check_sound_config(path_tmp, parser, plugin_parser):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b'jobs = 8\n[plugin]\nquality = "high"\n')
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == []
+
+
+def test_check_reports_all_problems_at_once(path_tmp, parser, plugin_parser):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b'bogus = 1\n[plugin]\nnum_jobs = "abc"\n[nosuch]\nx = 1\n')
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [
+        f"{cfg}: num_jobs in section [plugin]: invalid literal for int() with base 10: 'abc'",
+        f"{cfg}: unsupported key 'bogus' at the top level",
+        f"{cfg}: unknown section [nosuch]",
+    ]
+
+
+def test_check_invalid_toml_syntax(path_tmp, parser):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"jobs = = 4\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    (message,) = loader.check()
+    assert message.startswith(f"{cfg}: invalid TOML syntax: ")
+
+
+def test_check_section_not_a_table(path_tmp, parser, plugin_parser):
+    """A section given a scalar value is reported once, as a section and not as a key."""
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"plugin = 3\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [
+        f"{cfg}: 'plugin' is configured as a value, but a section [plugin] is expected"
+    ]
+
+
+def test_check_nested_table_in_section(path_tmp, plugin_parser):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"[plugin.extra]\nquality = 1\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [f"{cfg}: unsupported key 'extra' in section [plugin]"]
+
+
+def test_check_key_in_wrong_section(path_tmp, parser, plugin_parser):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"[plugin]\nlabel = 3\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [
+        f"{cfg}: unsupported key 'label' in section [plugin] (it belongs at the top level)"
+    ]
+
+
+def test_check_positional_argument(path_tmp, plugin_parser):
+    """A positional argument is CLI-only, which the message says instead of just 'unsupported'."""
+    plugin_parser.add_argument("paths", nargs="*")
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b'[plugin]\npaths = ["sub/"]\n')
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [
+        f"{cfg}: unsupported key 'paths' in section [plugin] "
+        "(a positional command-line argument, which cannot be configured)"
+    ]
+
+
+def test_check_misspelled_key(path_tmp, parser):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"jbos = 3\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    assert loader.check() == [
+        f"{cfg}: unsupported key 'jbos' at the top level (did you mean 'jobs'?)"
+    ]
+
+
+def test_check_misspelled_key_of_other_section(path_tmp, parser, plugin_parser):
+    """A key close to one of another section is suggested together with that section."""
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"quailty = 3\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [
+        f"{cfg}: unsupported key 'quailty' at the top level "
+        "(did you mean 'quality' in section [plugin]?)"
+    ]
+
+
+def test_check_misspelled_section(path_tmp, parser, plugin_parser):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"[plugni]\nquality = 3\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [f"{cfg}: unknown section [plugni] (did you mean 'plugin'?)"]
+
+
+def test_check_setting_written_as_section(path_tmp, parser, plugin_parser):
+    """A setting written as a table is reported as such, not as an unknown section."""
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"[label]\nx = 1\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [
+        f"{cfg}: 'label' is configured as a section, but a value is expected at the top level"
+    ]
+
+
+def test_check_setting_of_other_section_written_as_section(path_tmp, parser, plugin_parser):
+    """The message names the section the setting belongs to, wherever it was written."""
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"[quality]\nx = 1\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [
+        f"{cfg}: 'quality' is configured as a section, but a value is expected in section [plugin]"
+    ]
+
+
+def test_check_pyproject_locations(path_tmp, parser, plugin_parser):
+    cfg = path_tmp / "pyproject.toml"
+    cfg.write_bytes(b"[tool.stepup]\nbogus = 1\n[tool.stepup.nosuch]\nx = 1\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
+    assert loader.check() == [
+        f"{cfg}: unsupported key 'bogus' in section [tool.stepup]",
+        f"{cfg}: unknown section [tool.stepup.nosuch]",
+    ]
+
+
+def test_check_deduplicates_aliased_parsers(path_tmp, plugin_parser):
+    """Two subcommands sharing a config section must not report the same problem twice."""
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"[plugin]\nbogus = 1\n")
+    alias_parser = argparse.ArgumentParser("plugin")
+    alias_parser.add_argument("--quality", default=None)
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(plugin_parser)
+    loader.patch_parser(alias_parser)
+    assert loader.check() == [f"{cfg}: unsupported key 'bogus' in section [plugin]"]
+
+
+def test_check_short_path_in_working_directory(path_tmp, parser, monkeypatch):
+    """A config file below the working directory is named as in the show-config header."""
+    monkeypatch.chdir(path_tmp)
+    cfg = Path(os.getcwd()) / "stepup.toml"
+    cfg.write_bytes(b"bogus = 1\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    loader.patch_parser(parser, use_section=False)
+    assert loader.check() == ["./stepup.toml: unsupported key 'bogus' at the top level"]
+
+
+def test_check_env_var_problem(parser):
+    loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "abc"})
+    loader.patch_parser(parser, use_section=False)
+    (message,) = loader.check()
+    assert message.startswith("$STEPUP_JOBS: ")
+
+
+def test_problem_location(path_tmp, parser):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"bogus = 1\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={"STEPUP_JOBS": "abc"})
+    loader.patch_parser(parser, use_section=False)
+    env_problem, file_problem = loader.problems()
+    assert file_problem.path == cfg
+    assert file_problem.section is None
+    assert file_problem.key == "bogus"
+    assert file_problem.location == str(cfg)
+    assert file_problem.message == f"{cfg}: {file_problem.detail}"
+    assert env_problem.env_var == "STEPUP_JOBS"
+    assert env_problem.path is None
+    assert env_problem.location == "$STEPUP_JOBS"
+
+
+# ---------------------------------------------------------------------------
 # Integration
 # ---------------------------------------------------------------------------
 
@@ -596,12 +829,145 @@ def test_full_integration(path_tmp, parser):
     ],
 )
 def test_cli_section_per_subcommand(
-    monkeypatch, path_tmp, argv, env_var, env_value, dest, expected
+    monkeypatch, path_tmp, argv, env_var, env_value, dest, expected, clean_env
 ):
     """Each subcommand reads the config section documented in `docs/reference/configuration.md`."""
     # Point STEPUP_ROOT at an empty directory, so that no config file of this repository
     # interferes with the environment variable under test.
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
     monkeypatch.setenv(env_var, env_value)
-    parser, _ = build_parser()
+    parser, _, _ = build_parser()
     assert getattr(parser.parse_args(argv), dest) == expected
+
+
+def _run_main(monkeypatch, path_tmp: Path, argv: list[str]) -> int:
+    """Run the `stepup` command line in this process and return its exit code."""
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.setattr(sys, "argv", ["stepup", *argv])
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+    return exc_info.value.code
+
+
+def test_cli_config_error_without_traceback(monkeypatch, path_tmp, capsys, clean_env):
+    """A broken config file stops a build with a message instead of a traceback."""
+    (path_tmp / "stepup.toml").write_bytes(b"jbos = 4\n")
+    assert _run_main(monkeypatch, path_tmp, ["build"]) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Traceback" not in captured.err
+    assert (
+        "unsupported key 'jbos' at the top level (did you mean 'jobs' in section [build]?)"
+        in captured.err
+    )
+
+
+def test_cli_config_error_traceback_in_debug(monkeypatch, path_tmp, clean_env):
+    """`STEPUP_DEBUG` keeps the traceback, as it does for any other usage error."""
+    (path_tmp / "stepup.toml").write_bytes(b"jbos = 4\n")
+    monkeypatch.setenv("STEPUP_DEBUG", "1")
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.setattr(sys, "argv", ["stepup", "build"])
+    with pytest.raises(ConfigError, match="unsupported key 'jbos'"):
+        main()
+
+
+def test_cli_show_config_survives_config_error(monkeypatch, path_tmp, capsys, clean_env):
+    """`stepup show-config` runs despite a broken config, because it explains what is broken."""
+    (path_tmp / "stepup.toml").write_bytes(b"jbos = 4\n")
+    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    assert "jbos = 4" in captured.out
+    assert "<-- ERROR: unsupported key 'jbos'" in captured.out
+    # Nothing is left to report separately when every problem is shown inline.
+    assert captured.err == ""
+
+
+def _find_line(out: str, prefix: str) -> str:
+    """Return the one line of the `show-config` output that starts with the given prefix."""
+    (line,) = [line for line in out.splitlines() if line.startswith(prefix)]
+    return line
+
+
+def test_cli_show_config_inlines_setting_problems(monkeypatch, path_tmp, capsys, clean_env):
+    """A problem with a setting or a section is shown on the line it concerns."""
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b'build = 5\nfoo = "bar"\n[buidl]\nx = 1\n')
+    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    assert _find_line(captured.out, "build = 5").endswith(
+        "<-- ERROR: 'build' is configured as a value, but a section [build] is expected"
+    )
+    assert _find_line(captured.out, 'foo = "bar"').endswith(
+        "<-- ERROR: unsupported key 'foo' at the top level"
+    )
+    # A section header names no config file, so the problem shown there does.
+    assert _find_line(captured.out, "[buidl]").endswith(
+        f"# <-- ERROR: {cfg}: unknown section [buidl] (did you mean 'build'?)"
+    )
+    assert captured.err == ""
+    # The problems are shown in comments, so the output remains valid TOML.
+    assert tomllib.loads(captured.out) == {"build": 5, "foo": "bar", "buidl": {"x": 1}}
+
+
+def test_cli_show_config_inlines_file_and_env_problems(monkeypatch, path_tmp, capsys, clean_env):
+    """A problem with a whole file or with an environment variable is shown where it is listed."""
+    (path_tmp / "stepup.toml").write_bytes(b"jobs = = 4\n")
+    monkeypatch.setenv("STEPUP_BUILD_JOBS", "abc")
+    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    assert "<-- ERROR: invalid TOML syntax: " in _find_line(captured.out, "#   FOUND:  ")
+    assert "<-- ERROR: " in _find_line(captured.out, "#   STEPUP_BUILD_JOBS = ")
+    assert captured.err == ""
+
+
+def test_cli_show_config_groups_env_vars(monkeypatch, path_tmp, capsys, clean_env):
+    """A variable without effect is listed apart from the settings and the internal ones."""
+    monkeypatch.setenv("STEPUP_BUILD_JOBS", "3")
+    monkeypatch.setenv("STEPUP_BUILD_JBOS", "3")
+    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    setting = lines.index("# Configuration environment variables:")
+    internal = lines.index("# StepUp Core module environment variables:")
+    unknown = lines.index("# Unrecognized environment variables, without effect:")
+    assert setting < internal < unknown
+    assert lines[setting + 1] == '#   STEPUP_BUILD_JOBS = "3"'
+    assert lines[internal + 1] == f'#   STEPUP_ROOT = "{path_tmp}"'
+    assert lines[unknown + 1] == '#   STEPUP_BUILD_JBOS = "3"'
+
+
+def test_core_env_vars_are_not_settings(monkeypatch, path_tmp, clean_env):
+    """A variable listed as core would never be shown as such once it becomes a setting."""
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    _, _, loader = build_parser()
+    assert CORE_ENV_VARS.isdisjoint(loader.known_env_vars())
+
+
+def test_cli_show_config_reports_second_problem_on_a_line_apart(
+    monkeypatch, path_tmp, capsys, clean_env
+):
+    """Two problems on one line would need two comments, so only the first is shown there."""
+    (path_tmp / ".stepup.toml").write_bytes(b"[buidl]\njobs = 2\n")
+    (path_tmp / "stepup.toml").write_bytes(b"[buidl]\njobs = 3\n")
+    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    header = _find_line(captured.out, "[buidl]")
+    assert header.count("<-- ERROR: ") == 1
+    assert header.endswith(
+        f"# <-- ERROR: {path_tmp / '.stepup.toml'}: unknown section [buidl] (did you mean 'build'?)"
+    )
+    assert "unknown section [buidl]" in captured.err
+    assert str(path_tmp / "stepup.toml") in captured.err
+    # The problems are shown in comments, so the output remains valid TOML.
+    assert tomllib.loads(captured.out) == {"buidl": {"jobs": 3}}
+
+
+def test_cli_show_config_reports_overridden_setting_apart(monkeypatch, path_tmp, capsys, clean_env):
+    """A problem about a setting that another config file overrides has no line of its own."""
+    low = path_tmp / ".stepup.toml"
+    low.write_bytes(b'[build]\njobs = "abc"\n')
+    (path_tmp / "stepup.toml").write_bytes(b"[build]\njobs = 4\n")
+    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    assert "<-- ERROR" not in captured.out
+    assert f"{low}: jobs in section [build]: " in captured.err
