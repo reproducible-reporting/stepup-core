@@ -104,7 +104,7 @@ class Builder:
     # attrs evaluates defaults in field order and the default below reads that event.
 
     hash_queue: HashQueue = attrs.field(init=False)
-    """The hash-job queue, drained with priority over `scheduler.pop_runnable_job()`."""
+    """The hash-job queue, drained with priority over `scheduler.pop_next_job()`."""
 
     @hash_queue.default
     def _default_hash_queue(self) -> HashQueue:
@@ -173,7 +173,7 @@ class Builder:
             # pending hash jobs are bookkeeping for work already under way
             # and must finish for the phase to end cleanly,
             # which falls out naturally here
-            # since draining is only enforced inside scheduler.pop_runnable_job().
+            # since draining is only enforced inside scheduler.pop_next_job().
             if len(self.running_tasks) < self.njob:
                 hash_job = self.hash_queue.pop_nowait()
                 if hash_job is not None:
@@ -182,7 +182,7 @@ class Builder:
 
             # Get the next job and start it as a task if there is such a job.
             if len(self.running_tasks) < self.njob:
-                job = await self.scheduler.pop_runnable_job()
+                job = await self.scheduler.pop_next_job()
                 if job is not None:
                     self.start_task(job)
                     continue
@@ -323,11 +323,11 @@ class Builder:
                 msg = f"Exception in task {task.get_name()}"
                 raise RuntimeError(msg) from exc
             # Hash jobs get no Scheduler bookkeeping:
-            # they never went through scheduler.pop_runnable_job(),
+            # they never went through scheduler.pop_next_job(),
             # so job.job_i isn't a key in scheduler.jobs,
             # and there is no Step to record a duration for.
             if not isinstance(job, HashJob):
-                await self.scheduler.job_completed(job)
+                self.scheduler.record_job_completed(job)
             self.wake_job_loop.set()
 
     async def stop(self):

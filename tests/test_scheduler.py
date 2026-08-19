@@ -10,22 +10,22 @@ from conftest import get_duration_and_tail_time
 from stepup.core.enums import FileState, Need, StepState
 from stepup.core.file import FILE_SCHEMA
 from stepup.core.hash import FileHash, StepHash
-from stepup.core.job import RunJob
+from stepup.core.job import RunJob, ValidateDynamicJob
 from stepup.core.path import dir_range_upper
 from stepup.core.scheduler import (
     APPLY_SAFE_UPDATE,
     EMPTY_CHANGED_AFTER,
     EMPTY_CHECK_AFTER,
     EMPTY_SAFE_UPDATE,
+    FILL_SAFE_UPDATE,
     INIT_CHANGED_AFTER,
     INIT_CHECK_AFTER,
     INIT_SAFE_UPDATE,
-    PROPAGATE_UPDATE_CHECK_AFTER,
-    PRUNE_DETACHED_CHECK_AFTER,
+    PROPAGATE_CHECK_AFTER,
     RECOMPUTE_READY,
+    SEED_CHECK_AFTER,
     SELECT_INPUTS,
     SELECT_NEXT_STEP,
-    SELECT_SAFE_UPDATE,
     UPDATE_CHECK_AFTER,
     Scheduler,
 )
@@ -130,7 +130,7 @@ def _insert_step(
 
 
 def _recompute_ready(con):
-    """Run RECOMPUTE_READY directly, mirroring Scheduler._update_meta_inputs()."""
+    """Run RECOMPUTE_READY directly, mirroring Scheduler._update_meta_ready()."""
     con.execute(RECOMPUTE_READY)
 
 
@@ -225,7 +225,7 @@ def _run_update_meta_safe(con):
     """Run the full update_meta_safe logic against a bare SQLite connection."""
     con.execute(INIT_SAFE_UPDATE)
     con.execute(EMPTY_SAFE_UPDATE)
-    con.execute(SELECT_SAFE_UPDATE)
+    con.execute(FILL_SAFE_UPDATE)
     con.execute(APPLY_SAFE_UPDATE)
 
 
@@ -238,7 +238,7 @@ def _run_update_meta_after(con):
     con.execute(INIT_CHECK_AFTER)
     con.execute(INIT_CHANGED_AFTER)
     con.execute(EMPTY_CHECK_AFTER)
-    con.execute(PRUNE_DETACHED_CHECK_AFTER)
+    con.execute(SEED_CHECK_AFTER)
     ncheck = con.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
     first = True
     while ncheck > 0:
@@ -247,7 +247,7 @@ def _run_update_meta_after(con):
         con.execute(EMPTY_CHECK_AFTER)
         con.execute(EMPTY_CHANGED_AFTER)
         con.executemany("INSERT INTO changed_after(i) VALUES (?)", changed_ids)
-        cur = con.execute(PROPAGATE_UPDATE_CHECK_AFTER)
+        cur = con.execute(PROPAGATE_CHECK_AFTER)
         ncheck = cur.rowcount
         first = False
     con.execute("UPDATE step SET _check_after = 0 WHERE _check_after = 1")
@@ -342,11 +342,11 @@ def test_previously_safe_step_becomes_unsafe(con):
 
 
 def test_no_check_safe_leaves_safe_update_empty(con):
-    """When no step has _check_safe=1, SELECT_SAFE_UPDATE inserts no rows."""
+    """When no step has _check_safe=1, FILL_SAFE_UPDATE inserts no rows."""
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=False)
     con.execute(INIT_SAFE_UPDATE)
     con.execute(EMPTY_SAFE_UPDATE)
-    con.execute(SELECT_SAFE_UPDATE)
+    con.execute(FILL_SAFE_UPDATE)
     assert con.execute("SELECT COUNT(*) FROM safe_update").fetchone()[0] == 0
 
 
@@ -358,7 +358,7 @@ def test_double_flagged_ancestor_chain_computes_correct_safe(con):
     check_safe) -> C(RUNNING, check_safe, creator=S) -> P(RUNNING, creator=C). C's own state
     would naively make it look like a safe creator, but its real creator S has failed, so P
     must end up unsafe. The old single-statement RECURSIVE_UPDATE_SAFE query got this wrong
-    (produced _safe=1 for P); MIN(safe) aggregation in SELECT_SAFE_UPDATE fixes it.
+    (produced _safe=1 for P); MIN(safe) aggregation in FILL_SAFE_UPDATE fixes it.
     """
     _insert_step(con, 2, 1, StepState.FAILED, check_safe=True)
     _insert_step(con, 3, 2, StepState.RUNNING, check_safe=True)
@@ -379,7 +379,7 @@ def test_holding_creator_keeps_product_unsafe(con):
 
 def test_holding_counter_above_one_keeps_product_unsafe(con):
     """A `_holding` counter above 1 (nested `hold()` calls) still keeps product steps unsafe,
-    confirming SELECT_SAFE_UPDATE's `_holding = 0` check, not a boolean truthiness check.
+    confirming FILL_SAFE_UPDATE's `_holding = 0` check, not a boolean truthiness check.
     """
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=2)
     _insert_step(con, 3, 2, StepState.PENDING)
@@ -425,7 +425,7 @@ def test_holding_creator_keeps_product_safe_ignoring_hold(con):
     """A product step of a RUNNING but holding creator is _safe=0 but _safe_ignoring_hold=1.
 
     Same setup as `test_holding_creator_keeps_product_unsafe`, but also checks the "no hold"
-    twin computed by the same SELECT_SAFE_UPDATE pass: the only thing that makes the product
+    twin computed by the same FILL_SAFE_UPDATE pass: the only thing that makes the product
     unsafe here is the hold, so ignoring it must flip the answer back to safe.
     """
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=True)
@@ -499,9 +499,9 @@ def test_two_step_chain_upstream_tail_time_includes_downstream(con):
 def test_three_step_chain_processes_bottom_up(con):
     """When A and B both have check_after=True in A -> F1 -> B -> F2 -> C, A is written last.
 
-    INIT_CHECK_AFTER removes A from the initial set because B (also check_after=True) is a
-    downstream sink of A.  B is processed first; propagation from B then queues A,
-    so A._tail_time picks up B's already-updated value.
+    SEED_CHECK_AFTER puts both A and B in the initial set, so the first iteration computes A
+    from B's stale value.  B's own value does change, so propagation queues A once more,
+    and the second iteration recomputes A from B's updated value.
     """
     _insert_step(con, 2, 1, StepState.PENDING, check_after=True, duration=1.0, tail_time=0.0)
     _insert_file(con, 3, 1)
@@ -657,7 +657,7 @@ def test_target_match_propagates_to_upstream_source(con):
     Chain: step 2 -> file 3 -> step 4 -> file 5 (the target). Only step 4 is initially
     check_after-flagged (mirroring Workflow.reconcile_targets(), which flags exactly the
     target's producer); step 2 is expected to be picked up by
-    PROPAGATE_UPDATE_CHECK_AFTER once step 4's _implied_need actually changes.
+    PROPAGATE_CHECK_AFTER once step 4's _implied_need actually changes.
     """
     _insert_step(
         con,
@@ -979,7 +979,7 @@ def test_update_meta_after_elevates_flagged_step_two_hops_upstream(con):
 
 
 # -----------------------------------------------------------------------
-# Tests for PROPAGATE_UPDATE_CHECK_AFTER
+# Tests for PROPAGATE_CHECK_AFTER
 # -----------------------------------------------------------------------
 
 
@@ -988,7 +988,7 @@ def test_propagate_sources_fork_no_duplicates(con):
 
     Fork pattern using deps: E -> file_e -> C, D
     When both C and D are in the changed-ids seed set, both depend on file_e which is
-    supplied by E. PROPAGATE_UPDATE_CHECK_AFTER should insert E once, not twice.
+    supplied by E. PROPAGATE_CHECK_AFTER should insert E once, not twice.
 
     This is a regression test for: sqlite3.IntegrityError: UNIQUE constraint failed: check_after.i
     """
@@ -1011,8 +1011,8 @@ def test_propagate_sources_fork_no_duplicates(con):
     con.execute(INIT_CHANGED_AFTER)
     con.executemany("INSERT INTO changed_after (i) VALUES (?)", [(6,), (8,)])
 
-    # Run PROPAGATE_UPDATE_CHECK_AFTER - should not fail with UNIQUE constraint
-    con.execute(PROPAGATE_UPDATE_CHECK_AFTER)
+    # Run PROPAGATE_CHECK_AFTER - should not fail with UNIQUE constraint
+    con.execute(PROPAGATE_CHECK_AFTER)
 
     # Verify E (node 4) is in check_after exactly once
     result = con.execute("SELECT COUNT(*) FROM check_after WHERE i = 4").fetchone()
@@ -1596,7 +1596,7 @@ def test_unavailable_input_multiple_none_blocking(con):
 
 
 # -----------------------------------------------------------------------
-# Tests for CHECKING state: SELECT_SAFE_UPDATE
+# Tests for CHECKING state: FILL_SAFE_UPDATE
 # -----------------------------------------------------------------------
 
 
@@ -1853,7 +1853,21 @@ def test_unavailable_input_blocks_on_volatile(con):
 # -----------------------------------------------------------------------
 
 
-async def test_record_stop_time_writes_stop_time_and_prunes_start_time(wfs: Workflow):
+async def test_record_run_started_counts_the_run_and_records_a_start_time(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        step = wfs.find(Step, "echo")
+
+    scheduler = Scheduler(wfs, db=wfs.db)
+    assert scheduler.run_counter == 0
+
+    scheduler.record_run_started(step.i)
+
+    assert scheduler.run_counter == 1
+    assert step.i in scheduler.start_times
+
+
+async def test_record_run_stopped_writes_stop_time_and_prunes_start_time(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "plan")
         plan = wfs.find(Step, "plan")
@@ -1866,16 +1880,16 @@ async def test_record_stop_time_writes_stop_time_and_prunes_start_time(wfs: Work
 
         scheduler = Scheduler(wfs, db=wfs.db)
         scheduler.start_times[step.i] = 100
-        # A second step is still running, so record_stop_time() below must not treat
+        # A second step is still running, so record_run_stopped() below must not treat
         # concurrency as having dropped to zero and prune the stop time it just wrote.
         scheduler.start_times[other.i] = 200
 
-        scheduler.record_stop_time(step.i, succeeded=True)
+        scheduler.record_run_stopped(step.i, succeeded=True)
         assert step.i not in scheduler.start_times
         assert step.i in scheduler.stop_times
 
 
-async def test_record_stop_time_no_stop_time_on_failure(wfs: Workflow):
+async def test_record_run_stopped_no_stop_time_on_failure(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         step = wfs.find(Step, "echo")
@@ -1884,7 +1898,7 @@ async def test_record_stop_time_no_stop_time_on_failure(wfs: Workflow):
         scheduler = Scheduler(wfs, db=wfs.db)
         scheduler.start_times[step.i] = 100
 
-        scheduler.record_stop_time(step.i, succeeded=False)
+        scheduler.record_run_stopped(step.i, succeeded=False)
         assert step.i not in scheduler.start_times
         assert step.i not in scheduler.stop_times
 
@@ -1903,19 +1917,19 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
         step_b.set_state(StepState.RUNNING)
 
         scheduler = Scheduler(wfs, db=wfs.db)
-        # record_stop_time() now tracks concurrency via start_times, not step DB state
-        # (see pop_runnable_job()), so populate it the way dispatch would.
+        # record_run_stopped() now tracks concurrency via start_times, not step DB state
+        # (see pop_next_job()), so populate it the way dispatch would.
         scheduler.start_times[step_a.i] = time.monotonic_ns()
         scheduler.start_times[step_b.i] = time.monotonic_ns()
 
         # step_a finishes while step_b is still RUNNING: stop_times must survive.
         step_a.set_state(StepState.SUCCEEDED)
-        scheduler.record_stop_time(step_a.i, succeeded=True)
+        scheduler.record_run_stopped(step_a.i, succeeded=True)
         assert step_a.i in scheduler.stop_times
 
         # step_b finishes too: nothing RUNNING anymore, so stop_times is cleared entirely.
         step_b.set_state(StepState.SUCCEEDED)
-        scheduler.record_stop_time(step_b.i, succeeded=True)
+        scheduler.record_run_stopped(step_b.i, succeeded=True)
         assert scheduler.stop_times == {}
 
 
@@ -1923,13 +1937,13 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
 # Tests for step-duration bookkeeping (new_durations)
 #
 # A job's measured duration is not written to the database when the job completes:
-# `job_completed()` buffers it in memory, and `build_completed()` writes the whole
+# `record_job_completed()` buffers it in memory, and `build_completed()` writes the whole
 # buffer once at the end of the build phase, skipping steps whose duration changed
-# by 10% or less.
+# by 10% or less.  Only a job that ran the step's command is measured.
 # -----------------------------------------------------------------------
 
 
-async def test_job_completed_accumulates_duration_without_writing_db(wfs: Workflow):
+async def test_record_job_completed_accumulates_duration_without_writing_db(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo", duration=2.5)
         step = wfs.find(Step, "echo")
@@ -1938,7 +1952,7 @@ async def test_job_completed_accumulates_duration_without_writing_db(wfs: Workfl
     job = RunJob(step, [], [], None, job_i=0)
     scheduler.jobs[job.job_i] = step
 
-    await scheduler.job_completed(job)
+    scheduler.record_job_completed(job)
 
     assert step.i in scheduler.new_durations
     duration, tail_time, check_after = await get_duration_and_tail_time(wfs.db, step)
@@ -1947,7 +1961,30 @@ async def test_job_completed_accumulates_duration_without_writing_db(wfs: Workfl
     assert check_after == 1  # no propagation yet
 
 
-async def test_job_completed_no_op_when_use_duration_disabled(wfs: Workflow):
+async def test_record_job_completed_ignores_jobs_without_command(wfs: Workflow):
+    """A job that skips a step or validates its dynamic inputs measures the check, not the run.
+
+    Recording it would replace the step's execution duration with a much smaller number,
+    which is what the tail times are derived from.
+    """
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo", duration=2.5)
+        step = wfs.find(Step, "echo")
+    step_hash = StepHash(b"inp-digest", None, b"out-digest", None)
+
+    scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
+    for job in [
+        RunJob(step, [], [], step_hash, job_i=0),
+        ValidateDynamicJob(step, [], [], step_hash, job_i=1),
+    ]:
+        assert not job.runs_command
+        scheduler.jobs[job.job_i] = step
+        scheduler.record_job_completed(job)
+
+    assert scheduler.new_durations == {}
+
+
+async def test_record_job_completed_no_op_when_use_duration_disabled(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         step = wfs.find(Step, "echo")
@@ -1956,7 +1993,7 @@ async def test_job_completed_no_op_when_use_duration_disabled(wfs: Workflow):
     job = RunJob(step, [], [], None, job_i=0)
     scheduler.jobs[job.job_i] = step
 
-    await scheduler.job_completed(job)
+    scheduler.record_job_completed(job)
 
     assert scheduler.new_durations == {}
 
@@ -2008,7 +2045,7 @@ async def test_build_completed_writes_large_relative_change(wfp: Workflow):
     assert check_after == 0
 
 
-async def test_second_job_completed_overwrites_pending_duration(wfs: Workflow):
+async def test_second_record_job_completed_overwrites_pending_duration(wfs: Workflow):
     """A step that re-runs within one phase (validate-dynamic path) keeps only its latest
     measured duration in the accumulation buffer -- last value wins, same as today's
     last-write-wins per-row UPDATE."""
@@ -2020,12 +2057,12 @@ async def test_second_job_completed_overwrites_pending_duration(wfs: Workflow):
 
     job1 = RunJob(step, [], [], None, create_time=1000.0, job_i=0)
     scheduler.jobs[job1.job_i] = step
-    await scheduler.job_completed(job1)
+    scheduler.record_job_completed(job1)
     duration_after_first = scheduler.new_durations[step.i]
 
     job2 = RunJob(step, [], [], None, create_time=2000.0, job_i=1)
     scheduler.jobs[job2.job_i] = step
-    await scheduler.job_completed(job2)
+    scheduler.record_job_completed(job2)
     duration_after_second = scheduler.new_durations[step.i]
 
     assert len(scheduler.new_durations) == 1
@@ -2074,14 +2111,14 @@ async def test_product_of_running_step_dispatched_as_soon_as_created(wfp: Workfl
     """A step created by an already-RUNNING creator is dispatched right away, as soon as its
     own inputs are ready, without waiting for the creator to settle into a new state.
 
-    `SELECT_SAFE_UPDATE` seeds its recursive walk one level up, at each flagged step's
+    `FILL_SAFE_UPDATE` seeds its recursive walk one level up, at each flagged step's
     *creator*, using the creator's own already-computed `_safe`/state, so a freshly
     created product's own `_safe` is derived the moment *it* is flagged (at creation),
     regardless of whether its creator is flagged in the same pass.
 
     A step's `_check_safe` flag is set once, at the moment it is dispatched to RUNNING,
     and is cleared by the very next `_update_meta_safe()` pass (which the builder runs on
-    every `pop_runnable_job()` call) -- typically well before the creator's script has had
+    every `pop_next_job()` call) -- typically well before the creator's script has had
     a chance to create any products. Seeding the walk only at the flagged step itself,
     instead of one level up at its creator, would miss a *new* product created while the
     creator remains RUNNING (the common case for a `plan.py` calling `step()`): nothing
@@ -2106,9 +2143,9 @@ async def test_product_of_running_step_dispatched_as_soon_as_created(wfp: Workfl
         )
 
     # Dispatch the boot step ("./plan.py"): the only runnable step so far.
-    # (`pop_runnable_job` acquires `wfp.db` itself, so it must not be called from
+    # (`pop_next_job` acquires `wfp.db` itself, so it must not be called from
     # within an outer `async with wfp.db:` block.)
-    job = await scheduler.pop_runnable_job()
+    job = await scheduler.pop_next_job()
     assert job is not None
     plan = job.step
     async with wfp.db:
@@ -2116,7 +2153,7 @@ async def test_product_of_running_step_dispatched_as_soon_as_created(wfp: Workfl
 
     # A second poll (as the builder's job loop would do immediately after) finds nothing
     # left to run, and as a side effect clears `plan`'s `_check_safe` flag.
-    assert await scheduler.pop_runnable_job() is None
+    assert await scheduler.pop_next_job() is None
 
     # `plan`'s script now creates a product step, as `step()` would via RPC, well after
     # `plan`'s own `_check_safe` flag was already cleared above.
@@ -2127,18 +2164,18 @@ async def test_product_of_running_step_dispatched_as_soon_as_created(wfp: Workfl
 
     # `plan` (its creator) is RUNNING and `sub` has no unmet inputs, so it is dispatched
     # right away -- no need to wait for `plan` to transition state again.
-    job = await scheduler.pop_runnable_job()
+    job = await scheduler.pop_next_job()
     assert job is not None
     assert job.step.i == sub.i
 
 
-async def test_pop_runnable_job_dispatches_checkable_step_to_checking(wfs: Workflow):
+async def test_pop_next_job_dispatches_checkable_step_to_checking(wfs: Workflow):
     """A PENDING step with a stored hash is dispatched
-    via `pop_runnable_job()` straight to `CHECKING`.
+    via `pop_next_job()` straight to `CHECKING`.
 
     The raw-SQL unit tests above cover `SELECT_NEXT_STEP`'s
     checkable-path eligibility rules directly,
-    but none of them drive `pop_runnable_job()` itself through this branch end-to-end --
+    but none of them drive `pop_next_job()` itself through this branch end-to-end --
     this closes that gap for the exact method production code calls.
     """
     scheduler = Scheduler(wfs, db=wfs.db)
@@ -2150,7 +2187,7 @@ async def test_pop_runnable_job_dispatches_checkable_step_to_checking(wfs: Workf
         assert step.get_state() == StepState.PENDING
         step.set_hash(StepHash(b"deadbeef"))
 
-    job = await scheduler.pop_runnable_job()
+    job = await scheduler.pop_next_job()
     assert job is not None
     assert job.step.i == step.i
     async with wfs.db:

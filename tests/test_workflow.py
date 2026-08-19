@@ -492,7 +492,7 @@ async def test_rerun_creator_detaches_running_product(wfp: Workflow):
 
         # Nothing prevents the scheduler from dispatching `plan` again even though it has
         # a still-RUNNING product: creator-safety only flows from creator to product, never
-        # the other way around (see `scheduler.SELECT_SAFE_UPDATE`).
+        # the other way around (see `scheduler.FILL_SAFE_UPDATE`).
         plan.set_state(StepState.RUNNING)
         plan.reset_for_rerun()
 

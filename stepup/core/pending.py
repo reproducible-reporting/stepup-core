@@ -337,7 +337,7 @@ WHERE step.state = {StepState.PENDING.value}
 # `unsafe` is STEP_DISPATCH_WHERE's safety disjunct, negated,
 # over the same stored columns, so the two can never disagree about what counts as safe.
 # Deriving safety from the creator chain here instead
-# would mean duplicating SELECT_SAFE_UPDATE;
+# would mean duplicating FILL_SAFE_UPDATE;
 # the price is that stale `_safe` metadata reaches the report,
 # which is what the `runnable` bucket exposes.
 _INSERT_PEND_STEP = f"""
@@ -623,7 +623,7 @@ def analyze_pending(workflow: Workflow) -> PendingSummary:
 
     Must be called after the builder has stopped (no `RUNNING` or `CHECKING` steps)
     and with the database lock held by the caller (`async with db:`),
-    following the "Information gathering" convention in `scheduler.py`.
+    like `Scheduler.build_completed()`.
     It reads the `available_resource` temp table, which `Scheduler.initialize()` owns.
 
     Parameters

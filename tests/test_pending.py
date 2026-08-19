@@ -38,7 +38,7 @@ async def _prepare(workflow: Workflow, resources: str | None = None) -> tuple[Sc
 async def _settle(workflow: Workflow, scheduler: Scheduler) -> None:
     """Recompute `_safe`/`_implied_need`/`_ready` without dispatching any step.
 
-    Mirrors the metadata-update half of `Scheduler.pop_runnable_job()`, minus the actual
+    Mirrors the metadata-update half of `Scheduler.pop_next_job()`, minus the actual
     dispatch, so a test's manually-constructed graph ends up with the same derived columns
     `analyze_pending` reads as a real build would leave behind.
     """

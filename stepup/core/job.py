@@ -65,6 +65,11 @@ class Job:
         """The kind of job, spelled out in full for log lines such as `RUN: echo hi`."""
         raise NotImplementedError
 
+    @property
+    def runs_command(self) -> bool:
+        """Whether carrying out this job executes the step's command."""
+        return False
+
     def coro(self, executor: "Executor"):
         """Return a coroutine that carries out this job on `executor`."""
         raise NotImplementedError
@@ -107,10 +112,14 @@ class RunJob(Job):
 
     @property
     def prefix(self) -> str:
-        return "RUN" if self.step_hash is None else "SKIP"
+        return "RUN" if self.runs_command else "SKIP"
+
+    @property
+    def runs_command(self) -> bool:
+        return self.step_hash is None
 
     def coro(self, executor: "Executor"):
-        if self.step_hash is None:
+        if self.runs_command:
             inner = executor.execute_job(self.job_i, self.step, self.inp_hashes, self.env_deps)
         else:
             inner = executor.try_skip_job(

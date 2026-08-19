@@ -824,7 +824,7 @@ class DirectorHandler:
         """
         to_check = {}
         async with self.db:
-            creator = self.scheduler.get_step(job_i)
+            creator = self.scheduler.get_job_step(job_i)
             for path in tree_paths:
                 to_check.update(self.workflow.register_static_tree(creator, path))
             to_check.update(self.workflow.declare_static_files(creator, file_paths))
@@ -859,7 +859,7 @@ class DirectorHandler:
         ng = NamedGlob(pattern, subs)
         ng.extend(paths)
         async with self.db:
-            creator = self.scheduler.get_step(job_i)
+            creator = self.scheduler.get_job_step(job_i)
             self.workflow.register_nglob(creator, ng)
 
     @allow_rpc
@@ -885,7 +885,7 @@ class DirectorHandler:
         This is an RPC wrapper for `Workflow.define_step`.
         """
         async with self.db:
-            creator = self.scheduler.get_step(job_i)
+            creator = self.scheduler.get_job_step(job_i)
             to_check = self.workflow.define_step(
                 creator,
                 command,
@@ -932,7 +932,7 @@ class DirectorHandler:
             Whether the step is still runnable after amending.
         """
         async with self.db:
-            step = self.scheduler.get_step(job_i)
+            step = self.scheduler.get_job_step(job_i)
             unavailable, unfresh, to_check = self.workflow.amend_step(
                 step,
                 inp_paths=inp_paths,
@@ -973,7 +973,7 @@ class DirectorHandler:
         No job-loop wake-up is needed here: holding never creates new runnable work.
         """
         async with self.db:
-            step = self.scheduler.get_step(job_i)
+            step = self.scheduler.get_job_step(job_i)
             step.hold()
 
     @allow_rpc
@@ -985,7 +985,7 @@ class DirectorHandler:
         This is an RPC wrapper for `Step.release`.
         """
         async with self.db:
-            step = self.scheduler.get_step(job_i)
+            step = self.scheduler.get_job_step(job_i)
             step.release()
         # Wake up the scheduler because previously held-back steps may now be runnable.
         self.builder.wake_job_loop.set()
@@ -1012,7 +1012,7 @@ class DirectorHandler:
         The recorded metadata is informative for archival and debugging, not authoritative.
         """
         async with self.db:
-            step = self.scheduler.get_step(job_i)
+            step = self.scheduler.get_job_step(job_i)
             step.add_subprocess(
                 cmd=cmd,
                 workdir=workdir,
@@ -1031,7 +1031,7 @@ class DirectorHandler:
         For the sake of consistency, dynamic dependencies are not included.
         """
         async with self.db:
-            step = self.scheduler.get_step(job_i)
+            step = self.scheduler.get_job_step(job_i)
             return step.get_info()
 
     #

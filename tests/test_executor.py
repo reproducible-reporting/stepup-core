@@ -303,7 +303,9 @@ async def testnew_run_cancelled_reports_failure_instead_of_raising(wfs: Workflow
 
     monkeypatch.setattr(ThreadWorker, "run_in_thread", _raise_hash_cancelled)
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(draining=False, record_stop_time=lambda step_i, *, succeeded: None)
+    scheduler = SimpleNamespace(
+        draining=False, record_run_stopped=lambda step_i, *, succeeded: None
+    )
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
 
     run, new_hash = await executor._new_run(1, step, [], [])
@@ -323,7 +325,9 @@ async def test_compute_out_step_hash_cancelled_reports_failure(wfs: Workflow, mo
 
     monkeypatch.setattr(ThreadWorker, "run_in_thread", _raise_hash_cancelled)
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(draining=False, record_stop_time=lambda step_i, *, succeeded: None)
+    scheduler = SimpleNamespace(
+        draining=False, record_run_stopped=lambda step_i, *, succeeded: None
+    )
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
     run = Run(step, job_i=1)
     step_hash = StepHash.from_inp(step.label, {}, {}, explained=False)
@@ -425,7 +429,9 @@ async def test_try_skip_job_bails_out_when_out_hash_cancelled(wfs: Workflow, mon
 
     monkeypatch.setattr(ThreadWorker, "run_in_thread", _raise_for_out_hash)
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(draining=False, record_stop_time=lambda step_i, *, succeeded: None)
+    scheduler = SimpleNamespace(
+        draining=False, record_run_stopped=lambda step_i, *, succeeded: None
+    )
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
     step_hash = StepHash.from_inp(step.label, {}, {}, explained=False)
 

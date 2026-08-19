@@ -155,12 +155,12 @@ CREATE TABLE IF NOT EXISTS step (
     _holding INTEGER NOT NULL CHECK(_holding >= 0) DEFAULT 0,
     -- Number of open (unmatched) `hold()` calls on this step, i.e. how many `release()`
     -- calls are still owed. Nonzero means this step is holding back its descendant steps
-    -- from dispatch. Consulted by SELECT_SAFE_UPDATE alongside creator.state
+    -- from dispatch. Consulted by FILL_SAFE_UPDATE alongside creator.state
     -- when computing a descendant's _safe.
     _safe_ignoring_hold INTEGER NOT NULL CHECK(_safe_ignoring_hold IN (0, 1)) DEFAULT 0,
     -- Like _safe, but computed as if no step anywhere in the (recursive) creator chain were
     -- holding, i.e. the same ancestor RUNNING/SUCCEEDED walk without ever consulting
-    -- _holding. Computed alongside _safe by SELECT_SAFE_UPDATE. Used by STEP_DISPATCH_WHERE
+    -- _holding. Computed alongside _safe by FILL_SAFE_UPDATE. Used by STEP_DISPATCH_WHERE
     -- to let hash-checkable (_has_hash) steps bypass an active hold: a step that is only
     -- unsafe because of a hold (_safe_ignoring_hold true, _safe false) may still be verified
     -- promptly, since checking is cheap and a hash mismatch falls back to the ordinary
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS step (
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE,
     -- "Ignoring hold" can never be a *stricter* condition than "respecting hold": every hold is
     -- a restriction, never a relaxation, of dispatchability. This is a structural guarantee that
-    -- SELECT_SAFE_UPDATE's safe/safe_nh sub-expressions (stepup/core/scheduler.py) never
+    -- FILL_SAFE_UPDATE's safe/safe_nh sub-expressions (stepup/core/scheduler.py) never
     -- silently diverge in the wrong direction, e.g. if a future third hold-bypass condition is
     -- added and one of the (then six-plus) sub-expressions is miscopied.
     CHECK (_safe_ignoring_hold >= _safe),
@@ -293,7 +293,7 @@ END;
 
 -- _holding only ever grows/shrinks while this step's own execution is live and RUNNING:
 -- hold()/release() (DirectorHandler.hold()/DirectorHandler.release() in director.py)
--- resolve their job_i through Scheduler.get_step(),
+-- resolve their job_i through Scheduler.get_job_step(),
 -- which only has an entry while a job is in flight.
 -- So a step leaving RUNNING for any reason means the execution that owned the
 -- counter is gone, and any leftover count must not survive into the step's next attempt.
@@ -729,7 +729,7 @@ class Step(Node):
         # Without this seeding, the root step's `_safe_ignoring_hold` would sit at its unseeded
         # `DEFAULT 0` until its own state next changes and re-flags `_check_safe`.
         # Every top-level step's `_safe_ignoring_hold` chain is seeded from the root's,
-        # via `creator_step._safe_ignoring_hold` in `SELECT_SAFE_UPDATE`.
+        # via `creator_step._safe_ignoring_hold` in `FILL_SAFE_UPDATE`.
         self.db.execute(
             "INSERT INTO step "
             "(node, state, need, duration, shell, _safe, _check_safe, _safe_ignoring_hold, "

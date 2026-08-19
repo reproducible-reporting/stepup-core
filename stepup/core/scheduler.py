@@ -23,8 +23,64 @@ __all__ = ("Scheduler",)
 logger = logging.getLogger(__name__)
 
 
+# The named resources that steps may reserve, as given on the command line.
+# Populated once in Scheduler.initialize() and read by RESOURCE_UNAVAILABLE.
+INIT_AVAILABLE_RESOURCE = """
+CREATE TEMPORARY TABLE IF NOT EXISTS available_resource
+(name TEXT PRIMARY KEY, units INTEGER NOT NULL)
+"""
+
+
+EMPTY_AVAILABLE_RESOURCE = """
+DELETE FROM available_resource
+"""
+
+
+INSERT_AVAILABLE_RESOURCE = """
+INSERT INTO available_resource VALUES (?, ?)
+"""
+
+
+# The exact paths that `stepup build` was asked to produce.
+# Populated once in Scheduler.initialize(), since Workflow.targets is immutable
+# for the lifetime of the director process.
+INIT_TARGET_PATH = """
+CREATE TEMPORARY TABLE IF NOT EXISTS target_path (path TEXT PRIMARY KEY)
+"""
+
+
+EMPTY_TARGET_PATH = """
+DELETE FROM target_path
+"""
+
+
+INSERT_TARGET_PATH = """
+INSERT INTO target_path VALUES (?)
+"""
+
+
+# The directories that `stepup build` was asked to produce everything under,
+# each with the upper bound of its prefix range (see path.dir_range_upper).
+# Populated once in Scheduler.initialize(), mirroring target_path.
+INIT_TARGET_DIR = """
+CREATE TEMPORARY TABLE IF NOT EXISTS target_dir
+(path TEXT PRIMARY KEY, upper TEXT NOT NULL)
+"""
+
+
+EMPTY_TARGET_DIR = """
+DELETE FROM target_dir
+"""
+
+
+INSERT_TARGET_DIR = """
+INSERT INTO target_dir VALUES (?, ?)
+"""
+
+
 INIT_SAFE_UPDATE = """
-CREATE TEMP TABLE IF NOT EXISTS safe_update(i INTEGER PRIMARY KEY, safe INTEGER, safe_nh INTEGER)
+CREATE TEMPORARY TABLE IF NOT EXISTS safe_update
+(i INTEGER PRIMARY KEY, safe INTEGER, safe_nh INTEGER)
 """
 
 
@@ -62,7 +118,7 @@ DELETE FROM safe_update
 # the join that looks up a node's own state (`sp`) is already needed to identify the node
 # itself, so all four values fall out of the same row
 # instead of requiring a second downward pass.
-SELECT_SAFE_UPDATE = f"""
+FILL_SAFE_UPDATE = f"""
 INSERT INTO safe_update(i, safe, safe_nh)
 WITH RECURSIVE trace(i, safe, chain, safe_nh, chain_nh) AS (
     -- Seed directly at each _check_safe-flagged step,
@@ -140,7 +196,7 @@ CREATE TEMPORARY TABLE IF NOT EXISTS check_after(i INTEGER PRIMARY KEY)
 """
 
 
-# Seed set for PROPAGATE_UPDATE_CHECK_AFTER; see its comment.
+# Seed set for PROPAGATE_CHECK_AFTER; see its comment.
 INIT_CHANGED_AFTER = """
 CREATE TEMPORARY TABLE IF NOT EXISTS changed_after(i INTEGER PRIMARY KEY)
 """
@@ -152,7 +208,7 @@ DELETE FROM check_after
 
 
 # Don't bother updating _check_after for detached steps.
-PRUNE_DETACHED_CHECK_AFTER = """
+SEED_CHECK_AFTER = """
 INSERT INTO check_after(i) SELECT step.node FROM step JOIN node ON step.node = node.i
 WHERE NOT node.detached AND step._check_after
 """
@@ -162,7 +218,7 @@ WHERE NOT node.detached AND step._check_after
 # and apply them directly in the same statement
 # (which avoids a round trip through a separate, materialized update_after table).
 # RETURNING reports exactly the node ids that were written,
-# which the caller feeds into PROPAGATE_UPDATE_CHECK_AFTER as the "changed" seed set,
+# which the caller feeds into PROPAGATE_CHECK_AFTER as the "changed" seed set,
 # narrowing propagation to steps whose value actually changed.
 #
 # The CASE/EXISTS term elevates a step to at least TARGET
@@ -252,6 +308,16 @@ DELETE FROM changed_after
 """
 
 
+INSERT_CHANGED_AFTER = """
+INSERT INTO changed_after(i) VALUES (?)
+"""
+
+
+COUNT_CHECK_AFTER = """
+SELECT COUNT(*) FROM check_after
+"""
+
+
 # Propagate the updates to all (recursive) sources of the updated steps.
 #
 # changed_after holds the step ids whose _implied_need/_tail_time actually changed in this
@@ -264,7 +330,7 @@ DELETE FROM changed_after
 # seeded by `changed_after`, instead of a full scan of `dependency` or `step`.
 # A plain JOIN here lets the planner pick either of those as the driving table,
 # an O(n_dependencies) or O(n_steps) cost regardless of how few steps changed.
-PROPAGATE_UPDATE_CHECK_AFTER = """
+PROPAGATE_CHECK_AFTER = """
 INSERT INTO check_after(i)
 SELECT DISTINCT source_step.node
 FROM dependency AS dep2
@@ -381,6 +447,17 @@ WHERE dep.sink = ?
 """
 
 
+# Write the durations measured during a build phase.
+# Only a change of more than 10% is written,
+# so ordinary run-to-run noise does not dirty a row on every build.
+# The threshold is relative to the stored duration, which is never zero:
+# a step that has never run keeps the schema default of one second.
+UPDATE_DURATION = """
+UPDATE step SET duration = :duration
+WHERE node = :node AND ABS(duration - :duration) > 0.1 * duration
+"""
+
+
 @attrs.define
 class Scheduler:
     """Turn PENDING jobs into RUNNING jobs as the builder requests them."""
@@ -402,32 +479,33 @@ class Scheduler:
     """Whether the scheduling of new jobs is temporarily paused, e.g. after a user interrupt."""
 
     start_times: dict[int, int] = attrs.field(init=False, factory=dict)
-    """Step node id -> `time.monotonic_ns()` at the moment it was dispatched to RUNNING.
+    """Step node id -> `time.monotonic_ns()` at the moment its command started executing.
 
     In-memory only (not persisted): used by `ran_concurrently()` to compare
     against a producer's `stop_times` entry.
+    Populated by `record_run_started()`, pruned by `record_run_stopped()`.
     """
 
     stop_times: dict[int, int] = attrs.field(init=False, factory=dict)
     """Step node id -> `time.monotonic_ns()` at the moment it reached SUCCEEDED.
 
-    In-memory only, pruned by `record_stop_time()`.
+    In-memory only, populated and pruned by `record_run_stopped()`.
     See `start_times`.
     """
 
     new_durations: dict[int, float] = attrs.field(init=False, factory=dict)
-    """Step node id -> most recently measured job duration, not yet written to the database.
+    """Step node id -> most recently measured duration of a job that ran its command.
 
     In-memory only.
-    Populated by `job_completed()`,
+    Populated by `record_job_completed()`,
     written and cleared by `build_completed()` at the end of a build phase.
     """
 
     jobs: dict[int, Step] = attrs.field(init=False, factory=dict)
     """`Job.job_i` -> `Step`, for every job that has been created but not yet completed.
 
-    Populated by `_derive_job()`, pruned by `job_completed()`.
-    Used by `get_step()` to resolve RPC calls made by a step's child process
+    Populated by `_derive_job()`, pruned by `record_job_completed()`.
+    Used by `get_job_step()` to resolve RPC calls made by a step's child process
     back to the `Step` that made them.
     """
 
@@ -437,8 +515,8 @@ class Scheduler:
     run_counter: int = attrs.field(init=False, default=0)
     """Number of jobs in the current build phase that executed a step's command.
 
-    Jobs that only skip a step or validate its dynamic inputs are not counted,
-    so this is the number of jobs that actually ran a command.
+    Counted by `record_run_started()`,
+    so jobs that only skip a step or validate its dynamic inputs are not included.
     """
 
     write_joblog: bool = attrs.field(kw_only=True, default=False)
@@ -448,47 +526,44 @@ class Scheduler:
     # Initialization
     #
 
-    async def initialize(self, resources: str | None):
+    async def initialize(self, available_resources: str | None):
+        """Create and fill the temporary tables that dispatch relies on.
+
+        Must be called once before any job is popped.
+        The tables live in the database connection, not in the database file,
+        so they are gone after a reconnect.
+
+        Parameters
+        ----------
+        available_resources
+            The resources that steps may reserve,
+            as an unparsed specification such as `"cpu:4,gpu:1"`,
+            or `None` when no resources are defined.
+        """
         async with self.db:
-            self.workflow.db.execute(
-                "CREATE TEMPORARY TABLE IF NOT EXISTS available_resource "
-                "(name TEXT PRIMARY KEY, units INTEGER NOT NULL)"
-            )
-            self.workflow.db.execute("DELETE FROM available_resource")
-            if resources is not None:
-                self.workflow.db.executemany(
-                    "INSERT INTO available_resource VALUES (?, ?)",
-                    parse_resources(resources).items(),
+            self.db.execute(INIT_AVAILABLE_RESOURCE)
+            self.db.execute(EMPTY_AVAILABLE_RESOURCE)
+            if available_resources is not None:
+                self.db.executemany(
+                    INSERT_AVAILABLE_RESOURCE, parse_resources(available_resources).items()
                 )
             # check_after, changed_after, and safe_update are hot-path temp tables used by
             # _update_meta_after()/_update_meta_safe().
             # Creating them once here, instead of on every call,
             # avoids repeated schema-cookie bumps
             # (which invalidate SQLite's prepared-statement cache) on the dispatch hot path.
-            self.workflow.db.execute(INIT_CHECK_AFTER)
-            self.workflow.db.execute(INIT_CHANGED_AFTER)
-            self.workflow.db.execute(INIT_SAFE_UPDATE)
-            # target_path backs UPDATE_CHECK_AFTER's target-elevation check.
-            # Populated once here since Workflow.targets is immutable
-            # for the lifetime of the director process.
-            self.workflow.db.execute(
-                "CREATE TEMPORARY TABLE IF NOT EXISTS target_path (path TEXT PRIMARY KEY)"
+            self.db.execute(INIT_CHECK_AFTER)
+            self.db.execute(INIT_CHANGED_AFTER)
+            self.db.execute(INIT_SAFE_UPDATE)
+            self.db.execute(INIT_TARGET_PATH)
+            self.db.execute(EMPTY_TARGET_PATH)
+            self.db.executemany(
+                INSERT_TARGET_PATH, ((str(path),) for path in sorted(self.workflow.targets))
             )
-            self.workflow.db.execute("DELETE FROM target_path")
-            self.workflow.db.executemany(
-                "INSERT INTO target_path VALUES (?)",
-                ((str(path),) for path in sorted(self.workflow.targets)),
-            )
-            # target_dir backs UPDATE_CHECK_AFTER's directory-target elevation check.
-            # Populated once here since Workflow.target_dirs is immutable
-            # for the lifetime of the director process.
-            self.workflow.db.execute(
-                "CREATE TEMPORARY TABLE IF NOT EXISTS target_dir "
-                "(path TEXT PRIMARY KEY, upper TEXT NOT NULL)"
-            )
-            self.workflow.db.execute("DELETE FROM target_dir")
-            self.workflow.db.executemany(
-                "INSERT INTO target_dir VALUES (?, ?)",
+            self.db.execute(INIT_TARGET_DIR)
+            self.db.execute(EMPTY_TARGET_DIR)
+            self.db.executemany(
+                INSERT_TARGET_DIR,
                 (
                     (str(path), dir_range_upper(str(path)))
                     for path in sorted(self.workflow.target_dirs)
@@ -496,10 +571,21 @@ class Scheduler:
             )
 
     #
-    # Interaction with builder
+    # Dispatch
     #
 
-    async def pop_runnable_job(self) -> Job | None:
+    async def pop_next_job(self) -> Job | None:
+        """Derive a job for the highest-priority step ready for dispatch.
+
+        The step is moved out of PENDING before this returns,
+        so the same step is never handed out twice.
+
+        Returns
+        -------
+        job
+            The job to be carried out by the executor,
+            or `None` when no step is eligible or the scheduler is draining.
+        """
         if self.draining:
             logger.debug("Scheduler is draining, not popping any jobs")
             return None
@@ -525,165 +611,36 @@ class Scheduler:
             if result is None:
                 logger.debug("No runnable steps found")
                 return None
-            step, has_hash = result
+            step, state = result
             job = self._derive_job(step)
-            if has_hash:
-                logger.debug("Derived checkable job: %s", job)
-                logger.info("Pop %s", job.name)
-                step.set_state(StepState.CHECKING)
-            else:
-                logger.debug("Queueing step %s", step)
-                logger.debug("Derived job: %s", job)
-                logger.info("Pop %s", job.name)
-                step.set_state(StepState.RUNNING)
-                self.start_times[step.i] = time.monotonic_ns()
+            step.set_state(state)
+            logger.debug("Derived %s job: %s", state.name.lower(), job)
+            logger.info("Pop %s", job.name)
             return job
 
-    def record_stop_time(self, step_i: int, *, succeeded: bool) -> None:
-        """Update start/stop-time bookkeeping after a step reaches a terminal state.
-
-        Parameters
-        ----------
-        step_i
-            The node id of the step that just completed.
-        succeeded
-            Whether the step reached SUCCEEDED (True) or PENDING/FAILED (False).
-        """
-        self.start_times.pop(step_i, None)
-        if succeeded:
-            # Record stop times when there can be BUILT outputs to be used by other steps.
-            # Only these may be approved by a post-hoc amend(inp=...) call in another step.
-            self.stop_times[step_i] = time.monotonic_ns()
-        if len(self.start_times) == 0:
-            # If there are no more start_times, clear the dict to avoid holding old entries forever.
-            self.stop_times.clear()
-        else:
-            # Clean up stop_times older than the oldest start_time,
-            # since these will never be relevant for ran_concurrently() anymore.
-            oldest_start = min(self.start_times.values())
-            for other_step_i, stop_time in list(self.stop_times.items()):
-                if stop_time < oldest_start:
-                    del self.stop_times[other_step_i]
-
-    def ran_concurrently(self, producer_i: int, consumer_i: int) -> bool:
-        """Whether a consumer step started running before the producer step stopped.
-
-        Parameters
-        ----------
-        producer_i
-            Node id of the step that (re)built the file
-            that the amended consumer step uses as a dynamic input.
-        consumer_i
-            Node id of the amended step that uses the file as a dynamic input.
-
-        Returns
-        -------
-        overlapped
-            `True` when the producer's `stop_times` entry and the consumer's `start_times`
-            entry both exist and `start_time <= stop_time`,
-            i.e. the consumer's execution window overlapped the producer's
-            (a tie counts as overlapping: the conservative choice).
-            `False` when either timestamp is missing.
-        """
-        stop_time = self.stop_times.get(producer_i)
-        start_time = self.start_times.get(consumer_i)
-        return stop_time is not None and start_time is not None and start_time <= stop_time
-
-    def _update_meta_safe(self):
-        """Update the "safe" metadata fields where needed."""
-        db = self.workflow.db
-        if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_safe)").fetchone()[0]:
-            return
-        # safe_update is created once in Scheduler.initialize().
-        db.execute(EMPTY_SAFE_UPDATE)
-        db.execute(SELECT_SAFE_UPDATE)
-        cur = db.execute(APPLY_SAFE_UPDATE)
-        logger.debug(f"Updated {cur.rowcount} _safe metadata field(s) for steps")
-        cur = db.execute("UPDATE step SET _check_safe = 0 WHERE _check_safe")
-        logger.debug(f"Updated {cur.rowcount} _check_safe metadata field(s) for steps")
-
-    def _update_meta_after(self):
-        """Update the "after" metadata fields where needed.
-
-        Every flagged step is recomputed in the first iteration.
-        Skipping the ones that also have a flagged (indirect) sink,
-        on the grounds that propagation from that sink will reach them anyway,
-        is not sound: propagation stops at the first step whose values do not change,
-        so a flagged step two or more hops upstream can be missed entirely.
-        It would then keep a stale `_implied_need` for good,
-        because `_check_after` is cleared for all steps at the end of this method.
-        """
-        db = self.workflow.db
-        if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_after)").fetchone()[0]:
-            return
-        # Not using executescript to preserve atomicity of the transaction.
-        # check_after and changed_after are created once in Scheduler.initialize().
-        db.execute(EMPTY_CHECK_AFTER)
-        db.execute(PRUNE_DETACHED_CHECK_AFTER)
-        ncheck = db.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
-        first = True
-        while ncheck > 0:
-            logger.debug(f"Found {ncheck} sources to update (first={first})")
-            # The first iteration is different:
-            # we need to propagate at least once,
-            # regardless of whether the metadata fields of the initial _check_after steps changed.
-            cur = db.execute(UPDATE_CHECK_AFTER, {"first": first})
-            changed_ids = cur.fetchall()
-            db.execute(EMPTY_CHECK_AFTER)
-            db.execute(EMPTY_CHANGED_AFTER)
-            db.executemany("INSERT INTO changed_after(i) VALUES (?)", changed_ids)
-            cur = db.execute(PROPAGATE_UPDATE_CHECK_AFTER)
-            ncheck = cur.rowcount
-            first = False
-        logger.debug("Finished updating 'after' metadata fields")
-        cur = db.execute("UPDATE step SET _check_after = 0 WHERE _check_after")
-        logger.debug(f"Updated {cur.rowcount} _check_after metadata field(s) for steps")
-
-    def _update_meta_ready(self):
-        """Update the `_ready` metadata field where needed."""
-        db = self.workflow.db
-        if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_ready)").fetchone()[0]:
-            return
-        cur = db.execute(RECOMPUTE_READY)
-        logger.debug(f"Updated {cur.rowcount} _ready metadata field(s) for steps")
-
-    def _get_next_step(self) -> tuple[Step, bool] | None:
+    def _get_next_step(self) -> tuple[Step, StepState] | None:
         """Fetch the single best PENDING step to dispatch, if any.
 
         Returns
         -------
-        step_and_has_hash
-            The step and whether it was selected via the hash-checkable path
-            (`True`, transitions to `CHECKING`)
-            or the runnable path (`False`, transitions to `RUNNING`).
+        step_and_state
+            The step and the state to move it to:
+            `CHECKING` when it was selected through the hash-checkable path,
+            `RUNNING` when it was selected through the runnable path.
             `None` if no PENDING step is currently eligible.
         """
-        row = self.workflow.db.execute(
-            SELECT_NEXT_STEP, (self.workflow.need_threshold.value,)
-        ).fetchone()
+        row = self.db.execute(SELECT_NEXT_STEP, (self.workflow.need_threshold.value,)).fetchone()
         if row is None:
             return None
         i, label, has_hash = row
-        return Step(self.workflow, i, label), bool(has_hash)
-
-    def _next_job_i(self) -> int:
-        """Return a fresh, unique id for a new `Job`."""
-        self.job_counter += 1
-        return self.job_counter
-
-    def get_step(self, job_i: int) -> Step:
-        """Resolve an RPC call's `job_i` argument to the `Step` it belongs to."""
-        step = self.jobs.get(job_i)
-        if step is None:
-            raise ValueError(f"No job found for job_i={job_i}.")
-        return step
+        state = StepState.CHECKING if has_hash else StepState.RUNNING
+        return Step(self.workflow, i, label), state
 
     def _derive_job(self, step: Step) -> RunJob | ValidateDynamicJob:
         """Derive a `Job` instance for a step that is ready to be queued."""
         dynamic_inputs_ready = True
         inp_hashes = {}
-        db = self.workflow.db
-        cur = db.execute(SELECT_INPUTS, (step.i,))
+        cur = self.db.execute(SELECT_INPUTS, (step.i,))
         for path, detached, fs_value, is_dynamic, hash_value in cur:
             # All exception cases handled in this loop should have been ruled out before the step
             # was selected for dispatch (see RECOMPUTE_READY and SELECT_NEXT_STEP).
@@ -733,7 +690,8 @@ class Scheduler:
         # Get a list of environment variables used, as these are needed to compute the new hash.
         env_deps = list(step.env_deps())
 
-        job_i = self._next_job_i()
+        self.job_counter += 1
+        job_i = self.job_counter
         self.jobs[job_i] = step
         if dynamic_inputs_ready or step_hash is None:
             # All (dynamic) inputs are ready, or the job is not skippable.
@@ -745,49 +703,194 @@ class Scheduler:
         else:
             # If the initial inputs are ready, but the dynamic inputs are not,
             # and there is a step hash, we need to validate the dynamic inputs first.
-            # When those dynamic inputs are unavailable and the initial inputs have changed,`
+            # When those dynamic inputs are unavailable and the initial inputs have changed,
             # they may no longer be needed at all.
             job = ValidateDynamicJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
         if self.write_joblog:
             write_joblog_record("CREATED", job_i, job.name)
         return job
 
-    async def job_completed(self, job):
-        """Handle a completed job: drop its id -> step mapping and record its duration."""
+    #
+    # Metadata updates
+    #
+
+    def _update_meta_safe(self):
+        """Update the "safe" metadata fields where needed."""
+        if not self._any_flagged("_check_safe"):
+            return
+        # safe_update is created once in Scheduler.initialize().
+        self.db.execute(EMPTY_SAFE_UPDATE)
+        self.db.execute(FILL_SAFE_UPDATE)
+        cur = self.db.execute(APPLY_SAFE_UPDATE)
+        logger.debug("Updated %d _safe metadata field(s) for steps", cur.rowcount)
+        self._clear_flag("_check_safe")
+
+    def _update_meta_after(self):
+        """Update the "after" metadata fields where needed.
+
+        Every flagged step is recomputed in the first iteration.
+        Skipping the ones that also have a flagged (indirect) sink,
+        on the grounds that propagation from that sink will reach them anyway,
+        is not sound: propagation stops at the first step whose values do not change,
+        so a flagged step two or more hops upstream can be missed entirely.
+        It would then keep a stale `_implied_need` for good,
+        because `_check_after` is cleared for all steps at the end of this method.
+        """
+        if not self._any_flagged("_check_after"):
+            return
+        # Not using executescript to preserve atomicity of the transaction.
+        # check_after and changed_after are created once in Scheduler.initialize().
+        self.db.execute(EMPTY_CHECK_AFTER)
+        self.db.execute(SEED_CHECK_AFTER)
+        ncheck = self.db.execute(COUNT_CHECK_AFTER).fetchone()[0]
+        first = True
+        while ncheck > 0:
+            logger.debug("Found %d sources to update (first=%s)", ncheck, first)
+            # The first iteration is different:
+            # we need to propagate at least once,
+            # regardless of whether the metadata fields of the initial _check_after steps changed.
+            cur = self.db.execute(UPDATE_CHECK_AFTER, {"first": first})
+            changed_ids = cur.fetchall()
+            self.db.execute(EMPTY_CHECK_AFTER)
+            self.db.execute(EMPTY_CHANGED_AFTER)
+            self.db.executemany(INSERT_CHANGED_AFTER, changed_ids)
+            cur = self.db.execute(PROPAGATE_CHECK_AFTER)
+            ncheck = cur.rowcount
+            first = False
+        logger.debug("Finished updating 'after' metadata fields")
+        self._clear_flag("_check_after")
+
+    def _update_meta_ready(self):
+        """Update the `_ready` metadata field where needed.
+
+        Unlike `_update_meta_safe` and `_update_meta_after`,
+        this clears its `_check_ready` flag inside RECOMPUTE_READY,
+        because recomputing the field is a single UPDATE on the same rows.
+        """
+        if not self._any_flagged("_check_ready"):
+            return
+        cur = self.db.execute(RECOMPUTE_READY)
+        logger.debug("Updated %d _ready metadata field(s) for steps", cur.rowcount)
+
+    def _any_flagged(self, column: str) -> bool:
+        """Whether at least one step has the given `_check_*` column set."""
+        sql = f"SELECT EXISTS(SELECT 1 FROM step WHERE {column})"
+        return bool(self.db.execute(sql).fetchone()[0])
+
+    def _clear_flag(self, column: str):
+        """Clear the given `_check_*` column for all steps that have it set."""
+        cur = self.db.execute(f"UPDATE step SET {column} = 0 WHERE {column}")
+        logger.debug("Updated %d %s metadata field(s) for steps", cur.rowcount, column)
+
+    #
+    # Job and timing bookkeeping
+    #
+
+    def get_job_step(self, job_i: int) -> Step:
+        """Resolve an RPC call's `job_i` argument to the `Step` it belongs to."""
+        step = self.jobs.get(job_i)
+        if step is None:
+            raise ValueError(f"No job found for job_i={job_i}.")
+        return step
+
+    def record_run_started(self, step_i: int) -> None:
+        """Record that a step's command is about to be executed.
+
+        Parameters
+        ----------
+        step_i
+            The node id of the step whose command is about to run.
+        """
+        self.run_counter += 1
+        self.start_times[step_i] = time.monotonic_ns()
+
+    def record_run_stopped(self, step_i: int, *, succeeded: bool) -> None:
+        """Update start/stop-time bookkeeping after a step reaches a terminal state.
+
+        Parameters
+        ----------
+        step_i
+            The node id of the step that just completed.
+        succeeded
+            Whether the step reached SUCCEEDED (True) or PENDING/FAILED (False).
+        """
+        self.start_times.pop(step_i, None)
+        if succeeded:
+            # Record stop times when there can be BUILT outputs to be used by other steps.
+            # Only these may be approved by a post-hoc amend(inp=...) call in another step.
+            self.stop_times[step_i] = time.monotonic_ns()
+        if len(self.start_times) == 0:
+            # If there are no more start_times, clear the dict to avoid holding old entries forever.
+            self.stop_times.clear()
+        else:
+            # Clean up stop_times older than the oldest start_time,
+            # since these will never be relevant for ran_concurrently() anymore.
+            oldest_start = min(self.start_times.values())
+            for other_step_i, stop_time in list(self.stop_times.items()):
+                if stop_time < oldest_start:
+                    del self.stop_times[other_step_i]
+
+    def record_job_completed(self, job: Job) -> None:
+        """Retire a completed job: drop its id -> step mapping and record its duration."""
         del self.jobs[job.job_i]
-        if self.use_duration:
+        if self.use_duration and job.runs_command:
+            # A job that skipped a step or validated its dynamic inputs
+            # measures the time of that check, not of the step's command,
+            # so it must not replace the duration that the tail times are derived from.
             self.new_durations[job.step.i] = job.duration()
         if self.write_joblog:
             write_joblog_record("COMPLETED", job.job_i, job.name)
         logger.info("Done %s", job.name)
 
+    def ran_concurrently(self, producer_i: int, consumer_i: int) -> bool:
+        """Whether a consumer step started running before the producer step stopped.
+
+        Parameters
+        ----------
+        producer_i
+            Node id of the step that (re)built the file
+            that the amended consumer step uses as a dynamic input.
+        consumer_i
+            Node id of the amended step that uses the file as a dynamic input.
+
+        Returns
+        -------
+        overlapped
+            `True` when the producer's `stop_times` entry and the consumer's `start_times`
+            entry both exist and `start_time <= stop_time`,
+            i.e. the consumer's execution window overlapped the producer's
+            (a tie counts as overlapping: the conservative choice).
+            `False` when either timestamp is missing.
+        """
+        stop_time = self.stop_times.get(producer_i)
+        start_time = self.start_times.get(consumer_i)
+        return stop_time is not None and start_time is not None and start_time <= stop_time
+
+    #
+    # Build phase completion
+    #
+
     async def build_completed(self):
-        """Perform some finalization after the build has completed.
+        """Wrap up a build phase: reset counters, flush durations and refresh tail times.
 
-        The following actions are performed:
+        The tail times are refreshed here as well as during dispatch,
+        so that `stepup browse` shows the values of the settled graph after the build.
 
-        - Reset the job and run counters.
-        - Write accumulated step durations to the database and clear the buffer.
-        - Run `_update_meta_after()` to refresh the tail times of steps with `_check_after=1`.
-        - Clear the start/stop time buffers used to detect unfresh inputs.
-
-        Note that this requires that the `initialize()` method has been called.
+        Must be called after `initialize()`, whose temporary tables it relies on,
+        and only when the builder has stopped, so no step is running.
         """
         self.job_counter = 0
         self.run_counter = 0
         if len(self.new_durations) > 0:
             async with self.db:
                 self.db.executemany(
-                    "UPDATE step SET duration = :duration WHERE node = :node "
-                    "AND ABS(duration - :duration) > 0.1 * duration",
+                    UPDATE_DURATION,
                     [
                         {"node": node, "duration": duration}
                         for node, duration in self.new_durations.items()
                     ],
                 )
             self.new_durations.clear()
-
-        # Update the tail times, so they can be inspected with `stepup browse` after the build.
         async with self.db:
             self._update_meta_after()
         # Also clear the timings used to detect unfresh inputs (see ran_concurrently).

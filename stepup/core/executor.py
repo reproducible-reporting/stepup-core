@@ -315,7 +315,7 @@ class Executor:
             # we still want to record the new hash.
             self.workflow.update_file_hashes(new_out_hashes, cause=HashUpdateCause.SUCCEEDED)
             step.mark_completed(new_hash, False)
-            # Do not call `scheduler.record_stop_time`, as no start time was recorded either.
+            # Do not call `scheduler.record_run_stopped`, as no start time was recorded either.
         self._report_step_counts()
 
     async def execute_job(
@@ -327,7 +327,7 @@ class Executor:
         but the defer cap has been exceeded,
         the step fails instead of being scheduled for another execution attempt.
         """
-        self.scheduler.run_counter += 1
+        self.scheduler.record_run_started(step.i)
         run, new_hash = await self._new_run(job_i, step, inp_hashes, env_deps)
         if new_hash is None:
             # Step failed early due to unexpected input changes, error already reported.
@@ -354,7 +354,7 @@ class Executor:
                 cause=HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
             )
             run.interrupted_defer = step.mark_completed(new_hash, wants_defer)
-            self.scheduler.record_stop_time(step.i, succeeded=new_hash is not None)
+            self.scheduler.record_run_stopped(step.i, succeeded=new_hash is not None)
             if wants_defer and not run.interrupted_defer:
                 # Erase error info to keep the screen output concise.
                 run.outcome = None
@@ -526,7 +526,7 @@ class Executor:
         """Complete, record and report a run that failed before producing a new step hash."""
         async with self.db:
             run.step.mark_completed(None, False)
-        self.scheduler.record_stop_time(run.step.i, succeeded=False)
+        self.scheduler.record_run_stopped(run.step.i, succeeded=False)
         self._report_step_counts()
         await self._report_run(run)
 
