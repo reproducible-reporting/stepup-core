@@ -161,6 +161,13 @@ When writing new examples, the following conventions ensure that they are proper
 The test builder in `tests/test_examples.py` copies each example to a temporary directory,
 applies the `sed` rewrite to `main.sh`, runs it, and compares all `current_*` files against
 the corresponding `expected_*` files in the source directory.
+
+Everything `main.sh` writes to stdout and stderr is collected in `main.log`,
+which a failing example prints together with the return code of `main.sh`
+and the logs under `.stepup/`.
+Because examples run under `bash -x`, that log names the command the example died on,
+which is what makes an example that stops early (a `stepup` client that could not reach
+the director, say) diagnosable from the test output alone.
 The environment variable `STEPUP_OVERWRITE_EXPECTED=1` can be set to update the expected
 outputs in-place instead of comparing them.
 Before using it, create empty placeholder files for every `expected_*` output the example

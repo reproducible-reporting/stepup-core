@@ -27,6 +27,18 @@ def remove_hashes(graph: dict) -> dict:
 STDERR_BEGIN = "──────────────────────────────── Standard error ────────────────────────────────"
 STDERR_END = "────────────────────────────────────────────────────────────────────────────────"
 
+MAIN_LOG = "main.log"
+"""The file in which the trace of `main.sh` is kept, printed with every failing example.
+
+Examples run under `bash -x`, so this log names the command each example died on,
+next to whatever that command wrote to stderr.
+Without it, a failure that stops `main.sh` early is reported as a missing `current_*` file,
+which says nothing about what went wrong.
+"""
+
+EXAMPLE_TIMEOUT = 30.0
+"""Seconds to wait for an example to finish, before failing the test."""
+
 
 async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     """Run an example use case in a temporary directory and check the outputs.
@@ -61,14 +73,19 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     )
     await sed_proc.wait()
     assert sed_proc.returncode == 0
-    stepup_proc = await asyncio.create_subprocess_shell(
-        "." / Path("main.sh"),
-        stdin=subprocess.DEVNULL,
-        cwd=workdir,
-        env=os.environ | {"PYTHONUNBUFFERED": "yes", "COLUMNS": "80", "STEPUP_DEBUG": "1"},
-    )
+    # The trace of `main.sh` goes to a file instead of the inherited streams,
+    # so that it survives a timeout and is printed as one block, whatever happens.
+    with open(workdir / MAIN_LOG, "w") as main_log:
+        stepup_proc = await asyncio.create_subprocess_shell(
+            "." / Path("main.sh"),
+            stdin=subprocess.DEVNULL,
+            stdout=main_log,
+            stderr=subprocess.STDOUT,
+            cwd=workdir,
+            env=os.environ | {"PYTHONUNBUFFERED": "yes", "COLUMNS": "80", "STEPUP_DEBUG": "1"},
+        )
     try:
-        async with asyncio.timeout(30):
+        async with asyncio.timeout(EXAMPLE_TIMEOUT):
             await stepup_proc.wait()
 
         pairs = []
@@ -76,6 +93,12 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
         for path_exp in sorted(workdir.glob("expected*.*")):
             fn_exp = path_exp.basename()
             path_cur = workdir / ("current" + fn_exp[8:])
+            if not path_cur.is_file():
+                raise AssertionError(
+                    f"{path_cur.basename()} was not created and main.sh exited with "
+                    f"{stepup_proc.returncode}. See the {MAIN_LOG} below for the command "
+                    f"it died on."
+                )
             with open(path_cur) as fh:
                 cur = fh.read().rstrip()
 
@@ -121,12 +144,15 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
                     exp = fh.read().rstrip()
                 pairs.append((path_exp, cur, exp))
     finally:
-        for path_log in sorted(workdir.glob(STEPUP_DIR / "*.log")):
+        for path_log in [workdir / MAIN_LOG, *sorted(workdir.glob(STEPUP_DIR / "*.log"))]:
             print()
             print(f"########## {path_log} ##########")
             print()
             with open(path_log) as fh:
                 print(fh.read().rstrip())
+        print()
+        # `None` means the example was still running when it ran out of time.
+        print(f"########## main.sh return code: {stepup_proc.returncode} ##########")
 
     # Check late for errors, to maximize the printed output.
     for path_exp, cur, exp in pairs:
