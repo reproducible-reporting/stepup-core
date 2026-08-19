@@ -24,7 +24,7 @@ import tempfile
 import termios
 import threading
 import time
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator
 from decimal import Decimal
 from typing import Self
 
@@ -48,6 +48,7 @@ from .exceptions import RPCError, ToolError, UsageError
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
 from .utils import (
+    ToolFunc,
     is_process_running,
     merge_resources,
     positive_int,
@@ -57,7 +58,6 @@ from .utils import (
 )
 from .watcher import WATCHER_AVAILABLE
 
-# The subcommands are referenced by string in `pyproject.toml`'s `stepup.tools` entry points.
 __all__ = ("boot_subcommand", "build_subcommand")
 
 
@@ -284,7 +284,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
     loader.patch_parser(parser, merge_handlers={"resources": merge_resources})
 
 
-def build_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+def build_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the build tool.
 
     Parameters
@@ -303,7 +303,7 @@ def build_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     return _build_tool
 
 
-def boot_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+def boot_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the deprecated `boot` alias of `build`.
 
     Parameters

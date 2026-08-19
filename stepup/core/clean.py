@@ -5,7 +5,7 @@
 import argparse
 import os
 import sqlite3
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 
 from path import Path
 from rich.console import Console
@@ -16,11 +16,12 @@ from .enums import FileState
 from .hash import FileHash
 from .path import translate, translate_back
 from .sqlite3 import connect, escape_like_pattern
+from .utils import ToolFunc
 
 __all__ = ("clean_subcommand",)
 
 
-def clean_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+def clean_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the clean tool.
 
     Parameters

@@ -11,7 +11,7 @@ from decimal import Decimal
 import pytest
 from path import Path
 
-from stepup.core.__main__ import build_parser, main
+from stepup.core.__main__ import main, setup_cli
 from stepup.core.config import CORE_ENV_VARS, ConfigLoader
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import ConfigError
@@ -836,7 +836,7 @@ def test_cli_section_per_subcommand(
     # interferes with the environment variable under test.
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
     monkeypatch.setenv(env_var, env_value)
-    parser, _, _ = build_parser()
+    parser, _ = setup_cli()
     assert getattr(parser.parse_args(argv), dest) == expected
 
 
@@ -847,6 +847,12 @@ def _run_main(monkeypatch, path_tmp: Path, argv: list[str]) -> int:
     with pytest.raises(SystemExit) as exc_info:
         main()
     return exc_info.value.code
+
+
+def test_cli_without_subcommand(monkeypatch, path_tmp, capsys, clean_env):
+    """Without a subcommand, the help is printed and nothing is done."""
+    assert _run_main(monkeypatch, path_tmp, []) == ReturnCode.INTERNAL.value
+    assert "General purpose dynamic build tool." in capsys.readouterr().out
 
 
 def test_cli_config_error_without_traceback(monkeypatch, path_tmp, capsys, clean_env):
@@ -939,7 +945,7 @@ def test_cli_config_groups_env_vars(monkeypatch, path_tmp, capsys, clean_env):
 def test_core_env_vars_are_not_settings(monkeypatch, path_tmp, clean_env):
     """A variable listed as core would never be shown as such once it becomes a setting."""
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
-    _, _, loader = build_parser()
+    _, loader = setup_cli()
     assert CORE_ENV_VARS.isdisjoint(loader.known_env_vars())
 
 

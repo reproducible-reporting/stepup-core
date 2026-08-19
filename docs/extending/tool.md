@@ -30,16 +30,18 @@ The examples below assume that you want to add a tool called `fancy` to the Step
 
     The `args` argument is a `Namespace` object that contains the command-line arguments
     passed to the tool.
+    The return value is the return code of the `stepup` command.
+    This signature is also available as the type alias `stepup.core.utils.ToolFunc`.
 
 2. Write a second function that registers the argument parser,
    again with a fixed signature:
 
     ```python
     import argparse
-    from collections.abc import Callable
     from stepup.core.config import ConfigLoader
+    from stepup.core.utils import ToolFunc
 
-    def fancy_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    def fancy_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
         parser = subparsers.add_parser(
             "fancy",
             help="Description of the tool",
@@ -67,3 +69,13 @@ The examples below assume that you want to add a tool called `fancy` to the Step
 
     where you replace `your.package` with the name of the module that contains
     `fancy_subcommand`.
+    The name of the entry point is the name of the subcommand,
+    so it must be identical to the name passed to `subparsers.add_parser`.
+    StepUp refuses to start when the two differ,
+    because the subcommand would otherwise be unreachable.
+
+StepUp never imports these two functions directly:
+it only loads the registration function through the entry point,
+which in turn hands it the function implementing the tool.
+Both must therefore remain importable from the module named in the entry point,
+even though nothing seems to use them.

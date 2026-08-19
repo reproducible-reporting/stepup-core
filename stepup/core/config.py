@@ -69,7 +69,7 @@ from rich.text import Text
 
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import ConfigError
-from stepup.core.utils import string_to_bool
+from stepup.core.utils import ToolFunc, string_to_bool
 
 __all__ = (
     "ConfigLoader",
@@ -744,7 +744,7 @@ class ConfigLoader:
         return " or ".join(sorted(self._location_phrase(path, section) for section in sections))
 
 
-def config_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+def config_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the config tool.
 
     Parameters

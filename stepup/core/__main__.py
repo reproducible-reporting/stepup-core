@@ -5,7 +5,6 @@
 import argparse
 import os
 import sys
-from collections.abc import Callable
 from importlib.metadata import entry_points
 from importlib.metadata import version as get_version
 
@@ -24,6 +23,11 @@ from .utils import is_debug
 __all__ = ("main", "sb_main")
 
 
+#
+# Entry points
+#
+
+
 def main():
     """Run a StepUp subcommand, reporting a `ConfigError` as a message instead of a traceback.
 
@@ -38,40 +42,61 @@ def main():
         sys.exit(ReturnCode.INTERNAL.value)
 
 
-def _main():
-    """Parse the command line and run the requested subcommand if the configuration allows it."""
-    parser, tool_funcs, loader = build_parser()
-    args = parser.parse_args()
-    tool_func = tool_funcs.get(args.tool)
-    if tool_func is None:
-        parser.print_help()
-        return
-    if args.tool != "config":
-        problems = loader.problems()
-        if len(problems) > 0:
-            hint = "Run 'stepup config' to inspect the configuration."
-            if is_debug():
-                raise ConfigError(f"{format_config_problems(problems)}\n{hint}")
-            print_config_problems(problems, hint)
-            sys.exit(ReturnCode.INTERNAL.value)
-    sys.exit(tool_func(args))
-
-
 def sb_main():
-    """Shortcut for `stepup build` (accepts the same arguments)."""
+    """Shortcut for `stepup build` (accepts the same arguments).
+
+    Top-level options are not accepted, because `build` is inserted before all arguments,
+    so they must be given to the `stepup` command instead, e.g. `stepup -l DEBUG build`.
+    """
     sys.argv.insert(1, "build")
     main()
 
 
-def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Callable], ConfigLoader]:
+#
+# Internals
+#
+
+
+def _main():
+    """Parse the command line and run the requested subcommand if the configuration allows it."""
+    parser, loader = setup_cli()
+    args = parser.parse_args()
+    if args.tool is None:
+        parser.print_help()
+        sys.exit(ReturnCode.INTERNAL.value)
+    # The config tool is exempt: it is the tool that explains a broken configuration.
+    if args.tool != "config":
+        _exit_on_config_problems(loader)
+    sys.exit(args.tool_func(args))
+
+
+def _exit_on_config_problems(loader: ConfigLoader) -> None:
+    """Report the problems of the configuration and exit, if there are any.
+
+    Raises
+    ------
+    ConfigError
+        With `STEPUP_DEBUG`, instead of printing the problems, to get a traceback.
+    """
+    problems = loader.problems()
+    if len(problems) > 0:
+        hint = "Run 'stepup config' to inspect the configuration."
+        if is_debug():
+            raise ConfigError(f"{format_config_problems(problems)}\n{hint}")
+        print_config_problems(problems, hint)
+        sys.exit(ReturnCode.INTERNAL.value)
+
+
+def setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
     """Create the StepUp parser, with all subcommands registered and configured.
 
     Returns
     -------
     parser
         The top-level argument parser.
-    tool_funcs
-        The function implementing each subcommand, keyed by subcommand name.
+        Subcommands are registered as subparsers on this parser,
+        and are alphabetically sorted by name.
+        Parsing a subcommand puts its `ToolFunc` in the `tool_func` attribute of the arguments.
     loader
         The configuration loader,
         patched into the top-level parser and passed to every subcommand.
@@ -98,11 +123,10 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Callable], Config
     )
     version = get_version("stepup")
     parser.add_argument("--version", "-V", action="version", version="%(prog)s " + version)
-    debug = is_debug()
     parser.add_argument(
         "--log-level",
         "-l",
-        default=os.getenv("STEPUP_LOG_LEVEL", "DEBUG" if debug else "WARNING").upper(),
+        default="DEBUG" if is_debug() else "WARNING",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level. [default=%(default)s]",
     )
@@ -111,12 +135,18 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Callable], Config
     # Load tool entry points
     subparsers = parser.add_subparsers(dest="tool", required=False)
     tool_eps = sorted(entry_points(group="stepup.tools"), key=lambda ep: ep.name)
-    tool_funcs = {}
     for tool_ep in tool_eps:
-        tool = tool_ep.load()
-        tool_funcs[tool_ep.name] = tool(subparsers, loader)
+        subcommand = tool_ep.load()
+        tool_func = subcommand(subparsers, loader)
+        tool_parser = subparsers.choices.get(tool_ep.name)
+        if tool_parser is None:
+            raise RuntimeError(
+                f"The entry point '{tool_ep.name} = {tool_ep.value}' "
+                f"did not add a subparser named '{tool_ep.name}'."
+            )
+        tool_parser.set_defaults(tool_func=tool_func)
 
-    return parser, tool_funcs, loader
+    return parser, loader
 
 
 if __name__ == "__main__":

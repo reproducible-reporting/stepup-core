@@ -5,7 +5,6 @@
 import argparse
 import os
 import sqlite3
-from collections.abc import Callable
 
 from path import Path
 from rich import print  # noqa: A004
@@ -14,6 +13,7 @@ from .config import ConfigLoader
 from .constants import GRAPH_DB
 from .enums import FileState, StepState
 from .sqlite3 import connect
+from .utils import ToolFunc
 
 __all__ = ("status_subcommand",)
 
@@ -44,7 +44,7 @@ GROUP BY st.name
 """
 
 
-def status_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+def status_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the status tool.
 
     Parameters

@@ -12,7 +12,7 @@ import stat
 import threading
 import traceback
 import webbrowser
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -28,7 +28,7 @@ from .hash import FileHash, StepHash, fmt_digest, fmt_env_value
 from .nglob import NamedGlob
 from .sqlite3 import connect
 from .step import Step
-from .utils import escape_command_display, format_subprocess, positive_int
+from .utils import ToolFunc, escape_command_display, format_subprocess, positive_int
 
 __all__ = ("browse_subcommand",)
 
@@ -40,7 +40,7 @@ def _detect_browsers() -> str:
     return ", ".join(webbrowser._tryorder) if webbrowser._tryorder else "none detected"
 
 
-def browse_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+def browse_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the browse tool.
 
     Parameters
