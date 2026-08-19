@@ -109,6 +109,19 @@ def path_tmp(tmpdir: str) -> Path:
     return Path(tmpdir)
 
 
+@pytest.fixture
+def clean_env(monkeypatch, path_tmp):
+    """Hide the developer's own configuration, so it cannot reach the output under test.
+
+    Both the StepUp environment variables and `~/.config/stepup.toml` are put out of reach.
+    The system-wide `/etc/stepup.toml` is the one config file that cannot be hidden this way.
+    """
+    for name in list(os.environ):
+        if name.startswith("STEPUP_"):
+            monkeypatch.delenv(name)
+    monkeypatch.setenv("HOME", path_tmp)
+
+
 def fake_hash(path):
     digest = b"d" if path.endswith("/") else hashlib.sha256(path.encode("utf8")).digest()
     mtime = sum(bytearray(digest)) ** 0.5

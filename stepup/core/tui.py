@@ -33,7 +33,7 @@ from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_path
 from .cgroups import cgroup_scope_prefix
-from .config import ConfigLoader
+from .config_loader import ConfigLoader
 from .constants import (
     DIRECTOR_LOG,
     JOBLOG_CSV,
@@ -83,8 +83,14 @@ class MergeResourcesAction(argparse.Action):
         setattr(namespace, self.dest, merge_resources(accumulated, values))
 
 
-def positive_decimal(value: str) -> Decimal:
-    """Convert a command-line value to a strictly positive `Decimal`.
+def positive_decimal(value: str | float) -> Decimal:
+    """Convert a command-line or config value to a strictly positive `Decimal`.
+
+    The value is converted through its string form,
+    because `interpret_jobs` reads the number of digits after the decimal point
+    to tell a job count from a scale factor,
+    and `Decimal(3.0)` is `Decimal("3")` while `Decimal("3.0")` keeps the digit.
+    A config file may hold a TOML float here, unlike the command line, which is always a string.
 
     Raises
     ------
@@ -92,7 +98,7 @@ def positive_decimal(value: str) -> Decimal:
         If the value is not a number or is not strictly positive.
     """
     try:
-        number = Decimal(value)
+        number = Decimal(str(value))
     except decimal.InvalidOperation as exc:
         raise ValueError(f"not a number: {value!r}") from exc
     if number <= 0:

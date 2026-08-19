@@ -10,7 +10,7 @@ from collections.abc import Iterable
 from path import Path
 from rich.console import Console
 
-from .config import ConfigLoader
+from .config_loader import ConfigLoader
 from .enums import FileState
 from .hash import FileHash
 from .path import translate, translate_back

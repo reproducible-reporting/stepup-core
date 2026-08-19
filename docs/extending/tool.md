@@ -58,7 +58,7 @@ The examples below assume that you want to add a tool called `fancy` to the Step
 
     ```python
     import argparse
-    from stepup.core.config import ConfigLoader
+    from stepup.core.config_loader import ConfigLoader
     from stepup.core.tool import ToolFunc
 
     def fancy_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:

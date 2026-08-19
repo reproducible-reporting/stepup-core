@@ -19,9 +19,9 @@ import pytest
 from path import Path
 
 from stepup.core.asyncio import stoppable_iterator, wait_for_path
-from stepup.core.config import ConfigLoader
+from stepup.core.config_loader import ConfigLoader
 from stepup.core.constants import PERF_DATA
-from stepup.core.director import DirectorHandler
+from stepup.core.director import DirectorHandler, interpret_jobs
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import PathError, ToolError
 from stepup.core.rpc import allow_rpc, serve_socket_rpc
@@ -43,6 +43,7 @@ from stepup.core.tui import (
     _reset_stepup_dir,
     _terminal_broadcasts,
     keyboard,
+    positive_decimal,
 )
 
 
@@ -133,12 +134,35 @@ def test_jobs_accepts_fractional() -> None:
     assert args.jobs == Decimal("0.5")
 
 
+@pytest.mark.parametrize(
+    ("raw", "scale_factor"),
+    [("3", False), (3, False), ("3.0", True), (3.0, True), ("0.5", True), (0.5, True)],
+)
+def test_jobs_keeps_the_digits_of_a_toml_float(raw: str | float, scale_factor: bool) -> None:
+    """A config file may hold a TOML float, whose fractional digit decides what `--jobs` means.
+
+    `interpret_jobs` reads the exponent to tell a job count from a factor to multiply
+    the number of cores with, and `Decimal(3.0)` would drop the digit that `Decimal("3.0")` keeps.
+    """
+    assert (positive_decimal(raw).as_tuple().exponent < 0) is scale_factor
+
+
+def test_jobs_fractional_config_file_value_is_a_scale_factor(path_tmp: Path) -> None:
+    """A `jobs = 3.0` in a config file selects three times the number of cores."""
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"[build]\njobs = 3.0\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    parser = _build_test_build_parser(loader)
+    assert loader.problems() == []
+    assert interpret_jobs(parser.parse_args(["build"]).jobs) == 3 * interpret_jobs(Decimal("1.0"))
+
+
 def test_jobs_env_var_rejected_cleanly() -> None:
     """An invalid `STEPUP_BUILD_JOBS` env var is reported as a problem naming the env var."""
     loader = ConfigLoader("stepup", environ={"STEPUP_BUILD_JOBS": "abc"})
     parser = _build_test_build_parser(loader)
-    (message,) = loader.check()
-    assert message.startswith("$STEPUP_BUILD_JOBS: ")
+    (problem,) = loader.problems()
+    assert problem.message.startswith("$STEPUP_BUILD_JOBS: ")
     # The rejected value does not reach the director: the parser keeps its own default.
     assert parser.parse_args(["build"]).jobs == Decimal("1.0")
 
@@ -169,8 +193,8 @@ def test_perf_env_var_rejected_cleanly() -> None:
     """An invalid `STEPUP_BUILD_PERF` env var is reported as a problem naming the env var."""
     loader = ConfigLoader("stepup", environ={"STEPUP_BUILD_PERF": "abc"})
     parser = _build_test_build_parser(loader)
-    (message,) = loader.check()
-    assert message.startswith("$STEPUP_BUILD_PERF: ")
+    (problem,) = loader.problems()
+    assert problem.message.startswith("$STEPUP_BUILD_PERF: ")
     assert parser.parse_args(["build"]).perf is None
 
 

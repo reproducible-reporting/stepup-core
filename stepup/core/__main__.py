@@ -7,7 +7,7 @@ import sys
 from importlib.metadata import entry_points
 from importlib.metadata import version as get_version
 
-from .config import (
+from .config_loader import (
     ConfigLoader,
     format_config_problems,
     print_config_problems,
@@ -114,7 +114,7 @@ def _setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
     )
     version = get_version("stepup")
     parser.add_argument("-V", "--version", action="version", version="%(prog)s " + version)
-    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(parser, top_level=True)
 
     # Load tool entry points
     subparsers = parser.add_subparsers(dest="tool", required=False)
@@ -145,7 +145,7 @@ def _exit_on_config_problems(loader: ConfigLoader) -> None:
     if len(problems) > 0:
         hint = "Run 'stepup config' to inspect the configuration."
         if is_debug():
-            raise ConfigError(f"{format_config_problems(problems)}\n{hint}")
+            raise ConfigError(format_config_problems(problems, hint))
         print_config_problems(problems, hint)
         sys.exit(ReturnCode.INTERNAL.value)
 

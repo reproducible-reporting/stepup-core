@@ -20,6 +20,7 @@ __all__ = (
     "get_affixes",
     "get_stepup_root",
     "make_path_out",
+    "short_path",
     "translate",
     "translate_back",
 )
@@ -178,6 +179,21 @@ def make_path_out(
     if not (ext is None or path_out.suffix == ext or path_out.suffix in other_exts):
         raise PathError(f"The output path does not have extension '{ext}': {path_out}.")
     return path_out
+
+
+def short_path(path: str | Path) -> Path:
+    """Shorten a path for display in a message.
+
+    A path inside the working directory is made relative to it, with a `./` prefix.
+    Any other path is shown as it is:
+    an absolute path is easier to read than a relative one climbing out of the tree,
+    and a path like `~/.config/stepup.toml` already says where it is.
+    """
+    path = Path(path)
+    if not path.startswith(os.getcwd() + os.sep):
+        return path
+    short = path.relpath()
+    return short if short.startswith(".") else "./" / short
 
 
 def get_stepup_root() -> Path:

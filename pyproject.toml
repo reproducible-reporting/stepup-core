@@ -79,7 +79,7 @@ rebuild = "stepup.core.interact:add_rebuild_subcommand"
 graph = "stepup.core.interact:add_graph_subcommand"
 wait = "stepup.core.interact:add_wait_subcommand"
 join = "stepup.core.interact:add_join_subcommand"
-config = "stepup.core.config:add_config_subcommand"
+config = "stepup.core.config_tool:add_config_subcommand"
 shutdown = "stepup.core.interact:add_shutdown_subcommand"
 status = "stepup.core.status:add_status_subcommand"
 

@@ -15,7 +15,7 @@ import time
 from path import Path
 
 from .api import get_rpc_client
-from .config import ConfigLoader
+from .config_loader import ConfigLoader
 from .constants import DIRECTOR_LOG
 from .exceptions import RPCError, ToolError
 from .path import get_stepup_root

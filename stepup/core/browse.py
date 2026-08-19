@@ -19,7 +19,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 import jinja2
 
 from .cattrs import json_converter
-from .config import ConfigLoader
+from .config_loader import ConfigLoader
 from .enums import FileState, Need, StepState
 from .hash import FileHash, StepHash, fmt_digest, fmt_env_value
 from .nglob import NamedGlob

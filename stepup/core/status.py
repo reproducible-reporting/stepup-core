@@ -7,7 +7,7 @@ import sqlite3
 
 from rich import print  # noqa: A004
 
-from .config import ConfigLoader
+from .config_loader import ConfigLoader
 from .enums import FileState, StepState
 from .tool import SubParsers, ToolFunc, connect_graph_db
 

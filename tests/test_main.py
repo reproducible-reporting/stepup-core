@@ -12,7 +12,7 @@ import sys
 import pytest
 
 from stepup.core import __main__ as cli
-from stepup.core.config import ConfigProblem
+from stepup.core.config_loader import ConfigProblem
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import ConfigError, ConsistencyError, GraphError, ToolError
 
