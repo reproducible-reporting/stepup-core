@@ -21,7 +21,7 @@ Modified inp hash    original.txt (digest 4355a46b ➜ 53c234e5)
    START │ cp -p original.txt copy.txt
  SUCCESS │ cp -p original.txt copy.txt
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
 DIRECTOR │ See you!

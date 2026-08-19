@@ -7,7 +7,7 @@
    START │ cp -p hello.txt other/hello.txt
  SUCCESS │ cp -p hello.txt other/hello.txt
 DIRECTOR │ Ran 2 job(s).
-DIRECTOR │ Trying to remove 1 outdated output(s)
+DIRECTOR │ Trying to remove 1 deletable file(s) and empty director(y|ies)
   REMOVE │ sub/hello.txt
   REMOVE │ sub
    PHASE │ watch

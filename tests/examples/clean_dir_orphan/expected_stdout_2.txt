@@ -6,7 +6,7 @@
    START │ ./plan.py
  SUCCESS │ ./plan.py
 DIRECTOR │ Ran 1 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
   REMOVE │ dir2
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot

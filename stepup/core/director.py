@@ -532,7 +532,7 @@ async def serve(
         await reporter("STARTUP", "(Re)initialized boot script")
         handler.builder.resume.set()
     else:
-        await startup_from_db(handler.workflow, db, reporter, handler.builder)
+        await startup_from_db(handler.workflow, reporter, handler.builder)
 
     # Targets must be reconciled after the boot script is defined.
     # See `Workflow.reconcile_targets()` for details.

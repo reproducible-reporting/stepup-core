@@ -791,7 +791,7 @@ class Workflow(Trellis):
     so they are only meaningful for as long as the graph does not change underneath them:
     a path may acquire a new node, whose file must not be deleted.
     Whatever fills this dict must therefore belong to the same cleanup pass as
-    `remove_outdated_outputs`, which deletes the files and empties the dict again.
+    `remove_deletable_files`, which deletes the files and empties the dict again.
     """
 
     #
@@ -2299,7 +2299,7 @@ class Workflow(Trellis):
         Runs once at the end of every build phase, over the persisted `nglob` table
         rather than over the patterns registered during this phase,
         which makes it order-independent and idempotent across restarts.
-        See `finalize.report_completion` for the reporting side.
+        See `finalize.report_unbuilt` for the reporting side.
 
         Returns
         -------

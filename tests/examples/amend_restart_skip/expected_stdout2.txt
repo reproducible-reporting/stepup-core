@@ -2,7 +2,7 @@
  STARTUP │ Checking 6 file(s) for changes
    PHASE │ build
 DIRECTOR │ Ran 0 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
 DIRECTOR │ See you!

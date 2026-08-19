@@ -15,7 +15,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
    START │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
  SUCCESS │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
 DIRECTOR │ Ran 2 job(s).
-DIRECTOR │ Trying to remove 2 outdated output(s)
+DIRECTOR │ Trying to remove 2 deletable file(s) and empty director(y|ies)
   REMOVE │ README-stdout.txt
   REMOVE │ README-stderr.txt
    PHASE │ watch

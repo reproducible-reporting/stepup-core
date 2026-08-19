@@ -320,13 +320,13 @@ and rescans its contents, so nothing created in the gap is missed.
 distinguished by a trailing separator on the key.
 `File.before_delete` marks the file's parent directory,
 `Step.before_delete` marks the step's working directory,
-and `revert_optional` marks the parents of the outputs it flags,
+and `revert_optional_steps` marks the parents of the outputs it flags,
 whose nodes stay in the graph and therefore never reach `before_delete`.
 A directory is marked whatever the state of the file that named it,
 which is what catches an output the user removed by hand:
 the file itself is then no longer in `to_be_deleted`, but its directory still is.
 
-`remove_outdated_outputs` deletes the files first and hands the directories to
+`remove_deletable_files` deletes the files first and hands the directories to
 `_prune_empty_dirs`, which removes each one only if it is empty,
 and then walks up to the root doing the same.
 Emptiness is the only safeguard here,

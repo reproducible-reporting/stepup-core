@@ -11,5 +11,5 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
 2.580000
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

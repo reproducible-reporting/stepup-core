@@ -14,7 +14,7 @@ Modified step hash   compact ➜ explained, inp_digest 4acb8bcc ➜ 1a18be0c, ou
 Same step hash       compact, inp_digest 2c25ced9, out_digest 463361ab
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 1 job(s).
-DIRECTOR │ Trying to remove 1 outdated output(s)
+DIRECTOR │ Trying to remove 1 deletable file(s) and empty director(y|ies)
   REMOVE │ bar.txt
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot

@@ -10,6 +10,6 @@
    START │ ./subplan.py
  SUCCESS │ ./subplan.py
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ See you!

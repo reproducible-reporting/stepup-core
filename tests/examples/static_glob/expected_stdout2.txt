@@ -16,7 +16,7 @@ Same out hash        out3.txt
    START │ cp -p inp4.txt out4.txt
  SUCCESS │ cp -p inp4.txt out4.txt
 DIRECTOR │ Ran 2 job(s).
-DIRECTOR │ Trying to remove 1 outdated output(s)
+DIRECTOR │ Trying to remove 1 deletable file(s) and empty director(y|ies)
   REMOVE │ out2.txt
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot

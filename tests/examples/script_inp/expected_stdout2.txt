@@ -9,7 +9,7 @@
    START │ ./script.py run spam
  SUCCESS │ ./script.py run spam
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 2 outdated output(s)
+DIRECTOR │ Trying to remove 2 deletable file(s) and empty director(y|ies)
   REMOVE │ out_foo.txt
   REMOVE │ out_bar.txt
    PHASE │ watch

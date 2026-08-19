@@ -7,7 +7,7 @@
    START │ echo hello > ../hello.txt  # wd=sub
  SUCCESS │ echo hello > ../hello.txt  # wd=sub
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph_1.txt, current_graph_1_provenance.dot and current_graph_1_dependency.dot
 DIRECTOR │ See you!

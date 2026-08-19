@@ -22,7 +22,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
    START │ cat egg.txt > spam.txt
  SUCCESS │ cat egg.txt > spam.txt
 DIRECTOR │ Ran 6 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
 DIRECTOR │ See you!

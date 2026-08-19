@@ -10,7 +10,7 @@
 out
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
  UPDATED │ plan.py
@@ -19,8 +19,8 @@ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot an
  SUCCESS │ ./plan.py
 DIRECTOR │ Ran 1 job(s).
  WARNING │ Reverted 1 optional step(s) to PENDING.
- WARNING │ Marked 2 old optional (volatile) output file(s) for deletion.
-DIRECTOR │ Trying to remove 2 outdated output(s)
+ WARNING │ Marked 2 output file(s) of reverted step(s) for deletion.
+DIRECTOR │ Trying to remove 2 deletable file(s) and empty director(y|ies)
   REMOVE │ vol.log
   REMOVE │ out.txt
  WARNING │ Check logs: .stepup/warning.log
@@ -38,7 +38,7 @@ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot an
 out
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
 DIRECTOR │ See you!

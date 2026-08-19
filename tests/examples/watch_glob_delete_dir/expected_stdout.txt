@@ -14,7 +14,7 @@ Every matched file must be declared static or lie inside a static tree.
 A matched directory also qualifies when it contains a static file or tree.
 Declare the files with static(), or declare their directory as a static tree.
 ────────────────────────────────────────────────────────────────────────────────
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
  WARNING │ Check logs: .stepup/warning.log
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
@@ -26,7 +26,7 @@ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot an
 MATCHES: []
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 1 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
 DIRECTOR │ See you!

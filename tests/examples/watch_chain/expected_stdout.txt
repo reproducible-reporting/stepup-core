@@ -11,7 +11,7 @@
    START │ echo All is fine. > script.log
  SUCCESS │ echo All is fine. > script.log
 DIRECTOR │ Ran 5 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
  UPDATED │ config.json
@@ -25,7 +25,7 @@ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot an
    START │ echo All is fine. > other.log
  SUCCESS │ echo All is fine. > other.log
 DIRECTOR │ Ran 4 job(s).
-DIRECTOR │ Trying to remove 1 outdated output(s)
+DIRECTOR │ Trying to remove 1 deletable file(s) and empty director(y|ies)
   REMOVE │ script.log
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot

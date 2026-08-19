@@ -12,5 +12,5 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
  SUCCESS │ sleep 4.1
  SUCCESS │ sleep 2.0
 DIRECTOR │ Ran 5 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

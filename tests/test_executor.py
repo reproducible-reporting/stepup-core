@@ -567,7 +567,7 @@ async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workf
     not propagate: an exception escaping a builder task crashes job_loop via
     handle_done_tasks. It must also drain the scheduler: a fire-and-forget submitter
     (static/step) never awaits this future, so draining's existing
-    "stop dispatching new steps" + report_completion warning is what actually surfaces the
+    "stop dispatching new steps" + report_unbuilt warning is what actually surfaces the
     failure to the user instead of it being silently lost."""
 
     def _raise_permission_error(old_hash, path, cancel_event=None):

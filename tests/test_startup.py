@@ -84,7 +84,7 @@ async def test_check_file_changes_does_nothing_when_nothing_to_check(wfs: Workfl
     builder = _make_builder(wfs)
     reporter = _FakeReporter()
 
-    await check_file_changes(wfs.db, reporter, builder)
+    await check_file_changes(wfs, reporter, builder)
 
     assert reporter.calls == []
 
@@ -109,7 +109,7 @@ async def test_check_file_changes_confirms_unchanged_stray_unconfirmed_row(wfs: 
         builder = _make_builder(wfs)
         reporter = _FakeReporter()
 
-        await check_file_changes(wfs.db, reporter, builder)
+        await check_file_changes(wfs, reporter, builder)
 
         assert reporter.calls == [("STARTUP", "Checking 1 file(s) for changes")]
         async with wfs.db:
@@ -131,7 +131,7 @@ async def test_check_file_changes_confirms_deleted_stray_unconfirmed_row(wfs: Wo
         builder = _make_builder(wfs)
         reporter = _FakeReporter()
 
-        await check_file_changes(wfs.db, reporter, builder)
+        await check_file_changes(wfs, reporter, builder)
 
         assert reporter.calls == [
             ("STARTUP", "Checking 1 file(s) for changes"),
@@ -156,7 +156,7 @@ async def test_check_file_changes_reports_externally_updated_static_file(wfs: Wo
         builder = _make_builder(wfs)
         reporter = _FakeReporter()
 
-        await check_file_changes(wfs.db, reporter, builder)
+        await check_file_changes(wfs, reporter, builder)
 
         assert reporter.calls == [
             ("STARTUP", "Checking 1 file(s) for changes"),
@@ -203,7 +203,7 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
             pass
 
         reporter = _FakeReporter()
-        await check_nglob_changes(wfp, wfp.db, reporter)
+        await check_nglob_changes(wfp, reporter)
 
         assert reporter.calls == [
             ("STARTUP", "Checking 1 nglob(s) for new or deleted matches"),
@@ -239,7 +239,7 @@ async def test_populate_dir_queue_includes_glob_base_dirs(wfp: Workflow, tmpdir)
             wfp.dir_queue.get_nowait()
 
         reporter = _FakeReporter()
-        await populate_dir_queue(wfp, wfp.db, reporter)
+        await populate_dir_queue(wfp, reporter)
 
         watched = set()
         while not wfp.dir_queue.empty():

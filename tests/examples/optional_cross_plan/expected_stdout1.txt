@@ -9,7 +9,7 @@
    START │ cp -p ../out.txt final.txt  # wd=sub
  SUCCESS │ cp -p ../out.txt final.txt  # wd=sub
 DIRECTOR │ Ran 4 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
 DIRECTOR │ See you!

@@ -11,7 +11,7 @@ subprocess-stdout-line
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 2 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
  UPDATED │ plan.py
    PHASE │ build
@@ -19,7 +19,7 @@ DIRECTOR │ Trying to remove 0 outdated output(s)
  SUCCESS │ ./plan.py
     SKIP │ ./work.py
 DIRECTOR │ Ran 1 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
 DIRECTOR │ See you!

@@ -7,7 +7,7 @@
    START │ cp -p b_input.txt b.txt
  SUCCESS │ cp -p b_input.txt b.txt
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
 DIRECTOR │ See you!

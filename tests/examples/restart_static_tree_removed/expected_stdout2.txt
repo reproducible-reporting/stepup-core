@@ -22,7 +22,7 @@ Modified inp hash    static/bar.txt (digest 7d865e95 ➜ 7e4fa2eb, size 4 ➜ 6)
    START │ cp -p static/bar.txt bar.txt
  SUCCESS │ cp -p static/bar.txt bar.txt
 DIRECTOR │ Ran 2 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
 DIRECTOR │ See you!

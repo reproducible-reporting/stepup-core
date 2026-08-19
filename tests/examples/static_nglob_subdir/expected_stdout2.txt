@@ -16,7 +16,7 @@ Same step hash       compact, inp_digest b736f5c0, out_digest c2c4c1bb
    START │ cp -p inp3.txt out3.txt  # wd=sub
  SUCCESS │ cp -p inp3.txt out3.txt  # wd=sub
 DIRECTOR │ Ran 2 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
 DIRECTOR │ See you!

@@ -12,7 +12,7 @@ Modified step hash   compact ➜ explained, inp_digest 0a37b5ac ➜ dc7cd356, ou
    START │ echo bye > out2.txt
  SUCCESS │ echo bye > out2.txt
 DIRECTOR │ Ran 2 job(s).
-DIRECTOR │ Trying to remove 2 outdated output(s)
+DIRECTOR │ Trying to remove 2 deletable file(s) and empty director(y|ies)
   REMOVE │ out1.txt
   REMOVE │ out.txt
    PHASE │ watch

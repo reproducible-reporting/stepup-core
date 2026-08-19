@@ -107,7 +107,7 @@ async def test_stop_swallows_flush_failure(wfs: Workflow, caplog, monkeypatch):
 async def test_finalize_reverts_optional_only_when_cleaning(
     wfp: Workflow, tmpdir, do_remove_outdated: bool
 ):
-    """`revert_optional` must happen if and only if the outdated outputs are removed too.
+    """`revert_optional_steps` must happen if and only if the outdated outputs are removed too.
 
     Reverting resets the outputs of the optional step in the database and queues their paths
     in `to_be_deleted`. Without the removal that follows it, the database would claim the

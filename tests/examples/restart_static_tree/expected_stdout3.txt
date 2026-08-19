@@ -10,7 +10,7 @@ Modified inp hash    static/foo.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
    START │ cp -p static/foo.txt bar.txt
  SUCCESS │ cp -p static/foo.txt bar.txt
 DIRECTOR │ Ran 1 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
 DIRECTOR │ See you!

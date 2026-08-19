@@ -6,8 +6,8 @@
  SUCCESS │ ./plan.py  # wd=sub
 DIRECTOR │ Ran 1 job(s).
  WARNING │ Reverted 1 optional step(s) to PENDING.
- WARNING │ Marked 1 old optional (volatile) output file(s) for deletion.
-DIRECTOR │ Trying to remove 2 outdated output(s)
+ WARNING │ Marked 1 output file(s) of reverted step(s) for deletion.
+DIRECTOR │ Trying to remove 2 deletable file(s) and empty director(y|ies)
   REMOVE │ sub/final.txt
   REMOVE │ out.txt
  WARNING │ Check logs: .stepup/warning.log

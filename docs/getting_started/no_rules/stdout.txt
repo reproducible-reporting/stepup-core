@@ -8,5 +8,5 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
    START │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
  SUCCESS │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

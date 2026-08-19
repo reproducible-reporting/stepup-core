@@ -27,7 +27,7 @@ import attrs
 from .asyncio import wait_for_any_event
 from .enums import HashUpdateCause, ReturnCode
 from .executor import Executor
-from .finalize import remove_outdated_outputs, report_completion, revert_optional
+from .finalize import remove_deletable_files, report_unbuilt, revert_optional_steps
 from .hash import FileHash
 from .hash_queue import HashJob, HashQueue
 from .job import Job
@@ -203,9 +203,7 @@ class Builder:
     async def finalize(self):
         """Wrap up the build phase after the builder has executed its jobs."""
         await self.reporter("DIRECTOR", f"Ran {self.scheduler.run_counter} job(s).")
-        self.returncode = await report_completion(
-            self.db, self.workflow, self.scheduler, self.reporter
-        )
+        self.returncode = await report_unbuilt(self.workflow, self.scheduler, self.reporter)
         # Reverting optional steps resets their outputs in the database,
         # which only makes sense paired with removing the files from disk,
         # so it shares the guard below with the rest of the cleanup.
@@ -224,10 +222,10 @@ class Builder:
         elif not self.do_remove_outdated:
             await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean)")
         else:
-            await revert_optional(self.db, self.workflow, self.reporter)
+            await revert_optional_steps(self.workflow, self.reporter)
             async with self.db:
                 self.workflow.delete_detached()
-            await remove_outdated_outputs(self.db, self.workflow, self.reporter)
+            await remove_deletable_files(self.workflow, self.reporter)
         # Step durations and tail times are derived from the settled graph,
         # so this runs after delete_detached().
         await self.scheduler.build_completed()

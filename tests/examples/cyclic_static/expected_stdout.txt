@@ -13,7 +13,7 @@ inp2.txt
  SUCCESS │ ./work1.py
     SKIP │ ./work2.py
 DIRECTOR │ Ran 4 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
 DIRECTOR │ See you!

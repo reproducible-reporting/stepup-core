@@ -635,7 +635,7 @@ class Executor:
                 # Instead, borrow `draining`'s existing visibility and effect:
                 # stop dispatching new steps and report the error loudly
                 # (mirroring `handle_done_tasks`' own `draining`
-                # and `report_completion`'s "Scheduler is draining" warning),
+                # and `report_unbuilt`'s "Scheduler is draining" warning),
                 # while letting already-running or queued work wind down normally.
                 # The file is left UNCONFIRMED.
                 # A fire-and-forget submitter never awaits this future,

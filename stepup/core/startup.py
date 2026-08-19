@@ -15,7 +15,6 @@ from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
 from .hash_queue import gather_hashes
 from .nglob import NamedGlob, glob_base_dir
 from .reporter import ReporterClient
-from .sqlite3 import DBSession
 from .step import Step
 from .workflow import Workflow
 
@@ -25,30 +24,26 @@ __all__ = ("startup_from_db",)
 logger = logging.getLogger(__name__)
 
 
-async def startup_from_db(
-    workflow: Workflow,
-    db: DBSession,
-    reporter: ReporterClient,
-    builder: Builder,
-):
+async def startup_from_db(workflow: Workflow, reporter: ReporterClient, builder: Builder):
     """Initialize internal datastructures by loading relevant parts from the database."""
-    await reset_to_pending(workflow, db, reporter)
-    await populate_dir_queue(workflow, db, reporter)
-    await check_env_changes(workflow, db, reporter)
-    await check_file_changes(db, reporter, builder)
+    await reset_to_pending(workflow, reporter)
+    await populate_dir_queue(workflow, reporter)
+    await check_env_changes(workflow, reporter)
+    await check_file_changes(workflow, reporter, builder)
 
     # Check for added / removed files that match nglobs used by some steps.
     # File content changes are not relevant for this check.
-    await check_nglob_changes(workflow, db, reporter)
+    await check_nglob_changes(workflow, reporter)
 
     # Every step that must run again is pending now, so the builder can start.
     logger.info("Startup sequence completed")
     builder.resume.set()
 
 
-async def reset_to_pending(workflow: Workflow, db: DBSession, reporter: ReporterClient):
+async def reset_to_pending(workflow: Workflow, reporter: ReporterClient):
     """Make steps pending if they are RUNNING, CHECKING, or FAILED."""
 
+    db = workflow.db
     # RUNNING/CHECKING are uncommon, but can happen if the director crashes.
     async with db:
         # Steps that were running are considered failed.
@@ -73,14 +68,14 @@ async def reset_to_pending(workflow: Workflow, db: DBSession, reporter: Reporter
         # See `check_file_changes()` for how they are resolved.
 
 
-async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: ReporterClient):
+async def populate_dir_queue(workflow: Workflow, reporter: ReporterClient):
     """Populate the workflow's directory queue with directories to watch."""
     sql = (
         "SELECT label FROM node JOIN file ON node.i = file.node WHERE kind = 'file' AND "
         f"file.state != {FileState.VOLATILE.value}"
     )
-    async with db:
-        rows = db.execute(sql).fetchall()
+    async with workflow.db:
+        rows = workflow.db.execute(sql).fetchall()
         nglobs = [ng for _nglob_i, ng, _step in workflow.nglob_registrations()]
 
     # None of these directories is created here:
@@ -99,10 +94,10 @@ async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: Report
             workflow.watch_dir(path)
 
 
-async def check_env_changes(workflow: Workflow, db: DBSession, reporter: ReporterClient):
+async def check_env_changes(workflow: Workflow, reporter: ReporterClient):
     """Check for changes in environment variables used by steps."""
-    async with db:
-        env_var_uses = db.execute(
+    async with workflow.db:
+        env_var_uses = workflow.db.execute(
             "SELECT node, label, name, value FROM env_var JOIN node ON env_var.node = node.i"
         ).fetchall()
     if len(env_var_uses) > 0:
@@ -117,12 +112,12 @@ async def check_env_changes(workflow: Workflow, db: DBSession, reporter: Reporte
                         "UPDATED", f"{name} {fmt_env_value(value)} ➜ {fmt_env_value(new_value)}"
                     )
                     seen.add(name)
-        async with db:
+        async with workflow.db:
             for step in to_mark_pending:
                 workflow.mark_step_pending(step)
 
 
-async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: Builder):
+async def check_file_changes(workflow: Workflow, reporter: ReporterClient, builder: Builder):
     """Check all relevant files in the workflow for changes.
 
     The following are not checked:
@@ -135,8 +130,8 @@ async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: B
         "FROM node JOIN file ON node.i = file.node AND state NOT IN (?, ?) AND NOT detached"
     )
     data = (FileState.PLANNED.value, FileState.VOLATILE.value)
-    async with db:
-        rows = db.execute(sql, data).fetchall()
+    async with workflow.db:
+        rows = workflow.db.execute(sql, data).fetchall()
     if len(rows) == 0:
         return
 
@@ -174,7 +169,7 @@ async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: B
                 )
 
 
-async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: ReporterClient) -> None:
+async def check_nglob_changes(workflow: Workflow, reporter: ReporterClient) -> None:
     """Look for new and deleted matches in nglobs registered by steps, and process them.
 
     This is fully self-contained:
@@ -183,7 +178,7 @@ async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: Repor
     without consulting the workflow's file states at all.
     Steps whose nglob matches changed are marked pending and their new matches are persisted.
     """
-    async with db:
+    async with workflow.db:
         nglobs = list(workflow.nglob_registrations())
     if len(nglobs) == 0:
         return
@@ -218,9 +213,9 @@ async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: Repor
     # A fresh scan is already the correct new state,
     # so there is no need to recompute it through Workflow.process_nglob_changes.
     if len(changed) > 0:
-        async with db:
+        async with workflow.db:
             for i, step, fresh in changed:
                 step.delete_hash()
                 data = (json.dumps(json_converter.unstructure(fresh)), i)
-                db.execute("UPDATE nglob SET data = ? WHERE i = ?", data)
+                workflow.db.execute("UPDATE nglob SET data = ? WHERE i = ?", data)
                 workflow.mark_step_pending(step)

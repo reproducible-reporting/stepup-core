@@ -12,5 +12,5 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
    START │ ./plot.py run '{"airport": "ebos", "inp": ["matplotlibrc", "ebos.csv"], "out": ["plot_ebos.png"]}'
  SUCCESS │ ./plot.py run '{"airport": "ebos", "inp": ["matplotlibrc", "ebos.csv"], "out": ["plot_ebos.png"]}'
 DIRECTOR │ Ran 5 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

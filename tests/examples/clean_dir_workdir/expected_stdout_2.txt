@@ -5,7 +5,7 @@
    START │ ./plan.py
  SUCCESS │ ./plan.py
 DIRECTOR │ Ran 1 job(s).
-DIRECTOR │ Trying to remove 1 outdated output(s)
+DIRECTOR │ Trying to remove 1 deletable file(s) and empty director(y|ies)
   REMOVE │ hello.txt
   REMOVE │ sub
    PHASE │ watch

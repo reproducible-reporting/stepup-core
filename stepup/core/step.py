@@ -872,7 +872,7 @@ class Step(Node):
         A FAILED step is the one state that is not carried over: it is made PENDING so the
         recycled step is retried. A failed step is never skippable anyway (it has no stored
         hash), so keeping the state would only park it in a state nothing takes it out of
-        within the same build, while `report_completion` still counts it as a failure.
+        within the same build, while `report_unbuilt` still counts it as a failure.
         """
         self.db.execute(
             "UPDATE step SET need = ?, shell = ?, _holding = 0 WHERE node = ?",

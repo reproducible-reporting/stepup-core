@@ -11,5 +11,5 @@ Repetition helps to get the message across.
 Repetition helps to get the message across.
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 2 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

@@ -7,7 +7,7 @@
    START │ ./work.py run '{"inp": ["dir/a.txt", "dir/b.txt"], "out": ["result.txt"]}'
  SUCCESS │ ./work.py run '{"inp": ["dir/a.txt", "dir/b.txt"], "out": ["result.txt"]}'
 DIRECTOR │ Ran 3 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
 DIRECTOR │ See you!

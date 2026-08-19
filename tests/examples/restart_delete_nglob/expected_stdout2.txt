@@ -15,7 +15,7 @@ Same step hash       compact, inp_digest fea55a2f, out_digest 9e7bd348
 Same step hash       compact, inp_digest a34240ac, out_digest 810dcef4
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 1 job(s).
-DIRECTOR │ Trying to remove 2 outdated output(s)
+DIRECTOR │ Trying to remove 2 deletable file(s) and empty director(y|ies)
   REMOVE │ out1.txt
   REMOVE │ foo1.txt
    PHASE │ watch
