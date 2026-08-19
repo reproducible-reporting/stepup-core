@@ -185,7 +185,7 @@ class PendingSummary:
     """Steps with no candidate blocker at all: dispatch could have picked them up.
 
     Normally this means the build phase ended before they were dispatched,
-    e.g. after a failing step put the scheduler on hold, or after an interrupt.
+    e.g. after a failing step drained the scheduler, or after an interrupt.
     Failing that, it exposes stale `_safe` metadata:
     `_INSERT_PEND_STEP` reads the stored safety columns
     instead of re-deriving safety from the creator chain,

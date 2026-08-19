@@ -156,7 +156,7 @@ and will be updated with any further changes before the final release.
   3. The CPU affinity mask reported by the operating system.
   4. The total number of CPUs reported by the operating system.
   The first source that yields a usable value is used.
-- After a step fails, the scheduler is now put on hold by default, like `make` without
+- After a step fails, the scheduler now drains by default, like `make` without
   `-k` (steps already running still finish; no new steps are started).
   Use the new `--keep-going` / `-k` flag (or `STEPUP_BUILD_KEEP_GOING`) to restore the
   previous behavior of continuing to build every step whose inputs remain available.
@@ -308,7 +308,7 @@ and will be updated with any further changes before the final release.
   amending an `out` path that was declared as `vol`, or vice versa, is still an error.
 - Several environment variables have been renamed for consistency.
   See [Configuration files](reference/configuration.md) for details.
-- A new returncode was added to indicate that the scheduler was put on hold
+- A new returncode was added to indicate that the scheduler was draining
   and not reporting pending steps.
   See [StepUp Return Codes](reference/returncode.md) for details.
 - Documentation has been updated to reflect the API changes and to clarify some other points:

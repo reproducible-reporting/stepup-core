@@ -13,7 +13,7 @@ It can be a sum of the following codes:
 - `4` = at least one step failed
 - `8` = some workflow condition caused a warning (other than the following two)
 - `16` = at least one (non-optional) step remained pending
-- `32` = the scheduler was put on hold (not reporting pending steps)
+- `32` = the scheduler was draining (not reporting pending steps)
 
 The warning bit (`8`) is set by conditions that make the build questionable
 without making it fail, such as a target that no step produces
@@ -36,10 +36,10 @@ A few example combinations are:
   (never combined with other codes).
 - `8` = every step succeeded, but the build reported a warning.
 - `20` = at least one step failed and at least one step remained pending.
-- `36` = a step failed and the scheduler was put on hold,
+- `36` = a step failed and the scheduler was draining,
   which is what a failing step without `--keep-going` produces.
 - `38` = the build was aborted by Ctrl-C (`2`) while a step was running,
-  so that step counted as failed (`4`) and the scheduler was put on hold (`32`).
+  so that step counted as failed (`4`) and the scheduler was draining (`32`).
 
 To test for a specific flag in Bash, use the bitwise AND operator `&`:
 
@@ -57,6 +57,6 @@ if [ $(($RET & 16)) -gt 0 ]; then
     echo "At least one (non-optional) step remained pending"
 fi
 if [ $(($RET & 32)) -gt 0 ]; then
-    echo "The scheduler was put on hold"
+    echo "The scheduler was draining"
 fi
 ```

@@ -27,7 +27,7 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 # With STEPUP_DEBUG=1, `stepup build` scans its own director log and adds RETURN_CODE_INTERNAL
 # for every finding. The absence of that bit shows that the reported usage error, which the
 # director logs before hiding it from the client, is not mistaken for an internal problem.
-[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
+[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

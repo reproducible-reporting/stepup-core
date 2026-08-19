@@ -1,7 +1,7 @@
 #!/usr/bin/env -S bash -x
 source ../example.rc
 
-# Run with the default behavior: the scheduler is put on hold after "false" fails,
+# Run with the default behavior: the scheduler drains after "false" fails,
 # so the independent "touch" step (alphabetically after "false", hence dispatched
 # second with a single job slot) never gets a chance to run.
 sb -j 1 -w & # > current_stdout1.txt &
@@ -14,7 +14,7 @@ stepup join
 
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
+[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

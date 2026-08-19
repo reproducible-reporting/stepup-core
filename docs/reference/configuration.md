@@ -258,7 +258,7 @@ alphabetically within each group.
 
 :   Set to `true` to keep dispatching new steps after another step has failed,
     as long as their own inputs remain available (like `make -k`).
-    By default (`false`), the scheduler is put on hold after the first failure:
+    By default (`false`), the scheduler starts draining after the first failure:
     steps already running are still allowed to finish, but no new steps are started.
 
 `defer_cap` / `STEPUP_BUILD_DEFER_CAP` / `--defer-cap`

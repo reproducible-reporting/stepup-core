@@ -176,7 +176,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Keep building steps whose inputs remain available after another step fails, "
-        "instead of putting the scheduler on hold, like `make -k`. "
+        "instead of draining the scheduler, like `make -k`. "
         "In-progress steps always finish regardless of this flag.",
     )
     group.add_argument(
@@ -1060,8 +1060,8 @@ _KEY_ACTIONS = {
     "d": KeyAction(
         method="drain",
         label="drain",
-        description="Put the scheduler on hold. (Leaves build phase.)",
-        message="Putting the scheduler on hold.",
+        description="Drain the scheduler. (Leaves build phase.)",
+        message="Draining the scheduler.",
     ),
     "j": KeyAction(
         method="join",

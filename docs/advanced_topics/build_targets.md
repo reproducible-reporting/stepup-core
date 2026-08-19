@@ -41,7 +41,7 @@ at the end of the build, instead of silently doing nothing,
 and the exit code gets the warning bit (`8`) set,
 see [Return Codes](../reference/returncode.md).
 This warning only appears when the build phase completes normally.
-If the build is interrupted or put on hold
+If the build is interrupted or the scheduler drains
 (e.g. a step fails and `--keep-going` is not used),
 the warning is suppressed, since the workflow may not be fully defined yet.
 

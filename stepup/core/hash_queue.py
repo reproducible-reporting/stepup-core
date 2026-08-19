@@ -139,7 +139,7 @@ class HashQueue:
             # Retrieving the exception (if any) only marks it as retrieved:
             # it stays on the future for submitters that do await it
             # (`Builder.run_promoted_hash_jobs`).
-            # `Executor.run_hash_job` has already reported it and put the scheduler on hold,
+            # `Executor.run_hash_job` has already reported it and drained the scheduler,
             # while most submitters are fire-and-forget (`DirectorHandler._submit_to_check`),
             # so without this, asyncio would log "Future exception was never retrieved"
             # for an error that was in fact fully handled.
@@ -240,7 +240,7 @@ async def gather_hashes(
         The new hash of every path in `path_hash_causes`, keyed by path, in input order.
         A path whose hash could not be computed (e.g. a directory used as a file, or a `stat` error)
         is **absent** from the result:
-        `Executor.run_hash_job` has already reported the error and put the scheduler on hold,
+        `Executor.run_hash_job` has already reported the error and drained the scheduler,
         and neither caller (startup nor watcher) can do anything with that path,
         so raising here would only take down the director over one bad file.
     """
@@ -276,7 +276,7 @@ async def gather_hashes(
         try:
             new_hash = await asyncio.shield(job.future)
         except Exception:  # noqa: BLE001
-            # Already reported by `Executor.run_hash_job`, which also put the scheduler on hold.
+            # Already reported by `Executor.run_hash_job`, which also drained the scheduler.
             # Dropping the path from the result is what keeps one unhashable file
             # from aborting the whole startup scan or watch cycle.
             # A cancelled job raises `CancelledError`,

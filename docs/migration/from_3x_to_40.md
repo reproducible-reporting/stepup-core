@@ -429,7 +429,7 @@ and the "runnable" flag was dropped because nothing ever set it.
 | The build reported a warning (other than the ones below). | — | `8` |
 | At least one (non-optional) step remained pending. | `4` | `16` |
 | At least one step was still runnable. | `8` | *removed* |
-| The scheduler was put on hold. | — | `32` |
+| The scheduler was draining. | — | `32` |
 
 This is a silent change for scripts:
 a StepUp 3 test like `[ $(($? & 2)) -gt 0 ]` still runs under StepUp 4,

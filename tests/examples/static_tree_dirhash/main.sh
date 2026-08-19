@@ -12,9 +12,9 @@ stepup graph current_graph1
 stepup join
 
 # Wait for background processes, if any.
-# The build fails and the director is on hold: 2 + 32 = 34
+# The build fails and the director drains: 2 + 32 = 34
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
+[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 # The error must point at the offending call in plan.py.
 grep -q "Directories are not allowed: foo/bar" .stepup/fail.log
@@ -36,9 +36,9 @@ stepup graph current_graph2
 stepup join
 
 # Wait for background processes, if any.
-# The build fails and the director is on hold: 2 + 32 = 34
+# The build fails and the director drains: 2 + 32 = 34
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
+[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 # The error must point at the offending call in plan.py.
 grep -q "Directories are not allowed: foo/bar" .stepup/fail.log

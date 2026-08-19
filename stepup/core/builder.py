@@ -154,7 +154,7 @@ class Builder:
         await self.reporter.update_counts(nsuccess, ntotal)
 
     async def job_loop(self):
-        """Run all runnable jobs until there are none left or the scheduler is on hold."""
+        """Run all runnable jobs until there are none left or the scheduler is draining."""
         await self._report_counts()
         await self.reporter("PHASE", "build")
         if self.executor.write_joblog:
@@ -169,11 +169,11 @@ class Builder:
             # Hash jobs jump the queue:
             # their runnability never depends on the workflow database,
             # so there is no reason to make them wait behind a SQL poll.
-            # This must not be skipped while scheduler.on_hold is set ("start no new steps"):
+            # This must not be skipped while scheduler.draining is set ("start no new steps"):
             # pending hash jobs are bookkeeping for work already under way
             # and must finish for the phase to end cleanly,
             # which falls out naturally here
-            # since on_hold is only enforced inside scheduler.pop_runnable_job().
+            # since draining is only enforced inside scheduler.pop_runnable_job().
             if len(self.running_tasks) < self.njob:
                 hash_job = self.hash_queue.pop_nowait()
                 if hash_job is not None:
@@ -318,7 +318,7 @@ class Builder:
             task, job = self.done_tasks.popitem()
             exc = task.exception()
             if exc is not None:
-                self.scheduler.on_hold = True
+                self.scheduler.draining = True
 
                 msg = f"Exception in task {task.get_name()}"
                 raise RuntimeError(msg) from exc

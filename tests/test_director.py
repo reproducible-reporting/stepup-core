@@ -90,7 +90,7 @@ def test_interpret_jobs_cgroup_error_falls_back_to_env(monkeypatch):
 
 @attrs.define
 class FakeScheduler:
-    on_hold: bool = attrs.field(default=False)
+    draining: bool = attrs.field(default=False)
 
 
 @attrs.define
@@ -110,7 +110,7 @@ class FakeBuilder:
     running_tasks: list = attrs.field(factory=list)
 
 
-async def drain_interrupt(handler: DirectorHandler) -> None:
+async def await_interrupt(handler: DirectorHandler) -> None:
     """Wait for the in-flight interrupt task, which `serve()` cancels in its teardown instead."""
     await handler._interrupt_task
 
@@ -134,21 +134,21 @@ async def test_shutdown_first_call_is_graceful():
     handler = make_director_handler(nrunning=1)
     await handler.shutdown()
     assert handler.stop_event.is_set()
-    assert handler.scheduler.on_hold
+    assert handler.scheduler.draining
     assert handler.executor.signals == []
 
 
-async def test_shutdown_holds_the_scheduler_before_reporting():
+async def test_shutdown_drains_the_scheduler_before_reporting():
     """`q` must stop dispatch before it awaits the reporter, not after."""
     handler = make_director_handler(nrunning=1)
-    on_hold_when_reported = []
+    draining_when_reported = []
 
     async def fake_report(action, description, pages=None):
-        on_hold_when_reported.append(handler.scheduler.on_hold)
+        draining_when_reported.append(handler.scheduler.draining)
 
     handler.reporter = fake_report
     await handler.shutdown()
-    assert on_hold_when_reported == [True]
+    assert draining_when_reported == [True]
 
 
 async def test_shutdown_escalates_to_sigint_then_sigkill():
@@ -168,9 +168,9 @@ async def test_interrupt_aborts_without_waiting():
     """A terminal signal aborts the build instead of waiting for running steps."""
     handler = make_director_handler(nrunning=0)
     handler.interrupt(signal.SIGINT)
-    await drain_interrupt(handler)
+    await await_interrupt(handler)
     assert handler.stop_event.is_set()
-    assert handler.scheduler.on_hold
+    assert handler.scheduler.draining
     assert handler.executor.signals == [signal.SIGINT]
 
 
@@ -178,7 +178,7 @@ async def test_interrupt_then_shutdown_escalates_straight_to_sigkill():
     """A `q` press after a terminal signal escalates, instead of re-sending `SIGINT`."""
     handler = make_director_handler(nrunning=0)
     handler.interrupt(signal.SIGINT)
-    await drain_interrupt(handler)
+    await await_interrupt(handler)
     assert handler.executor.signals == [signal.SIGINT]
     await handler.shutdown()
     assert handler.executor.signals == [signal.SIGINT, signal.SIGKILL]
@@ -189,7 +189,7 @@ async def test_interrupt_kills_steps_after_grace(monkeypatch):
     monkeypatch.setattr(director, "INTERRUPT_GRACE", 0.2)
     handler = make_director_handler(nrunning=1)
     handler.interrupt(signal.SIGTERM)
-    await drain_interrupt(handler)
+    await await_interrupt(handler)
     assert handler.executor.signals == [signal.SIGINT, signal.SIGKILL]
 
 
@@ -200,7 +200,7 @@ async def test_interrupt_second_signal_skips_the_grace(monkeypatch):
     time_start = time.monotonic()
     handler.interrupt(signal.SIGINT)
     handler.interrupt(signal.SIGINT)
-    await drain_interrupt(handler)
+    await await_interrupt(handler)
     assert handler.executor.signals == [signal.SIGINT, signal.SIGKILL]
     assert time.monotonic() - time_start < 5.0
 
@@ -216,3 +216,22 @@ async def test_cancel_interrupt_cancels_a_pending_grace(monkeypatch):
     await handler.cancel_interrupt()
     assert time.monotonic() - time_start < 5.0
     assert handler.executor.signals == [signal.SIGINT]
+
+
+#
+# Interactive use
+#
+
+
+async def test_drain_does_not_wait_for_running_steps():
+    """`d` only stops dispatch, so the keystroke loop stays responsive while steps finish.
+
+    The handler has no watcher and an unset `stop_event`,
+    i.e. the build phase never ends here,
+    so a `drain` that waits for it can only time out.
+    """
+    handler = make_director_handler(nrunning=1)
+    await asyncio.wait_for(handler.drain(), timeout=5.0)
+    assert handler.scheduler.draining
+    # Unlike shutdown, draining leaves the build phase to end on its own.
+    assert not handler.stop_event.is_set()

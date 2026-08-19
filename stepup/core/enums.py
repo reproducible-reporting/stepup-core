@@ -51,8 +51,8 @@ class ReturnCode(Flag):
     PENDING = auto()
     """All runnable steps have completed but some non-optional steps remained pending."""
 
-    ONHOLD = auto()
-    """The scheduler is on hold. Pending steps are not reported."""
+    DRAINED = auto()
+    """The scheduler was draining. Pending steps are not reported."""
 
 
 class FileState(IntEnum):

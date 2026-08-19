@@ -18,10 +18,10 @@ Input vanished unexpectedly: missing.txt
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-   ERROR │ The scheduler has been put on hold due to unexpected input changes.
+   ERROR │ The scheduler is draining due to unexpected input changes.
 DIRECTOR │ Ran 4 job(s).
  WARNING │ 1 step(s) failed.
- WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Scheduler is draining. Not reporting pending steps.
  WARNING │ Skipping file cleanup due to incomplete build
  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
    PHASE │ watch

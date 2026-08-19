@@ -8,7 +8,7 @@
 ────────────────────────────────────────────────────────────────────────────────
    PHASE │ build
 DIRECTOR │ Ran 0 job(s).
- WARNING │ Scheduler is put on hold. Not reporting pending steps.
+ WARNING │ Scheduler is draining. Not reporting pending steps.
  WARNING │ Skipping file cleanup due to incomplete build
  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
    PHASE │ watch

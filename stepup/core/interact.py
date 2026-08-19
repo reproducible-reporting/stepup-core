@@ -121,7 +121,7 @@ def get_socket() -> Path:
 
 @_report_errors
 def shutdown_tool(args: argparse.Namespace):
-    """Put the scheduler on hold, wait for running steps to complete and then exit StepUp."""
+    """Drain the scheduler, wait for running steps to complete and then exit StepUp."""
     get_rpc_client(get_socket()).call.shutdown()
 
 
@@ -129,7 +129,7 @@ def shutdown_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Add the `shutdown` subcommand to the parser."""
     subparsers.add_parser(
         "shutdown",
-        help="Put the scheduler on hold, wait for running steps to complete and then exit StepUp. "
+        help="Drain the scheduler, wait for running steps to complete and then exit StepUp. "
         "Call again to kill running steps.",
     )
     return shutdown_tool
@@ -137,7 +137,7 @@ def shutdown_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 
 @_report_errors
 def drain_tool(args: argparse.Namespace):
-    """Put the scheduler on hold. (No new steps are started.)"""
+    """Drain the scheduler. (No new steps are started.)"""
     get_rpc_client(get_socket()).call.drain()
 
 
@@ -145,7 +145,7 @@ def drain_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Add the `drain` subcommand to the parser."""
     subparsers.add_parser(
         "drain",
-        help="Put the scheduler on hold. (No new steps are started.)",
+        help="Drain the scheduler. (No new steps are started.)",
     )
     return drain_tool
 

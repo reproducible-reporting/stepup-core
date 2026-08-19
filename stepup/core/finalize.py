@@ -413,9 +413,9 @@ async def report_completion(
         returncode |= ReturnCode.FAILED
         await reporter("WARNING", f"{nfailed} step(s) failed.")
 
-    if scheduler.on_hold:
-        returncode |= ReturnCode.ONHOLD
-        await reporter("WARNING", "Scheduler is put on hold. Not reporting pending steps.")
+    if scheduler.draining:
+        returncode |= ReturnCode.DRAINED
+        await reporter("WARNING", "Scheduler is draining. Not reporting pending steps.")
         # The missing-target checks further down are skipped too: the build phase ended
         # early, so steps that would have declared a target as output may not have run yet,
         # making a "not produced" warning unreliable.

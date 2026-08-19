@@ -120,7 +120,7 @@ When writing new examples, the following conventions ensure that they are proper
   [Return Codes](../../docs/reference/returncode.md).
   Never assert a bare number: `example.rc` defines one shell constant per bit
   (`RETURN_CODE_INTERNAL`, `RETURN_CODE_INTERRUPTED`, `RETURN_CODE_FAILED`,
-  `RETURN_CODE_WARNING`, `RETURN_CODE_PENDING`, `RETURN_CODE_ONHOLD`),
+  `RETURN_CODE_WARNING`, `RETURN_CODE_PENDING`, `RETURN_CODE_DRAINED`),
   which say what the example expects instead of leaving the reader to decode a literal.
   `tests/test_conventions.py` keeps them in sync with the `ReturnCode` enum.
 
@@ -139,11 +139,11 @@ When writing new examples, the following conventions ensure that they are proper
       ```
 
     - Combine bits with an arithmetic expansion.
-      A step that fails without `--keep-going` also puts the scheduler on hold,
+      A step that fails without `--keep-going` also drains the scheduler,
       which is the most common combination in these examples:
 
       ```bash
-      [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
+      [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
       ```
 
       The `[[ ! -f result.txt ]] || exit 1` pattern can confirm that failed steps did

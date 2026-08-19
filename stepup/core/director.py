@@ -105,7 +105,7 @@ class ServeConfig:
 
     keep_going: bool = attrs.field(default=False)
     """Whether to keep dispatching new steps after another step has failed (like `make -k`).
-    If False (default), the scheduler is put on hold after the first failure;
+    If False (default), the scheduler starts draining after the first failure;
     steps already running are still allowed to finish."""
 
     fix_epoch: bool = attrs.field(default=True)
@@ -232,7 +232,7 @@ def parse_args() -> argparse.Namespace:
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Keep dispatching new steps after another step has failed, "
-        "instead of putting the scheduler on hold. (In-progress steps always finish.)",
+        "instead of draining the scheduler. (In-progress steps always finish.)",
     )
     parser.add_argument(
         "--log-level",
@@ -1049,7 +1049,7 @@ class DirectorHandler:
         `shutdown` (the `q` key) and `interrupt` (a terminal signal).
         Whether and how running steps are then signalled is the caller's policy.
         """
-        self.scheduler.on_hold = True
+        self.scheduler.draining = True
         self.stop_event.set()
         if self.watcher is not None:
             self.watcher.interrupt.set()
@@ -1058,7 +1058,7 @@ class DirectorHandler:
     async def shutdown(self) -> None:
         """Shut down the director, escalating if called repeatedly.
 
-        The first call puts the scheduler on hold and stops the build/watch loops gracefully:
+        The first call drains the scheduler and stops the build/watch loops gracefully:
         steps already running are left to finish on their own.
         A second call interrupts running steps with `SIGINT`;
         a third and any further call escalates to `SIGKILL`.
@@ -1069,7 +1069,7 @@ class DirectorHandler:
         """
         # Stop dispatching before anything else: the reporter calls below are real awaits,
         # during which the builder's job loop would otherwise still start new steps.
-        self.scheduler.on_hold = True
+        self.scheduler.draining = True
         if self.stop_event.is_set():
             sig = self._next_step_signal
             await self.reporter("DIRECTOR", f"Interrupting running steps ({sig.name}).")
@@ -1208,13 +1208,14 @@ class DirectorHandler:
 
     @allow_rpc
     async def drain(self) -> None:
-        """Stop dispatching new steps and wait until running steps have completed.
+        """Stop dispatching new steps, leaving running steps to finish.
 
+        This returns immediately, without waiting for the running steps:
+        a caller that wants to wait uses `wait` afterwards.
         When using the `--watch` option,
         StepUp switches to the watch phase when there are no more running steps.
         """
-        self.scheduler.on_hold = True
-        await self._wait_for_end_build_phase()
+        self.scheduler.draining = True
 
     @allow_rpc
     async def join(self) -> None:
@@ -1255,7 +1256,7 @@ class DirectorHandler:
         await wait_for_events(
             self.watcher.processed, self.stop_event, return_when=asyncio.FIRST_COMPLETED
         )
-        self.scheduler.on_hold = False
+        self.scheduler.draining = False
         self.builder.resume.set()
 
     @allow_rpc

@@ -29,9 +29,9 @@ stepup graph current_graph2
 stepup join
 
 # Wait for background processes, if any.
-# The scheduler is put on hold because a file could not be hashed: 32
+# The scheduler drains because a file could not be hashed: 32
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq "${RETURN_CODE_ONHOLD}" ]] || exit 1
+[[ "${RETURNCODE}" -eq "${RETURN_CODE_DRAINED}" ]] || exit 1
 
 # Check that the error message was logged.
 grep "Could not hash data.txt" .stepup/fail.log || exit 1

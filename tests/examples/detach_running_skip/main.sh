@@ -12,7 +12,7 @@ stepup join
 
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
+[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 # The detached step ran to completion and recorded its output.
 [[ -f trigger_work.txt ]] || exit 1

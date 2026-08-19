@@ -77,9 +77,9 @@ def _make_failed_run() -> Run:
     return run
 
 
-def test_report_puts_scheduler_on_hold_after_failure_by_default():
+def test_report_drains_scheduler_after_failure_by_default():
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(on_hold=False)
+    scheduler = SimpleNamespace(draining=False)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=_NullDB())
     run = _make_failed_run()
 
@@ -87,12 +87,12 @@ def test_report_puts_scheduler_on_hold_after_failure_by_default():
 
     action, _label, _pages = reporter.calls[0]
     assert action == "FAIL"
-    assert scheduler.on_hold is True
+    assert scheduler.draining is True
 
 
 def test_report_leaves_scheduler_running_with_keep_going():
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(on_hold=False)
+    scheduler = SimpleNamespace(draining=False)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=_NullDB(), keep_going=True)
     run = _make_failed_run()
 
@@ -100,7 +100,7 @@ def test_report_leaves_scheduler_running_with_keep_going():
 
     action, _label, _pages = reporter.calls[0]
     assert action == "FAIL"
-    assert scheduler.on_hold is False
+    assert scheduler.draining is False
 
 
 def _make_worker_run(job_i: int) -> Run:
@@ -303,7 +303,7 @@ async def testnew_run_cancelled_reports_failure_instead_of_raising(wfs: Workflow
 
     monkeypatch.setattr(ThreadWorker, "run_in_thread", _raise_hash_cancelled)
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(on_hold=False, record_stop_time=lambda step_i, *, succeeded: None)
+    scheduler = SimpleNamespace(draining=False, record_stop_time=lambda step_i, *, succeeded: None)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
 
     run, new_hash = await executor._new_run(1, step, [], [])
@@ -323,7 +323,7 @@ async def test_compute_out_step_hash_cancelled_reports_failure(wfs: Workflow, mo
 
     monkeypatch.setattr(ThreadWorker, "run_in_thread", _raise_hash_cancelled)
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(on_hold=False, record_stop_time=lambda step_i, *, succeeded: None)
+    scheduler = SimpleNamespace(draining=False, record_stop_time=lambda step_i, *, succeeded: None)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
     run = Run(step, job_i=1)
     step_hash = StepHash.from_inp(step.label, False, {}, {})
@@ -425,7 +425,7 @@ async def test_try_skip_job_bails_out_when_out_hash_cancelled(wfs: Workflow, mon
 
     monkeypatch.setattr(ThreadWorker, "run_in_thread", _raise_for_out_hash)
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(on_hold=False, record_stop_time=lambda step_i, *, succeeded: None)
+    scheduler = SimpleNamespace(draining=False, record_stop_time=lambda step_i, *, succeeded: None)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
     step_hash = StepHash.from_inp(step.label, False, {}, {})
 
@@ -559,8 +559,8 @@ async def test_run_hash_job_cancelled_cancels_future_without_raising(monkeypatch
 async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workflow, monkeypatch):
     """A stat error (e.g. a permission problem) must resolve the future with the exception,
     not propagate: an exception escaping a builder task crashes job_loop via
-    handle_done_tasks. It must also put the scheduler on hold: a fire-and-forget submitter
-    (static/step) never awaits this future, so on_hold's existing
+    handle_done_tasks. It must also drain the scheduler: a fire-and-forget submitter
+    (static/step) never awaits this future, so draining's existing
     "stop dispatching new steps" + report_completion warning is what actually surfaces the
     failure to the user instead of it being silently lost."""
 
@@ -573,7 +573,7 @@ async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workf
 
     monkeypatch.setattr(FileHash, "regen", _raise_permission_error)
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(on_hold=False)
+    scheduler = SimpleNamespace(draining=False)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, workflow=wfs, db=wfs.db)
     hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
 
@@ -585,7 +585,7 @@ async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workf
     # The error names the steps involved with the file, so the user can find the plan.py call.
     assert pages[0][0] == "Provenance of foo.txt"
     assert "step:cat foo.txt" in pages[0][1]
-    assert scheduler.on_hold is True
+    assert scheduler.draining is True
 
 
 async def test_run_hash_job_exception_without_file_node_reports_no_provenance(
@@ -598,7 +598,7 @@ async def test_run_hash_job_exception_without_file_node_reports_no_provenance(
 
     monkeypatch.setattr(FileHash, "regen", _raise_permission_error)
     reporter = _FakeReporter()
-    scheduler = SimpleNamespace(on_hold=False)
+    scheduler = SimpleNamespace(draining=False)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, workflow=wfs, db=wfs.db)
     hash_job = HashJob("gone.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
 

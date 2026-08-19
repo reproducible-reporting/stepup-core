@@ -111,7 +111,7 @@ class Executor:
     """Flag to explain why a step is rerun rather than skipped, or vice versa."""
 
     keep_going: bool = attrs.field(kw_only=True)
-    """If `True`, do not put the scheduler on hold when a step fails."""
+    """If `True`, do not drain the scheduler when a step fails."""
 
     live_progress: bool = attrs.field(kw_only=True)
     """Whether the reporter is an interactive terminal that wants live step-count updates."""
@@ -374,8 +374,8 @@ class Executor:
 
         if unexpected_input_changes:
             # Changes to inputs are suspect and can break everything.
-            # End the build phase gracefully by putting the scheduler on hold.
-            await self._hold_for_unexpected_input_changes()
+            # End the build phase gracefully by draining the scheduler.
+            await self._drain_for_unexpected_input_changes()
 
     #
     # Job function helper methods
@@ -521,7 +521,7 @@ class Executor:
                 self.workflow.update_file_hashes(new_inp_hashes, cause=HashUpdateCause.FAILED)
         await self._finalize_failed_run(run)
         if unexpected_input_changes:
-            await self._hold_for_unexpected_input_changes()
+            await self._drain_for_unexpected_input_changes()
         return run, None
 
     async def _finalize_failed_run(self, run: Run) -> None:
@@ -532,12 +532,10 @@ class Executor:
         self._report_step_counts()
         await self._report_run(run)
 
-    async def _hold_for_unexpected_input_changes(self) -> None:
-        """Put the scheduler on hold because a step's inputs changed unexpectedly."""
-        self.scheduler.on_hold = True
-        await self.reporter(
-            "ERROR", "The scheduler has been put on hold due to unexpected input changes."
-        )
+    async def _drain_for_unexpected_input_changes(self) -> None:
+        """Drain the scheduler because a step's inputs changed unexpectedly."""
+        self.scheduler.draining = True
+        await self.reporter("ERROR", "The scheduler is draining due to unexpected input changes.")
 
     #
     # Hash computation helpers
@@ -636,15 +634,15 @@ class Executor:
                 # Must not propagate as a task exception:
                 # that would crash `job_loop` via `handle_done_tasks`,
                 # tearing down the whole director over one bad file.
-                # Instead, borrow `on_hold`'s existing visibility and effect:
+                # Instead, borrow `draining`'s existing visibility and effect:
                 # stop dispatching new steps and report the error loudly
-                # (mirroring `handle_done_tasks`' own `on_hold`
-                # and `report_completion`'s "Scheduler is put on hold" warning),
+                # (mirroring `handle_done_tasks`' own `draining`
+                # and `report_completion`'s "Scheduler is draining" warning),
                 # while letting already-running or queued work wind down normally.
                 # The file is left UNCONFIRMED.
                 # A fire-and-forget submitter never awaits this future,
-                # so on_hold and the reported error are what surface the failure to the user.
-                self.scheduler.on_hold = True
+                # so draining and the reported error are what surface the failure to the user.
+                self.scheduler.draining = True
                 hash_job.future.set_exception(exc)
                 await self.reporter(
                     "ERROR",
@@ -874,7 +872,7 @@ class Executor:
         pages = await self._build_report_pages(run)
         action = self._determine_action(run)
         if action == "FAIL" and not self.keep_going:
-            self.scheduler.on_hold = True
+            self.scheduler.draining = True
         await self.reporter(action, run.description, pages)
 
     async def _build_report_pages(self, run: Run) -> list[tuple[str, str]]:

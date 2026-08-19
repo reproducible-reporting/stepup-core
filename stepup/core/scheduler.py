@@ -400,7 +400,7 @@ class Scheduler:
     use_duration: bool = attrs.field(kw_only=True, default=False)
     """Whether to use the duration of steps to optimize the execution order."""
 
-    on_hold: bool = attrs.field(init=False, default=False)
+    draining: bool = attrs.field(init=False, default=False)
     """Whether the scheduling of new jobs is temporarily paused, e.g. after a user interrupt."""
 
     start_times: dict[int, int] = attrs.field(init=False, factory=dict)
@@ -502,8 +502,8 @@ class Scheduler:
     #
 
     async def pop_runnable_job(self) -> Job | None:
-        if self.on_hold:
-            logger.debug("Scheduler is on hold, not popping any jobs")
+        if self.draining:
+            logger.debug("Scheduler is draining, not popping any jobs")
             return None
 
         # We're taking a rather long lock here,

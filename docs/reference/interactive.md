@@ -27,7 +27,7 @@ If the key is not associated with a command, the following help message appears:
 ```text
 ───────────────────────────────────── Keys ─────────────────────────────────────
   g = graph       Write the workflow graph to graph.txt.
-  d = drain       Put the scheduler on hold. (Leaves build phase.)
+  d = drain       Drain the scheduler. (Leaves build phase.)
   j = join        Wait for all steps to complete before shutting down.
   q = shutdown    Shut down the system. (1st is graceful. 2nd kills steps.)
   r = run         Restart the builder. (Leaves watch phase.)
@@ -44,7 +44,7 @@ These commands are defined as follows:
   If it takes too long for the steps to complete, you can press `q` again to kill them with `SIGINT`.
   Press `q` for a third time to kill the steps with `SIGKILL`. (nuclear option)
 - `d = drain`:
-  StepUp waits for all running steps to complete and will not start new jobs.
+  StepUp will not start new jobs and lets the running steps finish.
   As soon as no steps are running, StepUp transitions into the *watch phase*.
 - `j = join`:
   StepUp continues running jobs until no new jobs can be found.

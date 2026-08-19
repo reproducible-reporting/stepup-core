@@ -2,7 +2,7 @@
 source ../example.rc
 
 # "false" fails and never creates broken.txt, so the consumer of broken.txt
-# can never run either. With --keep-going, the scheduler does not go on hold,
+# can never run either. With --keep-going, the scheduler does not drain,
 # so the pending report is produced and must attribute the consumer to the
 # "blocked by failed steps" bucket, not to a dead-end input.
 sb -j 1 -w -k & # > current_stdout.txt &

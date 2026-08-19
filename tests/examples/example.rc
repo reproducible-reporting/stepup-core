@@ -11,11 +11,11 @@ rm -rvf $(cat .gitignore)
 
 # Bits of the `stepup build` return code, see `docs/reference/returncode.md`.
 # Assert `${RETURNCODE}` against these names instead of numeric literals,
-# e.g. `[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1`.
+# e.g. `[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1`.
 # They are kept in sync with the `ReturnCode` enum by `tests/test_conventions.py`.
 RETURN_CODE_INTERNAL=1
 RETURN_CODE_INTERRUPTED=2
 RETURN_CODE_FAILED=4
 RETURN_CODE_WARNING=8
 RETURN_CODE_PENDING=16
-RETURN_CODE_ONHOLD=32
+RETURN_CODE_DRAINED=32
