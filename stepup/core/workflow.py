@@ -9,7 +9,7 @@ import os
 import re
 import stat
 import textwrap
-from collections.abc import Callable, Collection, Iterator, Mapping
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 
 import attrs
 from path import Path
@@ -655,12 +655,6 @@ class GlobViolation:
 class Workflow(Trellis):
     """Represent StepUp's dual graph with the current state of the workflow."""
 
-    create_parent_dirs: bool = attrs.field(kw_only=True, default=True)
-    """Whether to create parent directories of output files when they are supplied or created.
-
-    This is disabled in tests only. StepUp normally always creates directories when needed.
-    """
-
     dir_queue: asyncio.Queue | None = attrs.field(kw_only=True)
     """Directories to be watched can be added to this queue."""
 
@@ -687,11 +681,15 @@ class Workflow(Trellis):
     """
 
     to_be_deleted: dict[str, FileHash | None] = attrs.field(init=False, factory=dict)
-    """Files that can be deleted, including parent directories left empty after file deletion.
+    """Files and directories that can be deleted.
 
     Maps a path to its file hash.
-    This dict contains BUILT/OUTDATED file nodes (with their file hash)
-    and VOLATILE file nodes (hash always `None`).
+    A key with a trailing separator is a directory,
+    which is only removed when it turns out to be empty, and its hash is always `None`.
+    Use `mark_dir_to_be_deleted` to add one.
+    A key without a trailing separator is a file:
+    BUILT/OUTDATED file nodes carry their file hash
+    and VOLATILE file nodes carry `None`, meaning the file is removed whatever its content.
 
     Entries are keyed by path, not by node,
     so they are only meaningful for as long as the graph does not change underneath them:
@@ -2176,8 +2174,8 @@ class Workflow(Trellis):
         # and the pattern's base directory,
         # so a zero-match pattern still notices its first match appearing.
         for path in paths:
-            self.watch_existing_dir(Path(path.rstrip(os.sep)).parent)
-        self.watch_existing_dir(glob_base_dir(ng.pattern))
+            self.watch_dir(Path(path.rstrip(os.sep)).parent)
+        self.watch_dir(glob_base_dir(ng.pattern))
 
     def _raise_if_glob_match(self, step_label: str, product_paths: Collection[str]) -> None:
         """Raise when a registered glob pattern matches a path a step is about to build.
@@ -2388,32 +2386,42 @@ class Workflow(Trellis):
                     yield path
 
     #
-    # Directory watching
+    # Directory handling
     #
 
     def watch_dir(self, path: str):
-        """Watch a directory, creating it first when `create_parent_dirs` is set.
+        """Watch a directory, without creating it.
 
         The directory is handed to the watcher through `dir_queue`.
+        It does not need to exist yet:
+        the watcher remembers it and installs the watch as soon as it appears.
         """
         path = Path(path)
         if path == "":
             path = Path(".")
-        if self.create_parent_dirs:
-            path.makedirs_p()
         if self.dir_queue is not None:
             self.dir_queue.put_nowait(path)
 
-    def watch_existing_dir(self, path: str):
-        """Watch the nearest existing ancestor of `path`, without creating directories.
+    def create_dirs(self, paths: Iterable[str]):
+        """Create the directories at `paths` and watch them.
 
-        Unlike `watch_dir`, this never calls `makedirs_p`:
-        a glob pattern only observes the file system,
-        so registering one must not create the directory it points at.
-        When the directory does not exist, the closest existing ancestor is watched instead,
-        which is the best that can be done without creating anything.
+        Call this right before a step needs them,
+        so a directory is only created when something is actually going to use it.
+        The root directory is silently skipped: it always exists and is watched at startup.
         """
-        path = Path(path) if path else Path(".")
-        while path not in ("", ".") and not path.is_dir():
-            path = path.parent
-        self.watch_dir(path if path != "" else ".")
+        dirs = {Path(path).normpath() for path in paths}
+        dirs.discard(Path("."))
+        for path in sorted(dirs):
+            path.makedirs_p()
+            self.watch_dir(path)
+
+    def mark_dir_to_be_deleted(self, path: str):
+        """Mark a directory as a candidate for removal in the next cleanup pass.
+
+        The directory is only removed if it is empty by then,
+        so marking one that other files still live in is harmless.
+        The root directory is never marked.
+        """
+        path = Path(path).normpath()
+        if path != ".":
+            self.to_be_deleted[path + os.sep] = None

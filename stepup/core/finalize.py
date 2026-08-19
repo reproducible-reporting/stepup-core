@@ -16,6 +16,7 @@ they work with the database, the workflow, the scheduler and the reporter only,
 which is why they live here instead of in `builder.py`.
 """
 
+import os
 from collections.abc import Callable, Iterable
 from itertools import groupby
 
@@ -114,7 +115,11 @@ async def revert_optional(db: DBSession, workflow: Workflow, reporter: ReporterC
         }
         if len(to_be_deleted) > 0:
             # Mark the files for deletion and reset their state in the database.
+            # Their nodes stay in the graph, so `File.before_delete` does not run for them
+            # and their directories have to be marked here.
             workflow.to_be_deleted.update(to_be_deleted)
+            for path in to_be_deleted:
+                workflow.mark_dir_to_be_deleted(Path(path).parent)
             db.execute(UPDATE_OPTIONAL_TO_BE_DELETED)
         # Drop in the end: the temp tables are only needed for the duration of this call.
         db.execute(DROP_OPTIONAL_STEP_TABLE)
@@ -433,20 +438,19 @@ async def report_completion(
 
 async def remove_outdated_outputs(db: DBSession, workflow: Workflow, reporter: ReporterClient):
     """Remove outdated outputs from the file system and reset their state in the database."""
-    await reporter(
-        "DIRECTOR",
-        f"Trying to remove {len(workflow.to_be_deleted)} outdated output(s)",
-    )
-    # Remove the files from the file system, deepest first, so a directory is only
-    # pruned once every file it contains is gone.
-    parents = set()
-    for path, file_hash in sorted(workflow.to_be_deleted.items(), reverse=True):
+    file_paths = [path for path in workflow.to_be_deleted if not path.endswith(os.sep)]
+    await reporter("DIRECTOR", f"Trying to remove {len(file_paths)} outdated output(s)")
+    # Remove the files from the file system.
+    for path in sorted(file_paths, reverse=True):
+        file_hash = workflow.to_be_deleted[path]
         path = Path(path)
         if (file_hash is None or file_hash.regen(path) == file_hash) and _try_remove(path.remove):
             await reporter("REMOVE", path)
-            parents.add(path.parent)
 
-    await _prune_empty_dirs(parents, reporter)
+    # Directories come after the files, so a directory that just lost its last file is empty
+    # by the time it is considered for removal.
+    dirs = {Path(path).normpath() for path in workflow.to_be_deleted if path.endswith(os.sep)}
+    await _prune_empty_dirs(dirs, reporter)
 
     # Reset the state of the deleted files in the database,
     # if their node is still present and its state is not VOLATILE.
@@ -463,36 +467,32 @@ async def remove_outdated_outputs(db: DBSession, workflow: Workflow, reporter: R
             WHERE node IN node_tmp
             AND state != ?
             """,
-            [
-                (path, FileState.PLANNED.value, FileState.VOLATILE.value)
-                for path in workflow.to_be_deleted
-            ],
+            [(path, FileState.PLANNED.value, FileState.VOLATILE.value) for path in file_paths],
         )
     workflow.to_be_deleted.clear()
 
 
-async def _prune_empty_dirs(parents: set[Path], reporter: ReporterClient):
-    """Remove the directories in `parents`, and their own parents, as long as they are empty.
+async def _prune_empty_dirs(dirs: set[Path], reporter: ReporterClient):
+    """Remove the directories in `dirs`, and their own parents, as long as they are empty.
 
     Parameters
     ----------
-    parents
-        The directories to consider for removal,
-        i.e. the parents of the files that were just removed.
+    dirs
+        The directories to consider for removal.
     reporter
         Every removed directory is reported to this reporter.
     """
     # The sorted list is used as a stack, so the deepest directory is handled first.
     # The parent of a removed directory is pushed on top, i.e. out of sorted order,
     # so that the walk up towards the root continues right away.
-    todo = sorted(parents)
+    todo = sorted(dirs)
     while len(todo) > 0:
-        parent = todo.pop()
-        if parent.is_dir() and not any(parent.iterdir()) and _try_remove(parent.rmdir):
-            await reporter("REMOVE", parent)
-            grandparent = parent.parent
-            if grandparent.name not in ("..", ".", ""):
-                todo.append(grandparent)
+        path = todo.pop()
+        if path.is_dir() and not any(path.iterdir()) and _try_remove(path.rmdir):
+            await reporter("REMOVE", path)
+            parent = path.parent
+            if parent.name not in ("..", ".", ""):
+                todo.append(parent)
 
 
 def _try_remove(remove: Callable[[], None]) -> bool:

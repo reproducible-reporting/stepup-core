@@ -354,13 +354,14 @@ and will be updated with any further changes before the final release.
 ### Removed
 
 - StepUp no longer tracks directories.
-  They are either assumed to be present (for static files) or created transparently when needed.
+  They are either assumed to be present (for static files)
+  or created transparently right before a step needs it as a workdir or writes an output into them.
   This has some consequences:
     - The `mkdir()` command has been removed.
     - Input and output files can no longer be directories.
   Some of the internal logic that relied on directories being tracked,
   has been refactored to work without them:
-    - The internal watcher uses some simple heuristics to determine which directories to watch.
+    - The watcher uses some simple heuristics to determine which directories to watch.
       It also handles renaming and moving of directories.
     - The cleanup script (`stepup clean`) and the automatic cleanup at the end of a successful run
       will remove empty directories after having removed outdated output files they contained.

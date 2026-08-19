@@ -1,0 +1,41 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   step:echo hello > dir1/hello.txt
+             product   step:echo world > dir2/world.txt
+
+step:echo hello > dir1/hello.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+             product   file:dir1/hello.txt
+                sink   file:dir1/hello.txt
+
+file:dir1/hello.txt
+               state = BUILT
+             creator   step:echo hello > dir1/hello.txt
+              source   step:echo hello > dir1/hello.txt
+
+step:echo world > dir2/world.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+             product   file:dir2/world.txt
+                sink   file:dir2/world.txt
+
+file:dir2/world.txt
+               state = BUILT
+             creator   step:echo world > dir2/world.txt
+              source   step:echo world > dir2/world.txt

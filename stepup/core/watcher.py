@@ -301,16 +301,21 @@ class AsyncInotifyWrapper:
         """Install a watch for every directory received from the dir_queue.
 
         The file events observed in a watched directory are put on the change_queue.
+        A directory that does not exist yet is recorded without a watch,
+        just like one that was watched before and has been removed since.
+        Its nearest existing ancestor is watched instead,
+        so `change_loop` sees it appear and installs the pending watch at that moment.
         """
         async for path in stoppable_iterator(self.dir_queue.get, self.stop_event):
             path = Path(path).normpath()
-            if not path.is_dir():
-                raise FileNotFoundError(f"Cannot watch non-directory: {path}")
-            while path not in self.watches:
-                if path.name == "..":
-                    break
+            while not (path.is_dir() or path.name == ".." or path in ("", ".")):
+                self.watches.setdefault(path, None)
+                path = path.parent
+            while path.name != "..":
                 if path == "":
                     path = Path(".")
+                if self.watches.get(path) is not None:
+                    break
                 self._install_watch(path)
                 if path == ".":
                     break

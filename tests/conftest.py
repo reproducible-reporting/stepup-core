@@ -164,9 +164,7 @@ async def wfs_factory() -> AsyncIterator[Callable[..., Awaitable[Workflow]]]:
             # to acquire the lock for the duration of their test.
             db = stack.enter_context(DBSession.open(":memory:"))
             dir_queue = asyncio.Queue()
-            workflow = Workflow(
-                db, create_parent_dirs=False, dir_queue=dir_queue, defer_cap=defer_cap
-            )
+            workflow = Workflow(db, dir_queue=dir_queue, defer_cap=defer_cap)
             await workflow.initialize()
             workflows.append(workflow)
             return workflow

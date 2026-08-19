@@ -801,6 +801,15 @@ class Step(Node):
         """
         self.delete_hash()
 
+    def before_delete(self):
+        """Queue the working directory for removal right before the step is deleted.
+
+        StepUp creates the working directory when it dispatches the step,
+        so it also takes it away again when the step disappears from the workflow.
+        The directory is only removed when it is empty by the end of the cleanup pass.
+        """
+        self.graph.mark_dir_to_be_deleted(self.command_and_workdir[1])
+
     def can_recycle(
         self,
         *,

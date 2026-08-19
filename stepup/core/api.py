@@ -390,6 +390,8 @@ def step(
         The path is normalized before further processing.
         If this is a relative path, it is relative to the work directory of the caller.
         (The default is the current directory.)
+        It does not need to exist yet: StepUp creates it right before running the command,
+        and removes it again when the step leaves the workflow and the directory is empty.
     need
         The level of necessity for the step.
         Three values are allowed:

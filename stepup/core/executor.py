@@ -823,6 +823,13 @@ class Executor:
             shell = run.step.uses_shell()
             need = run.step.get_need()
             env_overrides = run.step.get_env_overrides()
+            out_paths = [record.path for record in run.step.out_paths()]
+            vol_paths = [record.path for record in run.step.vol_paths()]
+
+        # The step is about to run in its working directory and to write its outputs,
+        # which is the moment these directories are needed.
+        # Outputs declared later are handled by the `amend` RPC.
+        self.workflow.create_dirs([workdir, *(Path(path).parent for path in out_paths + vol_paths)])
 
         env = dict(self.base_env)
         # Apply step-specific overrides first, so the reserved variables below always win.

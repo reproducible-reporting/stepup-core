@@ -1,0 +1,33 @@
+ STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Checking 3 file(s) for changes
+ DELETED │ sub/inp.txt
+ DELETED │ out.txt
+   PHASE │ build
+DIRECTOR │ Ran 0 job(s).
+ WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             MISSING: sub/inp.txt  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Run `stepup browse` and search for a name above to see the steps involved.
+────────────────────────────────────────────────────────────────────────────────
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+ UPDATED │ sub/inp.txt
+   PHASE │ build
+  NOSKIP │ cp -p sub/inp.txt out.txt
+───────────────────────────── Missing output files ─────────────────────────────
+out.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   compact ➜ explained, inp_digest 6cefd526, out_digest b19341b7 ➜ a23c0e47
+────────────────────────────────────────────────────────────────────────────────
+   START │ cp -p sub/inp.txt out.txt
+ SUCCESS │ cp -p sub/inp.txt out.txt
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

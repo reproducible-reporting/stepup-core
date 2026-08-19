@@ -2,7 +2,6 @@
 source ../example.rc
 
 # Run the example
-mkdir -p sub/dir/nested
 sb -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.

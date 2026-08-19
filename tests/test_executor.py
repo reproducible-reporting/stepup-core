@@ -239,6 +239,8 @@ def _make_command_run(job_i: int) -> Run:
         uses_shell=lambda: False,
         get_need=lambda: Need.DEFAULT,
         get_env_overrides=dict,
+        out_paths=lambda: (),
+        vol_paths=lambda: (),
     )
     return Run(step, job_i=job_i)
 
@@ -254,7 +256,8 @@ async def test_run_command_discounts_suspended_time(
     The second case checks the clamp at zero, which the `CHECK(wtime >= 0)` constraint
     on the `step_outcome` table depends on.
     """
-    executor = _make_executor(reporter=_FakeReporter(), db=_NullDB())
+    workflow = SimpleNamespace(create_dirs=lambda paths: None)
+    executor = _make_executor(reporter=_FakeReporter(), db=_NullDB(), workflow=workflow)
     run = _make_command_run(23)
 
     async def fake_launch_command(*args, **kwargs):

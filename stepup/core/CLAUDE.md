@@ -260,6 +260,52 @@ Trigger names follow the same `<table>_<purpose>` convention as indexes, with no
 the enum (e.g. `{StepState.SUCCEEDED.value}`) rather than hardcoded literals,
 so they can never drift from `enums.py`.
 
+## Directory Creation and Removal
+
+StepUp has no node type for directories, yet it creates and removes the ones its steps need.
+The two halves are deliberately symmetric:
+**a directory is created when a step is about to use it,
+and marked for removal when that step or its files leave the workflow.**
+
+### Creation
+
+`Executor._run_command` creates the working directory of a step
+and the parent directories of its regular and volatile outputs,
+right before launching the command.
+The `amend` RPC does the same for outputs declared while the step is already running.
+`Workflow.create_dirs` is the only place that calls `makedirs_p`.
+
+Declaring a file (`_declare_file`, `_resolve_supply_file`), registering a glob pattern
+and repopulating the directory queue at startup all merely *watch* a directory
+(`Workflow.watch_dir`), which never creates anything.
+Creating a directory earlier than the step that fills it means creating directories
+for steps that never run.
+
+The watcher takes the missing directories from there:
+`AsyncInotifyWrapper.dir_loop` records a directory that does not exist yet as an entry
+without a watch, exactly like a directory whose watch inotify has dropped,
+and watches the nearest existing ancestor instead.
+`change_loop` installs the pending watch when the directory appears
+and rescans its contents, so nothing created in the gap is missed.
+
+### Removal
+
+`Workflow.to_be_deleted` holds files and directories alike,
+distinguished by a trailing separator on the key.
+`File.before_delete` marks the file's parent directory,
+`Step.before_delete` marks the step's working directory,
+and `revert_optional` marks the parents of the outputs it flags,
+whose nodes stay in the graph and therefore never reach `before_delete`.
+A directory is marked whatever the state of the file that named it,
+which is what catches an output the user removed by hand:
+the file itself is then no longer in `to_be_deleted`, but its directory still is.
+
+`remove_outdated_outputs` deletes the files first and hands the directories to
+`_prune_empty_dirs`, which removes each one only if it is empty,
+and then walks up to the root doing the same.
+Emptiness is the only safeguard here,
+so marking a directory too eagerly is harmless by construction.
+
 ## File Path Considerations
 
 StepUp uses the `path` module instead of the built-in `pathlib` to handle file paths.

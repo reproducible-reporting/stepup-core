@@ -189,6 +189,11 @@ class File(Node):
 
         The row in the file table is removed automatically by `ON DELETE CASCADE`
         when the node row is deleted; here we only queue the on-disk file for deletion.
+
+        The parent directory is queued whatever the state of the file,
+        also when the file itself is not deleted (or is already gone).
+        A directory is only removed when it is empty by the end of the cleanup pass,
+        so this cannot take away a directory that something else still needs.
         """
         state = self.get_state()
         if state == FileState.VOLATILE:
@@ -197,6 +202,7 @@ class File(Node):
             file_hash = self.get_hash()
             if not file_hash.is_unknown:
                 self.graph.to_be_deleted[self.path] = file_hash
+        self.graph.mark_dir_to_be_deleted(self.path.parent)
 
     #
     # Getters and setters

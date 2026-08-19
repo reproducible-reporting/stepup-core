@@ -83,27 +83,20 @@ async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: Report
         rows = db.execute(sql).fetchall()
         nglobs = list(workflow.nglobs())
 
-    # File-node directories belong to the workflow, so they are watched directly
-    # and may be created (`watch_dir` honours `create_parent_dirs`).
-    # Glob-pattern directories are not:
-    # a pattern only observes the file system,
-    # so they go through watch_existing_dir instead, which never creates a directory.
+    # None of these directories is created here:
+    # a directory is only created when a step is about to write into it.
     # A root-level path's parent is "", normalized to "." so it folds into the same set entry
     # as glob_base_dir's own root value, keeping the reported count accurate.
-    file_dirs = {str(Path(path).parent) or "." for (path,) in rows}
-    glob_dirs = set()
+    parents = {str(Path(path).parent) or "." for (path,) in rows}
     for ng in nglobs:
         for path in ng.files():
-            glob_dirs.add(str(Path(path.rstrip(os.sep)).parent) or ".")
-        glob_dirs.add(glob_base_dir(ng.pattern))
+            parents.add(str(Path(path.rstrip(os.sep)).parent) or ".")
+        parents.add(glob_base_dir(ng.pattern))
 
-    parents = file_dirs | glob_dirs
     if len(parents) > 0:
         await reporter("STARTUP", f"Watching {len(parents)} director(y|ies)")
-        for path in file_dirs:
+        for path in parents:
             workflow.watch_dir(path)
-        for path in glob_dirs - file_dirs:
-            workflow.watch_existing_dir(path)
 
 
 async def check_env_changes(workflow: Workflow, db: DBSession, reporter: ReporterClient):

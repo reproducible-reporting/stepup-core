@@ -1998,6 +1998,7 @@ async def test_to_be_deleted(wfp: Workflow):
             "gone": gone_file_hash,
             "volatile": None,
             "sub/foo": foo_file_hash,
+            "sub/": None,
         }
         assert wfp.find_and_detached(Step, "./plan.py") == (None, None)
 
@@ -2941,7 +2942,7 @@ async def test_static_tree_product_message_both_orders(wfp: Workflow):
 
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        wfp_b = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
+        wfp_b = Workflow(db, dir_queue=dir_queue)
         await wfp_b.initialize()
         async with db:
             declare_static(wfp_b, wfp_b.root, ["plan.py"])
@@ -4583,9 +4584,7 @@ async def wfs_target(request) -> AsyncIterator[Workflow]:
     """
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        workflow = Workflow(
-            db, create_parent_dirs=False, dir_queue=dir_queue, targets=request.param
-        )
+        workflow = Workflow(db, dir_queue=dir_queue, targets=request.param)
         await workflow.initialize()
         yield workflow
         async with db:
@@ -4628,7 +4627,7 @@ async def test_need_threshold_property_with_target_dirs_only():
     """
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        workflow = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue, target_dirs=["out/"])
+        workflow = Workflow(db, dir_queue=dir_queue, target_dirs=["out/"])
         await workflow.initialize()
         assert workflow.need_threshold == Need.DEFAULT
 
@@ -4679,13 +4678,13 @@ async def test_define_step_recycle_target_volatile_output():
     """
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        workflow1 = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
+        workflow1 = Workflow(db, dir_queue=dir_queue)
         await workflow1.initialize()
         async with db:
             workflow1.define_step(workflow1.root, "touch out.txt", vol_paths=["out.txt"])
             workflow1.find(Step, "touch out.txt").detach()
 
-        workflow2 = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue, targets=["out.txt"])
+        workflow2 = Workflow(db, dir_queue=dir_queue, targets=["out.txt"])
         await workflow2.initialize()
         with pytest.raises(GraphError):
             async with db:
@@ -4718,14 +4717,12 @@ async def test_resolve_supply_file_target_static_existing():
     """
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        workflow1 = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
+        workflow1 = Workflow(db, dir_queue=dir_queue)
         await workflow1.initialize()
         async with db:
             declare_static(workflow1, workflow1.root, ["input.txt"])
 
-        workflow2 = Workflow(
-            db, create_parent_dirs=False, dir_queue=dir_queue, targets=["input.txt"]
-        )
+        workflow2 = Workflow(db, dir_queue=dir_queue, targets=["input.txt"])
         await workflow2.initialize()
         with pytest.raises(GraphError):
             async with db:
@@ -4873,13 +4870,13 @@ async def test_reconcile_targets_raises_when_no_pending_creator():
     """
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        workflow1 = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
+        workflow1 = Workflow(db, dir_queue=dir_queue)
         await workflow1.initialize()
         async with db:
             workflow1.define_step(workflow1.root, "touch out.txt", vol_paths=["out.txt"])
             workflow1.find(Step, "touch out.txt").set_state(StepState.SUCCEEDED)
 
-        workflow2 = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue, targets=["out.txt"])
+        workflow2 = Workflow(db, dir_queue=dir_queue, targets=["out.txt"])
         await workflow2.initialize()
         async with db:
             _init_target_dir(workflow2)
@@ -4895,13 +4892,13 @@ async def test_reconcile_targets_skips_when_creator_pending():
     """
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        workflow1 = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
+        workflow1 = Workflow(db, dir_queue=dir_queue)
         await workflow1.initialize()
         async with db:
             workflow1.define_step(workflow1.root, "touch out.txt", vol_paths=["out.txt"])
             # A freshly declared step defaults to PENDING (Step.initialize()).
 
-        workflow2 = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue, targets=["out.txt"])
+        workflow2 = Workflow(db, dir_queue=dir_queue, targets=["out.txt"])
         await workflow2.initialize()
         async with db:
             _init_target_dir(workflow2)
@@ -4981,7 +4978,7 @@ async def test_reconcile_targets_dir_flags_producer_check_after():
     """
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        workflow1 = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
+        workflow1 = Workflow(db, dir_queue=dir_queue)
         await workflow1.initialize()
         async with db:
             workflow1.define_step(
@@ -4990,9 +4987,7 @@ async def test_reconcile_targets_dir_flags_producer_check_after():
             step = workflow1.find(Step, "touch out/report.txt")
             workflow1.db.execute("UPDATE step SET _check_after = 0 WHERE node = ?", (step.i,))
 
-        workflow2 = Workflow(
-            db, create_parent_dirs=False, dir_queue=dir_queue, target_dirs=["out/"]
-        )
+        workflow2 = Workflow(db, dir_queue=dir_queue, target_dirs=["out/"])
         await workflow2.initialize()
         async with db:
             _init_target_dir(workflow2, "out/")
@@ -5013,9 +5008,7 @@ async def test_reconcile_targets_dir_removed_flags_stale_implied_need():
     """
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        workflow1 = Workflow(
-            db, create_parent_dirs=False, dir_queue=dir_queue, target_dirs=["out/"]
-        )
+        workflow1 = Workflow(db, dir_queue=dir_queue, target_dirs=["out/"])
         await workflow1.initialize()
         async with db:
             workflow1.define_step(
@@ -5029,7 +5022,7 @@ async def test_reconcile_targets_dir_removed_flags_stale_implied_need():
 
         # workflow2 shares the database but is constructed without target_dirs, simulating
         # the directory target being removed on the next director start.
-        workflow2 = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
+        workflow2 = Workflow(db, dir_queue=dir_queue)
         await workflow2.initialize()
         async with db:
             _init_target_dir(workflow2)

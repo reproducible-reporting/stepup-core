@@ -1,10 +1,6 @@
 #!/usr/bin/env -S bash -x
 source ../example.rc
 
-# The base directory must exist up front: dir_loop only watches directories that
-# already exist, so creating data/ later is a pre-existing, out-of-scope limitation.
-mkdir data
-
 # Run the example
 sb -j 1 -w & # > current_stdout.txt &
 
@@ -13,8 +9,10 @@ stepup wait
 stepup graph current_graph1
 grep "MATCHES: \[\]" .stepup/success.log
 
-# The pattern has zero matches, but its base directory is still watched (via
-# glob_base_dir), so creating the first match is noticed.
+# The pattern has zero matches, and its base directory does not even exist yet.
+# The watcher remembers it (via glob_base_dir) and installs the watch when it appears,
+# so creating the first match is noticed.
+mkdir data
 echo one > data/a.txt
 stepup watch-update data/a.txt
 stepup run

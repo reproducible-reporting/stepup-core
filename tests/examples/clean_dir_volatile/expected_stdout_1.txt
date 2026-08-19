@@ -1,0 +1,13 @@
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo keep > keep.txt
+ SUCCESS │ echo keep > keep.txt
+   START │ echo temp > vol/temp.txt
+ SUCCESS │ echo temp > vol/temp.txt
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph_1.txt, current_graph_1_provenance.dot and current_graph_1_dependency.dot
+DIRECTOR │ See you!

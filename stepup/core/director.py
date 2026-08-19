@@ -15,6 +15,7 @@ import traceback
 from collections.abc import Mapping
 from decimal import Decimal
 from importlib.metadata import version as get_version
+from itertools import chain
 
 import attrs
 from path import Path
@@ -970,6 +971,9 @@ class DirectorHandler:
                 vol_paths=vol_paths,
                 ran_concurrently=self.scheduler.ran_concurrently,
             )
+        # The step is still running and may write the new outputs as soon as this call returns,
+        # so their directories are created here rather than when the step was dispatched.
+        self.workflow.create_dirs(Path(path).parent for path in chain(out_paths, vol_paths))
         if to_check:
             checked_paths = set(to_check)
             await self.builder.run_promoted_hash_jobs(to_check, HashUpdateCause.CONFIRMED)
