@@ -134,10 +134,6 @@ Do not add `# noqa` comments unless the violation is a genuine false positive th
 be resolved by restructuring the code — the project's rule set already excludes rules
 that would fire spuriously in this codebase.
 
-Key rules to be aware of:
-
-- The default line length is 100.
-
 ### Docstrings
 
 Use **NumPy-style** sections (`Parameters`, `Returns`, `Raises`, ...)
@@ -177,20 +173,6 @@ Some conventions specific to this codebase:
     ```
 
 ### Markdown
-
-The project uses markdownlint (via pre-commit) on all `.md` files.
-Two rules that are easy to get wrong:
-
-- **MD007** — nested list items must use **4-space** indentation, not 2-space.
-  Match the pattern already in use throughout the repo:
-
-  ```markdown
-  - Top-level item
-      - Nested item (4 spaces)
-  ```
-
-- **MD031** — fenced code blocks must have a **blank line** before and after them,
-  even when they appear inside a list item.
 
 Section headings (`##`, `###`, ...) use **Title Case**
 (capitalize nouns, verbs, adjectives, and adverbs; lowercase articles,
