@@ -257,6 +257,22 @@ _FILE_COLLISION_HINTS = {
 
 Only the way out, never a restatement of the collision:
 `_file_collision_message` already names both declarations in front of the hint.
+
+Every hint here assumes both declarations are the plan's to change.
+When one of them is not, `_STEPUP_COLLISION_HINTS` takes over.
+"""
+
+_STEPUP_COLLISION_HINTS = {
+    FileRole.STATIC: "Drop the static() call.",
+    FileRole.OUTPUT: "Write the step's output elsewhere.",
+    FileRole.VOLATILE: "Write the volatile output elsewhere.",
+}
+"""The way out of a collision with a declaration StepUp made itself.
+
+Keyed by the role of the other declaration, the one a plan author wrote:
+that declaration is the only one that can be changed,
+so a hint that offers a choice between the two would send the reader after a `static()`
+call that does not exist in the plan.
 """
 
 
@@ -348,6 +364,32 @@ class Decl:
     creator: str = attrs.field()
     """The declaring node, as returned by `_creator_phrase`."""
 
+    authored: bool = attrs.field(default=True)
+    """Whether a plan author wrote this declaration and can therefore drop it.
+
+    It is `False` for the declarations StepUp makes itself while booting,
+    which no plan can remove.
+    """
+
+    @classmethod
+    def from_node(cls, role: FileRole, creator: Node) -> "Decl":
+        """Describe a declaration made by a node that exists in the graph.
+
+        Parameters
+        ----------
+        role
+            The role in which the file is declared.
+        creator
+            The node that declared the file.
+
+        Returns
+        -------
+        decl
+            The declaration.
+        """
+        kind = creator.kind()
+        return cls(role, _creator_phrase(kind, creator.label), authored=kind != Root.kind())
+
 
 @attrs.define(frozen=True)
 class Claim:
@@ -388,11 +430,12 @@ def _file_collision_message(path: str, decl_a: Decl, decl_b: Decl) -> str:
         When both declarations are identical, which is a bug in StepUp:
         redeclaring a file in the same role by the same creator is a no-op,
         not a collision, and must be skipped before reaching here.
+        Also when neither declaration is a plan author's,
+        since StepUp declares a single file while booting and cannot collide with itself.
     """
     decl1, decl2 = sorted([decl_a, decl_b])
     verb1 = _FILE_ROLE_VERBS[decl1.role]
     verb2 = _FILE_ROLE_VERBS[decl2.role]
-    hint = _FILE_COLLISION_HINTS[decl1.role, decl2.role]
     if decl1.role == decl2.role:
         if decl1.creator == decl2.creator:
             raise ConsistencyError(f"Identical declarations of file ({path}) are a no-op.")
@@ -401,6 +444,14 @@ def _file_collision_message(path: str, decl_a: Decl, decl_b: Decl) -> str:
         clash = f"cannot be both {verb1} and {verb2} by {decl1.creator}"
     else:
         clash = f"cannot be both {verb1} by {decl1.creator} and {verb2} by {decl2.creator}"
+    if decl1.authored and decl2.authored:
+        hint = _FILE_COLLISION_HINTS[decl1.role, decl2.role]
+    elif decl1.authored:
+        hint = _STEPUP_COLLISION_HINTS[decl1.role]
+    elif decl2.authored:
+        hint = _STEPUP_COLLISION_HINTS[decl2.role]
+    else:
+        raise ConsistencyError(f"StepUp's own declarations of file ({path}) collide.")
     return f"File ({path}) {clash}. {hint}"
 
 
@@ -487,7 +538,7 @@ def _claim_collision_message(path: str, claim: Claim, decl: Decl) -> str:
         return _static_tree_product_message(claim.creator.label, path)
     # `_creator_phrase` has no phrase for a static tree, so the claim may only be turned into
     # a `Decl` after the branch above has taken the tree creators out.
-    claim_decl = Decl(claim.role, _creator_phrase(claim.creator.kind(), claim.creator.label))
+    claim_decl = Decl.from_node(claim.role, claim.creator)
     return _file_collision_message(path, claim_decl, decl)
 
 
@@ -1274,8 +1325,10 @@ class Workflow(Trellis):
         if isinstance(creator, Node):
             if claim.role == role and claim.creator.i == creator.i:
                 return False
-            creator = _creator_phrase(creator.kind(), creator.label)
-        raise GraphError(_claim_collision_message(path, claim, Decl(role, creator)))
+            decl = Decl.from_node(role, creator)
+        else:
+            decl = Decl(role, creator)
+        raise GraphError(_claim_collision_message(path, claim, decl))
 
     def _raise_if_step_exists(self, creator: Node, step_label: str) -> None:
         """Raise when an attached step node with the same label already exists.

@@ -2693,18 +2693,39 @@ async def test_file_collision_message_same_step_out_and_vol(wfp: Workflow):
     )
 
 
-async def test_file_collision_message_root_creator(wfp: Workflow):
-    """A collision with a file StepUp itself declared static does not name a step."""
-    async with wfp.db:
-        plan = wfp.find(Step, "./plan.py")
+@pytest.mark.parametrize(
+    ("role", "expected"),
+    [
+        (
+            "out",
+            "File (plan.py) cannot be both declared static by StepUp itself "
+            "and built by step (aaa). "
+            "Write the step's output elsewhere.",
+        ),
+        (
+            "vol",
+            "File (plan.py) cannot be both declared static by StepUp itself "
+            "and declared volatile by step (aaa). "
+            "Write the volatile output elsewhere.",
+        ),
+        (
+            "static",
+            "File (plan.py) cannot be declared static by both StepUp itself and step (aaa). "
+            "Drop the static() call.",
+        ),
+    ],
+)
+async def test_file_collision_message_root_creator(wfp: Workflow, role: str, expected: str):
+    """A collision with a file StepUp itself declared static names only the way out of it.
+
+    The plan cannot drop StepUp's own declaration of `plan.py`,
+    so the hint may not offer a choice between the two declarations,
+    unlike the hints in `test_file_collision_message`.
+    """
     with pytest.raises(GraphError) as excinfo:
         async with wfp.db:
-            wfp.define_step(plan, "aaa", out_paths=["plan.py"])
-    assert str(excinfo.value) == (
-        "File (plan.py) cannot be both declared static by StepUp itself "
-        "and built by step (aaa). "
-        "Drop the static() call, or write the step's output elsewhere."
-    )
+            _claim_file(wfp, "plan.py", role, "aaa")
+    assert str(excinfo.value) == expected
 
 
 @pytest.mark.parametrize("wfs_target", [["p.txt"]], indirect=True)
