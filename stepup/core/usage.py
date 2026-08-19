@@ -76,9 +76,6 @@ class CgroupMemorySampler:
     peak_mib: float | None = attrs.field(init=False, default=None)
     """The highest aggregate memory usage observed so far, in mibibytes."""
 
-    nsample: int = attrs.field(init=False, default=0)
-    """The number of samples successfully read (0 means no peak is available)."""
-
     def __attrs_post_init__(self) -> None:
         if self.cgroup_dir is None:
             self.cgroup_dir = find_own_memory_cgroup()
@@ -99,7 +96,6 @@ class CgroupMemorySampler:
             ):
                 best_mib = int(fh.read()) / 1048576
         if best_mib is not None:
-            self.nsample += 1
             self.peak_mib = best_mib if self.peak_mib is None else max(self.peak_mib, best_mib)
 
     async def loop(self, stop_event: asyncio.Event) -> None:

@@ -988,7 +988,6 @@ async def test_skip_nglob(wfp: Workflow):
         assert len(nglobs) == 1
         assert nglobs[0].pattern == "${*prefix}_data.txt"
         assert nglobs[0].subs == {"prefix": "n???"}
-        assert nglobs[0].used_names == ("prefix",)
 
 
 async def test_hash_completed_success(wfp: Workflow):

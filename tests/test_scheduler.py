@@ -25,7 +25,6 @@ from stepup.core.scheduler import (
     RECOMPUTE_READY,
     SELECT_INPUTS,
     SELECT_NEXT_STEP,
-    SELECT_RESOURCE_COUNTS,
     SELECT_SAFE_UPDATE,
     UPDATE_CHECK_AFTER,
     Scheduler,
@@ -1441,84 +1440,6 @@ def test_select_inputs_only_returns_inputs_for_queried_sink(con):
     rows = _get_inputs(con, 2)
     assert len(rows) == 1
     assert rows[0]["label"] == "file_4.txt"
-
-
-# -----------------------------------------------------------------------
-# Tests for SELECT_RESOURCE_COUNTS
-# -----------------------------------------------------------------------
-
-
-def _get_resource_counts(con):
-    """Run SELECT_RESOURCE_COUNTS and return a dict mapping name -> (used, available)."""
-    return {
-        name: (used, available)
-        for name, used, available in con.execute(SELECT_RESOURCE_COUNTS).fetchall()
-    }
-
-
-def test_resource_counts_no_resources(con):
-    """When available_resource is empty the query returns no rows."""
-    assert _get_resource_counts(con) == {}
-
-
-def test_resource_counts_no_running_steps(con):
-    """A resource with no running steps reports used=0."""
-    con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 4)")
-    counts = _get_resource_counts(con)
-    assert counts == {"gpu": (0, 4)}
-
-
-def test_resource_counts_one_running_step(con):
-    """Units consumed by a single RUNNING step are reflected in used."""
-    _insert_step(con, 2, 1, StepState.RUNNING)
-    con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 4)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 1)")
-    counts = _get_resource_counts(con)
-    assert counts == {"gpu": (1, 4)}
-
-
-def test_resource_counts_multiple_running_steps_summed(con):
-    """Units from several RUNNING steps are summed into used."""
-    _insert_step(con, 2, 1, StepState.RUNNING)
-    _insert_step(con, 3, 1, StepState.RUNNING)
-    con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 8)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 2)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (3, 'gpu', 3)")
-    counts = _get_resource_counts(con)
-    assert counts == {"gpu": (5, 8)}
-
-
-def test_resource_counts_non_running_steps_not_counted(con):
-    """PENDING, SUCCEEDED, and FAILED steps do not contribute to used."""
-    _insert_step(con, 2, 1, StepState.PENDING)
-    _insert_step(con, 3, 1, StepState.SUCCEEDED)
-    _insert_step(con, 4, 1, StepState.FAILED)
-    con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 4)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 1)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (3, 'gpu', 1)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (4, 'gpu', 1)")
-    counts = _get_resource_counts(con)
-    assert counts == {"gpu": (0, 4)}
-
-
-def test_resource_counts_multiple_resources_independent(con):
-    """Each resource is counted independently; a running step only affects its own resource."""
-    _insert_step(con, 2, 1, StepState.RUNNING)
-    con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 4)")
-    con.execute("INSERT INTO available_resource (name, units) VALUES ('cpu', 16)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 2)")
-    counts = _get_resource_counts(con)
-    assert counts == {"gpu": (2, 4), "cpu": (0, 16)}
-
-
-def test_resource_counts_resource_not_in_available_excluded(con):
-    """A resource used by a running step but absent from available_resource is not returned."""
-    _insert_step(con, 2, 1, StepState.RUNNING)
-    # 'secret' is not in available_resource, so it must not appear in the result.
-    con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 4)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'secret', 1)")
-    counts = _get_resource_counts(con)
-    assert "secret" not in counts
 
 
 # -----------------------------------------------------------------------

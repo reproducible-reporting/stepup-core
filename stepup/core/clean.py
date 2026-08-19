@@ -175,12 +175,6 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
         console.print("# No outputs found to be cleaned.")
 
 
-def fmtnum(i: int):
-    if i == 0:
-        return "[grey]0[/]"
-    return str(i)
-
-
 SQL_MATCH_PATH = """
 SELECT label FROM node JOIN file ON node.i = file.node
 WHERE label = ? OR label LIKE ? ESCAPE '\\'

@@ -366,20 +366,6 @@ WHERE dep.sink = ?
 """
 
 
-# Select the available and used resource counts for each resource.
-SELECT_RESOURCE_COUNTS = f"""
-SELECT ar.name, COALESCE(running.used, 0) AS used, ar.units AS available
-FROM available_resource AS ar
-LEFT JOIN (
-    SELECT st.name, SUM(st.units) AS used
-    FROM step_resource AS st
-    JOIN step AS s ON s.node = st.node
-    WHERE s.state = {StepState.RUNNING.value}
-    GROUP BY st.name
-) AS running ON running.name = ar.name
-"""
-
-
 @attrs.define
 class Scheduler:
     """Turn PENDING jobs into RUNNING jobs as the builder requests them."""
@@ -789,16 +775,3 @@ class Scheduler:
         # This is safe to do here because the builder is guaranteed to have no RUNNING steps.
         self.start_times.clear()
         self.stop_times.clear()
-
-    #
-    # Information gathering (must be wrapped in db by caller)
-    #
-
-    def get_resource_counts(self) -> dict[str, dict[str, int]]:
-        """Return used and available resource counts."""
-        db = self.workflow.db
-        result = {}
-        for row in db.execute(SELECT_RESOURCE_COUNTS):
-            name, used, available = row
-            result[name] = {"used": used, "available": available}
-        return result

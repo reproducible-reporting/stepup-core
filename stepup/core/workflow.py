@@ -2076,8 +2076,7 @@ class Workflow(Trellis):
 
         This is the relevance test for a path with no node of its own: after a pattern stopped
         declaring its matches, the pattern itself is the only record that the  path is interesting.
-        Deliberately not `NamedGlob.may_change`, which answers a different question
-        and deserializes every match set to do it.
+        Only the stored regexes are consulted, so no match set has to be deserialized.
         """
         sql = (
             "SELECT nglob.regex FROM nglob JOIN node ON node.i = nglob.node WHERE NOT node.detached"

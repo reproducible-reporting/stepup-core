@@ -107,7 +107,6 @@ def test_named_glob_simple(tmpdir):
     ng = NamedGlob(pattern, {})
     assert ng.pattern == pattern
     assert ng.subs == {}
-    assert ng.used_names == ("prefix",)
     ng.extend(
         [
             "path/some/foo1/some-main.txt",
@@ -153,7 +152,6 @@ def test_named_glob_simple_subs():
     pattern = "path/${*prefix}/foo${*num}/${*prefix}-main.txt"
     subs = {"num": "[0-9]"}
     ng = NamedGlob(pattern, subs)
-    assert ng.used_names == ("num", "prefix")
     ng.extend(
         [
             "path/some/foo1/some-main.txt",
@@ -182,39 +180,12 @@ def test_named_glob_anonymous():
     ng = NamedGlob(pattern, {})
     assert ng.pattern == pattern
     assert ng.subs == subs
-    assert ng.used_names == ()
     ng.extend(paths)
     assert ng.results == {(): set(paths)}
 
 
-@pytest.mark.parametrize(
-    ("pattern", "subs"),
-    [
-        ("inp*.txt", {}),
-        ("${*inp}.txt", {}),
-        ("${*inp}.txt", {"inp": "???"}),
-    ],
-)
-def test_named_glob_has_wildcards_true(pattern, subs):
-    assert NamedGlob(pattern, subs).can_match_multiple
-
-
-@pytest.mark.parametrize(
-    ("pattern", "subs"),
-    [
-        ("inp.txt", {}),
-        ("${inp}.txt", {}),
-        ("${*inp}.txt", {"inp": "foo"}),
-    ],
-)
-def test_named_glob_has_wildcards_false(pattern, subs):
-    assert not NamedGlob(pattern, subs).can_match_multiple
-
-
 def test_named_glob_iterators_anonymous():
     ng = NamedGlob("pre_*.txt")
-    assert ng.can_match_multiple
-    assert len(ng.used_names) == 0
 
     # Add a few things and test
     ng.extend(["pre_fir.txt", "pre_sec.txt", "other.log"])
@@ -227,11 +198,6 @@ def test_named_glob_iterators_anonymous():
     assert match.files == ["pre_fir.txt", "pre_sec.txt"]
     with pytest.raises(AttributeError):
         _ = match.anything
-
-    assert ng.may_change({"pre_fir.txt"}, set())
-    assert ng.may_change(set(), {"pre_foo.txt"})
-    assert not ng.may_change({"other.log"}, set())
-    assert not ng.may_change(set(), {"pre_fir.txt"})
 
     ng.reduce(["pre_sec.txt"])
     for files in ng.files(), list(ng):
@@ -478,16 +444,14 @@ def _make_files(paths: Collection[str]):
                 pass
 
 
-def _check_named_glob(tmpdir, pattern, subs, paths, used_names, results):
+def _check_named_glob(tmpdir, pattern, subs, paths, results):
     with contextlib.chdir(tmpdir):
         _make_files(paths)
         ng1 = NamedGlob(pattern, subs)
         ng1.glob()
         assert ng1.results == results
     ng2 = NamedGlob(pattern, subs)
-    assert ng2.used_names == used_names
     assert ng2.subs == subs
-    assert ng2.can_match_multiple
     ng2.extend(paths)
     assert ng2.results == results
     assert bool(ng2) == (len(results) > 0)
@@ -556,12 +520,11 @@ def test_named_glob_named_ext(tmpdir):
     pattern = "../../general/${*name}-public${*ext}"
     paths = ["../../general/.gitignore-public", "../../general/.pre-commit-config-public.yaml"]
     subs = {}
-    used_names = ("ext", "name")
     results = {
         ("", ".gitignore"): {"../../general/.gitignore-public"},
         (".yaml", ".pre-commit-config"): {"../../general/.pre-commit-config-public.yaml"},
     }
-    _check_named_glob(tmpdir, pattern, subs, paths, used_names, results)
+    _check_named_glob(tmpdir, pattern, subs, paths, results)
 
 
 def test_recursive1(tmpdir):
@@ -570,7 +533,6 @@ def test_recursive1(tmpdir):
         pattern="data/**",
         subs={},
         paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
-        used_names=(),
         results={(): {"data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"}},
     )
 
@@ -581,7 +543,6 @@ def test_recursive2(tmpdir):
         pattern="data**",
         subs={},
         paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
-        used_names=(),
         results={(): {"data/"}},
     )
 
@@ -592,7 +553,6 @@ def test_recursive3(tmpdir):
         pattern="data**/",
         subs={},
         paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
-        used_names=(),
         results={(): {"data/"}},
     )
 
@@ -603,7 +563,6 @@ def test_recursive4(tmpdir):
         pattern="**.txt",
         subs={},
         paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
-        used_names=(),
         results={},
     )
 
@@ -614,7 +573,6 @@ def test_recursive5(tmpdir):
         pattern="**/*.txt",
         subs={},
         paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
-        used_names=(),
         results={(): {"data/sub/part1.txt", "data/part2.txt"}},
     )
 
@@ -625,7 +583,6 @@ def test_recursive6(tmpdir):
         pattern="**/",
         subs={},
         paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
-        used_names=(),
         results={(): {"data/", "data/sub/"}},
     )
 
@@ -636,7 +593,6 @@ def test_recursive7(tmpdir):
         pattern="data/**/*.txt",
         subs={},
         paths=["data.txt", "data/sub/part1.txt", "data/part2.txt"],
-        used_names=(),
         results={(): {"data/sub/part1.txt", "data/part2.txt"}},
     )
 
@@ -647,17 +603,12 @@ def test_hidden(tmpdir):
         pattern="*.txt",
         subs={},
         paths=["visible.txt", ".hidden.txt"],
-        used_names=(),
         results={(): {"visible.txt", ".hidden.txt"}},
     )
 
 
 def test_named_glob_will_change():
     ng = NamedGlob("subdir*/")
-    assert not ng.may_change(set(), {"subdir/foo.txt"})
-    assert not ng.may_change(set(), {"foo.log"})
-    assert ng.may_change(set(), {"subdir1/"})
-
     assert ng.will_change(set(), {"subdir/foo.txt"}) is None
     assert ng.will_change(set(), {"foo.log"}) is None
     assert ng.will_change(set(), {"subdir1/"}) is not None

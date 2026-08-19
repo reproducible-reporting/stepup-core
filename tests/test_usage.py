@@ -52,17 +52,14 @@ def test_cgroup_memory_sampler_tracks_peak(path_tmp):
     (path_tmp / "memory.current").write_text("1048576")  # 1 MiB
     sampler = CgroupMemorySampler(cgroup_dir=path_tmp)
     sampler.sample_once()
-    assert sampler.nsample == 1
     assert sampler.peak_mib == 1.0
 
     (path_tmp / "memory.current").write_text("2097152")  # 2 MiB
     sampler.sample_once()
-    assert sampler.nsample == 2
     assert sampler.peak_mib == 2.0
 
     (path_tmp / "memory.current").write_text("524288")  # 0.5 MiB: peak must not drop
     sampler.sample_once()
-    assert sampler.nsample == 3
     assert sampler.peak_mib == 2.0
 
 

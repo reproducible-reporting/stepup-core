@@ -198,32 +198,10 @@ class NamedGlob:
         """All matching files, grouped by substrings matching the named wildcards.
 
         The keys of the `results` dictionary are tuples with the substrings,
-        matching the respective named wildcards in the `used_names` tuple.
+        matching the named wildcards of the pattern in alphabetical order.
         The values are sets with matching paths.
         """
         return self._results
-
-    @property
-    def used_names(self) -> tuple[str, ...]:
-        """A tuple of named wildcards present in the pattern."""
-        return self._used_names
-
-    @property
-    def can_match_multiple(self) -> bool:
-        """True if the pattern can match more than one path.
-
-        This is the case when the pattern contains anonymous wildcards,
-        or when one of its named wildcards is itself a wildcard pattern.
-        A named wildcard whose substitution is a literal string
-        (e.g. `subs={"name": "foo"}`) does not count.
-        """
-        if has_anonymous_wildcards(self._pattern):
-            return True
-        for name in self._used_names:
-            sub_pattern = self._subs.get(name)
-            if sub_pattern is None or has_anonymous_wildcards(sub_pattern):
-                return True
-        return False
 
     def _match_values(self, path: str) -> tuple[str, ...] | None:
         """Return the substrings matching the named wildcards, or `None` if there is no match."""
@@ -264,32 +242,6 @@ class NamedGlob:
                 path = path / ""
             paths.append(path)
         self.extend(paths)
-
-    def may_change(self, deleted: set[str], added: set[str]) -> bool:
-        """Determine whether the results may change (later) after deleting or adding files.
-
-        Parameters
-        ----------
-        deleted
-            Set of files to be deleted.
-        added
-            Set of files to be added.
-
-        Returns
-        -------
-        may_change
-            True if the results may change.
-            This is a conservative test:
-            the given changes on their own need not alter the results,
-            as long as it cannot be excluded that they play a role
-            in combination with further additions and deletions.
-        """
-        added_new = added.copy()
-        for paths in self._results.values():
-            if not deleted.isdisjoint(paths):
-                return True
-            added_new.difference_update(paths)
-        return any(self._regex.fullmatch(path) for path in added_new)
 
     def will_change(self, deleted: Collection[str], added: Collection[str]) -> Self | None:
         """Determine whether the results will change after deleting or adding files.
