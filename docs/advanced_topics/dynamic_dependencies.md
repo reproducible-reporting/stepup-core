@@ -95,6 +95,17 @@ By following these good practices, you can avoid the following problems:
     >
     > Both types of deferring are counted towards the defer cap.
 
+When you know some of a step's dynamic dependencies while writing `plan.py`,
+you can declare them there as ordinary `inp`, `env`, `out` or `vol` arguments,
+even though the step also amends itself with them.
+The step is then not dispatched before those inputs are available,
+so it is deferred less often, while the step's own `amend()` call still covers
+the general case in which the dependencies are not known upfront.
+The step needs no knowledge of what was declared for it:
+`amend()` silently ignores anything that the step already declares.
+Each argument is matched against its own kind only,
+so amending an `out` path that was declared as `vol` (or vice versa) is still an error.
+
 To the best of our knowledge, there is no equivalent of `amend()` in other build tools.
 Some features in [Ninja's generator rule](https://ninja-build.org/manual.html)
 cover what can be achieved with `amend()`.

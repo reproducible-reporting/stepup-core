@@ -197,22 +197,19 @@ async def test_step(wfs: Workflow):
         assert {r.path for r in step.out_paths()} == {"egg.csv", "sub/bar.txt"}
         assert wfs.format_str() == TEST_STEP_GRAPH2
 
-    # Amend an input that was already known, which just gets ignored.
+    # Amend information that was already known, which just gets ignored.
     async with wfs.db:
         amend_step(wfs, step, inp_paths=["foo.txt"])
         assert wfs.format_str() == TEST_STEP_GRAPH2
-
-    # Try a few things that should raise errors
-    with pytest.raises(GraphError):
-        async with wfs.db:
-            # Amend an output that was already known.
-            amend_step(wfs, step, out_paths=["egg.csv"])
     async with wfs.db:
+        # An output that was already amended, and one declared when the step was defined.
+        amend_step(wfs, step, out_paths=["egg.csv", "sub/bar.txt"])
         assert wfs.format_str() == TEST_STEP_GRAPH2
+
+    # An output that another declaration already claims in a different role still raises.
     with pytest.raises(GraphError):
         async with wfs.db:
-            # Amend a new input and an output that was already known.
-            amend_step(wfs, step, inp_paths=["new.zip"], out_paths=["egg.csv"])
+            amend_step(wfs, step, vol_paths=["egg.csv"])
     async with wfs.db:
         assert wfs.format_str() == TEST_STEP_GRAPH2
 
@@ -1013,6 +1010,73 @@ async def test_amend_step(wfp: Workflow):
         assert [node.key() for node in step.products()] == ["file:log", "file:out3", "file:vol4"]
 
 
+async def test_amend_step_already_declared(wfp: Workflow):
+    """Amending what the step was defined with is a no-op, for each of the four arguments.
+
+    A plan may declare up front what the step also discovers while it runs,
+    e.g. to keep the step from being dispatched before an input is available.
+    The declarations must stay *initial* dependencies, or `reset_for_rerun` would drop
+    them before the next run of the step.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["inp"])
+        wfp.define_step(
+            plan, "aaa", inp_paths=["inp"], env_deps=["VAR"], out_paths=["out"], vol_paths=["vol"]
+        )
+        step = wfp.find(Step, "aaa")
+        assert amend_step(
+            wfp, step, inp_paths=["inp"], env_deps=["VAR"], out_paths=["out"], vol_paths=["vol"]
+        ) == (False, set(), set(), {})
+        assert [r.path for r in step.inp_paths(dynamic=True)] == []
+        assert list(step.env_deps(dynamic=True)) == []
+        assert [r.path for r in step.out_paths(dynamic=True)] == []
+        assert [r.path for r in step.vol_paths(dynamic=True)] == []
+        assert [r.path for r in step.inp_paths(dynamic=False)] == ["inp"]
+        assert list(step.env_deps(dynamic=False)) == ["VAR"]
+        assert [r.path for r in step.out_paths(dynamic=False)] == ["out"]
+        assert [r.path for r in step.vol_paths(dynamic=False)] == ["vol"]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"vol_paths": ["out"]}, "both built and declared volatile"),
+        ({"out_paths": ["vol"]}, "both built and declared volatile"),
+        ({"out_paths": ["inp"]}, "both declared static .* and built"),
+        ({"vol_paths": ["inp"]}, "both declared static .* and declared volatile"),
+    ],
+)
+async def test_amend_step_already_declared_other_role(wfp: Workflow, kwargs: dict, match: str):
+    """Tolerating a repeated declaration never crosses the boundary between the arguments."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["inp"])
+        wfp.define_step(plan, "aaa", inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"])
+        step = wfp.find(Step, "aaa")
+    with pytest.raises(GraphError, match=match):
+        async with wfp.db:
+            amend_step(wfp, step, **kwargs)
+
+
+async def test_amend_step_already_declared_out_built(wfp: Workflow):
+    """A repeated `out` amendment is also a no-op once the output has been built.
+
+    A step that reruns amends an output whose file node is OUTDATED (or BUILT when the
+    rerun was triggered without resetting), not AWAITED, so the tolerance must be about
+    the file's role, not its state.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "aaa", out_paths=["out"])
+        step = wfp.find(Step, "aaa")
+        out_hashes = {"out": fake_hash("out")}
+        wfp.update_file_hashes(out_hashes, cause=HashUpdateCause.SUCCEEDED)
+        assert wfp.find(File, "out").get_state() == FileState.BUILT
+        amend_step(wfp, step, out_paths=["out"])
+        assert [r.path for r in step.out_paths(dynamic=True)] == []
+
+
 def _build_producer_sink(wfs: Workflow) -> tuple[Step, Step]:
     """Define a producer step with a BUILT output "data.txt" and a plain sink step.
 
@@ -1711,7 +1775,7 @@ async def test_define_step_output_matching_detached_glob_ok(wfp: Workflow):
         assert wfp.find(Step, "touch out.txt") is not None
 
 
-async def test_eager_checks_agree_on_message_text(wfp: Workflow):
+async def test_eager_checks_agree_on_message_text(wfp: Workflow, wfp_factory):
     """Check (a) (in `register_nglob`) and check (b) (in `_raise_if_glob_match`) must
     raise the exact same message for the same conflict, since the diagnostic must not
     depend on which of the two events happens first (open question 2)."""
@@ -1726,21 +1790,13 @@ async def test_eager_checks_agree_on_message_text(wfp: Workflow):
             wfp.register_nglob(plan, ng)
 
     # (b): an independent workflow with identical labels, but the pattern is
-    # registered first and the output is declared afterwards. A second workflow is
-    # used (rather than reusing wfp) so the labels can be identical to (a)'s, which is
-    # what makes a literal string comparison meaningful. This mirrors the `wfp` fixture
-    # in conftest.py.
-    dir_queue = asyncio.Queue()
-    with DBSession.open(":memory:") as db:
-        wfp_b = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
-        await wfp_b.initialize()
-        async with db:
-            declare_static(wfp_b, wfp_b.root, ["plan.py"])
-            wfp_b.define_step(wfp_b.root, "./plan.py", inp_paths=["plan.py"], need=Need.PLAN)
-            plan_b = wfp_b.find(Step, "./plan.py")
-            wfp_b.register_nglob(plan_b, NamedGlob("*.txt"))
-            with pytest.raises(GraphError) as excinfo_b:
-                wfp_b.define_step(plan_b, "touch out.txt", out_paths=["out.txt"])
+    # registered first and the output is declared afterwards.
+    wfp_b = await wfp_factory()
+    async with wfp_b.db:
+        plan_b = wfp_b.find(Step, "./plan.py")
+        wfp_b.register_nglob(plan_b, NamedGlob("*.txt"))
+        with pytest.raises(GraphError) as excinfo_b:
+            wfp_b.define_step(plan_b, "touch out.txt", out_paths=["out.txt"])
 
     assert str(excinfo_a.value) == str(excinfo_b.value)
 
@@ -2440,7 +2496,7 @@ async def test_static_tree_then_static_file_raises_other_creator(wfp: Workflow):
         assert wfp.find(File, "data/foo.txt") is None
 
 
-async def test_static_tree_conflict_same_message_both_orders(wfp: Workflow):
+async def test_static_tree_conflict_same_message_both_orders(wfp: Workflow, wfp_factory):
     """Tree-first and file-first raise byte-identical text for a foreign creator.
 
     A second, independent workflow is used for the file-first order, mirroring
@@ -2456,21 +2512,255 @@ async def test_static_tree_conflict_same_message_both_orders(wfp: Workflow):
         async with wfp.db:
             wfp.declare_static_files(sub, ["data/foo.txt"])
 
-    dir_queue = asyncio.Queue()
-    with DBSession.open(":memory:") as db:
-        wfp_b = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
-        await wfp_b.initialize()
-        async with db:
-            declare_static(wfp_b, wfp_b.root, ["plan.py"])
-            wfp_b.define_step(wfp_b.root, "./plan.py", inp_paths=["plan.py"], need=Need.PLAN)
-            plan_b = wfp_b.find(Step, "./plan.py")
-            wfp_b.define_step(plan_b, "sub")
-            sub_b = wfp_b.find(Step, "sub")
-            declare_static(wfp_b, sub_b, ["data/foo.txt"])
-            with pytest.raises(GraphError) as excinfo_b:
-                wfp_b.register_static_tree(plan_b, "data")
+    wfp_b = await wfp_factory()
+    async with wfp_b.db:
+        plan_b = wfp_b.find(Step, "./plan.py")
+        wfp_b.define_step(plan_b, "sub")
+        sub_b = wfp_b.find(Step, "sub")
+        declare_static(wfp_b, sub_b, ["data/foo.txt"])
+        with pytest.raises(GraphError) as excinfo_b:
+            wfp_b.register_static_tree(plan_b, "data")
 
     assert str(excinfo_a.value) == str(excinfo_b.value)
+
+
+def _claim_file(wfx: Workflow, path: str, role: str, command: str):
+    """Let a step named `command` claim `path` in one of the three roles of `_FILE_ROLES`.
+
+    A `static` claim needs a step of its own to be the file's creator,
+    because `static()` is called by a step, while an `out`/`vol` claim is made by the
+    step being defined.
+    """
+    plan = wfx.find(Step, "./plan.py")
+    if role == "static":
+        wfx.define_step(plan, command)
+        declare_static(wfx, wfx.find(Step, command), [path])
+    elif role == "out":
+        wfx.define_step(plan, command, out_paths=[path])
+    elif role == "vol":
+        wfx.define_step(plan, command, vol_paths=[path])
+    else:
+        raise ValueError(f"Unknown role: {role}")
+
+
+@pytest.mark.parametrize(
+    ("role_a", "role_b", "expected"),
+    [
+        (
+            "static",
+            "out",
+            "File (p.txt) cannot be both declared static by step (aaa) and built by step (bbb). "
+            "Drop the static() call, or write the step's output elsewhere.",
+        ),
+        (
+            "static",
+            "vol",
+            "File (p.txt) cannot be both declared static by step (aaa) "
+            "and declared volatile by step (bbb). "
+            "Drop the static() call, or write the volatile output elsewhere.",
+        ),
+        (
+            "out",
+            "vol",
+            "File (p.txt) cannot be both built by step (aaa) and declared volatile by step (bbb). "
+            "Pick one of the two.",
+        ),
+        (
+            "static",
+            "static",
+            "File (p.txt) cannot be declared static by both step (aaa) and step (bbb). "
+            "Drop one of the two static() calls.",
+        ),
+        (
+            "out",
+            "out",
+            "File (p.txt) cannot be built by both step (aaa) and step (bbb). "
+            "Give each output a path of its own.",
+        ),
+        (
+            "vol",
+            "vol",
+            "File (p.txt) cannot be declared volatile by both step (aaa) and step (bbb). "
+            "Give each volatile output a path of its own.",
+        ),
+    ],
+)
+async def test_file_collision_message(
+    wfp: Workflow, wfp_factory, role_a: str, role_b: str, expected: str
+):
+    """Every way in which two declarations can claim the same file names both of them.
+
+    The message is also checked to be byte-identical in both declaration orders, like
+    `test_static_tree_conflict_same_message_both_orders`: which of the two declarations
+    happens to come first is a scheduling detail, and the plan is equally wrong either way.
+    """
+    async with wfp.db:
+        _claim_file(wfp, "p.txt", role_a, "aaa")
+    with pytest.raises(GraphError) as excinfo_a:
+        async with wfp.db:
+            _claim_file(wfp, "p.txt", role_b, "bbb")
+
+    wfp_b = await wfp_factory()
+    async with wfp_b.db:
+        _claim_file(wfp_b, "p.txt", role_b, "bbb")
+    with pytest.raises(GraphError) as excinfo_b:
+        async with wfp_b.db:
+            _claim_file(wfp_b, "p.txt", role_a, "aaa")
+
+    assert str(excinfo_a.value) == expected
+    assert str(excinfo_b.value) == expected
+
+
+async def test_file_collision_message_same_step_out_and_vol(wfp: Workflow):
+    """One step naming the same path as regular and as volatile output is named once."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+    with pytest.raises(GraphError) as excinfo:
+        async with wfp.db:
+            wfp.define_step(plan, "aaa", out_paths=["p.txt"], vol_paths=["p.txt"])
+    assert str(excinfo.value) == (
+        "File (p.txt) cannot be both built and declared volatile by step (aaa). "
+        "Pick one of the two."
+    )
+
+
+async def test_file_collision_message_root_creator(wfp: Workflow):
+    """A collision with a file StepUp itself declared static does not name a step."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+    with pytest.raises(GraphError) as excinfo:
+        async with wfp.db:
+            wfp.define_step(plan, "aaa", out_paths=["plan.py"])
+    assert str(excinfo.value) == (
+        "File (plan.py) cannot be both declared static by StepUp itself "
+        "and built by step (aaa). "
+        "Drop the static() call, or write the step's output elsewhere."
+    )
+
+
+@pytest.mark.parametrize("wfs_target", [["p.txt"]], indirect=True)
+async def test_file_collision_beats_build_target(wfs_target: Workflow):
+    """A path that is both claimed and an invalid build target is reported as a collision.
+
+    The claim guards sit at the declaration entry points, ahead of
+    `_raise_if_forbidden_target` in `_declare_file`, so the message that names both
+    declarations wins over "A build target cannot be a static file".
+    The target message is still what appears when there is no competing claim,
+    see `test_define_step_target_static_output`.
+    """
+    async with wfs_target.db:
+        wfs_target.define_step(wfs_target.root, "aaa", out_paths=["p.txt"])
+        aaa = wfs_target.find(Step, "aaa")
+        wfs_target.define_step(aaa, "bbb")
+        bbb = wfs_target.find(Step, "bbb")
+    with pytest.raises(GraphError) as excinfo:
+        async with wfs_target.db:
+            wfs_target.declare_static_files(bbb, ["p.txt"])
+    assert str(excinfo.value) == (
+        "File (p.txt) cannot be both declared static by step (bbb) and built by step (aaa). "
+        "Drop the static() call, or write the step's output elsewhere."
+    )
+
+
+async def test_amend_out_claimed_by_static_tree(wfp: Workflow):
+    """An output amended over a file the tree already owns is reported in the tree's terms.
+
+    The claim guards run before `_declare_file`'s static-tree check, so
+    `_claim_collision_message` has to recognize a claim held by a static tree itself.
+    A plain collision message would advise dropping a `static()` call that the plan
+    never made.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "data")
+        # The tree takes this declaration over, so the file node's creator is the tree.
+        declare_static(wfp, plan, ["data/foo.txt"])
+        assert isinstance(wfp.find(File, "data/foo.txt").creator(), StaticTree)
+        wfp.define_step(plan, "aaa")
+        aaa = wfp.find(Step, "aaa")
+    with pytest.raises(GraphError) as excinfo:
+        async with wfp.db:
+            _amend(wfp, aaa, out_paths=["data/foo.txt"])
+    assert str(excinfo.value) == _static_tree_product_message("data/", "data/foo.txt")
+
+
+async def test_amend_out_and_vol_same_path(wfp: Workflow):
+    """One amendment naming a path as regular and as volatile output is a collision.
+
+    `amend_step` filters both lists against the graph before either declaration loop runs,
+    so this pair can only be caught by `_raise_if_out_and_vol`.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "aaa")
+        aaa = wfp.find(Step, "aaa")
+    with pytest.raises(GraphError) as excinfo:
+        async with wfp.db:
+            _amend(wfp, aaa, out_paths=["p.txt"], vol_paths=["p.txt"])
+    assert str(excinfo.value) == (
+        "File (p.txt) cannot be both built and declared volatile by step (aaa). "
+        "Pick one of the two."
+    )
+
+
+async def test_duplicate_step_message(wfp: Workflow, wfp_factory):
+    """Defining the same command twice names both creators, in either order.
+
+    This is the one non-file collision a plan can reach, so it needs a message of its own:
+    the catch-all in `Trellis.create` is a `ConsistencyError` and would report an
+    ordinary mistake in a plan as a bug in StepUp.
+    """
+    expected = (
+        "Step (dup) is defined by both step (./plan.py) and step (sub). "
+        "A step is identified by its command and working directory: "
+        "drop one of the two definitions."
+    )
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        wfp.define_step(plan, "dup")
+    with pytest.raises(GraphError) as excinfo_a:
+        async with wfp.db:
+            wfp.define_step(sub, "dup")
+
+    wfp_b = await wfp_factory()
+    async with wfp_b.db:
+        plan_b = wfp_b.find(Step, "./plan.py")
+        wfp_b.define_step(plan_b, "sub")
+        sub_b = wfp_b.find(Step, "sub")
+        wfp_b.define_step(sub_b, "dup")
+    with pytest.raises(GraphError) as excinfo_b:
+        async with wfp_b.db:
+            wfp_b.define_step(plan_b, "dup")
+
+    assert str(excinfo_a.value) == expected
+    assert str(excinfo_b.value) == expected
+
+
+async def test_duplicate_step_message_same_creator(wfp: Workflow):
+    """One step defining the same child twice is phrased for a single creator."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "dup")
+    with pytest.raises(GraphError) as excinfo:
+        async with wfp.db:
+            wfp.define_step(plan, "dup")
+    assert str(excinfo.value) == (
+        "Step (dup) is defined twice by step (./plan.py). "
+        "A step is identified by its command and working directory: "
+        "drop one of the two definitions."
+    )
+
+
+async def test_duplicate_step_recycles_detached(wfp: Workflow):
+    """A detached step with the same label is recycled, not reported as a duplicate."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "same")
+        wfp.find(Step, "same").detach()
+        wfp.define_step(plan, "same")
+        assert not wfp.find(Step, "same").is_detached()
 
 
 async def test_static_tree_declare_static_files_queues_parent_dir(wfp: Workflow):

@@ -8,7 +8,7 @@ import hashlib
 import os
 import stat
 import threading
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 
 import pytest
 import pytest_asyncio
@@ -147,33 +147,54 @@ async def get_duration_and_tail_time(db: DBSession, step: Step) -> tuple[float, 
 
 
 @pytest_asyncio.fixture
-async def wfs(request) -> AsyncIterator[Workflow]:
-    """A workflow from scratch, no plan.py
+async def wfs_factory() -> AsyncIterator[Callable[..., Awaitable[Workflow]]]:
+    """Create workflows from scratch, no plan.py, and tear all of them down together.
+
+    A test calls the factory more than once when it needs a second, independent workflow,
+    e.g. to replay the same declarations in the reverse order:
+    the first order has already put the conflicting declaration in the graph,
+    so only a fresh workflow can carry the exact same labels.
+    """
+    workflows = []
+    with contextlib.ExitStack() as stack:
+
+        async def _make(defer_cap: int = 100) -> Workflow:
+            # The connection is opened for the fixture lifetime.
+            # Tests using this fixture can use `async with workflow.db:`
+            # to acquire the lock for the duration of their test.
+            db = stack.enter_context(DBSession.open(":memory:"))
+            dir_queue = asyncio.Queue()
+            workflow = Workflow(
+                db, create_parent_dirs=False, dir_queue=dir_queue, defer_cap=defer_cap
+            )
+            await workflow.initialize()
+            workflows.append(workflow)
+            return workflow
+
+        yield _make
+
+        for workflow in workflows:
+            async with workflow.db:
+                workflow._check_consistency()
+
+
+@pytest_asyncio.fixture
+async def wfs(request, wfs_factory) -> Workflow:
+    """A single workflow from scratch, no plan.py
 
     Supports indirect parametrization to override `defer_cap`, e.g.
     `@pytest.mark.parametrize("wfs", [3], indirect=True)`.
     """
-    defer_cap = getattr(request, "param", 100)
-    dir_queue = asyncio.Queue()
-    # The `with` opens the connection for the fixture lifetime.
-    # Tests using this fixture can use `async with db:`
-    # to acquire the lock for the duration of their test.
-    with DBSession.open(":memory:") as db:
-        workflow = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue, defer_cap=defer_cap)
-        await workflow.initialize()
-        yield workflow
-        async with db:
-            workflow._check_consistency()
+    return await wfs_factory(defer_cap=getattr(request, "param", 100))
 
 
 @pytest_asyncio.fixture
-async def wfp() -> AsyncIterator[Workflow]:
-    """A workflow with a boot step plan.py"""
-    dir_queue = asyncio.Queue()
-    with DBSession.open(":memory:") as db:
-        workflow = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
-        await workflow.initialize()
-        async with db:
+async def wfp_factory(wfs_factory) -> Callable[..., Awaitable[Workflow]]:
+    """Create workflows with a boot step plan.py, sharing the teardown of `wfs_factory`."""
+
+    async def _make(defer_cap: int = 100) -> Workflow:
+        workflow = await wfs_factory(defer_cap=defer_cap)
+        async with workflow.db:
             # Prepare the basic workflow with a plan script.
             root = workflow.root
             file_plan = declare_static(workflow, root, ["plan.py"])[0]
@@ -186,10 +207,15 @@ async def wfp() -> AsyncIterator[Workflow]:
             assert nodes[0] == root
             assert nodes[1] == file_plan
             assert nodes[2] == step_plan
+        return workflow
 
-        yield workflow
-        async with db:
-            workflow._check_consistency()
+    return _make
+
+
+@pytest_asyncio.fixture
+async def wfp(wfp_factory) -> Workflow:
+    """A single workflow with a boot step plan.py"""
+    return await wfp_factory()
 
 
 class TrippingEvent(threading.Event):

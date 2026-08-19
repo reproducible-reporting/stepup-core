@@ -162,6 +162,14 @@ and will be updated with any further changes before the final release.
   the error is now reported concisely instead of as a long traceback.
   Errors that indicate a bug in StepUp keep their full traceback.
   Run `sb` with the environment variable `STEPUP_DEBUG=1` to see the complete traceback.
+- Two declarations claiming the same file are now reported in terms of the plan
+  instead of the internal graph representation.
+  The message names both declarations and how to resolve the conflict, e.g.
+  `File (b.txt) cannot be both declared static by step (./plan.py) and built by
+  step (cp -p a.txt b.txt).`
+  This covers every combination of a `static()` declaration, a step output and a
+  volatile output, and the message does not depend on which declaration came first.
+  Defining the same command twice in the same working directory is reported likewise.
 - At the end of every build, StepUp scans `.stepup/director.log` for symptoms of internal
   problems: logged errors, unawaited coroutines, tasks destroyed while still pending,
   and exceptions that escaped a callback, a thread or a destructor.
@@ -267,6 +275,13 @@ and will be updated with any further changes before the final release.
     - Indexes were tuned.
     - The auto_vacuum mode was set to INCREMENTAL,
       which is paired with a database vacuum worker to reclaim space from deleted nodes.
+- `amend()` now silently ignores information that the step's plan already declared for it,
+  just like it ignores information from an earlier `amend()` call of the same step.
+  This lets a plan declare up front what a step also discovers while it runs,
+  which improves scheduling (the step is not dispatched before its inputs are available)
+  without the step having to know what was declared for it.
+  Each argument is matched against its own kind only:
+  amending an `out` path that was declared as `vol`, or vice versa, is still an error.
 - Several environment variables have been renamed for consistency.
   See [Configuration files](reference/configuration.md) for details.
 - A new returncode was added to indicate that the scheduler was put on hold

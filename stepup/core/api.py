@@ -793,7 +793,10 @@ def amend(
     These will raise an exception if dynamic outputs collide with files declared elsewhere
     in the workflow, preventing accidental overwrites of other step's files.
 
-    Repeated calls are safe: dynamic dependencies known from prior calls are silently skipped.
+    Repeated calls are safe: dynamic dependencies known from prior calls are silently skipped,
+    and so is information that the step's plan already declared for it.
+    Each argument is matched against its own kind only:
+    amending an `out` path that the step declared as `vol`, or vice versa, is still a collision.
     """
     # Pre-process the arguments for the Director process.
     inp_paths = coerce_paths(inp)

@@ -112,8 +112,8 @@ TARGET_FORBIDDEN_STATES = frozenset(
 STATIC_DECLARED_STATES = (FileState.UNCONFIRMED, FileState.STATIC, FileState.MISSING)
 """The three file states a static declaration (as opposed to a build product) can leave behind.
 
-Shared by `Workflow._already_declared_static_by` and the static-tree ownership checks in
-`Workflow._declare_file` and`Workflow.register_static_tree`,
+Shared by the "static" role in `workflow._FILE_ROLES` and the static-tree ownership checks in
+`Workflow._declare_file` and `Workflow.register_static_tree`,
 so the triple cannot drift between them.
 """
 

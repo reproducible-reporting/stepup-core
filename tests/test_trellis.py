@@ -239,7 +239,7 @@ async def test_singleton(lt):
             lt.create("Foo", lt.root, "one", value=123)
     async with lt.db:
         lt.create(Foo, lt.root, "one", value=123)
-    with pytest.raises(GraphError):
+    with pytest.raises(ConsistencyError):
         async with lt.db:
             lt.create(Foo, lt.root, "one", value=1234)
 

@@ -781,6 +781,15 @@ class Trellis:
         -------
         new_node
             The newly created node.
+
+        Raises
+        ------
+        ConsistencyError
+            When an attached node with this label already exists.
+            This is a last-resort guard: every collision a plan can cause should be caught upstream,
+            where the node type is known and the message can name the two declarations that clash.
+            If not caught upstream, and this error is raised, there is a bug in StepUp.
+            The fix is to add the missing upstream message, not to soften this guard.
         """
         # Sanity checking
         if not isinstance(node_type, type):
@@ -795,7 +804,7 @@ class Trellis:
         if node is not None:
             # Recycle old data if needed and add/update node
             if not detached:
-                raise GraphError(f"Node ({node.key()}) already exists and is not detached.")
+                raise ConsistencyError(f"Node ({node.key()}) already exists and is not detached.")
 
             # Get the old creator before this information is lost.
             old_creator, old_creator_detached = node.creator_and_detached()

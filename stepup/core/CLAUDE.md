@@ -120,9 +120,11 @@ What must never vary is the graph produced by the *same* inputs and code.
 The determinism goal applies to the graph of a **successful** build.
 It does not extend to *how* an invalid workflow is reported:
 when two steps' declarations conflict, whichever runs first may be the one that raises,
-so the specific error message or the step blamed for it can depend on execution order.
+so which step fails, and where its traceback points, can depend on execution order.
 What may not vary is whether the build succeeds or fails,
 and, on success, the graph that results.
+The *text* of such an error is nevertheless made order-independent whenever the raise site
+knows both parties, since the plan is equally wrong in either order.
 
 Why this matters:
 
@@ -204,6 +206,28 @@ fall back to Python only when SQL cannot express the check or cannot repair a vi
   path — it can no longer fire, so keeping it "for safety" just adds dead code
   (e.g. the file-hash-missing check dropped from `Workflow._check_consistency()` once the
   `file` table's own `CHECK (state NOT IN (...) OR hash IS NOT NULL)` made it unreachable).
+
+### Unreachable Branches
+
+A branch that no caller can currently reach is dead code, and what to do with it depends on
+what reaching it would mean:
+
+- Reaching it would imply **a bug in StepUp**: keep the branch,
+  but let it `raise ConsistencyError` instead of returning a plausible result.
+  A fallback that quietly does something sensible lets the bug travel;
+  a `ConsistencyError` stops it where it starts and keeps its traceback.
+  Use `ConsistencyError`, not a bare `RuntimeError`:
+  it is what marks an error as a bug in StepUp rather than in the user's plan.
+  Examples in `workflow.py`: `_creator_phrase` on a creator kind it has no phrase for,
+  and `_file_collision_message` on two identical declarations,
+  which its callers must already have skipped as a no-op.
+- Reaching it would be **a case the callers happen not to produce**,
+  handled correctly if they ever did: delete it.
+  Whoever needs it later adds it back with the call site and the test that reaches it.
+
+Do not keep a branch alive with a comment that it may become reachable again:
+such a comment records a past state of the code, which the code no longer supports
+and nothing keeps true.
 
 ### Triggers
 

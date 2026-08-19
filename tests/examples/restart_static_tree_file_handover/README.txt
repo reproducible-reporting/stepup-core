@@ -13,8 +13,8 @@ tree and the file under it, once in each declaration order.
 
 The third run (plan2.py) declares the tree before the file, so registering the tree
 re-adopts the file's detached node and the static() call naming that file must recognize
-it as already declared. Without that check, it recreates an already attached node and the
-run dies with "Node (file:src/foo.txt) already exists and is not detached."
+it as already declared. Without that check, it redeclares an already attached node,
+which would raise an exception.
 
 The fourth run returns to plan1.py, where the file is declared while no tree exists yet,
 so the hand-over of the first run is repeated on a graph that has seen it before.
