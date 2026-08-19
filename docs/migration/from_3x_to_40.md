@@ -641,8 +641,6 @@ the following utilities have moved to the new
 
 | Function | Old location | New location |
 | --- | --- | --- |
-| `subs_env_vars` | `stepup.core.api` | `stepup.core.extapi` |
-| `get_rpc_client` | `stepup.core.api` | `stepup.core.extapi` |
 | `filter_dependencies` | `stepup.core.utils` | `stepup.core.extapi` |
 | `get_local_import_paths` | `stepup.core.utils` | `stepup.core.extapi` |
 
@@ -650,9 +648,13 @@ Update your imports accordingly:
 
 ```python
 # StepUp 3 / early StepUp 4
-from stepup.core.api import get_rpc_client, subs_env_vars
 from stepup.core.utils import filter_dependencies, get_local_import_paths
 
 # StepUp 4 (current)
-from stepup.core.extapi import filter_dependencies, get_local_import_paths, get_rpc_client, subs_env_vars
+from stepup.core.extapi import filter_dependencies, get_local_import_paths
 ```
+
+`subs_env_vars` and `get_rpc_client` stay in
+[`stepup.core.api`](../reference/stepup.core.api.md).
+They cannot move to `stepup.core.extapi`,
+because that module now imports `stepup.core.api` at module level.

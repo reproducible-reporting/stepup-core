@@ -40,7 +40,6 @@ from .exceptions import (
     PathError,
     StepUpError,
 )
-from .extapi import subs_env_vars
 from .nglob import NamedGlob, has_any_wildcards, has_trailing_recursive_wildcard
 from .path import (
     StrPath,
@@ -57,7 +56,13 @@ from .rpc import DummySyncRPCClient, SocketSyncRPCClient
 from .step import RESERVED_ENV_VARS
 from .stepinfo import StepInfo
 from .tracebacks import install_excepthook
-from .utils import extract_env_overrides, format_command, parse_resources, string_to_list
+from .utils import (
+    CaseSensitiveTemplate,
+    extract_env_overrides,
+    format_command,
+    parse_resources,
+    string_to_list,
+)
 
 __all__ = (
     "CommandArg",
@@ -80,6 +85,7 @@ __all__ = (
     "shq",
     "static",
     "step",
+    "subs_env_vars",
 )
 
 logger = logging.getLogger(__name__)
@@ -712,6 +718,55 @@ def call(
         resources=resources,
         duration=duration,
     )
+
+
+@contextlib.contextmanager
+def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
+    """Substitute environment variables in paths and record which variables are used.
+
+    The context manager yields a function, `subs`,
+    which takes a path or string with variables and returns the substituted form.
+    All used variables are recorded and sent to the director with `amend(env=...)`.
+    For example:
+
+    ```python
+    with subs_env_vars() as subs:
+        path_inp = subs(path_inp)
+        path_out = subs(path_out)
+    ```
+
+    This is intended for authors of StepUp extensions,
+    who need it in custom API functions that accept paths with environment variables.
+
+    Raises
+    ------
+    EnvVarError
+        When a path contains invalid shell variable identifiers,
+        or references an environment variable that is not defined.
+    """
+    used_env = set()
+
+    def subs(path: StrPath | None) -> Path | None:
+        if path is None:
+            return None
+        template = CaseSensitiveTemplate(coerce_str(path))
+        if not template.is_valid():
+            raise EnvVarError("The path contains invalid shell variable identifiers.")
+        mapping = {}
+        for name in template.get_identifiers():
+            if name.startswith("*"):
+                mapping[name] = f"${{{name}}}"
+            else:
+                value = os.getenv(name)
+                if value is None:
+                    raise EnvVarError(f"Undefined shell variable: {name}")
+                mapping[name] = value
+                used_env.add(name)
+        return Path(path if len(mapping) == 0 else template.substitute(mapping))
+
+    yield subs
+    if len(used_env) > 0:
+        amend(env=used_env)
 
 
 # A history used to avoid amending the same information twice.

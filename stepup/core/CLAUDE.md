@@ -328,9 +328,6 @@ extract and re-apply the affixes when needed.
 
 `plan.py` scripts call functions in `api.py` (e.g., `static()`, `step()`, `glob()`)
 which send RPC calls to the director.
-Only `extapi.py` imports from `api.py` through local (inside-function) imports,
-to break the cycle between the two modules.
-Everywhere else, a module-level import is correct.
 
 **Importing `api.py` must never connect to the director.**
 The connection is opened by the first call to `get_rpc_client()`, which caches its result.
@@ -350,6 +347,7 @@ because a step that fails before its first RPC call must still get a shortened t
 ## Extension Developer API (`extapi.py`)
 
 `extapi.py` collects utilities for authors of StepUp extension packages.
-`get_rpc_client` and `get_job_i` live in `api.py`, not `extapi.py`:
-together they are how an extension addresses the director.
-`subs_env_vars` is re-exported from `api.py` for backward compatibility.
+It is a curated surface, not a layer:
+`get_rpc_client`, `get_job_i` and `subs_env_vars` are equally meant for extension authors,
+yet live in `api.py` because `extapi.py` imports from it.
+`docs/reference/stepup.core.api.md` documents them under a separate heading.

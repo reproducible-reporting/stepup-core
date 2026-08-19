@@ -7,27 +7,26 @@ They are meant for authors of new StepUp extensions who need to interact with th
 filter step dependencies, or implement custom API functions that handle environment variables.
 """
 
-import contextlib
 import hashlib
 import os
 import shlex
 import subprocess
 import sys
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Iterable
 
 from path import Path
 
-from .exceptions import ConsistencyError, EnvVarError, StepUpError
-from .path import StrPath, coerce_str, translate
+from .api import get_job_i, get_rpc_client, getenv
+from .exceptions import ConsistencyError, StepUpError
+from .path import StrPath, translate
 from .step import truncate_output
-from .utils import CaseSensitiveTemplate, extract_env_overrides
+from .utils import extract_env_overrides
 
 __all__ = (
     "filter_dependencies",
     "get_local_import_paths",
     "record_subprocess",
     "run_subprocess",
-    "subs_env_vars",
 )
 
 
@@ -55,57 +54,6 @@ def _prepare_stream(data: str | bytes | None, max_bytes: int = 0) -> str:
         digest = hashlib.sha256(data).hexdigest()[:16]
         return f"<{len(data)} bytes of binary data, sha256={digest}>"
     raise TypeError(f"data must be str, bytes, or None, not {type(data).__name__}")
-
-
-@contextlib.contextmanager
-def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
-    """Substitute environment variables in paths and record which variables are used.
-
-    The context manager yields a function, `subs`,
-    which takes a path or string with variables and returns the substituted form.
-    All used variables are recorded and sent to the director with `amend(env=...)`.
-    For example:
-
-    ```python
-    with subs_env_vars() as subs:
-        path_inp = subs(path_inp)
-        path_out = subs(path_out)
-    ```
-
-    This function may be used in other API functions
-    to substitute environment variables in all relevant paths.
-
-    Raises
-    ------
-    EnvVarError
-        When a path contains invalid shell variable identifiers,
-        or references an environment variable that is not defined.
-    """
-    from stepup.core.api import amend  # noqa: PLC0415
-
-    used_env = set()
-
-    def subs(path: StrPath | None) -> Path | None:
-        if path is None:
-            return None
-        template = CaseSensitiveTemplate(coerce_str(path))
-        if not template.is_valid():
-            raise EnvVarError("The path contains invalid shell variable identifiers.")
-        mapping = {}
-        for name in template.get_identifiers():
-            if name.startswith("*"):
-                mapping[name] = f"${{{name}}}"
-            else:
-                value = os.getenv(name)
-                if value is None:
-                    raise EnvVarError(f"Undefined shell variable: {name}")
-                mapping[name] = value
-                used_env.add(name)
-        return Path(path if len(mapping) == 0 else template.substitute(mapping))
-
-    yield subs
-    if len(used_env) > 0:
-        amend(env=used_env)
 
 
 def record_subprocess(
@@ -158,8 +106,6 @@ def record_subprocess(
         they are recorded as a short summary (byte length and a truncated SHA-256),
         since the archival record is `TEXT` and informative rather than authoritative.
     """
-    from stepup.core.api import get_job_i, get_rpc_client  # noqa: PLC0415
-
     job_i = get_job_i()
     if job_i < 0:
         return
@@ -322,11 +268,9 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     StepUpError
         When `${STEPUP_PATH_FILTER}` contains an item that does not start with `+` or `-`.
     """
+    # Parse the ${STEPUP_PATH_FILTER} environment variable.
     # The getenv function from StepUp amends the current step to depend on the variable,
     # so that every step using it is re-executed when the variable changes.
-    from stepup.core.api import getenv  # noqa: PLC0415
-
-    # Parse the ${STEPUP_PATH_FILTER} environment variable.
     filter_str = getenv("STEPUP_PATH_FILTER", "-venv")
     filter_str += ":+.:-/"
     rules = []

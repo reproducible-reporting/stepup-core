@@ -80,16 +80,19 @@ or execute external commands directly.
 
 The [`stepup.core.extapi`](../reference/stepup.core.extapi.md) module provides
 some reusable low-level functions for extension developers.
+One of them, `subs_env_vars()`, lives in
+[`stepup.core.api`](../reference/stepup.core.api.md) instead,
+because it is mutually recursive with `amend()`.
 
 ### Environment variable substitution
 
-Use [`subs_env_vars()`][stepup.core.extapi.subs_env_vars] in any custom API function that
+Use [`subs_env_vars()`][stepup.core.api.subs_env_vars] in any custom API function that
 accepts path arguments that may contain shell variable references (e.g. `${MYDIR}/file.txt`).
 It yields a `subs` function that performs the substitution and automatically tracks which
 variables were used, amending the current step's environment dependencies accordingly:
 
 ```python
-from stepup.core.extapi import subs_env_vars
+from stepup.core.api import subs_env_vars
 
 def my_api_function(path_inp, path_out):
     with subs_env_vars() as subs:

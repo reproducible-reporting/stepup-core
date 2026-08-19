@@ -104,9 +104,12 @@ and will be updated with any further changes before the final release.
   same step (e.g. through a shared helper function) compose correctly, with children staying
   held back until the outermost block exits.
 - New `stepup.core.extapi` module for StepUp extension developers,
-  collecting utilities previously scattered across `stepup.core.api` and `stepup.core.utils`.
+  collecting utilities previously buried in `stepup.core.utils`.
   See [stepup.core.extapi](reference/stepup.core.extapi.md) for the full reference
   and [Custom API Functions](extending/api.md) for usage guidance.
+  A few utilities aimed at extension developers stay in `stepup.core.api`,
+  because `stepup.core.extapi` is built on top of it:
+  `subs_env_vars`, `get_rpc_client` and `get_job_i`.
 - Extension wrapper steps can now record the exact subprocess invocations they make,
   using `run_subprocess` in `stepup.core.extapi`,
   which executes the subprocess and records its invocation.
