@@ -41,7 +41,7 @@ wait
 
 # Run the example with plan1
 cp plan1.py plan.py
-stepup -l INFO build -j 1 -w & # > current_stdout3.txt &
+sb -l INFO -j 1 -w & # > current_stdout3.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

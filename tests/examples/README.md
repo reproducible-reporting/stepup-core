@@ -63,10 +63,10 @@ When writing new examples, the following conventions ensure that they are proper
   The test builder strips the `& #` before executing, so the director's reporter output is
   captured in `current_stdout.txt` and compared against `expected_stdout.txt`.
 
-  If you need to pass global stepup options, use the long form:
+  Every option of `stepup build` can also be given to `sb`, e.g. to raise the log level:
 
   ```bash
-  stepup --log-level=INFO build -j 1 -w & # > current_stdout.txt &
+  sb --log-level=INFO -j 1 -w & # > current_stdout.txt &
   ```
 
 - The following `stepup` subcommands are used to interact with the running director

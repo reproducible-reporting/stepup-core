@@ -49,6 +49,7 @@ from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
 from .tool import ToolFunc
 from .utils import (
+    is_debug,
     is_process_running,
     merge_resources,
     positive_int,
@@ -251,6 +252,14 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         action=argparse.BooleanOptionalAction,
         help="Record job-execution events (created, started, ended, completed) to "
         f"{JOBLOG_CSV}, for diagnosing scheduler/executor dispatch overhead.",
+    )
+    group.add_argument(
+        "--log-level",
+        "-l",
+        default="DEBUG" if is_debug() else "WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help=f"Set the level of the messages that the director writes to {DIRECTOR_LOG}. "
+        "[default=%(default)s]",
     )
     group.add_argument(
         "--perf",

@@ -822,6 +822,7 @@ def test_full_integration(path_tmp, parser):
     ("argv", "env_var", "env_value", "dest", "expected"),
     [
         (["build"], "STEPUP_BUILD_JOBS", "7", "jobs", Decimal("7")),
+        (["build"], "STEPUP_BUILD_LOG_LEVEL", "INFO", "log_level", "INFO"),
         # The deprecated boot alias must read the build section, not a boot section.
         (["boot"], "STEPUP_BUILD_JOBS", "7", "jobs", Decimal("7")),
         (["clean", "."], "STEPUP_CLEAN_ALL", "1", "all", True),

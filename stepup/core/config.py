@@ -15,7 +15,7 @@ The section of a subparser is the last word of its `prog`
 (argparse prefixes it with the parent's `prog`, e.g. `"stepup build"` yields `"build"`).
 The env var name is derived from the prefix, the section (if any), and the `dest`:
 
-- No section: `STEPUP_LOG_LEVEL` (prefix + dest)
+- No section: `STEPUP_<DEST>` (prefix + dest)
 - Section `"build"`: `STEPUP_BUILD_JOBS` (prefix + section + dest)
 - Dotted section `"some.thing"`: `STEPUP_SOME_THING_<DEST>`
 - Hyphenated section `"render-jinja"`: `STEPUP_RENDER_JINJA_<DEST>`
@@ -198,7 +198,7 @@ class ConfigLoader:
     ----------
     prefix
         Prefix for environment variable names.
-        With no section, `"stepup"` maps dest `log_level` to `STEPUP_LOG_LEVEL`.
+        With no section, `"stepup"` maps a dest to `STEPUP_<DEST>`.
         With section `"build"`, dest `jobs` maps to `STEPUP_BUILD_JOBS`.
         Also determines the section read from `pyproject.toml` (e.g. `tool.stepup`).
     config_paths

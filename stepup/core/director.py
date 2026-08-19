@@ -509,7 +509,7 @@ async def serve(
     infra_env = {
         "STEPUP_DIRECTOR_SOCKET": str(director_socket_path),
         "STEPUP_ROOT": str(Path.cwd()),
-        "STEPUP_LOG_LEVEL": logging.getLevelName(logging.root.level),
+        "STEPUP_BUILD_LOG_LEVEL": logging.getLevelName(logging.root.level),
     }
     if config.fix_epoch and "SOURCE_DATE_EPOCH" not in os.environ:
         infra_env["SOURCE_DATE_EPOCH"] = "315532800"

@@ -400,6 +400,10 @@ The advantages of the new `plan()` function are:
 The `sb` command was changed to have `-j` and `--jobs` options
 instead of `-n` and `--num-workers`.
 
+The `--log-level` (`-l`) option is no longer a global option of the `stepup` command,
+because only the build subcommand acts on it:
+write `sb -l INFO` or `stepup build -l INFO` instead of `stepup -l INFO boot`.
+
 The `stepup watch-update <path>` and `stepup watch-delete <path>` subcommands
 were merged into `stepup wait`:
 use `stepup wait -u <path>` / `--update <path>` instead of `watch-update`,
@@ -414,6 +418,7 @@ The following environment variables have been renamed to have a `STEPUP_BUILD_` 
 | --- | --- |
 | `STEPUP_CLEAN` | `STEPUP_BUILD_CLEAN` |
 | `STEPUP_EXPLAIN_RERUN` | `STEPUP_BUILD_EXPLAIN_RERUN` |
+| `STEPUP_LOG_LEVEL` | `STEPUP_BUILD_LOG_LEVEL` |
 | `STEPUP_NUM_WORKERS` | `STEPUP_BUILD_JOBS` |
 | `STEPUP_PERF` | `STEPUP_BUILD_PERF` |
 | `STEPUP_PROGRESS` | `STEPUP_BUILD_PROGRESS` |

@@ -21,18 +21,18 @@ it will load its settings in the following order, with later settings overriding
 - Environment variables (`STEPUP_*`)
 - Command-line options
 
-Settings shared by all subcommands are placed at the top level of the config file
-(or under `[tool.stepup]` in `pyproject.toml`).
-Settings specific to a subcommand, e.g. `build`, go under a subcommand-specific section,
+Every setting belongs to a subcommand, e.g. `build`,
+and is placed under a subcommand-specific section,
 e.g. `[build]` (or `[tool.stepup.build]` in `pyproject.toml`).
+The top level of a config file (or `[tool.stepup]` in `pyproject.toml`)
+is reserved for settings shared by all subcommands, of which there are currently none.
 
 Example `stepup.toml`:
 
 ```toml
-log_level = "INFO"
-
 [build]
 jobs = 4
+log_level = "INFO"
 watch = true
 ```
 
@@ -181,7 +181,8 @@ separated by slashes, where applicable.
 `STEPUP_DEBUG`
 
 :   Set to `1` to enable debugging features and strict consistency checks.
-    This implies `STEPUP_LOG_LEVEL=DEBUG` (if the variable is unset)
+    This changes the default log level of `stepup build` to `DEBUG`
+    (see `log_level` below)
     and will require internal consistency checks to pass,
     rather than applying corrections to overcome the inconsistencies.
     (Every such inconsistency is due to a bug, which should be fixed eventually.)
@@ -196,12 +197,6 @@ separated by slashes, where applicable.
     Finally, a mistake that any subcommand reports as a short `ERROR:` message
     keeps its traceback, which is the only way to find out where it was raised.
     This variable cannot be set through config files or command-line options.
-
-`log_level` / `STEPUP_LOG_LEVEL` / `--log-level`, `-l`
-
-:   The log level for the log files in `~/.stepup/`.
-    Possible values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`.
-    The default is `WARNING`.
 
 ## Settings for `sb` or `stepup build`
 
@@ -338,6 +333,13 @@ alphabetically within each group.
     - `COMPLETED` (observed by the scheduler, freeing a slot for the next job).
     Comparing the timestamps across these events, and deriving the number of concurrently
     running jobs from them, helps diagnose scheduler/executor dispatch overhead.
+
+`log_level` / `STEPUP_BUILD_LOG_LEVEL` / `--log-level`, `-l`
+
+:   The level of the messages that the director writes to `.stepup/director.log`.
+    Possible values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`.
+    The default is `WARNING`, or `DEBUG` when `STEPUP_DEBUG` is set.
+    The director also exports the level as `STEPUP_BUILD_LOG_LEVEL` to the steps it runs.
 
 `perf` / `STEPUP_BUILD_PERF` / `--perf`
 

@@ -369,6 +369,12 @@ and will be updated with any further changes before the final release.
   The alias has moved from `stepup.core.utils` to the new `stepup.core.tool` module,
   which collects what the subcommands have in common.
   See [Custom Tools](extending/tool.md) for how to write one.
+- The `--log-level` / `-l` option has moved from the `stepup` command to its `build`
+  subcommand, which is the only one acting on it:
+  write `sb -l INFO` or `stepup build -l INFO` instead of `stepup -l INFO build`.
+  The config-file key moves from the top level to the `[build]` section,
+  and the environment variable changes from `STEPUP_LOG_LEVEL` to `STEPUP_BUILD_LOG_LEVEL`.
+  The director exports the level to its steps under the new name as well.
 
 ### Deprecated
 

@@ -235,7 +235,7 @@ is already a declared dependency and import it at the top of the file instead.
 ## Configuration
 
 `STEPUP_DEBUG` is worth knowing about:
-it implies `STEPUP_LOG_LEVEL=DEBUG` and makes internal consistency checks
+it makes the default log level of `stepup build` `DEBUG` and makes internal consistency checks
 fatal instead of self-correcting.
 Profiling output (`STEPUP_BUILD_PERF`, `STEPUP_BUILD_SQLLOG`, `STEPUP_BUILD_JOBLOG`)
 can be analyzed with `tools/analyze_perf.py`.

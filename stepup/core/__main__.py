@@ -57,7 +57,7 @@ def sb_main():
     """Shortcut for `stepup build` (accepts the same arguments).
 
     Top-level options are not accepted, because `build` is inserted before all arguments,
-    so they must be given to the `stepup` command instead, e.g. `stepup -l DEBUG build`.
+    so they must be given to the `stepup` command instead, e.g. `stepup --version`.
     """
     sys.argv.insert(1, "build")
     main()
@@ -134,13 +134,6 @@ def setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
     )
     version = get_version("stepup")
     parser.add_argument("--version", "-V", action="version", version="%(prog)s " + version)
-    parser.add_argument(
-        "--log-level",
-        "-l",
-        default="DEBUG" if is_debug() else "WARNING",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level. [default=%(default)s]",
-    )
     loader.patch_parser(parser, use_section=False)
 
     # Load tool entry points
