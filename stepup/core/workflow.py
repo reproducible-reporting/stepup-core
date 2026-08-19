@@ -1204,8 +1204,11 @@ class Workflow(Trellis):
             # The step that declared the tree may name such a path as often as it likes:
             # the declaration is handed over to the tree, so that it does not matter
             # whether the tree or the file was declared first.
-            # Any other step declarign it static is an error, again in either order
+            # Any other step declaring it static is an error, again in either order
             # (see `register_static_tree`).
+            # The tree is checked for an existing declaration just like the creator is:
+            # `register_static_tree` may already have taken the path over, by handing it
+            # over from this creator or by adopting the detached node of a previous run.
             kept = []
             for path in paths:
                 static_tree = self._find_owning_static_tree(path)
@@ -1213,7 +1216,8 @@ class Workflow(Trellis):
                     tree_creator = static_tree.creator()
                     if tree_creator is None or tree_creator.i != creator.i:
                         raise GraphError(_static_tree_file_message(static_tree.label, path))
-                    own_tree_paths.append((static_tree, path))
+                    if not self._already_declared_static_by(static_tree, path):
+                        own_tree_paths.append((static_tree, path))
                 elif not self._already_declared_static_by(creator, path):
                     kept.append(path)
             paths = kept

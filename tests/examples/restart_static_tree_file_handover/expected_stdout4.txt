@@ -1,0 +1,24 @@
+ STARTUP │ Watching 2 director(y|ies)
+ STARTUP │ Checking 3 file(s) for changes
+ UPDATED │ plan.py (digest 3bbc5fc4 ➜ 38b4ddea, size 429 ➜ 281)
+   PHASE │ build
+  NOSKIP │ ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest b8f360c0 ➜ 217dfedb, out_digest e3b0c442 ➜ (unset)
+Modified inp hash    plan.py (digest 3bbc5fc4 ➜ 38b4ddea, size 429 ➜ 281)
+────────────────────────────── Remained the same ───────────────────────────────
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+    SKIP │ cat src/foo.txt > copy.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       explained, inp_digest 08f0693f, out_digest 1b3b11b4
+Same inp hash        src/foo.txt
+Same out hash        copy.txt
+────────────────────────────────────────────────────────────────────────────────
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 outdated output(s)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph4.txt, current_graph4_provenance.dot and current_graph4_dependency.dot
+DIRECTOR │ See you!
