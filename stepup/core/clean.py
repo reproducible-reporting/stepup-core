@@ -125,7 +125,7 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
         else:
             changed = (
                 state != FileState.VOLATILE
-                and old_file_hash.regen(lo_consuming_path) != old_file_hash
+                and old_file_hash.refreshed(lo_consuming_path) != old_file_hash
             )
             if args.safe and changed:
                 console.print(

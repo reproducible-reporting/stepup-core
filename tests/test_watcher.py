@@ -73,8 +73,8 @@ async def test_watch_changes_reports_unchanged_and_updates_only_the_changed_file
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
             wfp.declare_static_files(plan, ["same.txt", "changed.txt"])
-            same_hash = FileHash.unknown().regen("same.txt")
-            changed_hash = FileHash.unknown().regen("changed.txt")
+            same_hash = FileHash.unknown().refreshed("same.txt")
+            changed_hash = FileHash.unknown().refreshed("changed.txt")
             wfp.update_file_hashes(
                 {"same.txt": same_hash, "changed.txt": changed_hash},
                 cause=HashUpdateCause.CONFIRMED,

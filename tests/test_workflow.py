@@ -347,8 +347,8 @@ async def test_simple_example(wfs: Workflow):
         wfs.update_file_hashes(out_hashes, cause=HashUpdateCause.SUCCEEDED)
         inp_hashes = {"foo.txt": foo.get_hash()}
         env_values = {"A": "B"}
-        step_hash = StepHash.from_inp(step.label, True, inp_hashes, env_values)
-        step_hash = step_hash.evolve_out(out_hashes)
+        step_hash = StepHash.from_inp(step.label, inp_hashes, env_values, explained=True)
+        step_hash = step_hash.with_out_hashes(out_hashes)
         step.mark_completed(step_hash, False)
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH3
         assert wfs.count_required_steps() == (1, 1)
@@ -1104,8 +1104,8 @@ def _build_producer_sink(wfs: Workflow) -> tuple[Step, Step]:
     producer = wfs.find(Step, "producer")
     out_hashes = {"data.txt": fake_hash("data.txt")}
     wfs.update_file_hashes(out_hashes, cause=HashUpdateCause.SUCCEEDED)
-    step_hash = StepHash.from_inp(producer.label, True, {}, {})
-    step_hash = step_hash.evolve_out(out_hashes)
+    step_hash = StepHash.from_inp(producer.label, {}, {}, explained=True)
+    step_hash = step_hash.with_out_hashes(out_hashes)
     producer.mark_completed(step_hash, False)
 
     wfs.define_step(plan, "sink")
@@ -2342,11 +2342,11 @@ async def test_setenv_overlap_raises(wfp: Workflow):
 
 
 def test_setenv_affects_inp_digest():
-    base = StepHash.from_inp("key", False, {}, {}, False).inp_digest
-    one = StepHash.from_inp("key", False, {}, {}, False, {"A": "1"}).inp_digest
-    two = StepHash.from_inp("key", False, {}, {}, False, {"A": "2"}).inp_digest
+    base = StepHash.from_inp("key", {}, {}, explained=False).inp_digest
+    one = StepHash.from_inp("key", {}, {}, explained=False, env_overrides={"A": "1"}).inp_digest
+    two = StepHash.from_inp("key", {}, {}, explained=False, env_overrides={"A": "2"}).inp_digest
     # An empty override leaves the digest unchanged; different values give different digests.
-    assert StepHash.from_inp("key", False, {}, {}, False, {}).inp_digest == base
+    assert StepHash.from_inp("key", {}, {}, explained=False, env_overrides={}).inp_digest == base
     assert one != base
     assert one != two
 
@@ -3355,7 +3355,7 @@ async def test_recycle_preserves_hash_across_rerun(wfp: Workflow):
         assert foo.get_hash() == old_hash
 
         # Confirming with the same (unchanged) hash must still flip the state: the second
-        # RPC call always fires client-side, even when regen() finds no change.
+        # RPC call always fires client-side, even when refreshed() finds no change.
         wfp.update_file_hashes({"foo.txt": old_hash}, cause=HashUpdateCause.CONFIRMED)
         assert foo.get_state() == FileState.CONFIRMED
         assert foo.get_hash() == old_hash
@@ -4305,8 +4305,8 @@ async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Wo
         # RUNNING step is a no-op, so nothing clears the (would-be) memo through that path.
         out_hashes = {"data.txt": fake_hash("data.txt")}
         wfs.update_file_hashes(out_hashes, cause=HashUpdateCause.SUCCEEDED)
-        step_hash = StepHash.from_inp(producer.label, True, {}, {})
-        step_hash = step_hash.evolve_out(out_hashes)
+        step_hash = StepHash.from_inp(producer.label, {}, {}, explained=True)
+        step_hash = step_hash.with_out_hashes(out_hashes)
         producer.mark_completed(step_hash, False)
 
         # completed() re-derives availability from the graph, so even though wants_defer

@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS file (
 --   Null it out whenever the state moves to MISSING, PLANNED or VOLATILE,
 --   so File.set_state does not have to special-case the reset itself.
 -- * UNDECLARED and UNCONFIRMED keep a hash that came from a previous CONFIRMED state,
---   so FileHash.regen() can skip recomputing it when the file on disk is unchanged.
+--   so FileHash.refreshed() can skip recomputing it when the file on disk is unchanged.
 --   Both are needed for that: a path supplied as a step input before it is declared static
 --   passes through UNDECLARED on its way back to UNCONFIRMED.
 -- * UNCONFIRMED is only partly excluded:

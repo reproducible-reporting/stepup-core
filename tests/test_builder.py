@@ -131,7 +131,7 @@ async def test_finalize_reverts_optional_only_when_cleaning(
             )
             foo = wfp.find(Step, "foo")
             wfp.update_file_hashes(
-                {"data.txt": FileHash.unknown().regen("data.txt")},
+                {"data.txt": FileHash.unknown().refreshed("data.txt")},
                 cause=HashUpdateCause.SUCCEEDED,
             )
             foo.mark_completed(StepHash(b"aaa", None, b"zzz", None), False)

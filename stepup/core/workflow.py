@@ -203,7 +203,8 @@ _HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState
     (HashUpdateCause.CONFIRMED, FileState.CONFIRMED, False): (FileState.MISSING, "deleted"),
     # A stray UNCONFIRMED row is normally confirmed directly via CONFIRMED above, changed or not.
     # These two entries are a defensive fallback:
-    # Watcher.watch_changes's EXTERNAL regen loop may be reachable for an attached UNCONFIRMED file
+    # Watcher.watch_changes's EXTERNAL refresh loop may be reachable
+    # for an attached UNCONFIRMED file
     # (Workflow.change_is_relevant() does not exclude UNCONFIRMED, only PLANNED/VOLATILE),
     # even though hitting one is not expected in normal operation.
     (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, True): (FileState.CONFIRMED, "updated"),
@@ -806,7 +807,7 @@ class Workflow(Trellis):
         for node in nodes.values():
             node.detach()
         to_check = self.declare_static_files(self.root, [PLAN_PY])
-        checked = {path: file_hash.regen(path) for path, file_hash in to_check.items()}
+        checked = {path: file_hash.refreshed(path) for path, file_hash in to_check.items()}
         self.update_file_hashes(checked, cause=HashUpdateCause.CONFIRMED)
         self.define_step(self.root, command, inp_paths=[PLAN_PY], need=Need.PLAN, _safe=True)
         return True

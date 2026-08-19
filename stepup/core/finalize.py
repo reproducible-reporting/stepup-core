@@ -444,7 +444,9 @@ async def remove_outdated_outputs(db: DBSession, workflow: Workflow, reporter: R
     for path in sorted(file_paths, reverse=True):
         file_hash = workflow.to_be_deleted[path]
         path = Path(path)
-        if (file_hash is None or file_hash.regen(path) == file_hash) and _try_remove(path.remove):
+        if (file_hash is None or file_hash.refreshed(path) == file_hash) and _try_remove(
+            path.remove
+        ):
             await reporter("REMOVE", path)
 
     # Directories come after the files, so a directory that just lost its last file is empty

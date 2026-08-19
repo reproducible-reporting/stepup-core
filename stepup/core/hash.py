@@ -11,7 +11,7 @@ import json
 import os
 import stat
 import threading
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from typing import Self
 
 import attrs
@@ -24,7 +24,6 @@ __all__ = (
     "HASH_CHUNK_SIZE",
     "FileHash",
     "HashComputeResult",
-    "HashWords",
     "InpInfo",
     "OutInfo",
     "StepHash",
@@ -44,13 +43,25 @@ __all__ = (
 HASH_CHUNK_SIZE = 1 << 18
 
 
+#
+# Digest primitives
+#
+
+
 @attrs.define
 class HashWords:
     """An incremental SHA-256 hash of a sequence of words.
 
     Every word is preceded by a marker for its type,
-    so that consecutive words remain distinguishable
-    and an empty word differs from a missing one.
+    so that an empty word differs from a missing one
+    and a `str` never collides with the `bytes` holding the same characters.
+
+    The markers alone do not make the encoding injective:
+    a word whose own bytes contain a marker sequence can imitate a word boundary.
+    The words hashed within StepUp cannot collide,
+    because every variable-length word is a label, a path or an environment variable
+    name or value, none of which may contain a null byte.
+    A caller that feeds arbitrary binary words to this class cannot rely on that.
     """
 
     _hash = attrs.field(init=False, factory=hashlib.sha256)
@@ -100,11 +111,14 @@ def compute_file_digest(
     Parameters
     ----------
     path
-        The file of which the hash must be computed.
+        The file or symbolic link of which the hash must be computed.
     follow_symlinks
-        If True (default) and the path is a symbolic link,
-        try to hash the contents of the destination file.
-        If False, the destination path itself is hashed.
+        What to hash when `path` is a symbolic link.
+        If True (default), the contents of the file it points to.
+        If False, the link target as stored in the link itself, encoded as UTF-8.
+        A link therefore has two unrelated digests, one per setting,
+        which are never comparable.
+        This argument has no effect on a path that is not a symbolic link.
     cancel_event
         When given, the event is checked between chunks of `HASH_CHUNK_SIZE` bytes,
         so an in-progress hash of a large file can be aborted promptly.
@@ -119,7 +133,11 @@ def compute_file_digest(
     HashCancelledError
         When `cancel_event` was set before the whole file was hashed.
     HashFailedError
-        When `path` is a directory.
+        When `path` is a directory,
+        including a followed symbolic link that points to one.
+    OSError
+        When the file cannot be opened,
+        e.g. a followed symbolic link whose target does not exist.
     """
     # Cheap part:
     path = Path(path)
@@ -147,28 +165,9 @@ def compute_file_digest(
     return digest.digest()
 
 
-def fmt_file_hash_diff(old_hash: "FileHash", new_hash: "FileHash") -> str | None:
-    """Summarize the differences between two hashes of the same file.
-
-    Parameters
-    ----------
-    old_hash, new_hash
-        The hashes to compare.
-
-    Returns
-    -------
-    diff
-        A parenthesized summary of the changed digest, size and mode,
-        or `None` when none of these three differ.
-    """
-    changes = []
-    if old_hash.digest != new_hash.digest:
-        changes.append(f"digest {fmt_digest(old_hash.digest)} ➜ {fmt_digest(new_hash.digest)}")
-    if old_hash.size != new_hash.size:
-        changes.append(f"size {old_hash.size} ➜ {new_hash.size}")
-    if old_hash.mode != new_hash.mode:
-        changes.append(f"mode {stat.filemode(old_hash.mode)} ➜ {stat.filemode(new_hash.mode)}")
-    return f"({', '.join(changes)})" if len(changes) > 0 else None
+#
+# Formatting of hash ingredients
+#
 
 
 def fmt_digest(digest: bytes | None) -> str:
@@ -210,6 +209,11 @@ def fmt_env_value(value: str | None) -> str:
     return "(unset)" if value is None else f"='{value}'"
 
 
+#
+# File hashes
+#
+
+
 @attrs.define(frozen=True)
 class FileHash:
     """A hash of a file's content and file properties.
@@ -233,24 +237,25 @@ class FileHash:
 
     # File properties whose changes are relevant.
 
-    _digest: bytes = attrs.field(converter=bytes, repr=fmt_digest)
-    """The SHA-256 hash of the file's content."""
-    _mode: int = attrs.field(converter=int, repr=stat.filemode)
-    """The file mode."""
+    digest: bytes = attrs.field(converter=bytes, repr=fmt_digest)
+    """The SHA-256 hash of the file's content, or `b"u"` when the hash is unknown."""
+
+    mode: int = attrs.field(converter=int, repr=stat.filemode)
+    """The file mode, in the encoding of `os.stat_result.st_mode`."""
 
     # Properties that are only used to detect changes.
     # If these have not changed, the digest is not recomputed.
 
-    # Note that _mtime and _inode are not used for sorting,
+    # Note that mtime and inode are not used for sorting,
     # to ensure deterministic order across builds when sorting by FileHash instance.
 
-    _mtime: float = attrs.field(converter=float, repr=False, eq=False)
-    """The last modification time."""
+    mtime: float = attrs.field(converter=float, repr=False, eq=False)
+    """The last modification time, in seconds since the epoch."""
 
-    _size: int = attrs.field(converter=int, repr=False)
+    size: int = attrs.field(converter=int, repr=False)
     """The file size in bytes."""
 
-    _inode: int = attrs.field(converter=int, repr=False, eq=False)
+    inode: int = attrs.field(converter=int, repr=False, eq=False)
     """The inode number of the file on the file system."""
 
     @classmethod
@@ -258,8 +263,8 @@ class FileHash:
         """Create the hash of a file that does not exist."""
         return cls(b"u", 0, 0.0, 0, 0)
 
-    def regen(self, path: str, cancel_event: threading.Event | None = None) -> Self:
-        """Regenerate and return a new instance for the given file on disk.
+    def refreshed(self, path: str, cancel_event: threading.Event | None = None) -> Self:
+        """Return the current hash of the given file on disk.
 
         Parameters
         ----------
@@ -300,10 +305,10 @@ class FileHash:
             return self if self.is_unknown else self.unknown()
         # Decide whether the digest computation can be skipped.
         if (
-            self._mode == st.st_mode
-            and self._mtime == st.st_mtime
-            and self._size == st.st_size
-            and self._inode == st.st_ino
+            self.mode == st.st_mode
+            and self.mtime == st.st_mtime
+            and self.size == st.st_size
+            and self.inode == st.st_ino
         ):
             return self
         # Directories are rejected by compute_file_digest.
@@ -311,34 +316,9 @@ class FileHash:
         return self.__class__(digest, st.st_mode, st.st_mtime, st.st_size, st.st_ino)
 
     @property
-    def digest(self) -> bytes:
-        """The SHA-256 hash of the file's content, or `b"u"` when the hash is unknown."""
-        return self._digest
-
-    @property
-    def mode(self) -> int:
-        """The file mode, in the encoding of `os.stat_result.st_mode`."""
-        return self._mode
-
-    @property
-    def mtime(self) -> float:
-        """The last modification time, in seconds since the epoch."""
-        return self._mtime
-
-    @property
-    def size(self) -> int:
-        """The file size in bytes."""
-        return self._size
-
-    @property
-    def inode(self) -> int:
-        """The inode number of the file on the file system."""
-        return self._inode
-
-    @property
     def is_unknown(self):
         """Whether the digest is the placeholder for a file that does not exist."""
-        return self._digest == b"u"
+        return self.digest == b"u"
 
     def to_json(self) -> str | None:
         """Serialize to the JSON representation stored in `file.hash`, or `None` if unknown."""
@@ -352,6 +332,35 @@ class FileHash:
         if value is None:
             return cls.unknown()
         return json_converter.structure(json.loads(value), cls)
+
+
+def fmt_file_hash_diff(old_hash: FileHash, new_hash: FileHash) -> str | None:
+    """Summarize the differences between two hashes of the same file.
+
+    Parameters
+    ----------
+    old_hash, new_hash
+        The hashes to compare.
+
+    Returns
+    -------
+    diff
+        A parenthesized summary of the changed digest, size and mode,
+        or `None` when none of these three differ.
+    """
+    changes = []
+    if old_hash.digest != new_hash.digest:
+        changes.append(f"digest {fmt_digest(old_hash.digest)} ➜ {fmt_digest(new_hash.digest)}")
+    if old_hash.size != new_hash.size:
+        changes.append(f"size {old_hash.size} ➜ {new_hash.size}")
+    if old_hash.mode != new_hash.mode:
+        changes.append(f"mode {stat.filemode(old_hash.mode)} ➜ {stat.filemode(new_hash.mode)}")
+    return f"({', '.join(changes)})" if len(changes) > 0 else None
+
+
+#
+# Step hashes
+#
 
 
 @attrs.define
@@ -386,7 +395,10 @@ def _update_file_hashes(hw: HashWords, file_hashes: Mapping[str, FileHash]):
         hw.update(file_hash.digest)
 
 
-@attrs.define
+# Frozen because a step hash is a value object: `with_out_hashes` returns a new instance.
+# `unsafe_hash=False` keeps instances unhashable,
+# because a compact hash would otherwise be hashable while an explained one is not.
+@attrs.define(frozen=True, unsafe_hash=False)
 class StepHash:
     """A hash used to detect whether a step can be skipped.
 
@@ -395,30 +407,58 @@ class StepHash:
     its input files and the environment variables and overrides it uses.
     The output digest covers the files the step has created.
 
-    A step hash is either compact or extended.
-    An extended hash also keeps the ingredients of both digests (`InpInfo` and `OutInfo`),
-    so that a difference between two hashes can be explained in detail.
+    A step hash is either compact or explained.
+    An explained hash also keeps the ingredients of both digests (`InpInfo` and `OutInfo`),
+    so that a difference between two hashes can be described in detail.
     """
 
-    _inp_digest: bytes = attrs.field()
-    _inp_info: InpInfo | None = attrs.field(default=None)
-    _out_digest: bytes | None = attrs.field(default=None)
-    _out_info: OutInfo | None = attrs.field(default=None)
+    inp_digest: bytes = attrs.field()
+    """The digest of the step's inputs."""
+
+    inp_info: InpInfo | None = attrs.field(default=None)
+    """The ingredients of `inp_digest`, or `None` for a compact hash."""
+
+    out_digest: bytes | None = attrs.field(default=None)
+    """The digest of the step's outputs, or `None` when they have not been hashed yet."""
+
+    out_info: OutInfo | None = attrs.field(default=None)
+    """The ingredients of `out_digest`, or `None` for a compact or output-less hash."""
 
     @classmethod
     def from_inp(
         cls,
         step_label: str,
-        extended: bool,
         inp_hashes: Mapping[str, FileHash],
-        env_values: dict[str, str | None],
+        env_values: Mapping[str, str | None],
+        *,
+        explained: bool,
         shell: bool = False,
-        env_overrides: dict[str, str] | None = None,
+        env_overrides: Mapping[str, str] | None = None,
     ):
         """Create a new step hash with input information only.
 
-        The environment variables are sorted here, so the digest does not depend on the order
-        in which the caller happened to collect them.
+        Parameters
+        ----------
+        step_label
+            The label of the step, which distinguishes it from every other step.
+        inp_hashes
+            The hashes of the step's input files, keyed by path.
+        env_values
+            The values of the environment variables the step depends on,
+            keyed by name, with `None` for a variable that is not defined.
+        explained
+            Whether to keep the ingredients of the digest in an `InpInfo`.
+        shell
+            Whether the step runs its command through a shell.
+        env_overrides
+            The environment variables the step sets for its own command, keyed by name.
+
+        Returns
+        -------
+        step_hash
+            A step hash without output information.
+            The environment variables are sorted here, so the digest does not depend on
+            the order in which the caller happened to collect them.
         """
         env_overrides = {} if env_overrides is None else env_overrides
         hw = HashWords()
@@ -435,40 +475,29 @@ class StepHash:
         for name, value in sorted(env_overrides.items()):
             hw.update(name)
             hw.update(value)
-        inp_digest = hw.digest()
         inp_info = (
-            InpInfo(dict(inp_hashes), dict(env_values), dict(env_overrides)) if extended else None
+            InpInfo(dict(inp_hashes), dict(env_values), dict(env_overrides)) if explained else None
         )
-        return cls(inp_digest, inp_info)
+        return cls(hw.digest(), inp_info)
 
-    def evolve_out(self, out_hashes: Mapping[str, FileHash]):
-        """Create a copy of the StepHash with output information added/updated."""
+    def with_out_hashes(self, out_hashes: Mapping[str, FileHash]) -> Self:
+        """Return a copy of this step hash with the output information added or replaced.
+
+        Parameters
+        ----------
+        out_hashes
+            The hashes of the step's output files, keyed by path.
+
+        Returns
+        -------
+        step_hash
+            A step hash with the same input information and a new output digest.
+            It is explained if and only if `self` is.
+        """
         hw = HashWords()
         _update_file_hashes(hw, out_hashes)
-        out_digest = hw.digest()
-        extended = self._inp_info is not None
-        out_info = OutInfo(dict(out_hashes)) if extended else None
-        return self.__class__(self._inp_digest, self._inp_info, out_digest, out_info)
-
-    @property
-    def inp_digest(self) -> bytes:
-        """The digest of the step's inputs."""
-        return self._inp_digest
-
-    @property
-    def inp_info(self) -> InpInfo | None:
-        """The ingredients of `inp_digest`, or `None` for a compact hash."""
-        return self._inp_info
-
-    @property
-    def out_digest(self) -> bytes | None:
-        """The digest of the step's outputs, or `None` when they have not been hashed yet."""
-        return self._out_digest
-
-    @property
-    def out_info(self) -> OutInfo | None:
-        """The ingredients of `out_digest`, or `None` for a compact or output-less hash."""
-        return self._out_info
+        out_info = OutInfo(dict(out_hashes)) if self.inp_info is not None else None
+        return self.__class__(self.inp_digest, self.inp_info, hw.digest(), out_info)
 
     def to_json(self) -> str:
         """Serialize to the JSON representation stored in `step.hash`."""
@@ -480,6 +509,11 @@ class StepHash:
         if value is None:
             return None
         return json_converter.structure(json.loads(value), cls)
+
+
+#
+# Comparison of step hashes
+#
 
 
 def compare_step_hashes(old_hash: StepHash, new_hash: StepHash) -> tuple[str, str]:
@@ -495,137 +529,93 @@ def compare_step_hashes(old_hash: StepHash, new_hash: StepHash) -> tuple[str, st
     changed, same
         Two multi-line reports, one for the ingredients that differ
         and one for those that are identical.
-        Input and output ingredients are only detailed when both hashes are extended.
+        Input and output ingredients are only detailed when both hashes are explained.
         Files and environment variables are listed in sorted order.
     """
-    chl = []
-    sml = []
-    _compare_step_digests(chl, sml, old_hash, new_hash)
-    if not (old_hash.inp_info is None or new_hash.inp_info is None):
-        _compare_inp_info(chl, sml, old_hash.inp_info, new_hash.inp_info)
-    if not (old_hash.out_info is None or new_hash.out_info is None):
-        _compare_out_info(chl, sml, old_hash.out_info, new_hash.out_info)
-    changed = "\n".join(f"{descr:20s} {content}" for descr, content in chl)
-    same = "\n".join(f"{descr:20s} {content}" for descr, content in sml)
-    return changed, same
+    changed_lines = []
+    same_lines = []
+    for is_changed, descr, content in _iter_comparisons(old_hash, new_hash):
+        lines = changed_lines if is_changed else same_lines
+        lines.append(f"{descr:20s} {content}")
+    return "\n".join(changed_lines), "\n".join(same_lines)
 
 
-def _compare_step_digests(
-    chl: list[tuple[str, str]], sml: list[tuple[str, str]], old_hash: StepHash, new_hash: StepHash
-):
-    parts = []
-    changed = False
+def _iter_comparisons(old_hash: StepHash, new_hash: StepHash) -> Iterator[tuple[bool, str, str]]:
+    """Iterate over the ingredient comparisons of two step hashes.
 
-    if (old_hash.inp_info is None) == (new_hash.inp_info is None):
-        parts.append(_fmt_info(old_hash))
-    else:
-        parts.append(_fmt_info(old_hash) + " ➜ " + _fmt_info(new_hash))
-
-    if old_hash.inp_digest == new_hash.inp_digest:
-        parts.append("inp_digest " + fmt_digest(old_hash.inp_digest))
-    else:
-        changed = True
-        parts.append(
-            "inp_digest "
-            + fmt_digest(old_hash.inp_digest)
-            + " ➜ "
-            + fmt_digest(new_hash.inp_digest)
-        )
-
-    if old_hash.out_digest == new_hash.out_digest:
-        parts.append("out_digest " + fmt_digest(old_hash.out_digest))
-    else:
-        changed = True
-        parts.append(
-            "out_digest "
-            + fmt_digest(old_hash.out_digest)
-            + " ➜ "
-            + fmt_digest(new_hash.out_digest)
-        )
-
-    if changed:
-        chl.append(("Modified step hash", ", ".join(parts)))
-    else:
-        sml.append(("Same step hash", ", ".join(parts)))
+    Yields
+    ------
+    is_changed, descr, content
+        Whether the ingredient differs between the two hashes,
+        a short description of the ingredient and the comparison itself.
+    """
+    yield _compare_step_digests(old_hash, new_hash)
+    old_inp, new_inp = old_hash.inp_info, new_hash.inp_info
+    if old_inp is not None and new_inp is not None:
+        yield from _compare_file_hashes("inp", old_inp.inp_hashes, new_inp.inp_hashes)
+        yield from _compare_env_values("env var", old_inp.env_values, new_inp.env_values)
+        yield from _compare_env_values("env override", old_inp.env_overrides, new_inp.env_overrides)
+    old_out, new_out = old_hash.out_info, new_hash.out_info
+    if old_out is not None and new_out is not None:
+        yield from _compare_file_hashes("out", old_out.out_hashes, new_out.out_hashes)
 
 
-def _fmt_info(step_hash: StepHash) -> str:
+def _compare_step_digests(old_hash: StepHash, new_hash: StepHash) -> tuple[bool, str, str]:
+    """Compare the detail level and both digests of two step hashes."""
+    old_level = _fmt_detail_level(old_hash)
+    new_level = _fmt_detail_level(new_hash)
+    parts = [old_level if old_level == new_level else f"{old_level} ➜ {new_level}"]
+    is_changed = False
+    for label, old_digest, new_digest in [
+        ("inp_digest", old_hash.inp_digest, new_hash.inp_digest),
+        ("out_digest", old_hash.out_digest, new_hash.out_digest),
+    ]:
+        if old_digest == new_digest:
+            parts.append(f"{label} {fmt_digest(old_digest)}")
+        else:
+            is_changed = True
+            parts.append(f"{label} {fmt_digest(old_digest)} ➜ {fmt_digest(new_digest)}")
+    descr = "Modified step hash" if is_changed else "Same step hash"
+    return is_changed, descr, ", ".join(parts)
+
+
+def _fmt_detail_level(step_hash: StepHash) -> str:
+    """Name the detail level of a step hash, as used in the comparison reports."""
     return "compact" if step_hash.inp_info is None else "explained"
 
 
-def _compare_inp_info(
-    chl: list[tuple[str, str]], sml: list[tuple[str, str]], old_info: InpInfo, new_info: InpInfo
-):
-    _explain_hash_changes("inp", chl, sml, old_info.inp_hashes, new_info.inp_hashes)
-    _explain_env_dict_changes(chl, sml, old_info.env_values, new_info.env_values, "env var")
-    _explain_env_dict_changes(
-        chl, sml, old_info.env_overrides, new_info.env_overrides, "env override"
-    )
-
-
-def _compare_out_info(
-    chl: list[tuple[str, str]], sml: list[tuple[str, str]], old_info: OutInfo, new_info: OutInfo
-):
-    _explain_hash_changes("out", chl, sml, old_info.out_hashes, new_info.out_hashes)
-
-
-def _explain_hash_changes(
-    label: str,
-    chl: list[tuple[str, str]],
-    sml: list[tuple[str, str]],
-    old_hashes: dict[str, FileHash],
-    new_hashes: dict[str, FileHash],
-):
+def _compare_file_hashes(
+    label: str, old_hashes: Mapping[str, FileHash], new_hashes: Mapping[str, FileHash]
+) -> Iterator[tuple[bool, str, str]]:
+    """Compare two mappings of file hashes, in sorted path order."""
     for path in sorted(set(old_hashes) | set(new_hashes)):
-        if path in old_hashes:
-            if path in new_hashes:
-                changed, line = _report_file_hash_diff(
-                    label, path, old_hashes[path], new_hashes[path]
-                )
-                if changed:
-                    chl.append(line)
-                else:
-                    sml.append(line)
-            else:
-                chl.append((f"Deleted {label} hash", path))
-        elif path in new_hashes:
-            chl.append((f"Added {label} hash", path))
+        if path not in old_hashes:
+            yield True, f"Added {label} hash", path
+        elif path not in new_hashes:
+            yield True, f"Deleted {label} hash", path
         else:
-            raise AssertionError("This should never happen.")
+            diff = fmt_file_hash_diff(old_hashes[path], new_hashes[path])
+            if diff is None:
+                yield False, f"Same {label} hash", path
+            else:
+                yield True, f"Modified {label} hash", f"{path} {diff}"
 
 
-def _report_file_hash_diff(
-    label: str, path: str, old_hash: "FileHash", new_hash: "FileHash"
-) -> tuple[bool, tuple[str, str]]:
-    change = fmt_file_hash_diff(old_hash, new_hash)
-    if change is None:
-        return False, (f"Same {label} hash", path)
-    return True, (f"Modified {label} hash", f"{path} {change}")
-
-
-def _explain_env_dict_changes(
-    chl: list[tuple[str, str]],
-    sml: list[tuple[str, str]],
-    old_env: dict[str, str | None],
-    new_env: dict[str, str | None],
-    label: str,
-):
+def _compare_env_values(
+    label: str, old_env: Mapping[str, str | None], new_env: Mapping[str, str | None]
+) -> Iterator[tuple[bool, str, str]]:
+    """Compare two mappings of environment variable values, in sorted name order."""
     for name in sorted(set(old_env) | set(new_env)):
-        if name in old_env:
-            old_var = fmt_env_value(old_env[name])
-            if name in new_env:
-                new_var = fmt_env_value(new_env[name])
-                if old_env[name] == new_env[name]:
-                    sml.append((f"Same {label}", f"{name} {old_var}"))
-                else:
-                    chl.append((f"Modified {label}", f"{name} {old_var} ➜ {new_var}"))
-            else:
-                chl.append((f"Deleted {label}", f"{name} {old_var}"))
-        elif name in new_env:
-            new_var = fmt_env_value(new_env[name])
-            chl.append((f"Added {label}", f"{name} {new_var}"))
+        if name not in old_env:
+            yield True, f"Added {label}", f"{name} {fmt_env_value(new_env[name])}"
+        elif name not in new_env:
+            yield True, f"Deleted {label}", f"{name} {fmt_env_value(old_env[name])}"
+        elif old_env[name] == new_env[name]:
+            yield False, f"Same {label}", f"{name} {fmt_env_value(old_env[name])}"
         else:
-            raise AssertionError("This should never happen.")
+            old_var = fmt_env_value(old_env[name])
+            new_var = fmt_env_value(new_env[name])
+            yield True, f"Modified {label}", f"{name} {old_var} ➜ {new_var}"
 
 
 #
@@ -677,6 +667,8 @@ def compute_inp_hashes(
 
     Raises
     ------
+    ConsistencyError
+        When an input was already missing before the step was scheduled.
     HashCancelledError
         When `cancel_event` was set before all files were hashed.
     HashFailedError
@@ -687,12 +679,12 @@ def compute_inp_hashes(
     all_inp_hashes = {}
     for path in sorted(inp_hashes):
         old_file_hash = inp_hashes[path]
-        new_file_hash = old_file_hash.regen(path, cancel_event)
+        new_file_hash = old_file_hash.refreshed(path, cancel_event)
         all_inp_hashes[path] = new_file_hash
         if new_file_hash != old_file_hash:
             # Collect changed hashes, so callers can process them efficiently.
             new_inp_hashes[path] = new_file_hash
-            # If am input hash has changed,
+            # If an input hash has changed,
             # corresponding input files have changed or disappeared unexpectedly,
             # which must be reported.
             if new_file_hash.is_unknown:
@@ -739,7 +731,7 @@ def compute_out_hashes(
     all_out_hashes = {}
     for path in sorted(out_hashes):
         old_file_hash = out_hashes[path]
-        new_file_hash = old_file_hash.regen(path, cancel_event)
+        new_file_hash = old_file_hash.refreshed(path, cancel_event)
         all_out_hashes[path] = new_file_hash
         # Collect changed hashes, so callers can process them efficiently.
         if new_file_hash != old_file_hash:
@@ -756,28 +748,11 @@ def compute_both_hashes(
     out_hashes: Mapping[str, FileHash],
     cancel_event: threading.Event,
 ) -> tuple[HashComputeResult, HashComputeResult]:
-    """Compute input and output hashes.
+    """Call `compute_inp_hashes` and `compute_out_hashes`, in that order.
 
-    Parameters
-    ----------
-    inp_hashes
-        The old hashes of the input files, keyed by path.
-    out_hashes
-        The old hashes of the output files, keyed by path.
-    cancel_event
-        Set this event to cancel the hash computation.
-
-    Returns
-    -------
-    inp_results, out_results
-        The results of `compute_inp_hashes` and `compute_out_hashes`, respectively.
-
-    Raises
-    ------
-    HashCancelledError
-        When `cancel_event` was set before all files were hashed.
-    HashFailedError
-        When an input or output turned out to be a directory.
+    A `ThreadWorker` runs a single callable,
+    so a step that needs both results must ask for them in one call.
+    The parameters, the results and the exceptions are those of the two functions it calls.
     """
     return (
         compute_inp_hashes(inp_hashes, cancel_event),

@@ -615,7 +615,7 @@ class Executor:
         writes a child outcome into `run.outcome`, neither of which applies to a `HashJob`.
         """
         worker = ThreadWorker(
-            work=functools.partial(FileHash.regen, hash_job.old_hash, hash_job.path),
+            work=functools.partial(FileHash.refreshed, hash_job.old_hash, hash_job.path),
             job_i=hash_job.job_i,
         )
         hash_job.worker = worker
@@ -725,11 +725,11 @@ class Executor:
 
         step_hash = StepHash.from_inp(
             run.step.label,
-            self.explain_rerun,
             result.all_hashes,
             {name: self.base_env.get(name) for name in env_deps},
-            shell,
-            env_overrides or {},
+            explained=self.explain_rerun,
+            shell=shell,
+            env_overrides=env_overrides,
         )
         run.inp_digest = step_hash.inp_digest
         return step_hash, {}
@@ -756,7 +756,7 @@ class Executor:
         if len(result.messages) > 0:
             run.out_missing.extend(result.messages)
             run.success = False
-        step_hash = step_hash.evolve_out(result.all_hashes)
+        step_hash = step_hash.with_out_hashes(result.all_hashes)
 
         return step_hash, result.new_hashes
 
@@ -789,13 +789,13 @@ class Executor:
         if len(inp_result.messages) == 0:
             step_hash = StepHash.from_inp(
                 run.step.label,
-                self.explain_rerun,
                 inp_result.all_hashes,
                 {name: self.base_env.get(name) for name in env_deps},
-                shell,
-                env_overrides or {},
+                explained=self.explain_rerun,
+                shell=shell,
+                env_overrides=env_overrides,
             )
-            step_hash = step_hash.evolve_out(out_result.all_hashes)
+            step_hash = step_hash.with_out_hashes(out_result.all_hashes)
         else:
             step_hash = None
             run.inp_messages.extend(inp_result.messages)

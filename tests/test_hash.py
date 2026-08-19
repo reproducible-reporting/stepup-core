@@ -27,21 +27,21 @@ def test_new():
 
 def test_simple():
     init_hash = FileHash.unknown()
-    new_hash1 = init_hash.regen("README.md")
+    new_hash1 = init_hash.refreshed("README.md")
     assert new_hash1 is not init_hash
     assert isinstance(new_hash1.digest, bytes)
     assert new_hash1.digest != b"u"
     assert new_hash1.size > 0
-    new_hash2 = new_hash1.regen("README.md")
+    new_hash2 = new_hash1.refreshed("README.md")
     assert new_hash2 is new_hash1
-    new_hash3 = new_hash2.regen("pyproject.toml")
+    new_hash3 = new_hash2.refreshed("pyproject.toml")
     assert new_hash3 is not new_hash2
 
 
 def test_missing():
     non_existing = "sdfkjaskdfjsadksasdsdfoasudfioausdfosuadfyoa"
     init_hash = FileHash.unknown()
-    new_hash = init_hash.regen(non_existing)
+    new_hash = init_hash.refreshed(non_existing)
     assert new_hash is init_hash
     assert new_hash.digest == b"u"
     assert new_hash.size == 0
@@ -63,17 +63,17 @@ def test_hash_wrong_dir(path_tmp: Path):
         compute_file_digest(path_tmp)
 
 
-def test_regen_dir(path_tmp: Path):
+def test_refreshed_dir(path_tmp: Path):
     with pytest.raises(HashFailedError):
-        FileHash.unknown().regen(path_tmp)
+        FileHash.unknown().refreshed(path_tmp)
 
 
-def test_regen_trailing_sep_on_file(path_tmp: Path):
+def test_refreshed_trailing_sep_on_file(path_tmp: Path):
     path = path_tmp / "file.txt"
     path.write_bytes(b"content")
-    # os.stat rejects the trailing separator, which regen reports as an unknown hash.
+    # os.stat rejects the trailing separator, which refreshed() reports as an unknown hash.
     init_hash = FileHash.unknown()
-    assert init_hash.regen(path + os.sep) is init_hash
+    assert init_hash.refreshed(path + os.sep) is init_hash
 
 
 def test_hash_symbolic_link_dir(path_tmp: Path):
@@ -114,23 +114,23 @@ def test_digest_with_and_without_cancel_event(path_tmp: Path):
     assert compute_file_digest(path, cancel_event=threading.Event()) == expected
 
 
-def test_regen_cancelled_changed_file(path_tmp: Path):
+def test_refreshed_cancelled_changed_file(path_tmp: Path):
     path = path_tmp / "file.txt"
     path.write_bytes(b"content")
     cancel_event = threading.Event()
     cancel_event.set()
     with pytest.raises(HashCancelledError):
-        FileHash.unknown().regen(path, cancel_event)
+        FileHash.unknown().refreshed(path, cancel_event)
 
 
-def test_regen_cancelled_unchanged_file(path_tmp: Path):
+def test_refreshed_cancelled_unchanged_file(path_tmp: Path):
     path = path_tmp / "file.txt"
     path.write_bytes(b"content")
-    file_hash = FileHash.unknown().regen(path)
+    file_hash = FileHash.unknown().refreshed(path)
     cancel_event = threading.Event()
     cancel_event.set()
     with pytest.raises(HashCancelledError):
-        file_hash.regen(path, cancel_event)
+        file_hash.refreshed(path, cancel_event)
 
 
 def test_to_json_unknown():

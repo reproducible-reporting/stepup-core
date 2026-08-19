@@ -326,7 +326,7 @@ async def test_compute_out_step_hash_cancelled_reports_failure(wfs: Workflow, mo
     scheduler = SimpleNamespace(draining=False, record_stop_time=lambda step_i, *, succeeded: None)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
     run = Run(step, job_i=1)
-    step_hash = StepHash.from_inp(step.label, False, {}, {})
+    step_hash = StepHash.from_inp(step.label, {}, {}, explained=False)
 
     new_hash, new_out_hashes = await executor._compute_out_step_hash(run, step_hash)
 
@@ -427,7 +427,7 @@ async def test_try_skip_job_bails_out_when_out_hash_cancelled(wfs: Workflow, mon
     reporter = _FakeReporter()
     scheduler = SimpleNamespace(draining=False, record_stop_time=lambda step_i, *, succeeded: None)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
-    step_hash = StepHash.from_inp(step.label, False, {}, {})
+    step_hash = StepHash.from_inp(step.label, {}, {}, explained=False)
 
     # try_skip_job must not raise, even though _compute_out_step_hash is cancelled.
     await executor.try_skip_job(1, step, [], [], step_hash)
@@ -469,7 +469,7 @@ async def test_run_hash_job_confirmed_applies_even_when_unchanged(
             wfs.declare_static_files(wfs.root, ["foo.txt"])
         with open("foo.txt", "w") as fh:
             fh.write("hello")
-        real_hash = FileHash.unknown().regen("foo.txt")
+        real_hash = FileHash.unknown().refreshed("foo.txt")
 
         calls = _spy_update_file_hashes(monkeypatch)
         executor = _make_executor(reporter=_FakeReporter(), workflow=wfs, db=wfs.db)
@@ -492,7 +492,7 @@ async def test_run_hash_job_external_not_applied_when_unchanged(wfs: Workflow, t
             wfs.declare_static_files(wfs.root, ["foo.txt"])
         with open("foo.txt", "w") as fh:
             fh.write("hello")
-        real_hash = FileHash.unknown().regen("foo.txt")
+        real_hash = FileHash.unknown().refreshed("foo.txt")
         async with wfs.db:
             wfs.update_file_hashes({"foo.txt": real_hash}, cause=HashUpdateCause.CONFIRMED)
             assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
@@ -547,7 +547,7 @@ async def test_run_hash_job_cancelled_cancels_future_without_raising(monkeypatch
     def _raise_cancelled(old_hash, path, cancel_event=None):
         raise HashCancelledError(path)
 
-    monkeypatch.setattr(FileHash, "regen", _raise_cancelled)
+    monkeypatch.setattr(FileHash, "refreshed", _raise_cancelled)
     executor = _make_executor(reporter=_FakeReporter())
     hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
 
@@ -571,7 +571,7 @@ async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workf
         wfs.define_step(wfs.root, "cat foo.txt", inp_paths=["foo.txt"])
         wfs.declare_static_files(wfs.root, ["foo.txt"])
 
-    monkeypatch.setattr(FileHash, "regen", _raise_permission_error)
+    monkeypatch.setattr(FileHash, "refreshed", _raise_permission_error)
     reporter = _FakeReporter()
     scheduler = SimpleNamespace(draining=False)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, workflow=wfs, db=wfs.db)
@@ -596,7 +596,7 @@ async def test_run_hash_job_exception_without_file_node_reports_no_provenance(
     def _raise_permission_error(old_hash, path, cancel_event=None):
         raise PermissionError("denied")
 
-    monkeypatch.setattr(FileHash, "regen", _raise_permission_error)
+    monkeypatch.setattr(FileHash, "refreshed", _raise_permission_error)
     reporter = _FakeReporter()
     scheduler = SimpleNamespace(draining=False)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, workflow=wfs, db=wfs.db)

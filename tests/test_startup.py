@@ -98,8 +98,8 @@ async def test_check_file_changes_confirms_unchanged_stray_unconfirmed_row(wfs: 
         with open("foo.txt", "w") as fh:
             fh.write("hello")
         # A real (not `conftest.fake_hash`) hash is needed here: the "unchanged" case
-        # only holds if the cached hash actually matches what regen() computes from disk.
-        real_hash = FileHash.unknown().regen("foo.txt")
+        # only holds if the cached hash actually matches what refreshed() computes from disk.
+        real_hash = FileHash.unknown().refreshed("foo.txt")
         async with wfs.db:
             wfs.declare_static_files(wfs.root, ["foo.txt"])
             wfs.update_file_hashes({"foo.txt": real_hash}, cause=HashUpdateCause.CONFIRMED)
