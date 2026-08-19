@@ -151,7 +151,7 @@ class Builder:
             return
         async with self.db:
             nsuccess, ntotal = self.workflow.count_required_steps()
-        await self.reporter.update_counts(nsuccess, ntotal)
+        await self.reporter.update_progress(nsuccess, ntotal)
 
     async def job_loop(self):
         """Run all runnable jobs until there are none left or the scheduler is draining."""
@@ -232,7 +232,7 @@ class Builder:
         # so this runs after delete_detached().
         await self.scheduler.build_completed()
         await self._report_counts()
-        await self.reporter.check_logs()
+        await self.reporter.warn_about_logs()
 
     def start_task(self, job: Job):
         """Start an asyncio task that runs the job in the executor."""
@@ -246,7 +246,7 @@ class Builder:
 
         The bracket lives here, around the whole job coroutine,
         rather than at the individual start/stop points inside `Executor`:
-        that guarantees a `stop_job` for every `start_job`,
+        that guarantees a `job_stopped` for every `job_started`,
         regardless of which internal path the job takes (skip, rerun, early failure, ...),
         and it shows the job as running from the moment its task begins,
         including input hash computation, not just once the command itself starts.
@@ -254,11 +254,11 @@ class Builder:
         Hash jobs get the same treatment from `Executor.run_hash_job` itself,
         since they are also started outside this class (see `gather_hashes`).
         """
-        self.reporter.start_job(job.letter, job.label, job.job_i)
+        self.reporter.job_started(job.job_i, job.letter, job.label)
         try:
             return await job.coro(self.executor)
         finally:
-            self.reporter.stop_job(job.job_i)
+            self.reporter.job_stopped(job.job_i)
 
     def start_hash_task(self, hash_job: HashJob) -> None:
         """Start an asyncio task that runs `hash_job` on the executor.

@@ -45,16 +45,16 @@ class _FakeReporter:
     def __init__(self):
         self.calls = []
 
-    async def __call__(self, action, label, pages=None):
-        self.calls.append((action, label))
+    async def __call__(self, tag, label, pages=None):
+        self.calls.append((tag, label))
 
-    def start_job(self, letter, description, job_i):
+    def job_started(self, job_i, letter, description):
         pass
 
-    def stop_job(self, job_i):
+    def job_stopped(self, job_i):
         pass
 
-    async def update_counts(self, nsuccess, ntotal):
+    async def update_progress(self, ndone, ntotal):
         pass
 
 

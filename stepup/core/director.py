@@ -550,7 +550,7 @@ async def serve(
             components.workflow.reconcile_targets()
         except GraphError as exc:
             await reporter("ERROR", f"Invalid build target: {exc}")
-            await reporter.check_logs()
+            await reporter.warn_about_logs()
             return ServeResult(returncode=ReturnCode.FAILED, usage_report="", usage_summary="")
 
     await _run_tasks(

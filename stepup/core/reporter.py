@@ -29,8 +29,8 @@ __all__ = ("PROGRESS_REFRESH_DELAY", "ReporterClient", "ReporterHandler")
 
 PROGRESS_REFRESH_DELAY = 0.3
 PROGRESS_REFRESH_INTERVAL = 1.0
-ACTION_COLORS = {
-    # Neutral action
+TAG_COLORS = {
+    # Neutral
     "START": "blue",
     # Problems
     "ERROR": "red",
@@ -59,24 +59,21 @@ ACTION_COLORS = {
 
 @attrs.define
 class ReporterClient:
-    socket_path: Path | None = attrs.field(default=None)
-    """Path to the Unix socket of the TUI to connect to, or `None` for a dummy client."""
-
     client: BaseAsyncRPCClient = attrs.field(factory=DummyAsyncRPCClient)
-    """The RPC client to use for reporting, or a dummy client if `socket_path` is `None`."""
+    """The RPC client to use for reporting, or a dummy client when there is no reporter."""
 
-    _start_job_buffer: dict[int, tuple[str, str]] = attrs.field(init=False, factory=dict)
-    """Buffered `start_job` signals not yet sent, keyed by `job_i`.
+    _started_buffer: dict[int, tuple[str, str]] = attrs.field(init=False, factory=dict)
+    """Buffered `job_started` signals not yet sent, keyed by `job_i`.
 
-    An entry is removed again when `stop_job` arrives before the flush.
+    An entry is removed again when `job_stopped` arrives before the flush.
     """
 
-    _stop_job_buffer: set[int] = attrs.field(init=False, factory=set)
-    """Buffered `stop_job` signals not yet sent.
+    _stopped_buffer: set[int] = attrs.field(init=False, factory=set)
+    """Buffered `job_stopped` signals not yet sent.
 
     Only holds `job_i`s whose matching start was already flushed in an earlier batch:
     a start/stop pair arriving within the same delay window is dropped instead
-    (see `stop_job`), since it would never be visible in the progress bar anyway.
+    (see `job_stopped`), since it would never be visible in the progress bar anyway.
     """
 
     _flush_jobs_handle: asyncio.TimerHandle | None = attrs.field(init=False, default=None)
@@ -90,36 +87,34 @@ class ReporterClient:
     @contextlib.asynccontextmanager
     async def socket(cls, path: Path | None) -> AsyncGenerator["ReporterClient", None]:
         if path is None:
-            yield cls(path, DummyAsyncRPCClient())
+            yield cls(DummyAsyncRPCClient())
         else:
             async with await AsyncRPCClient.socket(path) as client:
-                yield cls(path, client)
+                yield cls(client)
 
     async def __call__(
-        self, action: str, description: str, pages: list[tuple[str, str]] | None = None
+        self, tag: str, description: str, pages: list[tuple[str, str]] | None = None
     ):
-        if self.client is not None:
-            if pages is None:
-                pages = []
-            await self.client.call.report(action, description, pages)
+        if pages is None:
+            pages = []
+        await self.client.call.report(tag, description, pages)
 
     async def set_njob(self, njob: int):
-        if self.client is not None:
-            await self.client.call.set_njob(njob)
+        await self.client.call.set_njob(njob)
 
-    def start_job(self, letter: str, description: str, job_i: int):
-        """Buffer a job-start signal, sent later in a batched `update_jobs` RPC call."""
-        self._start_job_buffer[job_i] = (letter, description)
+    def job_started(self, job_i: int, letter: str, description: str):
+        """Buffer a job-start signal, sent later in a batched `update_running_jobs` RPC call."""
+        self._started_buffer[job_i] = (letter, description)
         self._request_jobs_flush()
 
-    def stop_job(self, job_i: int):
-        """Buffer a job-stop signal, sent later in a batched `update_jobs` RPC call.
+    def job_stopped(self, job_i: int):
+        """Buffer a job-stop signal, sent later in a batched `update_running_jobs` RPC call.
 
         If the matching start is still buffered (started and stopped within the same
         delay window), drop both: the job never needs to appear in the progress bar.
         """
-        if self._start_job_buffer.pop(job_i, None) is None:
-            self._stop_job_buffer.add(job_i)
+        if self._started_buffer.pop(job_i, None) is None:
+            self._stopped_buffer.add(job_i)
         self._request_jobs_flush()
 
     def _request_jobs_flush(self):
@@ -138,24 +133,20 @@ class ReporterClient:
 
     async def _flush_jobs(self):
         """Send buffered start/stop job signals in a single batched RPC call."""
-        if len(self._start_job_buffer) == 0 and len(self._stop_job_buffer) == 0:
+        if len(self._started_buffer) == 0 and len(self._stopped_buffer) == 0:
             return
-        starts, self._start_job_buffer = self._start_job_buffer, {}
-        stops, self._stop_job_buffer = self._stop_job_buffer, set()
-        if self.client is not None:
-            await self.client.call.update_jobs(starts, stops)
+        started, self._started_buffer = self._started_buffer, {}
+        stopped, self._stopped_buffer = self._stopped_buffer, set()
+        await self.client.call.update_running_jobs(started, stopped)
 
-    async def update_counts(self, nsuccess: int, ntotal: int):
-        if self.client is not None:
-            await self.client.call.update_counts(nsuccess, ntotal)
+    async def update_progress(self, ndone: int, ntotal: int):
+        await self.client.call.update_progress(ndone, ntotal)
 
-    async def check_logs(self):
-        if self.client is not None:
-            await self.client.call.check_logs()
+    async def warn_about_logs(self):
+        await self.client.call.warn_about_logs()
 
     async def stop_reporting(self):
-        if self.client is not None:
-            await self.client.call.stop_reporting()
+        await self.client.call.stop_reporting()
 
     async def close(self):
         if self._flush_jobs_handle is not None:
@@ -164,11 +155,10 @@ class ReporterClient:
         await self._flush_jobs()
         if len(self._flush_tasks) > 0:
             await asyncio.gather(*self._flush_tasks)
-        if self.client is not None:
-            try:
-                await self.client.close()
-            except ConnectionError as exc:
-                logger.warning("Ignoring exception when closing reporter client: %r", exc)
+        try:
+            await self.client.close()
+        except ConnectionError as exc:
+            logger.warning("Ignoring exception when closing reporter client: %r", exc)
 
     async def __aenter__(self):
         return self
@@ -194,9 +184,9 @@ class StepUpProgressBar(ProgressBar):
         """
         if self._refresh_handle is None:
             loop = asyncio.get_running_loop()
-            self._refresh_handle = loop.call_later(delay, self.do_refresh)
+            self._refresh_handle = loop.call_later(delay, self.refresh_now)
 
-    def do_refresh(self):
+    def refresh_now(self):
         """Perform an immediate refresh of the progress bar.
 
         Bypasses any pending coalesced delay.
@@ -214,16 +204,18 @@ class StepUpProgressBar(ProgressBar):
         self._njob = njob
         self.request_refresh()
 
-    def update_jobs(self, now: float, starts: dict[int, tuple[str, str]], stops: set[int]):
+    def update_running_jobs(
+        self, started: dict[int, tuple[str, str]], stopped: set[int], now: float
+    ):
         """Apply a batch of job start/stop signals to the progress bar."""
-        for job_i, (letter, description) in starts.items():
+        for job_i, (letter, description) in started.items():
             self._running[job_i] = (now, letter, description)
-        for job_i in stops:
+        for job_i in stopped:
             self._running.pop(job_i, None)
         # The batch of signals is already coalesced, so refresh immediately.
-        self.do_refresh()
+        self.refresh_now()
 
-    def shift_starts(self, seconds: float) -> None:
+    def discount_suspension(self, seconds: float) -> None:
         """Move the start of every running job forward, to discount a suspension.
 
         The elapsed time shown per job is a wall-clock difference,
@@ -330,12 +322,12 @@ class ReporterHandler:
         return self.progress_bar.add_task("", total=0, visible=True) if self.live_progress else None
 
     @allow_rpc
-    def report(self, action: str, description: str, pages: list[tuple[str, str]]):
-        # Print action with extra info
-        action_color = ACTION_COLORS[action]
+    def report(self, tag: str, description: str, pages: list[tuple[str, str]]):
+        # Print the tag with extra info
+        tag_color = TAG_COLORS[tag]
         description = escape_markup(description)
-        line = f"[bold {action_color}]{action:>8s}[/] │ "
-        if action == "START":
+        line = f"[bold {tag_color}]{tag:>8s}[/] │ "
+        if tag == "START":
             line += description
         else:
             line += f"[gray50]{description}[/]"
@@ -351,7 +343,7 @@ class ReporterHandler:
             self.console.rule()
 
         # File logging
-        if action == "PHASE" and description == "build":
+        if tag == "PHASE" and description == "build":
             if self._first_build_phase:
                 # Skip the wipe on the very first build phase: see `_first_build_phase`.
                 self._first_build_phase = False
@@ -362,7 +354,7 @@ class ReporterHandler:
         path_log = {
             "red": FAIL_LOG,
             "yellow": WARNING_LOG,
-        }.get(action_color, SUCCESS_LOG)
+        }.get(tag_color, SUCCESS_LOG)
         path_log.parent.makedirs_p()
         with open(path_log, "a") as file:
             console = Console(file=file, width=80)
@@ -380,28 +372,28 @@ class ReporterHandler:
             self.progress_bar.set_njob(njob)
 
     @allow_rpc
-    def update_jobs(self, starts: dict[int, tuple[str, str]], stops: set[int]):
+    def update_running_jobs(self, started: dict[int, tuple[str, str]], stopped: set[int]):
         if self.progress_bar is not None:
-            starts = {
+            started = {
                 job_i: (letter, escape_command_display(description))
-                for job_i, (letter, description) in starts.items()
+                for job_i, (letter, description) in started.items()
             }
-            self.progress_bar.update_jobs(perf_counter(), starts, stops)
+            self.progress_bar.update_running_jobs(started, stopped, perf_counter())
 
     @allow_rpc
-    def update_counts(self, nsuccess: int, ntotal: int):
+    def update_progress(self, ndone: int, ntotal: int):
         if self.progress_bar is not None:
             self.progress_bar.update(
                 self.task_id_step,
-                completed=nsuccess,
+                completed=ndone,
                 total=ntotal,
             )
-            # Callers of `update_counts` are expected to coalesce their calls,
+            # Callers of `update_progress` are expected to coalesce their calls,
             # which also saves work on their side.
-            self.progress_bar.do_refresh()
+            self.progress_bar.refresh_now()
 
     @allow_rpc
-    def check_logs(self):
+    def warn_about_logs(self):
         """Check for the presence of fail/warning logs and report them."""
         paths_log = [path_log for path_log in [FAIL_LOG, WARNING_LOG] if path_log.exists()]
         if len(paths_log) > 0:
@@ -416,19 +408,19 @@ class ReporterHandler:
         if self.progress_bar is not None:
             self.progress_bar.stop()
 
-    def resume_display(self, suspended: float = 0.0) -> None:
+    def resume_display(self, suspended_seconds: float = 0.0) -> None:
         """Restart the live display stopped by `suspend_display` and repaint it.
 
         Parameters
         ----------
-        suspended
+        suspended_seconds
             The wall time spent suspended, which the running steps did not spend working
             and which is therefore taken off their elapsed times.
         """
         if self.progress_bar is not None and not self.stop_event.is_set():
-            self.progress_bar.shift_starts(suspended)
+            self.progress_bar.discount_suspension(suspended_seconds)
             self.progress_bar.start()
-            self.progress_bar.do_refresh()
+            self.progress_bar.refresh_now()
 
     @allow_rpc
     def stop_reporting(self):

@@ -47,13 +47,13 @@ class _FakeReporter:
         self.calls = []
         self.jobs = []
 
-    async def __call__(self, action, label, pages=None):
-        self.calls.append((action, label, pages))
+    async def __call__(self, tag, label, pages=None):
+        self.calls.append((tag, label, pages))
 
-    def start_job(self, letter, label, job_i):
-        self.jobs.append(("start", letter, label, job_i))
+    def job_started(self, job_i, letter, label):
+        self.jobs.append(("start", job_i, letter, label))
 
-    def stop_job(self, job_i):
+    def job_stopped(self, job_i):
         self.jobs.append(("stop", job_i))
 
 
@@ -85,8 +85,8 @@ def test_report_drains_scheduler_after_failure_by_default():
 
     asyncio.run(executor._report_run(run))
 
-    action, _label, _pages = reporter.calls[0]
-    assert action == "FAIL"
+    tag, _label, _pages = reporter.calls[0]
+    assert tag == "FAIL"
     assert scheduler.draining is True
 
 
@@ -98,8 +98,8 @@ def test_report_leaves_scheduler_running_with_keep_going():
 
     asyncio.run(executor._report_run(run))
 
-    action, _label, _pages = reporter.calls[0]
-    assert action == "FAIL"
+    tag, _label, _pages = reporter.calls[0]
+    assert tag == "FAIL"
     assert scheduler.draining is False
 
 
@@ -522,12 +522,12 @@ async def test_run_hash_job_brackets_progress_bar(wfs: Workflow, tmpdir):
 
         await executor.run_hash_job(hash_job)
 
-    assert reporter.jobs == [("start", "H", "foo.txt", -1), ("stop", -1)]
+    assert reporter.jobs == [("start", -1, "H", "foo.txt"), ("stop", -1)]
 
 
 async def test_run_hash_job_stops_progress_bar_when_it_raises(monkeypatch):
     """Even an error that `run_hash_job` does not handle must not leave a dangling
-    `start_job` in the progress bar."""
+    `job_started` in the progress bar."""
 
     async def _boom(self, hash_job):
         raise ValueError("boom")
@@ -540,7 +540,7 @@ async def test_run_hash_job_stops_progress_bar_when_it_raises(monkeypatch):
     with pytest.raises(ValueError, match="boom"):
         await executor.run_hash_job(hash_job)
 
-    assert reporter.jobs == [("start", "H", "foo.txt", -2), ("stop", -2)]
+    assert reporter.jobs == [("start", -2, "H", "foo.txt"), ("stop", -2)]
 
 
 async def test_run_hash_job_cancelled_cancels_future_without_raising(monkeypatch):
@@ -580,8 +580,8 @@ async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workf
     await executor.run_hash_job(hash_job)  # must not raise
 
     assert isinstance(hash_job.future.exception(), PermissionError)
-    action, _label, pages = reporter.calls[-1]
-    assert action == "ERROR"
+    tag, _label, pages = reporter.calls[-1]
+    assert tag == "ERROR"
     # The error names the steps involved with the file, so the user can find the plan.py call.
     assert pages[0][0] == "Provenance of foo.txt"
     assert "step:cat foo.txt" in pages[0][1]
@@ -608,6 +608,6 @@ async def test_run_hash_job_exception_without_file_node_reports_no_provenance(
     # otherwise asyncio warns "Future exception was never retrieved" once this
     # test-only future (never routed through `HashQueue`) is garbage collected.
     assert isinstance(hash_job.future.exception(), PermissionError)
-    action, _label, pages = reporter.calls[-1]
-    assert action == "ERROR"
+    tag, _label, pages = reporter.calls[-1]
+    assert tag == "ERROR"
     assert pages == []

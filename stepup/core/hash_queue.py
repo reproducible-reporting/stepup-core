@@ -223,8 +223,8 @@ async def gather_hashes(
     executor
         Runs each claimed job in a thread.
     reporter
-        Where `update_counts` is sent, coalesced to at most once per `PROGRESS_REFRESH_DELAY`.
-        (The per-job `start_job`/`stop_job` bracket is `Executor.run_hash_job`'s own.)
+        Where `update_progress` is sent, coalesced to at most once per `PROGRESS_REFRESH_DELAY`.
+        (The per-job `job_started`/`job_stopped` bracket is `Executor.run_hash_job`'s own.)
     path_hash_causes
         `(path, old_hash, cause)` triples to (re)hash;
         see `HashJob.old_hash` and `HashJob.cause`.
@@ -251,10 +251,10 @@ async def gather_hashes(
     counts_flush_tasks: set[asyncio.Task] = set()
 
     def request_counts_flush() -> None:
-        """Schedule an `update_counts` report, coalescing with any already pending.
+        """Schedule an `update_progress` report, coalescing with any already pending.
 
         Mirrors `ReporterClient._request_jobs_flush`'s coalescing timer:
-        unlike `start_job`/`stop_job`, `update_counts` has no built-in throttling.
+        unlike `job_started`/`job_stopped`, `update_progress` has no built-in throttling.
         """
         nonlocal counts_flush_handle
         if counts_flush_handle is None:
@@ -264,7 +264,7 @@ async def gather_hashes(
     def on_counts_timer() -> None:
         nonlocal counts_flush_handle
         counts_flush_handle = None
-        task = asyncio.get_running_loop().create_task(reporter.update_counts(nsuccess, ntotal))
+        task = asyncio.get_running_loop().create_task(reporter.update_progress(nsuccess, ntotal))
         counts_flush_tasks.add(task)
         task.add_done_callback(counts_flush_tasks.discard)
 
@@ -294,7 +294,7 @@ async def gather_hashes(
         counts_flush_handle = None
     if len(counts_flush_tasks) > 0:
         await asyncio.gather(*counts_flush_tasks)
-    await reporter.update_counts(nsuccess, ntotal)
+    await reporter.update_progress(nsuccess, ntotal)
 
     return {
         job.path: new_hash

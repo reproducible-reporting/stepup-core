@@ -143,7 +143,7 @@ async def test_shutdown_drains_the_scheduler_before_reporting():
     handler = make_director_handler(nrunning=1)
     draining_when_reported = []
 
-    async def fake_report(action, description, pages=None):
+    async def fake_report(tag, description, pages=None):
         draining_when_reported.append(handler.scheduler.draining)
 
     handler.reporter = fake_report

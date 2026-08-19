@@ -973,7 +973,7 @@ class SuspendHandler:
         try:
             os.kill(os.getpid(), signal.SIGTSTP)
         finally:
-            suspended = time.perf_counter() - wtime_start
+            suspended_seconds = time.perf_counter() - wtime_start
             loop.add_signal_handler(signal.SIGTSTP, self.handle)
             if forwarded:
                 # The shell continues the process group of its job.
@@ -983,7 +983,7 @@ class SuspendHandler:
                     self.process_director.send_signal(signal.SIGCONT)
             if self.raw_terminal is not None:
                 self.raw_terminal.resume()
-            self.reporter_handler.resume_display(suspended)
+            self.reporter_handler.resume_display(suspended_seconds)
 
 
 _TERMINAL_SIGNALS = frozenset({signal.SIGINT, signal.SIGTSTP})

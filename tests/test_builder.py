@@ -157,15 +157,15 @@ async def test_finalize_reverts_optional_only_when_cleaning(
 
 
 class _FakeReporter:
-    """Records `start_job()`/`stop_job()` calls instead of sending them anywhere."""
+    """Records `job_started()`/`job_stopped()` calls instead of sending them anywhere."""
 
     def __init__(self):
         self.events = []
 
-    def start_job(self, letter: str, description: str, step_i: int):
-        self.events.append(("start", letter, description, step_i))
+    def job_started(self, step_i: int, letter: str, description: str):
+        self.events.append(("start", step_i, letter, description))
 
-    def stop_job(self, step_i: int):
+    def job_stopped(self, step_i: int):
         self.events.append(("stop", step_i))
 
 
@@ -187,12 +187,12 @@ def _make_progress_builder(reporter: _FakeReporter) -> Builder:
 
 
 async def test_run_with_progress_brackets_a_successful_job():
-    """`start_job`/`stop_job` must fire, in order, around the job's own coroutine."""
+    """`job_started`/`job_stopped` must fire, in order, around the job's own coroutine."""
     reporter = _FakeReporter()
     builder = _make_progress_builder(reporter)
 
     async def inner(executor):
-        assert ("start", "R", "echo hi", 1) in reporter.events
+        assert ("start", 1, "R", "echo hi") in reporter.events
         return "done"
 
     job = _make_job(letter="R", job_i=1, label="echo hi", coro=inner)
@@ -200,11 +200,11 @@ async def test_run_with_progress_brackets_a_successful_job():
     result = await builder._run_with_progress(job)
 
     assert result == "done"
-    assert reporter.events == [("start", "R", "echo hi", 1), ("stop", 1)]
+    assert reporter.events == [("start", 1, "R", "echo hi"), ("stop", 1)]
 
 
 async def test_run_with_progress_still_stops_when_job_raises():
-    """`stop_job` must fire even when the job coroutine fails, so a step can never be left
+    """`job_stopped` must fire even when the job coroutine fails, so a step can never be left
     stuck in the progress bar (this is the guarantee that motivated moving the bracket here
     instead of leaving scattered start/stop calls inside `Executor`)."""
     reporter = _FakeReporter()
@@ -218,7 +218,7 @@ async def test_run_with_progress_still_stops_when_job_raises():
     with pytest.raises(ValueError, match="boom"):
         await builder._run_with_progress(job)
 
-    assert reporter.events == [("start", "S", "false", 2), ("stop", 2)]
+    assert reporter.events == [("start", 2, "S", "false"), ("stop", 2)]
 
 
 async def test_job_loop_dispatches_hash_jobs_before_runnable_steps(wfs: Workflow, monkeypatch):

@@ -595,8 +595,8 @@ class FakeReporterHandler:
     stop_reporting_calls: int = attrs.field(init=False, default=0)
     display_calls: list[str] = attrs.field(init=False, factory=list)
 
-    def report(self, action: str, description: str, pages: list) -> None:
-        self.reports.append((action, description))
+    def report(self, tag: str, description: str, pages: list) -> None:
+        self.reports.append((tag, description))
         self.pages.extend(pages)
 
     def stop_reporting(self) -> None:
@@ -605,7 +605,7 @@ class FakeReporterHandler:
     def suspend_display(self) -> None:
         self.display_calls.append("suspend")
 
-    def resume_display(self, suspended: float = 0.0) -> None:
+    def resume_display(self, suspended_seconds: float = 0.0) -> None:
         self.display_calls.append("resume")
 
 

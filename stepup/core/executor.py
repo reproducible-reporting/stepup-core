@@ -465,7 +465,7 @@ class Executor:
         """Send the current step-state counts to the reporter."""
         async with self.db:
             nsuccess, ntotal = self.workflow.count_required_steps()
-        await self.reporter.update_counts(nsuccess, ntotal)
+        await self.reporter.update_progress(nsuccess, ntotal)
 
     async def _reset_step_to_pending(self, step: Step) -> None:
         """Discard a step's stored hash and transition it back to `PENDING` for re-execution."""
@@ -604,11 +604,11 @@ class Executor:
         (see `hash_queue.py`), so it can never collide with a real `Step.i` in the
         reporter/progress-bar dict, which is keyed by whatever int it is given.
         """
-        self.reporter.start_job("H", hash_job.path, hash_job.job_i)
+        self.reporter.job_started(hash_job.job_i, "H", hash_job.path)
         try:
             await self._run_hash_job(hash_job)
         finally:
-            self.reporter.stop_job(hash_job.job_i)
+            self.reporter.job_stopped(hash_job.job_i)
 
     async def _run_hash_job(self, hash_job: HashJob) -> None:
         """Compute one file hash in a thread, apply it to the workflow, resolve the future.
@@ -870,10 +870,10 @@ class Executor:
     async def _report_run(self, run: Run):
         """Report the result of a step's execution."""
         pages = await self._build_report_pages(run)
-        action = self._determine_action(run)
-        if action == "FAIL" and not self.keep_going:
+        tag = self._determine_tag(run)
+        if tag == "FAIL" and not self.keep_going:
             self.scheduler.draining = True
-        await self.reporter(action, run.description, pages)
+        await self.reporter(tag, run.description, pages)
 
     async def _build_report_pages(self, run: Run) -> list[tuple[str, str]]:
         """Build the report pages describing what happened during a step's execution."""
@@ -922,8 +922,8 @@ class Executor:
                 pages.append(("Standard error", stderr))
         return pages
 
-    def _determine_action(self, run: Run) -> str:
-        """Derive the reporter action string (`SUCCESS`, `FAIL`, ...) for a finished step."""
+    def _determine_tag(self, run: Run) -> str:
+        """Derive the reporter tag (`SUCCESS`, `FAIL`, ...) for a finished step."""
         if run.interrupted_defer:
             return "FAIL"
         if len(run.unavailable) > 0 or len(run.unfresh) > 0:
