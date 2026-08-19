@@ -3,12 +3,9 @@
 """StepUp Command Line Interface."""
 
 import argparse
-import os
 import sys
 from importlib.metadata import entry_points
 from importlib.metadata import version as get_version
-
-from path import Path
 
 from .config import (
     ConfigLoader,
@@ -17,6 +14,7 @@ from .config import (
 )
 from .enums import ReturnCode
 from .exceptions import ConfigError, UsageError
+from .path import get_stepup_root
 from .tool import print_error
 from .utils import is_debug
 
@@ -24,8 +22,18 @@ __all__ = ("main", "sb_main")
 
 
 #
-# Entry points
+# Console scripts
 #
+
+
+def sb_main():
+    """Shortcut for `stepup build` (accepts the same arguments).
+
+    Top-level options are not accepted, because `build` is inserted before all arguments,
+    so they must be given to the `stepup` command instead, e.g. `stepup --version`.
+    """
+    sys.argv.insert(1, "build")
+    main()
 
 
 def main():
@@ -40,7 +48,7 @@ def main():
     e.g. the bit flags that `stepup build` reports.
     """
     try:
-        _main()
+        _run_subcommand()
     except UsageError as exc:
         if is_debug():
             raise
@@ -53,22 +61,12 @@ def main():
         sys.exit(ReturnCode.INTERRUPTED.value)
 
 
-def sb_main():
-    """Shortcut for `stepup build` (accepts the same arguments).
-
-    Top-level options are not accepted, because `build` is inserted before all arguments,
-    so they must be given to the `stepup` command instead, e.g. `stepup --version`.
-    """
-    sys.argv.insert(1, "build")
-    main()
-
-
 #
 # Internals
 #
 
 
-def _main():
+def _run_subcommand():
     """Parse the command line and run the requested subcommand if the configuration allows it."""
     parser, loader = _setup_cli()
     args = parser.parse_args()
@@ -79,23 +77,6 @@ def _main():
     if args.tool != "config":
         _exit_on_config_problems(loader)
     args.tool_func(args)
-
-
-def _exit_on_config_problems(loader: ConfigLoader) -> None:
-    """Report the problems of the configuration and exit, if there are any.
-
-    Raises
-    ------
-    ConfigError
-        With `STEPUP_DEBUG`, instead of printing the problems, to get a traceback.
-    """
-    problems = loader.problems()
-    if len(problems) > 0:
-        hint = "Run 'stepup config' to inspect the configuration."
-        if is_debug():
-            raise ConfigError(f"{format_config_problems(problems)}\n{hint}")
-        print_config_problems(problems, hint)
-        sys.exit(ReturnCode.INTERNAL.value)
 
 
 def _setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
@@ -111,10 +92,9 @@ def _setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
     loader
         The configuration loader,
         patched into the top-level parser and passed to every subcommand.
-        Call `ConfigLoader.check` on it to find out what is wrong with the configuration.
     """
     # Configuration loader
-    stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
+    stepup_root = get_stepup_root()
     loader = ConfigLoader(
         prefix="stepup",
         config_paths=[
@@ -140,8 +120,8 @@ def _setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
     subparsers = parser.add_subparsers(dest="tool", required=False)
     tool_eps = sorted(entry_points(group="stepup.tools"), key=lambda ep: ep.name)
     for tool_ep in tool_eps:
-        subcommand = tool_ep.load()
-        tool_func = subcommand(subparsers, loader)
+        add_subcommand = tool_ep.load()
+        tool_func = add_subcommand(subparsers, loader)
         tool_parser = subparsers.choices.get(tool_ep.name)
         if tool_parser is None:
             raise RuntimeError(
@@ -151,6 +131,23 @@ def _setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
         tool_parser.set_defaults(tool_func=tool_func)
 
     return parser, loader
+
+
+def _exit_on_config_problems(loader: ConfigLoader) -> None:
+    """Report the problems of the configuration and exit, if there are any.
+
+    Raises
+    ------
+    ConfigError
+        With `STEPUP_DEBUG`, instead of printing the problems, to get a traceback.
+    """
+    problems = loader.problems()
+    if len(problems) > 0:
+        hint = "Run 'stepup config' to inspect the configuration."
+        if is_debug():
+            raise ConfigError(f"{format_config_problems(problems)}\n{hint}")
+        print_config_problems(problems, hint)
+        sys.exit(ReturnCode.INTERNAL.value)
 
 
 if __name__ == "__main__":

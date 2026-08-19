@@ -68,7 +68,7 @@ def test_wait_subcommand_parses_update_flag() -> None:
     """`stepup wait -u PATH` must set args.update and leave args.delete unset."""
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    interact.wait_subcommand(subparsers, loader=None)
+    interact.add_wait_subcommand(subparsers, loader=None)
     args = parser.parse_args(["wait", "-u", "foo.txt"])
     assert args.update == "foo.txt"
     assert args.delete is None
@@ -78,7 +78,7 @@ def test_wait_subcommand_parses_delete_flag() -> None:
     """`stepup wait -d PATH` must set args.delete and leave args.update unset."""
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    interact.wait_subcommand(subparsers, loader=None)
+    interact.add_wait_subcommand(subparsers, loader=None)
     args = parser.parse_args(["wait", "-d", "foo.txt"])
     assert args.delete == "foo.txt"
     assert args.update is None
@@ -88,7 +88,7 @@ def test_wait_subcommand_rejects_update_and_delete_together() -> None:
     """`-u` and `-d` are mutually exclusive."""
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    interact.wait_subcommand(subparsers, loader=None)
+    interact.add_wait_subcommand(subparsers, loader=None)
     with pytest.raises(SystemExit):
         parser.parse_args(["wait", "-u", "a.txt", "-d", "b.txt"])
 

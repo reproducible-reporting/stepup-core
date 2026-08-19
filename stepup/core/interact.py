@@ -9,7 +9,6 @@ or to interact with StepUp running in the background on a remote server.
 
 import argparse
 import functools
-import os
 import sys
 import time
 
@@ -19,16 +18,17 @@ from .api import get_rpc_client
 from .config import ConfigLoader
 from .constants import DIRECTOR_LOG
 from .exceptions import RPCError, ToolError
-from .tool import ToolFunc
+from .path import get_stepup_root
+from .tool import SubParsers, ToolFunc
 from .utils import is_process_running, query_director_log
 
 __all__ = (
-    "drain_subcommand",
-    "graph_subcommand",
-    "join_subcommand",
-    "rebuild_subcommand",
-    "shutdown_subcommand",
-    "wait_subcommand",
+    "add_drain_subcommand",
+    "add_graph_subcommand",
+    "add_join_subcommand",
+    "add_rebuild_subcommand",
+    "add_shutdown_subcommand",
+    "add_wait_subcommand",
 )
 
 
@@ -80,7 +80,7 @@ def get_socket() -> Path:
         within `GET_SOCKET_TIMEOUT` seconds,
         e.g. because no director is running.
     """
-    stepup_root = Path(os.getenv("STEPUP_ROOT", "."))
+    stepup_root = get_stepup_root()
     director_log = stepup_root / DIRECTOR_LOG
     deadline = time.monotonic() + GET_SOCKET_TIMEOUT
     first = True
@@ -114,7 +114,7 @@ def shutdown_tool(args: argparse.Namespace) -> None:
     get_rpc_client(get_socket()).call.shutdown()
 
 
-def shutdown_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_shutdown_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Add the `shutdown` subcommand to the parser."""
     subparsers.add_parser(
         "shutdown",
@@ -130,7 +130,7 @@ def drain_tool(args: argparse.Namespace) -> None:
     get_rpc_client(get_socket()).call.drain()
 
 
-def drain_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_drain_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Add the `drain` subcommand to the parser."""
     subparsers.add_parser(
         "drain",
@@ -148,7 +148,7 @@ def join_tool(args: argparse.Namespace) -> None:
     get_rpc_client(get_socket()).call.wait_and_shutdown(_rpc_timeout=-1)
 
 
-def join_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_join_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Add the `join` subcommand to the parser."""
     subparsers.add_parser(
         "join",
@@ -163,7 +163,7 @@ def graph_tool(args: argparse.Namespace) -> None:
     get_rpc_client(get_socket()).call.write_graph(args.prefix)
 
 
-def graph_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_graph_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Add the `graph` subcommand to the parser."""
     parser = subparsers.add_parser(
         "graph",
@@ -184,7 +184,7 @@ def rebuild_tool(args: argparse.Namespace) -> None:
     get_rpc_client(get_socket()).call.start_build_phase()
 
 
-def rebuild_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_rebuild_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Add the `rebuild` subcommand to the parser."""
     subparsers.add_parser(
         "rebuild",
@@ -205,7 +205,7 @@ def wait_tool(args: argparse.Namespace) -> None:
         client.call.wait_for_idle(_rpc_timeout=-1)
 
 
-def wait_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_wait_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Add the `wait` subcommand to the parser."""
     parser = subparsers.add_parser(
         "wait",

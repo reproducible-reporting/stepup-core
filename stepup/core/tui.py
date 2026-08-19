@@ -45,9 +45,10 @@ from .constants import (
 )
 from .enums import ReturnCode
 from .exceptions import RPCError, ToolError, UsageError
+from .path import get_stepup_root
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
-from .tool import ToolFunc
+from .tool import SubParsers, ToolFunc
 from .utils import (
     is_debug,
     is_process_running,
@@ -59,7 +60,7 @@ from .utils import (
 )
 from .watcher import WATCHER_AVAILABLE
 
-__all__ = ("boot_subcommand", "build_subcommand")
+__all__ = ("add_boot_subcommand", "add_build_subcommand")
 
 
 #
@@ -99,7 +100,9 @@ def positive_decimal(value: str) -> Decimal:
     return number
 
 
-def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: str) -> None:
+def _add_build_parser(
+    subparsers: SubParsers, loader: ConfigLoader, name: str, help_text: str
+) -> None:
     """Register the build subparser under `name`.
 
     The argument definitions are identical for every subcommand name;
@@ -293,7 +296,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
     loader.patch_parser(parser, merge_handlers={"resources": merge_resources})
 
 
-def build_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_build_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the build tool.
 
     Parameters
@@ -312,7 +315,7 @@ def build_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     return _build_tool
 
 
-def boot_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_boot_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the deprecated `boot` alias of `build`.
 
     Parameters
@@ -333,7 +336,7 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
 
 
 #
-# Entry points
+# Tool functions
 #
 
 
@@ -394,9 +397,7 @@ async def _async_build(args: argparse.Namespace) -> int:
         If `plan.py` does not exist in the project root,
         or if a director is already running (see `_check_no_running_director`).
     """
-    # Absolutize STEPUP_ROOT before changing directory,
-    # so a relative path is interpreted against the original cwd.
-    stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd())).absolute()
+    stepup_root = get_stepup_root()
     targets, target_dirs = _normalize_targets(args.targets, stepup_root)
     if stepup_root != Path.cwd():
         print("Changing to", stepup_root)

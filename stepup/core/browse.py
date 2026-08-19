@@ -25,10 +25,10 @@ from .hash import FileHash, StepHash, fmt_digest, fmt_env_value
 from .nglob import NamedGlob
 from .sqlite3 import connect
 from .step import Step
-from .tool import ToolFunc, get_graph_db_path
+from .tool import SubParsers, ToolFunc, get_graph_db_path
 from .utils import escape_command_display, format_subprocess, positive_int
 
-__all__ = ("browse_subcommand",)
+__all__ = ("add_browse_subcommand",)
 
 
 def _detect_browsers() -> str:
@@ -38,7 +38,7 @@ def _detect_browsers() -> str:
     return ", ".join(webbrowser._tryorder) if webbrowser._tryorder else "none detected"
 
 
-def browse_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_browse_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the browse tool.
 
     Parameters

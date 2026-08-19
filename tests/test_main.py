@@ -24,7 +24,7 @@ def not_debug(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class FakeLoader:
-    """A configuration loader without problems, so that `_main` proceeds to the tool."""
+    """A configuration loader without problems, so that `_run_subcommand` proceeds to the tool."""
 
     def problems(self) -> list[ConfigProblem]:
         return []
@@ -36,7 +36,7 @@ def _raise_in_tool(monkeypatch: pytest.MonkeyPatch, exc: BaseException) -> None:
     def fake_main() -> None:
         raise exc
 
-    monkeypatch.setattr(cli, "_main", fake_main)
+    monkeypatch.setattr(cli, "_run_subcommand", fake_main)
 
 
 @pytest.mark.parametrize(

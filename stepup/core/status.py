@@ -9,9 +9,9 @@ from rich import print  # noqa: A004
 
 from .config import ConfigLoader
 from .enums import FileState, StepState
-from .tool import ToolFunc, connect_graph_db
+from .tool import SubParsers, ToolFunc, connect_graph_db
 
-__all__ = ("status_subcommand",)
+__all__ = ("add_status_subcommand",)
 
 SQL_STEP_COUNTS = (
     "SELECT step.state, count(*) FROM node JOIN step ON node.i = step.node "
@@ -40,7 +40,7 @@ GROUP BY st.name
 """
 
 
-def status_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_status_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the status tool.
 
     Parameters

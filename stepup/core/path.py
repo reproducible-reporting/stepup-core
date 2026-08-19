@@ -18,6 +18,7 @@ __all__ = (
     "coerce_str",
     "dir_range_upper",
     "get_affixes",
+    "get_stepup_root",
     "make_path_out",
     "translate",
     "translate_back",
@@ -179,6 +180,19 @@ def make_path_out(
     return path_out
 
 
+def get_stepup_root() -> Path:
+    """Get the StepUp root directory.
+
+    Returns
+    -------
+    stepup_root
+        The StepUp root directory, which is either the value of `${STEPUP_ROOT}`,
+        or the current working directory if the environment variable is not set.
+        The returned path is absolute and normalized.
+    """
+    return Path(os.getenv("STEPUP_ROOT", os.getcwd())).absolute()
+
+
 def translate(path: StrPath, workdir: StrPath = ".") -> Path:
     """Normalize the path and, if relative, make it relative to `STEPUP_ROOT`.
 
@@ -201,7 +215,7 @@ def translate(path: StrPath, workdir: StrPath = ".") -> Path:
         workdir = coerce_path(workdir).normpath()
         path = workdir / path
         if not workdir.isabs():
-            root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
+            root = get_stepup_root()
             here = Path(os.getenv("HERE", Path(".").relpath(root)))
             path = (root / here / path).normpath().relpath(root)
     return path
@@ -230,7 +244,7 @@ def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
         if workdir.isabs() and path.startswith(workdir):
             path = Path(path).relpath(workdir)
     else:
-        root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
+        root = get_stepup_root()
         here = Path(os.getenv("HERE", Path(".").relpath(root)))
         path = Path(root / path).relpath(root / here / workdir)
     return path

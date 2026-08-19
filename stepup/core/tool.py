@@ -3,7 +3,6 @@
 """Shared infrastructure for the subcommands of the `stepup` command line interface."""
 
 import argparse
-import os
 import sqlite3
 from collections.abc import Callable
 
@@ -14,10 +13,22 @@ from rich.text import Text
 
 from .constants import GRAPH_DB
 from .exceptions import ToolError
+from .path import get_stepup_root
 from .sqlite3 import connect
 
-__all__ = ("ERROR_STYLE", "ToolFunc", "connect_graph_db", "get_graph_db_path", "print_error")
+__all__ = (
+    "ERROR_STYLE",
+    "SubParsers",
+    "ToolFunc",
+    "connect_graph_db",
+    "get_graph_db_path",
+    "print_error",
+)
 
+
+# Python does not offer a public interface for the return type of `ArgumentParser.add_subparsers`.
+SubParsers = argparse._SubParsersAction
+"""The registry of subcommand parsers, as returned by `ArgumentParser.add_subparsers`."""
 
 ToolFunc = Callable[[argparse.Namespace], None]
 """The implementation of a StepUp subcommand: it takes the parsed arguments and returns nothing.
@@ -26,7 +37,6 @@ A mistake that the user can fix is raised as a `UsageError`, usually a `ToolErro
 which `stepup` turns into a short message on standard error.
 A tool that must end the process with a specific exit code calls `sys.exit`.
 """
-
 
 ERROR_STYLE = Style(color="red", bold=True, dim=False)
 """How an error stands out from the rest of the output.
@@ -64,7 +74,7 @@ def get_graph_db_path() -> Path:
         If the database does not exist,
         which is the normal situation in a directory where StepUp has not run yet.
     """
-    path_db = Path(os.getenv("STEPUP_ROOT", ".")) / GRAPH_DB
+    path_db = get_stepup_root() / GRAPH_DB
     if not path_db.exists():
         raise ToolError(f"Graph database {path_db} does not exist.")
     return path_db

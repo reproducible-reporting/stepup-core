@@ -18,7 +18,7 @@ from path import Path
 
 from .api import get_job_i, get_rpc_client, getenv
 from .exceptions import ConsistencyError, StepUpError
-from .path import StrPath, translate
+from .path import StrPath, get_stepup_root, translate
 from .step import truncate_output
 from .utils import extract_env_overrides
 
@@ -274,7 +274,7 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     filter_str = getenv("STEPUP_PATH_FILTER", "-venv")
     filter_str += ":+.:-/"
     rules = []
-    stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
+    stepup_root = get_stepup_root()
     for filter_item in filter_str.split(":"):
         if filter_item == "":
             continue

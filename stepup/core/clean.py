@@ -15,12 +15,12 @@ from .enums import FileState
 from .hash import FileHash
 from .path import translate, translate_back
 from .sqlite3 import escape_like_pattern
-from .tool import ToolFunc, connect_graph_db
+from .tool import SubParsers, ToolFunc, connect_graph_db
 
-__all__ = ("clean_subcommand",)
+__all__ = ("add_clean_subcommand",)
 
 
-def clean_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
+def add_clean_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Define command-line arguments for the clean tool.
 
     Parameters
