@@ -322,7 +322,7 @@ def test_deep_chain_propagates_safe(con):
     assert safe[4] == 1  # C is safe: creator B is RUNNING
 
 
-def test_failed_intermediate_blocks_grandchild(con):
+def test_failed_intermediate_blocks_descendant(con):
     """RUNNING A -> FAILED B -> PENDING C: B._safe=1 (can run) but C._safe=0 (blocked)."""
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True)
     _insert_step(con, 3, 2, StepState.FAILED)
@@ -351,7 +351,7 @@ def test_no_check_safe_leaves_safe_update_empty(con):
 
 
 def test_double_flagged_ancestor_chain_computes_correct_safe(con):
-    """A grandchild reachable via two simultaneously-flagged ancestors gets the correct value.
+    """A descendant reachable via two simultaneously-flagged ancestors gets the correct value.
 
     Reproduces the shape Step.detach()/recycle() creates via RECURSIVE_CHECK_WITH_PRODUCTS,
     which flags _check_safe on a step and all its recursive products at once: S(FAILED,
@@ -369,16 +369,16 @@ def test_double_flagged_ancestor_chain_computes_correct_safe(con):
     assert safe[4] == 0  # P is unsafe: the old query incorrectly produced 1 here
 
 
-def test_holding_creator_keeps_child_unsafe(con):
-    """A child of a RUNNING but holding creator stays unsafe, unlike the non-holding case."""
+def test_holding_creator_keeps_product_unsafe(con):
+    """A product step of a RUNNING but holding creator stays unsafe, unlike the non-holding case."""
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=True)
     _insert_step(con, 3, 2, StepState.PENDING)
     _run_update_meta_safe(con)
     assert _get_safe(con)[3] == 0
 
 
-def test_holding_counter_above_one_keeps_child_unsafe(con):
-    """A `_holding` counter above 1 (nested `hold()` calls) still keeps children unsafe,
+def test_holding_counter_above_one_keeps_product_unsafe(con):
+    """A `_holding` counter above 1 (nested `hold()` calls) still keeps product steps unsafe,
     confirming SELECT_SAFE_UPDATE's `_holding = 0` check, not a boolean truthiness check.
     """
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=2)
@@ -387,16 +387,16 @@ def test_holding_counter_above_one_keeps_child_unsafe(con):
     assert _get_safe(con)[3] == 0
 
 
-def test_release_makes_previously_held_child_safe(con):
-    """A child of a RUNNING creator becomes safe once the creator stops holding."""
+def test_release_makes_previously_held_product_safe(con):
+    """A product step of a RUNNING creator becomes safe once the creator stops holding."""
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=False)
     _insert_step(con, 3, 2, StepState.PENDING)
     _run_update_meta_safe(con)
     assert _get_safe(con)[3] == 1
 
 
-def test_holding_grandchild_blocks_only_its_own_children(con):
-    """Holding only affects the holding step's own children, not itself nor siblings.
+def test_holding_step_blocks_only_its_own_descendants(con):
+    """Holding only affects the holding step's own descendants, not itself nor siblings.
 
     Chain: root -> A(RUNNING) -> B(RUNNING, holding) -> C(PENDING). B itself is safe (its
     creator A is RUNNING and not holding), but C is unsafe because its creator B is holding.
@@ -410,8 +410,8 @@ def test_holding_grandchild_blocks_only_its_own_children(con):
     assert safe[4] == 0  # C is unsafe: its creator B is holding
 
 
-def test_grandchild_safe_again_after_grandparent_stops_holding(con):
-    """Once an ancestor's `_holding` clears, a previously blocked grandchild becomes safe."""
+def test_descendant_safe_again_after_ancestor_stops_holding(con):
+    """Once an ancestor's `_holding` clears, a previously blocked descendant becomes safe."""
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True)
     _insert_step(con, 3, 2, StepState.RUNNING, holding=False)
     _insert_step(con, 4, 3, StepState.PENDING)
@@ -421,11 +421,11 @@ def test_grandchild_safe_again_after_grandparent_stops_holding(con):
     assert safe[4] == 1
 
 
-def test_holding_creator_keeps_child_safe_ignoring_hold(con):
-    """A child of a RUNNING but holding creator is _safe=0 but _safe_ignoring_hold=1.
+def test_holding_creator_keeps_product_safe_ignoring_hold(con):
+    """A product step of a RUNNING but holding creator is _safe=0 but _safe_ignoring_hold=1.
 
-    Same setup as `test_holding_creator_keeps_child_unsafe`, but also checks the "no hold"
-    twin computed by the same SELECT_SAFE_UPDATE pass: the only thing that makes the child
+    Same setup as `test_holding_creator_keeps_product_unsafe`, but also checks the "no hold"
+    twin computed by the same SELECT_SAFE_UPDATE pass: the only thing that makes the product
     unsafe here is the hold, so ignoring it must flip the answer back to safe.
     """
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=True)
@@ -435,8 +435,8 @@ def test_holding_creator_keeps_child_safe_ignoring_hold(con):
     assert _get_safe_ignoring_hold(con)[3] == 1
 
 
-def test_failed_creator_keeps_child_unsafe_ignoring_hold_too(con):
-    """A child of a FAILED (not holding) creator is unsafe both with and without hold.
+def test_failed_creator_keeps_product_unsafe_ignoring_hold_too(con):
+    """A product step of a FAILED (not holding) creator is unsafe both with and without hold.
 
     Confirms _safe_ignoring_hold is not simply "always safe": it still respects the
     ordinary RUNNING/SUCCEEDED ancestor requirement, just not _holding.
@@ -448,7 +448,7 @@ def test_failed_creator_keeps_child_unsafe_ignoring_hold_too(con):
     assert _get_safe_ignoring_hold(con)[3] == 0
 
 
-def test_holding_grandchild_safe_ignoring_hold_propagates(con):
+def test_holding_descendant_safe_ignoring_hold_propagates(con):
     """_safe_ignoring_hold propagates down a chain exactly like _safe, minus the hold term.
 
     Chain: root -> A(RUNNING) -> B(RUNNING, holding) -> C(PENDING). C is unsafe (its
@@ -2070,22 +2070,22 @@ async def test_ran_concurrently_false_when_consumer_start_time_missing(wfs: Work
     assert not scheduler.ran_concurrently(1, 2)
 
 
-async def test_child_of_running_step_dispatched_as_soon_as_created(wfp: Workflow):
+async def test_product_of_running_step_dispatched_as_soon_as_created(wfp: Workflow):
     """A step created by an already-RUNNING creator is dispatched right away, as soon as its
     own inputs are ready, without waiting for the creator to settle into a new state.
 
     `SELECT_SAFE_UPDATE` seeds its recursive walk one level up, at each flagged step's
     *creator*, using the creator's own already-computed `_safe`/state, so a freshly
-    created child's own `_safe` is derived the moment *it* is flagged (at creation),
+    created product's own `_safe` is derived the moment *it* is flagged (at creation),
     regardless of whether its creator is flagged in the same pass.
 
     A step's `_check_safe` flag is set once, at the moment it is dispatched to RUNNING,
     and is cleared by the very next `_update_meta_safe()` pass (which the builder runs on
     every `pop_runnable_job()` call) -- typically well before the creator's script has had
-    a chance to create any children. Seeding the walk only at the flagged step itself,
-    instead of one level up at its creator, would miss a *new* child created while the
+    a chance to create any products. Seeding the walk only at the flagged step itself,
+    instead of one level up at its creator, would miss a *new* product created while the
     creator remains RUNNING (the common case for a `plan.py` calling `step()`): nothing
-    would re-flag the creator's `_check_safe`, so the new child's `_safe` would never be
+    would re-flag the creator's `_check_safe`, so the new product's `_safe` would never be
     (re)computed from the creator's RUNNING state until the creator transitioned state
     again (typically on completion).
     """
@@ -2118,7 +2118,7 @@ async def test_child_of_running_step_dispatched_as_soon_as_created(wfp: Workflow
     # left to run, and as a side effect clears `plan`'s `_check_safe` flag.
     assert await scheduler.pop_runnable_job() is None
 
-    # `plan`'s script now creates a child step, as `step()` would via RPC, well after
+    # `plan`'s script now creates a product step, as `step()` would via RPC, well after
     # `plan`'s own `_check_safe` flag was already cleared above.
     async with wfp.db:
         wfp.define_step(plan, "sub")

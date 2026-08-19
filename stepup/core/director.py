@@ -916,14 +916,14 @@ class DirectorHandler:
         self.builder.wake_job_loop.set()
 
     @allow_rpc
-    async def hold_children(self, job_i: int) -> None:
-        """Hold back this step's children from dispatch until a matching `release()`.
+    async def hold_dispatch(self, job_i: int) -> None:
+        """Hold back this step's descendant steps from dispatch until a matching `release()`.
 
         Notes
         -----
         This is an RPC wrapper for `Step.hold`, which is re-entrant:
         nested `hold()` calls increment a counter,
-        and children stay held back until the outermost `release()`.
+        and descendants stay held back until the outermost `release()`.
         No job-loop wake-up is needed here: holding never creates new runnable work.
         """
         async with self.db:
@@ -931,7 +931,7 @@ class DirectorHandler:
             step.hold()
 
     @allow_rpc
-    async def release_children(self, job_i: int) -> None:
+    async def release_dispatch(self, job_i: int) -> None:
         """Release one `hold()` on this step, decrementing its open-hold counter.
 
         Notes
@@ -941,7 +941,7 @@ class DirectorHandler:
         async with self.db:
             step = self.scheduler.get_step(job_i)
             step.release()
-        # Wake up the scheduler because previously held-back children may now be runnable.
+        # Wake up the scheduler because previously held-back steps may now be runnable.
         self.builder.wake_job_loop.set()
 
     @allow_rpc

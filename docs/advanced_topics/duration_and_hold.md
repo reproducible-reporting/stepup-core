@@ -47,7 +47,8 @@ so the whole batch is compared by tail time at once,
 instead of being raced by declaration order.
 `hold()` is re-entrant, so nesting `with hold():` blocks
 (directly, or through a shared helper function) is safe;
-children only become eligible once the outermost block exits.
+steps declared in any of the nested blocks
+only become eligible once the outermost block exits.
 
 ## Example
 

@@ -237,16 +237,16 @@ async def test_unsafe_through_succeeded_intermediate(wfp: Workflow):
     scheduler, plan = await _prepare(wfp)
     async with wfp.db:
         _declare_missing(wfp, plan, ["missing.txt"])
-        wfp.define_step(plan, "grandparent", inp_paths=["missing.txt"])
-        grandparent = wfp.find(Step, "grandparent")
-        wfp.define_step(grandparent, "parent")
-        parent = wfp.find(Step, "parent")
-        parent.set_state(StepState.SUCCEEDED)
-        wfp.define_step(parent, "child")
+        wfp.define_step(plan, "ancestor", inp_paths=["missing.txt"])
+        ancestor = wfp.find(Step, "ancestor")
+        wfp.define_step(ancestor, "middle")
+        middle = wfp.find(Step, "middle")
+        middle.set_state(StepState.SUCCEEDED)
+        wfp.define_step(middle, "descendant")
     await _settle(wfp, scheduler)
     async with wfp.db:
         summary = analyze_pending(wfp)
-    # grandparent and child; parent SUCCEEDED is outside the pending universe.
+    # ancestor and descendant; middle SUCCEEDED is outside the pending universe.
     assert summary.ntotal == 2
     assert len(summary.inputs) == 1
     assert summary.inputs[0].nblocked == 2
@@ -285,8 +285,8 @@ async def test_dynamic_cycle(wfp: Workflow):
 
     A literal 2-step mutual-output cycle (`work1` depends on `work2`'s own output and vice
     versa) is rejected outright by `check_sources_acyclic` (`CyclicError`): the dependency
-    graph itself must stay a DAG. The example instead has each step create a *child*
-    step that produces the file the other depends on -- the creator edge to that child is
+    graph itself must stay a DAG. The example instead has each step create a *product*
+    step that produces the file the other depends on -- the creator edge to that product is
     provenance, not a `dependency` edge, so the cycle check (which only walks
     `dependency`) never sees it, while the resulting blocking relation between `work1` and
     `work2` (each waiting on a file produced by a pending descendant of the other) is
@@ -442,7 +442,7 @@ async def test_partition_invariant(wfp: Workflow):
         _declare_static(wfp, plan, ["side.txt"])
         amend_step(wfp, deferred_work, inp_paths=["side.txt"])
         deferred_work.set_state(StepState.PENDING, deferred=True)
-        # Dynamic cycle (see test_dynamic_cycle for why this needs a child-step indirection).
+        # Dynamic cycle (see test_dynamic_cycle for why this needs a product-step indirection).
         wfp.define_step(plan, "cyc1")
         wfp.define_step(plan, "cyc2")
         cyc1 = wfp.find(Step, "cyc1")

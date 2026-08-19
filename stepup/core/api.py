@@ -954,14 +954,14 @@ def hold() -> Iterator[None]:
 
     Use this to wrap a batch of `run()`/`step()`/`plan()` calls (typically in a `plan.py`)
     so the whole batch becomes simultaneously eligible for dispatch once the block closes,
-    instead of each child being dispatched as soon as it is declared.
+    instead of each step being dispatched as soon as it is declared.
     This lets the existing duration-based scheduling order the batch by cost,
     rather than by declaration order.
 
     `hold()` is re-entrant:
     nesting `with hold():` blocks
     (directly, or through a helper function called while already holding) is safe.
-    Children declared anywhere in the nested scopes stay held back
+    Steps declared anywhere in the nested scopes stay held back
     until the **outermost** block exits, not the innermost one.
 
     No `amend(inp=...)` call may be made anywhere in the calling step's execution
@@ -981,7 +981,7 @@ def hold() -> Iterator[None]:
     so `amend()`'s guard correctly stays active if the release call could not be confirmed.
     """
     job_i = get_job_i()
-    get_rpc_client().call.hold_children(job_i)
+    get_rpc_client().call.hold_dispatch(job_i)
     _HOLD_STATE.holding += 1
     try:
         yield
@@ -992,7 +992,7 @@ def hold() -> Iterator[None]:
         # instead of one already propagating from `yield`.
         had_exception = sys.exc_info()[0] is not None
         try:
-            get_rpc_client().call.release_children(job_i)
+            get_rpc_client().call.release_dispatch(job_i)
         except Exception:
             if had_exception:
                 logger.warning(

@@ -35,7 +35,7 @@ grep -q two wanted.txt
 grep -q one other.txt # unchanged: other.txt's step was never dispatched
 
 # Run 3: recycle path. Edit plan.py (a comment only, no declaration changes) so it re-runs
-# and redeclares its children through Step.reattach() instead of a fresh declaration. input.txt
+# and redeclares its products through Step.reattach() instead of a fresh declaration. input.txt
 # changes again at the same time, proving that elevation happens via the recycle-triggered
 # _check_after flag rather than a fresh call to _declare_file.
 rm .stepup/*.log

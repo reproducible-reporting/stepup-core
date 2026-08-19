@@ -96,12 +96,12 @@ and will be updated with any further changes before the final release.
   matched by name, and receives the paths after environment variable substitution
   and normalization.
 - New `hold()` context manager in `stepup.core.api`, for a step (typically a `plan.py`) to
-  wrap a batch of declarations so its children are held back from dispatch until the block
-  closes, instead of each being dispatched as soon as it is declared.
+  wrap a batch of declarations so the steps declared inside are held back from dispatch
+  until the block closes, instead of each being dispatched as soon as it is declared.
   This lets the whole batch become simultaneously eligible and get sorted by `_tail_time`
-  once released, so slow children declared late no longer lose the race for job slots to
-  fast children declared early. `hold()` is re-entrant: nested `with hold():` blocks for the
-  same step (e.g. through a shared helper function) compose correctly, with children staying
+  once released, so slow steps declared late no longer lose the race for job slots to
+  fast steps declared early. `hold()` is re-entrant: nested `with hold():` blocks for the
+  same step (e.g. through a shared helper function) compose correctly, with steps staying
   held back until the outermost block exits.
 - New `stepup.core.extapi` module for StepUp extension developers,
   collecting utilities previously buried in `stepup.core.utils`.

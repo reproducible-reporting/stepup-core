@@ -457,14 +457,14 @@ async def test_redefine_step(wfp: Workflow):
         assert echo.get_state() == StepState.PENDING
 
 
-async def test_rerun_creator_detaches_running_child(wfp: Workflow):
+async def test_rerun_creator_detaches_running_product(wfp: Workflow):
     """A detached, still-`RUNNING` step's RPC calls must be recorded like any other step's.
 
     This models a race that can occur in a real build: a step (`plan`) creates a
-    child step (`sub`), e.g. via a `step()` call in a `plan.py` script:
+    product step (`sub`), e.g. via a `step()` call in a `plan.py` script:
 
     - StepUp is interrupted early, such that `sub` does not complete.
-    - The user then modifies `plan.py`, resulting in a slightly different child step.
+    - The user then modifies `plan.py`, resulting in a slightly different product step.
     - StepUp is restarted, which causes `plan` to be rerun.
     - When `plan` reruns, it detaches all its product steps, but by that time `sub`
       may already have started running again in the executor.
@@ -491,7 +491,7 @@ async def test_rerun_creator_detaches_running_child(wfp: Workflow):
         assert plan.get_state() == StepState.PENDING
 
         # Nothing prevents the scheduler from dispatching `plan` again even though it has
-        # a still-RUNNING child: creator-safety only flows from creator to product, never
+        # a still-RUNNING product: creator-safety only flows from creator to product, never
         # the other way around (see `scheduler.SELECT_SAFE_UPDATE`).
         plan.set_state(StepState.RUNNING)
         plan.reset_for_rerun()
@@ -535,8 +535,8 @@ async def test_mark_pending_noop_when_checking(wfs: Workflow):
 async def test_detach_marks_is_detached_regardless_of_state(wfp: Workflow):
     """`Step.detach()` marks a step as detached regardless of its current state.
 
-    This complements `test_rerun_creator_detaches_running_child`, which only exercises a
-    RUNNING child; here a SUCCEEDED child is detached too, via both a direct `detach()`
+    This complements `test_rerun_creator_detaches_running_product`, which only exercises a
+    RUNNING product; here a SUCCEEDED product is detached too, via both a direct `detach()`
     call and `reset_for_rerun()`'s "detach steps created by this step" pass.
     """
     async with wfp.db:
@@ -2839,7 +2839,7 @@ async def test_duplicate_step_message(wfp: Workflow, wfp_factory):
 
 
 async def test_duplicate_step_message_same_creator(wfp: Workflow):
-    """One step defining the same child twice is phrased for a single creator."""
+    """One step defining the same product step twice is phrased for a single creator."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "dup")
@@ -2914,7 +2914,7 @@ async def test_static_tree_output_same_creator_still_raises(wfp: Workflow):
     The same-creator no-op is specific to static declarations
     (see `test_static_tree_same_creator_file_and_subdir_both_no_op`); `_declare_file`'s
     product branch has no such exemption. `define_step`'s out_paths always belong to a
-    freshly created child step, which can never equal an existing tree's creator, so
+    freshly created product step, which can never equal an existing tree's creator, so
     calling `_declare_file` directly with the tree's own creator is the only way to
     exercise this case.
     """
@@ -3807,7 +3807,7 @@ async def test_step_try_clean(wfp: Workflow):
         assert not plan.in_graph()
 
 
-async def test_step_lost_child(wfp: Workflow):
+async def test_step_lost_product(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog", out_paths=["data.txt"])
@@ -3836,7 +3836,7 @@ async def test_step_lost_child(wfp: Workflow):
         assert list(wfp.nodes(Step, include_detached=True)) == [plan]
 
 
-async def test_step_lost_dynamic_child(wfp: Workflow):
+async def test_step_lost_dynamic_product(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog")
@@ -3860,7 +3860,7 @@ async def test_step_lost_dynamic_child(wfp: Workflow):
         assert again.get_hash() is None
 
 
-async def test_step_lost_recycled_child(wfp: Workflow):
+async def test_step_lost_recycled_product(wfp: Workflow):
     """A detached step loses a created step to a new creator that recycles it."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -3884,7 +3884,7 @@ async def test_step_lost_recycled_child(wfp: Workflow):
         assert sub_plan.get_hash() is None
 
 
-async def test_static_tree_lost_child(wfp: Workflow):
+async def test_static_tree_lost_product(wfp: Workflow):
     async with wfp.db:
         # Construct a workflow with a statoc root
         plan = wfp.find(Step, "./plan.py")
@@ -3926,7 +3926,7 @@ async def test_static_tree_lost_child(wfp: Workflow):
         assert list(wfp.nodes(StaticTree, include_detached=True)) == []
 
 
-async def test_static_tree_lost_child_reregister(wfp: Workflow):
+async def test_static_tree_lost_product_reregister(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog")
@@ -3994,7 +3994,7 @@ async def test_static_tree_adoption_clears_stale_build_hash(wfp: Workflow, targe
 
     Its stored hash is build-time provenance, not a confirmed source's content, so
     `register_static_tree`'s eager adoption sweep must not let it survive the recycle into
-    UNCONFIRMED the way a CONFIRMED-origin hash does (`test_static_tree_lost_child`).
+    UNCONFIRMED the way a CONFIRMED-origin hash does (`test_static_tree_lost_product`).
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -4199,7 +4199,7 @@ async def test_defer_cap(wfs: Workflow):
         sub = wfs.find(Step, "sub")
 
         # Deferred 3 times (== cap): stays PENDING each time, count increments,
-        # and the opportunistically-created child stays attached (accepted defer).
+        # and the opportunistically-created product stays attached (accepted defer).
         for expected_count in [1, 2, 3]:
             interrupted_defer = echo.mark_completed(None, True)
             assert interrupted_defer is False
@@ -4208,7 +4208,7 @@ async def test_defer_cap(wfs: Workflow):
             assert not sub.is_detached()
 
         # 4th defer (cap + 1): FAILED instead of PENDING, a genuine terminal
-        # outcome, so the child is now detached too.
+        # outcome, so the product is now detached too.
         interrupted_defer = echo.mark_completed(None, True)
         assert interrupted_defer is True
         assert echo.get_state() == StepState.FAILED
@@ -4216,8 +4216,8 @@ async def test_defer_cap(wfs: Workflow):
         assert sub.is_detached()
 
 
-async def test_completed_detaches_child_only_on_genuine_failure(wfs: Workflow):
-    """An accepted defer leaves opportunistically-created children attached;
+async def test_completed_detaches_product_only_on_genuine_failure(wfs: Workflow):
+    """An accepted defer leaves opportunistically-created products attached;
     only a genuine terminal failure detaches them."""
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
@@ -4226,13 +4226,13 @@ async def test_completed_detaches_child_only_on_genuine_failure(wfs: Workflow):
         sub = wfs.find(Step, "sub")
         assert not sub.is_detached()
 
-        # Accepted defer: child must stay attached.
+        # Accepted defer: product must stay attached.
         interrupted_defer = echo.mark_completed(None, True)
         assert not interrupted_defer
         assert echo.get_state() == StepState.PENDING
         assert not sub.is_detached()
 
-        # Genuine terminal failure (no defer requested): child is detached.
+        # Genuine terminal failure (no defer requested): product is detached.
         echo.set_state(StepState.RUNNING)
         interrupted_defer = echo.mark_completed(None, False)
         assert not interrupted_defer

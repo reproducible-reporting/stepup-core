@@ -70,8 +70,8 @@ WITH RECURSIVE trace(i, safe, chain, safe_nh, chain_nh) AS (
     -- creator_step._holding = 0 additionally excludes,
     -- for the `safe`/`chain` (hold-respecting) pair only,
     -- a step whose creator has one or more open `hold()` calls,
-    -- so its children stay unsafe until the matching `release()` brings the counter back
-    -- to zero.
+    -- so its descendant steps stay unsafe until the matching `release()` brings the counter
+    -- back to zero.
     -- The `safe_nh`/`chain_nh` pair mirrors this exactly but never consults `_holding` at all,
     -- i.e. what `_safe` would be if nothing were ever held.
     SELECT

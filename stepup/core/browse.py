@@ -546,7 +546,8 @@ class GraphServer(BaseHTTPRequestHandler):
             if holding:
                 yield (
                     "<p><b>This step is holding:</b> "
-                    "its children are not safe to run until it calls <code>release()</code>.</p>"
+                    "its descendant steps are not safe to run "
+                    "until it calls <code>release()</code>.</p>"
                 )
 
             sql_env = "SELECT name, dynamic FROM env_var WHERE node = ?"

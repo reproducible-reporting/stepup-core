@@ -154,8 +154,8 @@ CREATE TABLE IF NOT EXISTS step (
     -- Whether recent changes to this step imply updates of the _safe metadata field of others.
     _holding INTEGER NOT NULL CHECK(_holding >= 0) DEFAULT 0,
     -- Number of open (unmatched) `hold()` calls on this step, i.e. how many `release()`
-    -- calls are still owed. Nonzero means this step is holding back its (recursive)
-    -- children from dispatch. Consulted by SELECT_SAFE_UPDATE alongside creator.state
+    -- calls are still owed. Nonzero means this step is holding back its descendant steps
+    -- from dispatch. Consulted by SELECT_SAFE_UPDATE alongside creator.state
     -- when computing a descendant's _safe.
     _safe_ignoring_hold INTEGER NOT NULL CHECK(_safe_ignoring_hold IN (0, 1)) DEFAULT 0,
     -- Like _safe, but computed as if no step anywhere in the (recursive) creator chain were
@@ -982,14 +982,14 @@ class Step(Node):
         self.db.execute("UPDATE step SET duration = ? WHERE node = ?", (duration, self.i))
 
     def is_holding(self) -> bool:
-        """Return whether this step is currently holding back its children from dispatch."""
+        """Return whether this step is currently holding back its descendant steps from dispatch."""
         row = self.db.execute("SELECT _holding FROM step WHERE node = ?", (self.i,)).fetchone()
         return row[0] > 0
 
     def hold(self):
-        """Hold back this step's (recursive) children from dispatch until a matching `release()`.
+        """Hold back this step's descendant steps from dispatch until a matching `release()`.
 
-        Re-entrant: nested `hold()` calls on the same step increment a counter, and children
+        Re-entrant: nested `hold()` calls on the same step increment a counter, and descendants
         stay held back until the outermost `release()` brings the counter back to zero.
         """
         row = self.db.execute(
@@ -1315,7 +1315,7 @@ class Step(Node):
         Called unconditionally by `reset_for_rerun()`,
         and by `mark_completed()` only when a step reaches a genuine terminal `FAILED` state
         (not on an accepted defer):
-        the failed run's children must not linger attached even before the creator's
+        the failed run's product steps must not linger attached even before the creator's
         actual rerun happens, which may be much later.
         Unlike `reset_for_rerun()`, this does not touch dynamic dependencies,
         so a defer triggered by an unavailable dynamic input does not sever the dependency edge
@@ -1396,7 +1396,7 @@ class Step(Node):
                 # The step may have created product steps that are already running
                 # opportunistically. A genuine terminal failure detaches all of them;
                 # an accepted defer (state stays PENDING) does not, since this step
-                # will run again soon and its children should stay attached until then.
+                # will run again soon and its products should stay attached until then.
                 self._detach_created_steps()
             # An unsuccessful step is not skippable, so we're removing its hash.
             self.delete_hash()

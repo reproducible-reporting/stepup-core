@@ -12,7 +12,7 @@ stepup join
 # Wait for background processes, if any.
 wait
 
-# All three children -- from both nested declare_batch() calls -- must have run.
+# All three steps -- from both nested declare_batch() calls -- must have run.
 [[ -f a_fast.txt ]] || exit 1
 [[ -f a_slow.txt ]] || exit 1
 [[ -f b_medium.txt ]] || exit 1

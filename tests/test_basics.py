@@ -263,10 +263,10 @@ async def test_amend_reports_missing_static_tree_match(client: AsyncRPCClient):
 
 
 async def test_hold_release_rpc_smoke(client: AsyncRPCClient):
-    """`hold_children`/`release_children` round-trip: children declared while holding still run."""
+    """`hold_dispatch`/`release_dispatch` round-trip: steps declared while holding still run."""
     try:
         job_i = _get_job_i()
-        await client("hold_children", job_i)
+        await client("hold_dispatch", job_i)
         await client(
             "define_step",
             job_i,
@@ -293,7 +293,7 @@ async def test_hold_release_rpc_smoke(client: AsyncRPCClient):
             {},
             True,
         )
-        await client("release_children", job_i)
+        await client("release_dispatch", job_i)
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
@@ -306,14 +306,14 @@ async def test_hold_nested_rpc_smoke(client: AsyncRPCClient):
     """A second `hold()` without an intervening `release()` is a re-entrant nested hold, not
     an error: it takes two matching `release()` calls to round-trip cleanly. See
     `test_hold_release_rpc_smoke` for the non-nested case, and the `hold_nested` example for
-    proof that children stay held until the outermost `release()`.
+    proof that steps stay held until the outermost `release()`.
     """
     try:
         job_i = _get_job_i()
-        await client("hold_children", job_i)
-        await client("hold_children", job_i)
-        await client("release_children", job_i)
-        await client("release_children", job_i)
+        await client("hold_dispatch", job_i)
+        await client("hold_dispatch", job_i)
+        await client("release_dispatch", job_i)
+        await client("release_dispatch", job_i)
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
@@ -331,7 +331,7 @@ async def test_release_without_hold_raises_graph_error(client: AsyncRPCClient):
     try:
         job_i = _get_job_i()
         with pytest.raises(GraphError):
-            await client("release_children", job_i)
+            await client("release_dispatch", job_i)
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")

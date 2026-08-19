@@ -12,7 +12,7 @@ stepup join
 # Wait for background processes, if any.
 wait
 
-# All three children must have run, with the expected content.
+# All three steps must have run, with the expected content.
 [[ -f fast.txt ]] || exit 1
 [[ -f medium.txt ]] || exit 1
 [[ -f slow.txt ]] || exit 1

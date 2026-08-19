@@ -513,10 +513,10 @@ def test_dumpns_does_not_raise_while_holding(path_tmp, monkeypatch):
 
 
 class _ReleaseFailsClient(DummySyncRPCClient):
-    """A dummy RPC client whose `release_children` call raises, to simulate an RPC failure."""
+    """A dummy RPC client whose `release_dispatch` call raises, to simulate an RPC failure."""
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
-        if name == "release_children":
+        if name == "release_dispatch":
             raise RuntimeError("simulated release() RPC failure")
         return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
 
