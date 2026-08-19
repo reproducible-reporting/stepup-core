@@ -47,6 +47,15 @@ repos:
   rev: 0.38.0
   hooks:
     - id: check-github-workflows
+    - id: check-jsonschema
+      name: Validate CITATION.cff against the CFF 1.2.0 schema
+      files: ^CITATION\.cff$
+      # The hook only looks at JSON and YAML files by default,
+      # and the .cff extension is not recognized as YAML.
+      types_or: [file]
+      args:
+        - --schemafile
+        - https://raw.githubusercontent.com/citation-file-format/citation-file-format/1.2.0/schema.json
 - repo: https://github.com/fsfe/reuse-tool
   rev: v6.2.0
   hooks:

@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+cff-version: 1.2.0
+message: If you use this software, please cite it using these metadata.
+title: StepUp Core
+type: software
+url: https://reproducible-reporting.github.io/stepup-core
+abstract: >-
+  StepUp is a simple, powerful and universal build tool,
+  a modern alternative to Make.
+  Its defining feature is that it treats the generation and execution of the build workflow
+  as one and the same thing:
+  a Python script defines build steps while it is being executed,
+  so steps can be defined on the fly using the outputs of earlier steps.
+  This makes StepUp a good fit for builds where the full set of dependencies
+  cannot be known in advance.
+authors:
+  - family-names: Verstraelen
+    given-names: Toon
+    orcid: https://orcid.org/0000-0001-9288-5608
+    affiliation: Center for Molecular Modeling (CMM), Ghent University
+    address: Technologiepark-Zwijnaarde 46
+    post-code: 9052
+    city: Zwijnaarde
+    country: BE
+license: LGPL-3.0-or-later
+repository-code: https://github.com/reproducible-reporting/stepup-core

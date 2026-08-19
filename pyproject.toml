@@ -43,6 +43,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
+    "cffconvert",
     "matplotlib",
     "mike",
     "mkdocs",
