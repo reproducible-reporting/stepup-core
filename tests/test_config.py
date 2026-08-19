@@ -841,12 +841,17 @@ def test_cli_section_per_subcommand(
 
 
 def _run_main(monkeypatch, path_tmp: Path, argv: list[str]) -> int:
-    """Run the `stepup` command line in this process and return its exit code."""
+    """Run the `stepup` command line in this process and return its exit code.
+
+    A subcommand that completes without raising `SystemExit` exits with code 0.
+    """
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
     monkeypatch.setattr(sys, "argv", ["stepup", *argv])
-    with pytest.raises(SystemExit) as exc_info:
+    try:
         main()
-    return exc_info.value.code
+    except SystemExit as exc:
+        return exc.code
+    return 0
 
 
 def test_cli_without_subcommand(monkeypatch, path_tmp, capsys, clean_env):

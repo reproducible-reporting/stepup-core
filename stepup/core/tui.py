@@ -47,8 +47,8 @@ from .enums import ReturnCode
 from .exceptions import RPCError, ToolError, UsageError
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
+from .tool import ToolFunc
 from .utils import (
-    ToolFunc,
     is_process_running,
     merge_resources,
     positive_int,
@@ -328,44 +328,30 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
 #
 
 
-def _build_tool(args: argparse.Namespace) -> int:
-    """Run `stepup build`, reporting a `ToolError` as an error message instead of a traceback.
+def _build_tool(args: argparse.Namespace) -> None:
+    """Run `stepup build` and exit with the return code that the build produced.
 
     Parameters
     ----------
     args
         The parsed `stepup build` command-line arguments.
-
-    Returns
-    -------
-    returncode
-        The exit code for the `stepup build` process.
     """
-    try:
-        return asyncio.run(_async_build(args))
-    except ToolError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return ReturnCode.INTERNAL.value
+    sys.exit(asyncio.run(_async_build(args)))
 
 
-def _deprecated_boot_tool(args: argparse.Namespace) -> int:
+def _deprecated_boot_tool(args: argparse.Namespace) -> None:
     """Run `stepup boot`, the deprecated alias of `stepup build`, after printing a warning.
 
     Parameters
     ----------
     args
         The parsed `stepup boot` command-line arguments.
-
-    Returns
-    -------
-    returncode
-        The exit code for the `stepup build` process.
     """
     print(
         "Warning: 'stepup boot' is deprecated; use 'stepup build' instead.",
         file=sys.stderr,
     )
-    return _build_tool(args)
+    _build_tool(args)
 
 
 #

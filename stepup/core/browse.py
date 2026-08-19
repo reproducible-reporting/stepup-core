@@ -7,7 +7,6 @@ import contextlib
 import html
 import importlib.resources
 import json
-import os
 import stat
 import threading
 import traceback
@@ -18,17 +17,16 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import jinja2
-from path import Path
 
 from .cattrs import json_converter
 from .config import ConfigLoader
-from .constants import GRAPH_DB
 from .enums import FileState, Need, StepState
 from .hash import FileHash, StepHash, fmt_digest, fmt_env_value
 from .nglob import NamedGlob
 from .sqlite3 import connect
 from .step import Step
-from .utils import ToolFunc, escape_command_display, format_subprocess, positive_int
+from .tool import ToolFunc, get_graph_db_path
+from .utils import escape_command_display, format_subprocess, positive_int
 
 __all__ = ("browse_subcommand",)
 
@@ -78,14 +76,10 @@ def browse_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     return browse_tool
 
 
-def browse_tool(args: argparse.Namespace):
+def browse_tool(args: argparse.Namespace) -> None:
     """Launch a web server to browse the build graph and print the URL to the console."""
     # Ugly hack to pass the database path to the request handler.
-    root = Path(os.getenv("STEPUP_ROOT", "."))
-    path_db = root / GRAPH_DB
-    if not path_db.exists():
-        raise FileNotFoundError(f"Graph database {path_db} does not exist.")
-    GraphServer.path_db = path_db
+    GraphServer.path_db = get_graph_db_path()
 
     # The server is started in a thread because a foreground browser would otherwise block the
     # server from answering its own requests.

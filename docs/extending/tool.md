@@ -24,14 +24,34 @@ The examples below assume that you want to add a tool called `fancy` to the Step
     ```python
     import argparse
 
-    def fancy_tool(args: argparse.Namespace) -> int:
+    def fancy_tool(args: argparse.Namespace) -> None:
         ...
     ```
 
     The `args` argument is a `Namespace` object that contains the command-line arguments
     passed to the tool.
-    The return value is the return code of the `stepup` command.
-    This signature is also available as the type alias `stepup.core.utils.ToolFunc`.
+    This signature is also available as the type alias `stepup.core.tool.ToolFunc`.
+
+    A tool does not return a return code.
+    It reports a mistake that the user can fix by raising `ToolError`,
+    which `stepup` turns into a short message on standard error,
+    ending the command with return code `1`:
+
+    ```python
+    from stepup.core.exceptions import ToolError
+
+    def fancy_tool(args: argparse.Namespace) -> None:
+        if not args.path.is_file():
+            raise ToolError(f"File does not exist: {args.path}")
+    ```
+
+    Any other exception keeps its traceback,
+    because it points at a bug rather than at something the user can act on.
+    Setting `STEPUP_DEBUG` also shows the traceback of a `ToolError`.
+
+    A tool that must end the command with a return code of its own calls `sys.exit`,
+    the way `stepup build` reports the outcome of a build.
+    This is not how an error is reported, because raising already covers that case.
 
 2. Write a second function that registers the argument parser,
    again with a fixed signature:
@@ -39,7 +59,7 @@ The examples below assume that you want to add a tool called `fancy` to the Step
     ```python
     import argparse
     from stepup.core.config import ConfigLoader
-    from stepup.core.utils import ToolFunc
+    from stepup.core.tool import ToolFunc
 
     def fancy_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
         parser = subparsers.add_parser(

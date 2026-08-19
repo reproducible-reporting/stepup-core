@@ -13,11 +13,11 @@ from path import Path
 from .config import (
     ConfigLoader,
     format_config_problems,
-    print_config_error,
     print_config_problems,
 )
 from .enums import ReturnCode
-from .exceptions import ConfigError
+from .exceptions import ConfigError, UsageError
+from .tool import print_error
 from .utils import is_debug
 
 __all__ = ("main", "sb_main")
@@ -29,17 +29,28 @@ __all__ = ("main", "sb_main")
 
 
 def main():
-    """Run a StepUp subcommand, reporting a `ConfigError` as a message instead of a traceback.
+    """Run a StepUp subcommand and decide the exit status from the exception that reaches here.
 
-    `STEPUP_DEBUG` keeps the traceback, as it does for any other usage error.
+    A `UsageError` is a mistake the user can fix, so it is reported as a short message.
+    Any other exception keeps its traceback, because it points at a bug in StepUp.
+    `STEPUP_DEBUG` turns the first case into the second one,
+    which is also the only way to see where a usage error was raised.
+    A `SystemExit` passes through untouched:
+    a tool raises it to end the process with an exit code of its own,
+    e.g. the bit flags that `stepup build` reports.
     """
     try:
         _main()
-    except ConfigError as exc:
+    except UsageError as exc:
         if is_debug():
             raise
-        print_config_error(str(exc))
+        print_error(str(exc))
         sys.exit(ReturnCode.INTERNAL.value)
+    except KeyboardInterrupt:
+        if is_debug():
+            raise
+        print_error("Interrupted.")
+        sys.exit(ReturnCode.INTERRUPTED.value)
 
 
 def sb_main():
@@ -67,7 +78,7 @@ def _main():
     # The config tool is exempt: it is the tool that explains a broken configuration.
     if args.tool != "config":
         _exit_on_config_problems(loader)
-    sys.exit(args.tool_func(args))
+    args.tool_func(args)
 
 
 def _exit_on_config_problems(loader: ConfigLoader) -> None:

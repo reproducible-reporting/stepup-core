@@ -11,12 +11,11 @@ from path import Path
 from rich.console import Console
 
 from .config import ConfigLoader
-from .constants import GRAPH_DB
 from .enums import FileState
 from .hash import FileHash
 from .path import translate, translate_back
-from .sqlite3 import connect, escape_like_pattern
-from .utils import ToolFunc
+from .sqlite3 import escape_like_pattern
+from .tool import ToolFunc, connect_graph_db
 
 __all__ = ("clean_subcommand",)
 
@@ -79,16 +78,14 @@ def clean_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     return clean_tool
 
 
-def clean_tool(args: argparse.Namespace):
+def clean_tool(args: argparse.Namespace) -> None:
     """Clean up the outputs selected by the command-line arguments."""
     # Translate all unique paths so they are relative to STEPUP_ROOT,
     # because this is how they are stored in the database. (tr_ prefix)
     tr_paths = {translate(path.normpath()) for path in args.paths}
 
-    # Open the graph database read-only, because the cleanup only reads the workflow graph.
-    root = Path(os.getenv("STEPUP_ROOT", "."))
-    path_db = root / GRAPH_DB
-    con = connect(path_db, read_only=True)
+    # The cleanup removes files without changing the workflow, hence a read-only connection.
+    con = connect_graph_db()
     try:
         clean(con, tr_paths, args)
     finally:

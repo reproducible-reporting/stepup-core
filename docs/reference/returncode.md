@@ -6,6 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 The StepUp return code indicates the status of the (last) build phase.
 It can be a sum of the following codes:
+(Any other subcommand uses only the first two, as explained below.)
 
 - `1` = the build could not be completed for a reason outside the workflow itself,
   e.g. a broken configuration file or an internal error (Python exception)
@@ -24,10 +25,15 @@ the `FAILED` bit is never set on account of a warning.
 The first bit (`1`) is normally the only bit set,
 because the situations that set it leave nothing else to report:
 a mistake in the [configuration](configuration.md), which stops a subcommand before it starts,
+a mistake that a subcommand reports as a short `ERROR:` message on standard error,
+such as `stepup status` in a directory where StepUp has never run,
 or an exception escaping the director.
 There is one exception, where it is combined with the outcome of a complete build:
 when `STEPUP_DEBUG` is set and StepUp finds problems in `.stepup/director.log`
 after the build, see [Configuration](configuration.md).
+
+The second bit (`2`) is likewise set by any subcommand that is stopped with Ctrl-C,
+not only by an aborted build.
 
 A few example combinations are:
 

@@ -53,6 +53,32 @@ Naming gotcha — two similar flags with different meanings:
   whether a running step may continue after amending its inputs,
   or must abort because some dynamic inputs are not yet available.
 
+## Command Line Interface (`__main__.py`, `tool.py`)
+
+Each `stepup` subcommand is a **tool**, registered through a `stepup.tools` entry point
+so that extension packages can add their own.
+`tool.py` holds what the tools have in common (the `ToolFunc` signature,
+`print_error`, and the read-only access to `GRAPH_DB`),
+`__main__.py` parses the command line and dispatches to the tool.
+
+**The exit status is decided by the exception that reaches `main()`,
+and `__main__.py` is the only module that prints an error and picks an exit code.**
+
+- A `ToolFunc` returns `None`. A return code is not a way to signal an error.
+- A mistake the user can fix is raised as a `UsageError`, in a tool usually a `ToolError`.
+  `main()` prints it as a short `ERROR:` message and exits with `ReturnCode.INTERNAL`.
+- Any other exception keeps its traceback, because it is a bug in StepUp.
+  `STEPUP_DEBUG` turns the previous case into this one.
+- A tool that needs a return code of its own calls `sys.exit`,
+  which `main()` lets through untouched.
+  Only `build` does so, to report the `ReturnCode` bit flags of a build.
+  `config` is the one tool that also renders its own errors,
+  since showing a problem on the line of the setting it concerns is what the tool is for.
+
+The point of concentrating this in `main()` is that a tool needs no error handling of its own.
+A helper such as `interact.py`'s `_translate_connection_errors` restates one exception as
+another, but never prints, exits, or decides whether a traceback is warranted.
+
 ## Step Launching and Interruption (`run.py`)
 
 `run.py` owns "run a step's command as a child process and return a `ChildOutcome`,"

@@ -6,6 +6,7 @@ import pytest
 
 from stepup.core.constants import GRAPH_DB
 from stepup.core.enums import FileState, Need, StepState
+from stepup.core.exceptions import ToolError
 from stepup.core.file import FILE_SCHEMA
 from stepup.core.sqlite3 import connect
 from stepup.core.status import print_status, status_tool
@@ -109,7 +110,7 @@ def test_print_status_resource_used_only(con, capsys):
 
 def test_status_tool_missing_db(tmp_path, monkeypatch):
     monkeypatch.setenv("STEPUP_ROOT", str(tmp_path))
-    with pytest.raises(FileNotFoundError, match="does not exist"):
+    with pytest.raises(ToolError, match="does not exist"):
         status_tool(None)
 
 

@@ -353,6 +353,22 @@ and will be updated with any further changes before the final release.
   that executed a step's command.
   Skipped steps and internal validation jobs are no longer included,
   which used to make the number confusingly large for builds with many skipped steps.
+- Every `stepup` subcommand now reports a mistake that the user can fix
+  as a short `ERROR:` message with return code `1`, instead of a Python traceback.
+  This used to be implemented separately by a few subcommands,
+  so `stepup status`, `stepup browse` and `stepup clean` still ended with a traceback
+  in a directory where StepUp had never run.
+  Setting `STEPUP_DEBUG` shows the traceback of such an error,
+  as it already did for a configuration error.
+  Stopping a subcommand with Ctrl-C is also reported as a message now,
+  and sets the `2` bit of the [return code](reference/returncode.md).
+- Tools no longer return a return code:
+  the signature of `ToolFunc` is now `Callable[[argparse.Namespace], None]`.
+  A tool raises `ToolError` to report a mistake the user can fix,
+  and calls `sys.exit` when it needs a return code of its own, as `stepup build` does.
+  The alias has moved from `stepup.core.utils` to the new `stepup.core.tool` module,
+  which collects what the subcommands have in common.
+  See [Custom Tools](extending/tool.md) for how to write one.
 
 ### Deprecated
 

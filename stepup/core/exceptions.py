@@ -31,8 +31,9 @@ __all__ = (
 class UsageError(Exception):
     """Base class for errors that the user can fix by changing their own code.
 
-    These reach the client as a short message without a director-side traceback,
-    unless `STEPUP_DEBUG` is set.
+    These are reported as a short message without a traceback, unless `STEPUP_DEBUG` is set:
+    a step or a `stepup` subcommand that raises one ends with return code `1`,
+    and the director sends one to the client without a director-side traceback.
     Any other exception keeps the full traceback,
     because it indicates a bug in StepUp rather than in the user's plan.
     """
@@ -45,14 +46,17 @@ class ConfigError(UsageError, ValueError):
     (bad TOML syntax, a value of the wrong type, a value outside the allowed choices)
     surface as a `ValueError` before being wrapped in this class.
 
-    The command-line interface reports these without a traceback,
-    because the raise site says nothing a user could act on:
+    The raise site says nothing a user could act on:
     the message names the config file or environment variable to fix.
     """
 
 
 class ToolError(UsageError):
-    """An error raised by a command line tool that must be shown without traceback."""
+    """An error raised by a `stepup` subcommand, i.e. by a tool.
+
+    This is what a tool raises for a situation that the user is expected to run into,
+    such as a command that needs a workflow database in a directory that has none.
+    """
 
 
 #

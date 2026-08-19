@@ -189,10 +189,12 @@ separated by slashes, where applicable.
     a logged error or a coroutine, task or thread left dangling is reported as an error
     and sets the internal error bit of the [return code](returncode.md),
     instead of only being reported as a warning.
-    Finally, it disables the shortening of error reports described in
+    It disables the shortening of error reports described in
     [Failing Steps](../getting_started/failing_steps.md):
     a failing step then prints its complete traceback,
     including StepUp's own frames and the traceback of the director process.
+    Finally, a mistake that any subcommand reports as a short `ERROR:` message
+    keeps its traceback, which is the only way to find out where it was raised.
     This variable cannot be set through config files or command-line options.
 
 `log_level` / `STEPUP_LOG_LEVEL` / `--log-level`, `-l`

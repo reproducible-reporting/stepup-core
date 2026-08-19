@@ -18,9 +18,9 @@ from path import Path
 from .api import get_rpc_client
 from .config import ConfigLoader
 from .constants import DIRECTOR_LOG
-from .enums import ReturnCode
-from .exceptions import RPCError, ToolError, UsageError
-from .utils import ToolFunc, is_process_running, query_director_log
+from .exceptions import RPCError, ToolError
+from .tool import ToolFunc
+from .utils import is_process_running, query_director_log
 
 __all__ = (
     "drain_subcommand",
@@ -46,28 +46,21 @@ GET_SOCKET_INTERVAL = 0.5
 """Seconds between two attempts to read the socket path from `DIRECTOR_LOG`."""
 
 
-def _report_errors(tool: ToolFunc) -> ToolFunc:
-    """Turn a failed director call into a short message on stderr.
+def _translate_connection_errors(tool: ToolFunc) -> ToolFunc:
+    """Restate a failure to reach the director as a `ToolError`.
 
-    Upon a failed call, the wrapped tool exits with `ReturnCode.INTERNAL` instead of raising,
-    so that a missing or vanished director does not confront the user with a traceback.
+    A `UsageError` raised by the director itself passes through:
+    the call did reach the director, which rejected it with a message of its own.
     """
 
     @functools.wraps(tool)
-    def wrapper(args: argparse.Namespace):
+    def wrapper(args: argparse.Namespace) -> None:
         try:
-            return tool(args)
-        except (ToolError, UsageError) as exc:
-            # A `UsageError` reaches this point when the director itself rejected the call.
-            # It carries a short, self-contained message, so it is printed as is,
-            # unlike the `RPCError` below, which is about not reaching the director at all.
-            message = str(exc)
+            tool(args)
         except (ConnectionError, FileNotFoundError, RPCError) as exc:
-            message = f"Could not connect to the StepUp director: {exc}"
+            raise ToolError(f"Could not connect to the StepUp director: {exc}") from exc
         except TimeoutError as exc:
-            message = f"Timeout while connecting to the StepUp director: {exc}"
-        print(f"ERROR: {message}", file=sys.stderr)
-        sys.exit(ReturnCode.INTERNAL.value)
+            raise ToolError(f"Timeout while connecting to the StepUp director: {exc}") from exc
 
     return wrapper
 
@@ -115,8 +108,8 @@ def get_socket() -> Path:
         time.sleep(GET_SOCKET_INTERVAL)
 
 
-@_report_errors
-def shutdown_tool(args: argparse.Namespace):
+@_translate_connection_errors
+def shutdown_tool(args: argparse.Namespace) -> None:
     """Drain the scheduler, wait for running steps to complete and then exit StepUp."""
     get_rpc_client(get_socket()).call.shutdown()
 
@@ -131,8 +124,8 @@ def shutdown_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     return shutdown_tool
 
 
-@_report_errors
-def drain_tool(args: argparse.Namespace):
+@_translate_connection_errors
+def drain_tool(args: argparse.Namespace) -> None:
     """Drain the scheduler. (No new steps are started.)"""
     get_rpc_client(get_socket()).call.drain()
 
@@ -146,8 +139,8 @@ def drain_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     return drain_tool
 
 
-@_report_errors
-def join_tool(args: argparse.Namespace):
+@_translate_connection_errors
+def join_tool(args: argparse.Namespace) -> None:
     """Wait for the builder to become idle and stop the director.
 
     This is the same as `stepup wait` followed by `stepup shutdown`.
@@ -164,8 +157,8 @@ def join_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     return join_tool
 
 
-@_report_errors
-def graph_tool(args: argparse.Namespace):
+@_translate_connection_errors
+def graph_tool(args: argparse.Namespace) -> None:
     """Write the workflow graph files in text and dot formats."""
     get_rpc_client(get_socket()).call.write_graph(args.prefix)
 
@@ -185,8 +178,8 @@ def graph_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     return graph_tool
 
 
-@_report_errors
-def rebuild_tool(args: argparse.Namespace):
+@_translate_connection_errors
+def rebuild_tool(args: argparse.Namespace) -> None:
     """Exit the watch phase and start the build phase."""
     get_rpc_client(get_socket()).call.start_build_phase()
 
@@ -200,8 +193,8 @@ def rebuild_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     return rebuild_tool
 
 
-@_report_errors
-def wait_tool(args: argparse.Namespace):
+@_translate_connection_errors
+def wait_tool(args: argparse.Namespace) -> None:
     """Block until the builder becomes idle, or until a watched path changes."""
     client = get_rpc_client(get_socket())
     if args.update is not None:

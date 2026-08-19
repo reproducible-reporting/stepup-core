@@ -3,17 +3,13 @@
 """Tool to get the current status directly from the graph database."""
 
 import argparse
-import os
 import sqlite3
 
-from path import Path
 from rich import print  # noqa: A004
 
 from .config import ConfigLoader
-from .constants import GRAPH_DB
 from .enums import FileState, StepState
-from .sqlite3 import connect
-from .utils import ToolFunc
+from .tool import ToolFunc, connect_graph_db
 
 __all__ = ("status_subcommand",)
 
@@ -67,13 +63,9 @@ def status_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
     return status_tool
 
 
-def status_tool(args: argparse.Namespace):
+def status_tool(args: argparse.Namespace) -> None:
     """Print the status of the workflow by reading the graph database directly."""
-    root = Path(os.getenv("STEPUP_ROOT", "."))
-    path_db = root / GRAPH_DB
-    if not path_db.exists():
-        raise FileNotFoundError(f"Graph database {path_db} does not exist.")
-    con = connect(path_db, read_only=True)
+    con = connect_graph_db()
     try:
         print_status(con)
     finally:

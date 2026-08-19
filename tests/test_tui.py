@@ -934,30 +934,39 @@ def test_terminal_broadcasts_without_controlling_terminal(monkeypatch: pytest.Mo
     assert not _terminal_broadcasts(signal.SIGINT, 1)
 
 
-def test_build_tool_tui_error_prints_short_message(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
-) -> None:
-    """A `ToolError` raised before the director starts must not dump a traceback."""
+def test_build_tool_raises_tui_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A `ToolError` raised before the director starts travels to `main`, which reports it."""
 
     async def raise_tui_error(args: argparse.Namespace) -> None:
         raise ToolError("Target is foobar: foobar.txt")
 
     monkeypatch.setattr("stepup.core.tui._async_build", raise_tui_error)
-    assert _build_tool(argparse.Namespace(targets=["foobar.txt"])) == ReturnCode.INTERNAL.value
-    captured = capsys.readouterr()
-    assert captured.err.strip() == "ERROR: Target is foobar: foobar.txt"
-    assert "Traceback" not in captured.err
+    with pytest.raises(ToolError, match="Target is foobar"):
+        _build_tool(argparse.Namespace(targets=["foobar.txt"]))
+
+
+def test_build_tool_exits_with_build_return_code(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`_build_tool` ends the process with the return code that the build produced."""
+
+    async def fake_build(args: argparse.Namespace) -> int:
+        return 42
+
+    monkeypatch.setattr("stepup.core.tui._async_build", fake_build)
+    with pytest.raises(SystemExit) as exc_info:
+        _build_tool(argparse.Namespace())
+    assert exc_info.value.code == 42
 
 
 def test_boot_tool_propagates_return_code(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`_deprecated_boot_tool` must return what `_build_tool` returned, not swallow it.
+    """`_deprecated_boot_tool` must not swallow the exit that `_build_tool` raises."""
 
-    Regression guard: `_build_tool` returns a value instead of always exiting via
-    `sys.exit`, so a bare `_build_tool(args)` call (no `return`) here would make
-    `stepup boot` silently exit 0 regardless of the actual outcome.
-    """
-    monkeypatch.setattr("stepup.core.tui._build_tool", lambda args: 42)
-    assert _deprecated_boot_tool(argparse.Namespace()) == 42
+    def fake_build_tool(args: argparse.Namespace) -> None:
+        sys.exit(42)
+
+    monkeypatch.setattr("stepup.core.tui._build_tool", fake_build_tool)
+    with pytest.raises(SystemExit) as exc_info:
+        _deprecated_boot_tool(argparse.Namespace())
+    assert exc_info.value.code == 42
 
 
 def test_async_build_returns_director_returncode(

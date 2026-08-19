@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Small utilities used throughout."""
 
-import argparse
 import contextlib
 import csv
 import logging
@@ -10,7 +9,7 @@ import os
 import re
 import shlex
 import string
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from time import monotonic_ns
 
 from path import Path
@@ -22,7 +21,6 @@ __all__ = (
     "DIRECTOR_LOG_CHECKS",
     "JOBLOG_COLUMNS",
     "CaseSensitiveTemplate",
-    "ToolFunc",
     "escape_command_display",
     "extract_env_overrides",
     "format_command",
@@ -48,10 +46,6 @@ logger = logging.getLogger(__name__)
 #
 # Miscellaneous
 #
-
-
-ToolFunc = Callable[[argparse.Namespace], int]
-"""The implementation of a StepUp subcommand: it maps parsed arguments to a return code."""
 
 
 class CaseSensitiveTemplate(string.Template):

@@ -56,6 +56,7 @@ every parser to have been patched first.
 import argparse
 import difflib
 import os
+import sys
 import tomllib
 from collections.abc import Callable
 from typing import Any
@@ -63,20 +64,19 @@ from typing import Any
 import attrs
 from path import Path
 from rich.console import Console
-from rich.style import Style
 from rich.syntax import Syntax
 from rich.text import Text
 
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import ConfigError
-from stepup.core.utils import ToolFunc, string_to_bool
+from stepup.core.tool import ERROR_STYLE, ToolFunc, print_error
+from stepup.core.utils import string_to_bool
 
 __all__ = (
     "ConfigLoader",
     "ConfigProblem",
     "config_subcommand",
     "format_config_problems",
-    "print_config_error",
     "print_config_problems",
 )
 
@@ -142,14 +142,6 @@ def _hint(candidates: list[str]) -> str:
     if len(candidates) == 0:
         return ""
     return " (did you mean " + " or ".join(repr(candidate) for candidate in candidates) + "?)"
-
-
-_ERROR_STYLE = Style(color="red", bold=True, dim=False)
-"""How a problem stands out from the rest of the output.
-
-`dim=False` is needed because a problem shown inline by `config` sits in a TOML comment,
-whose syntax highlighting is dim.
-"""
 
 
 @attrs.define(frozen=True)
@@ -764,13 +756,16 @@ def config_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
         help="Print the effective StepUp configuration as TOML.",
     )
 
-    def config_tool(args: argparse.Namespace) -> int:
+    def config_tool(args: argparse.Namespace) -> None:
         problems = loader.problems()
         remaining = _render_config(loader, problems)
         if len(remaining) > 0:
             # Problems go to stderr, so that the TOML on stdout stays usable in a pipeline.
             print_config_problems(remaining)
-        return ReturnCode.INTERNAL.value if len(problems) > 0 else 0
+        if len(problems) > 0:
+            # This is the one tool that renders its own errors, because rendering them
+            # on the line of the setting they concern is what the tool is for.
+            sys.exit(ReturnCode.INTERNAL.value)
 
     return config_tool
 
@@ -793,25 +788,6 @@ def format_config_problems(problems: list[ConfigProblem]) -> str:
     return "\n".join(lines)
 
 
-def _error_console() -> Console:
-    """Create a console for error output on standard error.
-
-    Soft wrapping leaves long messages to the terminal instead of cropping them.
-    """
-    return Console(stderr=True, soft_wrap=True)
-
-
-def print_config_error(message: str) -> None:
-    """Print a configuration error on standard error, in color where the terminal allows it.
-
-    Parameters
-    ----------
-    message
-        The error, without the `ERROR:` prefix, which is added here.
-    """
-    _error_console().print(Text.assemble(("ERROR:", _ERROR_STYLE), " ", message))
-
-
 def print_config_problems(problems: list[ConfigProblem], hint: str = "") -> None:
     """Print the problems found in the configuration on standard error.
 
@@ -822,13 +798,13 @@ def print_config_problems(problems: list[ConfigProblem], hint: str = "") -> None
     hint
         A closing line suggesting what to do about the problems, omitted when empty.
     """
-    text = Text.assemble(("ERROR:", _ERROR_STYLE), " Problems with the StepUp configuration:")
+    text = Text("Problems with the StepUp configuration:")
     for problem in problems:
         text.append(f"\n  {problem.location}: ", style="bold")
-        text.append(problem.detail, style=_ERROR_STYLE)
+        text.append(problem.detail, style=ERROR_STYLE)
     if hint != "":
         text.append(f"\n{hint}")
-    _error_console().print(text)
+    print_error(text)
 
 
 def _toml_value(value: Any) -> str:
@@ -1107,5 +1083,5 @@ def _print_toml(lines: list[str], spans: list[tuple[int, int, int]]) -> None:
         line_starts.append(offset)
         offset += len(line) + 1
     for index, start, stop in spans:
-        text.stylize(_ERROR_STYLE, line_starts[index] + start, line_starts[index] + stop)
+        text.stylize(ERROR_STYLE, line_starts[index] + start, line_starts[index] + stop)
     Console(soft_wrap=True).print(text)

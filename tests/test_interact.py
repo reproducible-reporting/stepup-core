@@ -13,8 +13,7 @@ from path import Path
 
 from stepup.core import interact
 from stepup.core.constants import DIRECTOR_LOG
-from stepup.core.enums import ReturnCode
-from stepup.core.exceptions import GraphError, ToolError
+from stepup.core.exceptions import GraphError, RPCError, ToolError
 
 
 def _write_director_log(path_tmp: Path, socket_path: Path, pid: int) -> None:
@@ -95,30 +94,37 @@ def test_wait_subcommand_rejects_update_and_delete_together() -> None:
 
 
 def test_wait_tool_reports_missing_director(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A tool must report a missing director as a short message, not as a traceback."""
+    """A missing director is a mistake the user can fix, so it must be a `ToolError`."""
     monkeypatch.setenv("STEPUP_ROOT", str(path_tmp))
     monkeypatch.setattr(interact, "GET_SOCKET_TIMEOUT", 0.05)
     monkeypatch.setattr(interact, "GET_SOCKET_INTERVAL", 0.01)
-    with pytest.raises(SystemExit) as exc_info:
+    with pytest.raises(ToolError, match="does not seem to be running"):
         interact.wait_tool(argparse.Namespace())
-    assert exc_info.value.code == ReturnCode.INTERNAL.value
-    assert "ERROR:" in capsys.readouterr().err
 
 
-def test_report_errors_prints_usage_error_message(capsys: pytest.CaptureFixture) -> None:
-    """A director-side usage error is printed as is, not as a connection problem.
+def test_translate_connection_errors_passes_usage_error() -> None:
+    """A director-side usage error passes through, instead of becoming a connection problem.
 
     The director was reached just fine: it is the call itself that was rejected,
     so the `Could not connect ...` wording of the `RPCError` clause would be wrong.
     """
 
-    @interact._report_errors
-    def tool(args: argparse.Namespace):
+    @interact._translate_connection_errors
+    def tool(args: argparse.Namespace) -> None:
         raise GraphError("boom")
 
-    with pytest.raises(SystemExit) as exc_info:
+    with pytest.raises(GraphError, match="boom"):
         tool(argparse.Namespace())
-    assert exc_info.value.code == ReturnCode.INTERNAL.value
-    assert capsys.readouterr().err == "ERROR: boom\n"
+
+
+def test_translate_connection_errors_wraps_rpc_error() -> None:
+    """A failure to reach the director becomes a `ToolError` that names the cause."""
+
+    @interact._translate_connection_errors
+    def tool(args: argparse.Namespace) -> None:
+        raise RPCError("no reply")
+
+    with pytest.raises(ToolError, match="Could not connect to the StepUp director: no reply"):
+        tool(argparse.Namespace())
