@@ -2662,7 +2662,8 @@ are worth spelling out:</p>
 <li>
 <p><strong><code>static()</code> accepts the return value of <code>glob()</code> directly.</strong>
   The call <code>static(ng)</code> declares exactly what <code>ng</code> matched,
-  without registering the pattern a second time — <a href="../glob/"><code>glob()</code></a> already did that.
+  without registering the pattern a second time,
+  because <a href="../glob/"><code>glob()</code></a> already did that.
   This is the composition used in the example plan above,
   and it is what makes query-then-declare, and the
   <a href="../glob_conditional/">probe-then-declare</a> idiom, cheap.</p>

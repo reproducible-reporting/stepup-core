@@ -2500,8 +2500,8 @@ Instead, they are declared static lazily when they are first accessed.
 This means that <code>data/</code> may contain a huge number of files without causing any performance issues.</p>
 <p>Calling <code>static("data/")</code> and then <code>static("data/somefile.txt")</code> is fine:
 the second call is a no-op, since the tree already owns the file.
-The reverse order — <code>static("data/somefile.txt")</code> first, <code>static("data/")</code> second — is
-also fine: the tree takes ownership of the file that was already declared.
+The reverse order, <code>static("data/somefile.txt")</code> first and <code>static("data/")</code> second,
+is also fine: the tree takes ownership of the file that was already declared.
 Both orders are no-ops because they come from the same step; the point of the rule is
 that a single owner exists regardless of which declaration happened to run first.
 Within a single <code>static()</code> call, directory arguments are always registered before

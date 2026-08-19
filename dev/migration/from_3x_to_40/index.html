@@ -3143,7 +3143,7 @@ because the command is a plain executable with arguments and does not rely on sh
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># StepUp 3</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">"./process.sh input.txt output.txt"</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">"process.sh"</span><span class="p">,</span> <span class="s2">"input.txt"</span><span class="p">],</span> <span class="n">out</span><span class="o">=</span><span class="s2">"output.txt"</span><span class="p">)</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># StepUp 4 — no shell=True needed for plain commands</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># StepUp 4: no shell=True needed for plain commands</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">"./process.sh input.txt output.txt"</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">"input.txt"</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">"output.txt"</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Only add <code>shell=True</code> (to mimic the old <code>runsh()</code> behavior)
@@ -3152,7 +3152,7 @@ such as pipes, redirections, globbing, or variable expansion:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># StepUp 3</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">"grep -c foo input.txt &gt; count.txt"</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">"input.txt"</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">"count.txt"</span><span class="p">)</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># StepUp 4 — shell=True required for redirection</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># StepUp 4: shell=True required for redirection</span>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">"grep -c foo input.txt &gt; count.txt"</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">"input.txt"</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">"count.txt"</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="migrating-from-runpy">Migrating from <code>runpy()</code><a class="headerlink" href="#migrating-from-runpy" title="Permanent link">&para;</a></h3>
@@ -3426,7 +3426,8 @@ except for a few small differences:</p>
 <li>
 <p>The <code>pool()</code> function has been removed, and pools can no longer be defined in <code>plan.py</code>.
   Instead, you can declare the resources available on the host via an environment variable,
-  e.g. <code>STEPUP_RESOURCES="gpu:2,cpu:16"</code> to indicate that the host has two GPUs and 16 CPU cores.
+  e.g. <code>STEPUP_BUILD_RESOURCES="gpu:2,cpu:16"</code>
+  to indicate that the host has two GPUs and 16 CPU cores.
   When defining steps, you can then specify the required resources, e.g., <code>resources="gpu:1,cpu:4"</code>,
   and StepUp will ensure that the available resources are not over-committed.
   You can override the available resources with the
@@ -3489,10 +3490,6 @@ Bare <code>stepup wait</code>, which blocks until the builder becomes idle, is u
 <td><code>STEPUP_BUILD_PROGRESS</code></td>
 </tr>
 <tr>
-<td><code>STEPUP_SHOW_PERF</code></td>
-<td><code>STEPUP_BUILD_SHOW_PERF</code></td>
-</tr>
-<tr>
 <td><code>STEPUP_WATCH</code></td>
 <td><code>STEPUP_BUILD_WATCH</code></td>
 </tr>
@@ -3506,6 +3503,10 @@ Bare <code>stepup wait</code>, which blocks until the builder becomes idle, is u
 </tr>
 </tbody>
 </table>
+<p>The variable <code>STEPUP_SHOW_PERF</code> has no counterpart in StepUp 4,
+because the <code>--show-perf</code> option it configured was removed.
+The resource usage of each step is stored in the workflow database
+and can be inspected with <code>stepup browse</code>.</p>
 <h2 id="return-codes-have-been-renumbered">Return Codes Have Been Renumbered<a class="headerlink" href="#return-codes-have-been-renumbered" title="Permanent link">&para;</a></h2>
 <p>The <code>stepup build</code> or <code>sb</code> command (previously <code>stepup boot</code>)
 still emits a return code that is a sum of bit flags,
@@ -3527,7 +3528,7 @@ and the &ldquo;runnable&rdquo; flag was dropped because nothing ever set it.</p>
 </tr>
 <tr>
 <td>Build aborted by Ctrl-C or <code>SIGTERM</code>.</td>
-<td>—</td>
+<td><em>new</em></td>
 <td><code>2</code></td>
 </tr>
 <tr>
@@ -3537,7 +3538,7 @@ and the &ldquo;runnable&rdquo; flag was dropped because nothing ever set it.</p>
 </tr>
 <tr>
 <td>The build reported a warning (other than the ones below).</td>
-<td>—</td>
+<td><em>new</em></td>
 <td><code>8</code></td>
 </tr>
 <tr>
@@ -3552,7 +3553,7 @@ and the &ldquo;runnable&rdquo; flag was dropped because nothing ever set it.</p>
 </tr>
 <tr>
 <td>The scheduler was draining.</td>
-<td>—</td>
+<td><em>new</em></td>
 <td><code>32</code></td>
 </tr>
 </tbody>
@@ -3592,7 +3593,7 @@ See <a href="../../getting_started/call/">Function Calls</a> for a full introduc
 </ul>
 <h3 id="single-case">Single Case<a class="headerlink" href="#single-case" title="Permanent link">&para;</a></h3>
 <p>In StepUp 3, a single-case script returned its planning data from <code>info()</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># StepUp 3 — generate.py</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># StepUp 3: generate.py</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.script</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
 </span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
@@ -3607,14 +3608,14 @@ See <a href="../../getting_started/call/">Function Calls</a> for a full introduc
 </span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
 </span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    <span class="n">driver</span><span class="p">()</span>
 </span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># StepUp 3 — plan.py</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># StepUp 3: plan.py</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">script</span><span class="p">,</span> <span class="n">static</span>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
 </span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">"generate.py"</span><span class="p">,</span> <span class="s2">"config.json"</span><span class="p">)</span>
 </span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">script</span><span class="p">(</span><span class="s2">"generate.py"</span><span class="p">)</span>
 </span></code></pre></div>
 <p>In StepUp 4, the <code>info()</code> function becomes a <code>plan()</code> function that registers the run step:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># StepUp 4 — generate.py</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># StepUp 4: generate.py</span>
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span>
 </span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.call</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
 </span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
@@ -3630,7 +3631,7 @@ See <a href="../../getting_started/call/">Function Calls</a> for a full introduc
 </span><span id="__span-12-14"><a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
 </span><span id="__span-12-15"><a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    <span class="n">driver</span><span class="p">()</span>
 </span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># StepUp 4 — plan.py</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># StepUp 4: plan.py</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span><span class="p">,</span> <span class="n">static</span>
 </span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
 </span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">"generate.py"</span><span class="p">,</span> <span class="s2">"config.json"</span><span class="p">)</span>
@@ -3639,7 +3640,7 @@ See <a href="../../getting_started/call/">Function Calls</a> for a full introduc
 <h3 id="multiple-cases">Multiple Cases<a class="headerlink" href="#multiple-cases" title="Permanent link">&para;</a></h3>
 <p>In StepUp 3, running the same script for several cases required the <code>cases()</code> generator,
 a <code>CASE_FMT</code> template, and a <code>case_info()</code> function:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># StepUp 3 — plot.py</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># StepUp 3: plot.py</span>
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.script</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
 </span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
@@ -3672,7 +3673,7 @@ but the <code>cases()</code> / <code>CASE_FMT</code> / <code>case_info()</code> 
 in the <code>plan()</code> function. Cases are passed as ordinary keyword arguments,
 so there is no longer any <code>CASE_FMT</code>/<a href="https://github.com/r1chardj0n3s/parse"><code>parse</code></a>
 string round-trip to keep consistent:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># StepUp 4 — plot.py</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># StepUp 4: plot.py</span>
 </span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span>
 </span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.call</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
 </span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>

@@ -4480,7 +4480,7 @@ Directory outputs are not supported.</p>
             –
           <div class="doc-md-description">
             <p>When dynamic inputs are not yet available.
-Let this exception propagate — do not catch it.
+Let this exception propagate; do not catch it.
 The director defers the step until the missing inputs become available.
 Note that this call blocks until any dynamic input matching an unconfirmed file is hashed,
 so it may take a while for large files.</p>
@@ -4718,7 +4718,7 @@ amending an <code>out</code> path that the step declared as <code>vol</code>, or
 </span><span id="__span-0-906"><a id="__codelineno-0-906" name="__codelineno-0-906"></a><span class="sd">        When `inp`, `out`, or `vol` contain a directory.</span>
 </span><span id="__span-0-907"><a id="__codelineno-0-907" name="__codelineno-0-907"></a><span class="sd">    InputNotFoundError</span>
 </span><span id="__span-0-908"><a id="__codelineno-0-908" name="__codelineno-0-908"></a><span class="sd">        When dynamic inputs are not yet available.</span>
-</span><span id="__span-0-909"><a id="__codelineno-0-909" name="__codelineno-0-909"></a><span class="sd">        Let this exception propagate — do not catch it.</span>
+</span><span id="__span-0-909"><a id="__codelineno-0-909" name="__codelineno-0-909"></a><span class="sd">        Let this exception propagate; do not catch it.</span>
 </span><span id="__span-0-910"><a id="__codelineno-0-910" name="__codelineno-0-910"></a><span class="sd">        The director defers the step until the missing inputs become available.</span>
 </span><span id="__span-0-911"><a id="__codelineno-0-911" name="__codelineno-0-911"></a><span class="sd">        Note that this call blocks until any dynamic input matching an unconfirmed file is hashed,</span>
 </span><span id="__span-0-912"><a id="__codelineno-0-912" name="__codelineno-0-912"></a><span class="sd">        so it may take a while for large files.</span>

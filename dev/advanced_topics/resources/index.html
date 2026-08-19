@@ -2466,18 +2466,18 @@ in cases where full parallelization would be counterproductive:</p>
 <p>Some software licenses may limit the number of instances running in parallel.</p>
 </li>
 </ol>
-<p>Available resources are declared via the <code>STEPUP_RESOURCES</code> environment variable
+<p>Available resources are declared via the <code>STEPUP_BUILD_RESOURCES</code> environment variable
 or the <code>--resources</code> CLI argument (CLI values take precedence).
 Both accept a comma-separated list of <code>name:quantity</code> pairs,
-e.g. <code>STEPUP_RESOURCES="cpu:4,gpu:1,memgb:16"</code>.</p>
+e.g. <code>STEPUP_BUILD_RESOURCES="cpu:4,gpu:1,memgb:16"</code>.</p>
 <p>Steps declare which resources they need with the <code>resources</code> keyword argument,
 which accepts either a dict (e.g. <code>{"gpu": 1}</code>) or a shorthand string (e.g. <code>"gpu:1"</code> or <code>"gpu"</code>).
-Resources not listed in <code>STEPUP_RESOURCES</code> or <code>--resources</code> are treated as unavailable,
+Resources not listed in <code>STEPUP_BUILD_RESOURCES</code> or <code>--resources</code> are treated as unavailable,
 so any step requiring them will never run.
 Requesting non-positive quantity of a resource (e.g. <code>resources={"gpu": 0}</code>)
 is not allowed and will raise an error,
-but one can specify a resource with zero quantity in <code>STEPUP_RESOURCES</code>
-to make it unavailable (e.g. <code>STEPUP_RESOURCES="gpu:0"</code>).
+but one can specify a resource with zero quantity in <code>STEPUP_BUILD_RESOURCES</code>
+to make it unavailable (e.g. <code>STEPUP_BUILD_RESOURCES="gpu:0"</code>).
 More details can be found in the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, env_overrides=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> API documentation.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/resources"><code>docs/advanced_topics/resources/</code></a></p>
@@ -2495,7 +2495,7 @@ they will run in parallel when allowed.</p>
 <p>Step C requires 2 CPUs and 1 GPU simultaneously, so it can only start
 once both A (which holds 1 CPU) and B (which holds 1 GPU) have finished.</p>
 <p>Set the environment variable and run StepUp with four parallel jobs:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">STEPUP_RESOURCES</span><span class="o">=</span><span class="s2">"cpu:2,gpu:1"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">STEPUP_BUILD_RESOURCES</span><span class="o">=</span><span class="s2">"cpu:2,gpu:1"</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">4</span>
 </span></code></pre></div>
@@ -2536,13 +2536,13 @@ because it needs 2 CPUs and 1 GPU at the same time.</p>
   and are never subject to resource restrictions.</p>
 </li>
 <li>
-<p>Change <code>STEPUP_RESOURCES</code> to <code>"cpu:4,gpu:2"</code> and verify that all three steps
+<p>Change <code>STEPUP_BUILD_RESOURCES</code> to <code>"cpu:4,gpu:2"</code> and verify that all three steps
   can now run in parallel.
   When you try this, StepUp will continue skipping steps.
   To forcibly re-execute steps, remove the file <code>.stepup/graph.db</code> and restart StepUp.</p>
 </li>
 <li>
-<p>Remove a resource from <code>STEPUP_RESOURCES</code> (e.g. set it to <code>"cpu:2"</code>) and observe
+<p>Remove a resource from <code>STEPUP_BUILD_RESOURCES</code> (e.g. set it to <code>"cpu:2"</code>) and observe
   that steps requiring the missing resource are never started and remain pending.</p>
 </li>
 </ul>
