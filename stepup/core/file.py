@@ -9,6 +9,7 @@ import attrs
 from path import Path
 
 from .enums import FileState
+from .exceptions import PathError
 from .hash import FileHash
 from .trellis import Node
 from .utils import format_digest
@@ -70,13 +71,15 @@ class File(Node):
     @classmethod
     def adjust_label(cls, label: str, **kwargs) -> str:
         """Do not allow certain filenames, just as a sanity check to detect problems early."""
-        # These are not allowed but may pass "existence" checks
+        # These are not allowed but may pass "existence" checks.
+        # A `PathError` (and not a plain `ValueError`), because these names can reach the
+        # director through a bad `static()` or `step()` argument, i.e. they are user errors.
         if label in (".", "..", ""):
-            raise ValueError(f"Invalid file name: {label}")
+            raise PathError(f"Invalid file name: {label}")
         if label.endswith(os.sep):
-            raise ValueError(f"Invalid file name (directory): {label}")
+            raise PathError(f"Invalid file name (directory): {label}")
         if label.endswith(("/.", "/..")):
-            raise ValueError(f"Invalid file name: {label}")
+            raise PathError(f"Invalid file name: {label}")
         return str(label)
 
     def initialize_row(self, state: FileState):  # type: ignore

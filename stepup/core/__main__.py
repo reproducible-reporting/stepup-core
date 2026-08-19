@@ -12,7 +12,7 @@ from importlib.metadata import version as get_version
 from path import Path
 
 from .config import ConfigLoader
-from .utils import string_to_bool
+from .utils import is_debug
 
 __all__ = ("main", "sb_main")
 
@@ -55,7 +55,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Callable]]:
     )
     version = get_version("stepup")
     parser.add_argument("--version", "-V", action="version", version="%(prog)s " + version)
-    debug = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
+    debug = is_debug()
     parser.add_argument(
         "--log-level",
         "-l",

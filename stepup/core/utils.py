@@ -26,6 +26,7 @@ __all__ = (
     "format_command",
     "format_digest",
     "format_subprocess",
+    "is_debug",
     "is_process_running",
     "merge_resources",
     "parse_resources",
@@ -524,3 +525,12 @@ def string_to_bool(v: str | bool) -> bool:
             return False
         raise StepUpError(f"Cannot interpret '{v}' as a boolean value.")
     raise TypeError(f"Expected a boolean value or string. Got {type(v).__name__}")
+
+
+def is_debug() -> bool:
+    """Whether `STEPUP_DEBUG` is switched on.
+
+    The variable is read on every call, not cached, because a test may change it
+    and because a step's environment is not the director's.
+    """
+    return string_to_bool(os.getenv("STEPUP_DEBUG", "0"))

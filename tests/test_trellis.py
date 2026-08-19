@@ -9,7 +9,7 @@ import attrs
 import pytest
 import pytest_asyncio
 
-from stepup.core.exceptions import CyclicError, GraphError
+from stepup.core.exceptions import ConsistencyError, CyclicError, GraphError
 from stepup.core.sqlite3 import DBSession
 from stepup.core.trellis import Node, Root, Trellis
 
@@ -724,7 +724,7 @@ async def test_check_consistency_detached(lt):
         # Manually detach foo0 while it has a creator.
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         lt.db.execute("UPDATE node SET detached = TRUE WHERE i = ?", (foo0.i,))
-        with pytest.raises(GraphError):
+        with pytest.raises(ConsistencyError):
             lt._check_consistency()
 
 

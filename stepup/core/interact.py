@@ -20,7 +20,7 @@ from .api import get_rpc_client
 from .config import ConfigLoader
 from .constants import DIRECTOR_LOG
 from .enums import ReturnCode
-from .exceptions import InteractError, RPCError
+from .exceptions import InteractError, RPCError, UsageError
 from .utils import is_process_running, query_director_log
 
 # The subcommands are referenced by string in `pyproject.toml`'s `stepup.tools` entry points.
@@ -61,7 +61,10 @@ def _report_errors(tool: Callable) -> Callable:
     def wrapper(args: argparse.Namespace):
         try:
             return tool(args)
-        except InteractError as exc:
+        except (InteractError, UsageError) as exc:
+            # A `UsageError` reaches this point when the director rejected the call itself.
+            # It carries a short, self-contained message, so it is printed as is,
+            # unlike the `RPCError` below, which is about not reaching the director at all.
             message = str(exc)
         except (ConnectionError, FileNotFoundError, RPCError) as exc:
             message = f"Could not connect to the StepUp director: {exc}"

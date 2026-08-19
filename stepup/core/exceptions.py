@@ -5,6 +5,7 @@
 __all__ = (
     "AmendWhileHoldingError",
     "CgroupError",
+    "ConsistencyError",
     "CyclicError",
     "EnvVarError",
     "GraphError",
@@ -18,10 +19,21 @@ __all__ = (
     "RunError",
     "StepUpError",
     "TUIError",
+    "UsageError",
 )
 
 
-class GraphError(Exception):
+class UsageError(Exception):
+    """Base class for errors that the user can fix by changing their own code.
+
+    These reach the client as a short message without a director-side traceback,
+    unless `STEPUP_DEBUG` is set.
+    Any other exception keeps the full traceback,
+    because it indicates a bug in StepUp rather than in the user's plan.
+    """
+
+
+class GraphError(UsageError):
     """A change to the graph could not be made as it would introduce an inconsistency."""
 
 
@@ -40,12 +52,25 @@ class AmendWhileHoldingError(GraphError):
     """
 
 
+class ConsistencyError(RuntimeError):
+    """An invariant of the workflow graph is violated.
+
+    Deliberately not a `UsageError`: no plan can put the graph in such a state through the
+    public API, so this always points at a bug in StepUp (or at a database corrupted by
+    something outside it), and the full traceback is what a bug report needs.
+    """
+
+
 class RPCError(Exception):
     """A remote procedure call could not be interpreted correctly."""
 
 
-class StepUpError(ValueError):
-    """Invalid argument passed to a StepUp user- or extension-facing API function."""
+class StepUpError(UsageError, ValueError):
+    """Invalid argument passed to a StepUp user- or extension-facing API function.
+
+    `ValueError` is kept in the bases so that existing `except ValueError` code
+    keeps catching these errors.
+    """
 
 
 class PathError(StepUpError):

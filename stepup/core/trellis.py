@@ -9,7 +9,7 @@ from typing import Self, TypeVar
 
 import attrs
 
-from .exceptions import CyclicError, GraphError
+from .exceptions import ConsistencyError, CyclicError, GraphError
 from .sqlite3 import DBSession
 
 __all__ = ("Node", "NodeType", "Root", "Trellis")
@@ -445,7 +445,7 @@ class Node:
         # It is left in the graph (it may still be recycled), but not as a skippable node.
         if old_creator is not None:
             if not old_creator_detached:
-                raise GraphError("Old creator of detached node is not detached.")
+                raise ConsistencyError("Old creator of detached node is not detached.")
             old_creator.after_lost_product()
         # Propagate the detached=FALSE property to all product nodes.
         self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, False))
@@ -641,10 +641,10 @@ class Trellis:
             if detached:
                 if not creator_detached:
                     node = self.node_from_row(i, kind, label)
-                    raise GraphError(f"Detached node has attached creator: {node.key()}")
+                    raise ConsistencyError(f"Detached node has attached creator: {node.key()}")
             elif creator_detached:
                 node = self.node_from_row(i, kind, label)
-                raise GraphError(f"Attached node has detached creator: {node.key()}")
+                raise ConsistencyError(f"Attached node has detached creator: {node.key()}")
         # The per-row checks above only catch immediate (single-hop) inconsistencies between a
         # node and its own creator. A longer cycle in the creator chain (e.g. A creates B creates
         # A) can pass every one of those checks while never actually connecting to the root, so
@@ -655,10 +655,10 @@ class Trellis:
             i, kind, label, detached = row
             node = self.node_from_row(i, kind, label)
             if detached:
-                raise GraphError(
+                raise ConsistencyError(
                     f"Detached node is reachable from root via creator chain: {node.key()}"
                 )
-            raise GraphError(
+            raise ConsistencyError(
                 f"Attached node is not reachable from root via creator chain: {node.key()}"
             )
         for node in self.nodes():
@@ -815,7 +815,7 @@ class Trellis:
             # It is removed by the next `Trellis.delete_detached` unless it is recycled before that.
             if old_creator is not None:
                 if not old_creator_detached:
-                    raise GraphError("Old creator of detached node is not detached.")
+                    raise ConsistencyError("Old creator of detached node is not detached.")
                 old_creator.after_lost_product()
             # Cut all ties to sources, so this node starts from a clean slate.
             node.del_all_sources()

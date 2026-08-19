@@ -4,6 +4,8 @@
 
 import asyncio
 import contextlib
+import logging
+import pickle
 import sys
 
 import pytest
@@ -12,16 +14,21 @@ from core_common import EchoHandler
 from path import Path
 
 from stepup.core.asyncio import pipe
-from stepup.core.exceptions import RPCError
+from stepup.core.exceptions import CyclicError, RPCError, UsageError
 from stepup.core.rpc import (
     AsyncRPCClient,
+    RemoteError,
     SocketSyncRPCClient,
     _handle_connection,
+    _handle_error,
+    _handle_request,
+    _rebuild_exception,
     _recv_rpc_message,
     _serve_rpc_send_loop,
     fmt_rpc_call,
     serve_rpc,
 )
+from stepup.core.utils import DIRECTOR_LOG_CHECKS
 
 
 @pytest_asyncio.fixture()
@@ -220,6 +227,148 @@ async def test_pipe_not_allowed(pc):
 async def test_pipe_not_defined(pc):
     with pytest.raises(RPCError):
         await pc.call.not_defined()
+
+
+#
+# Errors raised by the server while handling a call.
+#
+
+
+class _TwoArgUsageError(UsageError):
+    """A `UsageError` that cannot be rebuilt from a message alone.
+
+    No such subclass exists in StepUp today, so this is the stand-in for a future one.
+    """
+
+    def __init__(self, message: str, detail: str):
+        super().__init__(f"{message}: {detail}")
+
+
+def _remote_error(exc: BaseException) -> RemoteError:
+    """Build the payload the server would send for *exc*, with a real traceback."""
+    try:
+        raise exc
+    except type(exc):
+        return RemoteError.from_exception(exc)
+
+
+def test_remote_error_from_exception():
+    err = _remote_error(CyclicError("cyclic"))
+    assert err.module == "stepup.core.exceptions"
+    assert err.qualname == "CyclicError"
+    assert err.message == "cyclic"
+    assert err.traceback_text.startswith("Traceback (most recent call last):\n")
+    assert err.traceback_text.endswith("stepup.core.exceptions.CyclicError: cyclic\n")
+    assert err.usage
+
+
+def test_remote_error_from_internal_exception():
+    """The classification happens on the server, where the exception class is importable."""
+    assert not _remote_error(RuntimeError("bug")).usage
+
+
+def test_remote_error_is_picklable():
+    """The reply travels through `pickle`, which the payload must survive by construction."""
+    err = _remote_error(CyclicError("cyclic"))
+    assert pickle.loads(pickle.dumps(err)) == err
+
+
+def test_rebuild_exception_returns_the_original_class():
+    exc = _rebuild_exception(_remote_error(CyclicError("cyclic")))
+    assert type(exc) is CyclicError
+    assert str(exc) == "cyclic"
+
+
+@pytest.mark.parametrize(
+    ("module", "qualname"),
+    [
+        # The class is not importable in the client process.
+        ("no_such_module", "CyclicError"),
+        ("stepup.core.exceptions", "NoSuchError"),
+        # The name exists but is not a class.
+        ("stepup.core.exceptions", "__doc__"),
+        # The class exists but is not one this design vouches for.
+        ("builtins", "ValueError"),
+    ],
+)
+def test_rebuild_exception_falls_back_to_rpc_error(module: str, qualname: str):
+    err = RemoteError(module, qualname, "cyclic", "traceback", True)
+    exc = _rebuild_exception(err)
+    assert type(exc) is RPCError
+    assert str(exc) == "cyclic"
+
+
+def test_rebuild_exception_falls_back_for_a_richer_constructor():
+    """A subclass that needs more than a message cannot be rebuilt from one."""
+    err = _remote_error(_TwoArgUsageError("cyclic", "detail"))
+    assert err.qualname == "_TwoArgUsageError"
+    exc = _rebuild_exception(err)
+    assert type(exc) is RPCError
+    assert str(exc) == "cyclic: detail"
+
+
+def test_handle_error_raises_the_usage_error_class():
+    """A usage error reaches the caller as itself, so `except GraphError:` works as expected."""
+    err = _remote_error(CyclicError("cyclic"))
+    with pytest.raises(CyclicError, match=r"^cyclic$") as exc_info:
+        _handle_error(err, "step", [], {})
+    # `from None`: a chained `RPCError` would put StepUp's plumbing back in the traceback.
+    assert exc_info.value.__cause__ is None
+    assert exc_info.value.__context__ is None
+
+
+def test_handle_error_wraps_a_usage_error_with_stepup_debug(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("STEPUP_DEBUG", "1")
+    err = _remote_error(CyclicError("cyclic"))
+    with pytest.raises(RPCError) as exc_info:
+        _handle_error(err, "step", ["cp a b"], {})
+    assert fmt_rpc_call("step", ["cp a b"], {}) in str(exc_info.value)
+    assert err.traceback_text in str(exc_info.value)
+
+
+def test_handle_error_wraps_an_internal_error():
+    """A bug in the server keeps the full traceback, which is what a bug report needs."""
+    err = _remote_error(RuntimeError("bug"))
+    with pytest.raises(RPCError) as exc_info:
+        _handle_error(err, "step", [], {})
+    assert err.traceback_text in str(exc_info.value)
+
+
+async def test_handle_request_logs_a_harmless_record(caplog: pytest.LogCaptureFixture):
+    """The traceback the client will hide is kept in the director log, without raising a flag.
+
+    `stepup build` scans its own log and fails the build over any `DIRECTOR_LOG_CHECKS` match,
+    so this record must be neither an `ERROR` nor a line that reads like dangling work.
+    """
+    with caplog.at_level(logging.INFO, logger="stepup.core.rpc"):
+        err, is_error = await _handle_request(EchoHandler("caplog"), "raise_usage", [], {})
+    assert is_error
+    assert err.qualname == "CyclicError"
+    (record,) = [record for record in caplog.records if record.name == "stepup.core.rpc"]
+    assert record.levelname not in ("ERROR", "CRITICAL")
+    assert err.traceback_text in record.getMessage()
+    message = record.getMessage()
+    assert [label for pattern, label in DIRECTOR_LOG_CHECKS if pattern.search(message)] == []
+
+
+async def test_pipe_usage_error(pc):
+    """A usage error survives the wire as the class the server raised."""
+    with pytest.raises(CyclicError, match=r"^cyclic$"):
+        await pc.call.raise_usage()
+
+
+async def test_pipe_internal_error(pc):
+    with pytest.raises(RPCError):
+        await pc.call.raise_internal()
+
+
+def test_sync_socket_usage_error(socket_server_path):
+    """The synchronous client is the one a `plan.py` uses, so it must behave the same."""
+    with SocketSyncRPCClient(socket_server_path) as client:
+        with pytest.raises(CyclicError, match=r"^cyclic$"):
+            client.call.raise_usage(_rpc_timeout=5)
+        with pytest.raises(RPCError):
+            client.call.raise_internal(_rpc_timeout=5)
 
 
 class _ImmediateEOFReader:

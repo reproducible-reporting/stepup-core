@@ -6,6 +6,7 @@ import asyncio
 
 import attrs
 
+from stepup.core.exceptions import CyclicError
 from stepup.core.rpc import allow_rpc
 
 
@@ -29,6 +30,16 @@ class EchoHandler:
         See https://en.wikipedia.org/wiki/Linear_congruential_generator
         """
         return (multiplier * seed + increment) % modulus
+
+    @allow_rpc
+    def raise_usage(self):
+        """Fail with a mistake the caller can fix, i.e. a `UsageError` subclass."""
+        raise CyclicError("cyclic")
+
+    @allow_rpc
+    def raise_internal(self):
+        """Fail with something that indicates a bug in the server."""
+        raise RuntimeError("bug")
 
     @allow_rpc
     def shutdown(self):

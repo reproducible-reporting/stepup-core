@@ -40,7 +40,7 @@ from .constants import (
     STEPUP_DIR,
 )
 from .enums import ReturnCode
-from .exceptions import RPCError, TUIError
+from .exceptions import RPCError, TUIError, UsageError
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
 from .utils import (
@@ -1212,6 +1212,13 @@ async def keyboard(
             # expected, so report it and keep reading until stop_event is set.
             reporter_handler.report(
                 "KEYBOARD", f"Director unreachable, key {ch} ignored: {exc}", []
+            )
+        except UsageError as exc:
+            # The director rejected the call itself, e.g. because of an invalid argument.
+            # Such an error carries a one-line message and no traceback,
+            # so it is reported under a "Message" heading instead of the "Traceback" below.
+            reporter_handler.report(
+                "ERROR", f"Key {ch} failed in the director.", [("Message", str(exc).strip())]
             )
         except RPCError as exc:
             # The call did reach the director, but raised there, e.g. `graph` could not

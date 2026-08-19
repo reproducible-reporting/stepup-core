@@ -24,7 +24,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 from collections.abc import Callable
 from importlib.metadata import entry_points
 from typing import Any
@@ -37,6 +36,7 @@ from .exceptions import RunError
 from .extapi import get_local_import_paths
 from .outcome import ChildOutcome, ResourceUsage
 from .step import Step
+from .tracebacks import print_step_traceback
 from .utils import escape_command_display
 
 __all__ = (
@@ -824,11 +824,13 @@ def _forkserver_entry(
                     from stepup.core.api import amend  # noqa: PLC0415
 
                     amend(inp=get_local_import_paths(script_path=Path(cmd)))
-        except BaseException:  # noqa: BLE001
+        except BaseException as exc:  # noqa: BLE001
             # All exceptions must be caught here, to be able to send the corresponding
             # output and return code back to the director process.
             # Otherwise, the parent process would just see a connection error.
-            traceback.print_exc(file=stderr_buf)
+            # This path catches the exception itself, so `sys.excepthook` never runs
+            # and the shortening must be requested explicitly.
+            print_step_traceback(exc, stderr_buf)
             returncode = 1
         finally:
             # Snapshot in a `finally`: a step failing with an uncaught exception skips the

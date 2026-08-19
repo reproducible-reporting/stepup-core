@@ -17,6 +17,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 This is release candidate 10 of the upcoming StepUp Core 4.0 release.
 
+Note that all changes of the release candidates are included below.
+This section is treated as a draft of the changelog for the final 4.0.0 release,
+and will be updated with any further changes before the final release.
+
 ### Added
 
 - StepUp can now also be configured through configuration files,
@@ -154,6 +158,10 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
 - Return codes have changed.
   The new return code bits are documented in [StepUp Return Codes](reference/returncode.md).
   The changes compared to StepUp 3 are summarized in the [migration guide](migration/from_3x_to_40.md#return-codes-have-been-renumbered).
+- When a step fails because of incorrect use of `stepup.core.api`,
+  the error is now reported concisely instead of as a long traceback.
+  Errors that indicate a bug in StepUp keep their full traceback.
+  Run `sb` with the environment variable `STEPUP_DEBUG=1` to see the complete traceback.
 - At the end of every build, StepUp scans `.stepup/director.log` for symptoms of internal
   problems: logged errors, unawaited coroutines, tasks destroyed while still pending,
   and exceptions that escaped a callback, a thread or a destructor.

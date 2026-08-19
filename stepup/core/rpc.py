@@ -7,6 +7,7 @@ This module also includes a synchronous RPC client to support simple client APIs
 
 import asyncio
 import contextlib
+import importlib
 import inspect
 import logging
 import os
@@ -17,12 +18,13 @@ import sys
 import traceback
 from collections.abc import Awaitable, Callable, Collection
 from functools import partial
-from typing import Any
+from typing import Any, NoReturn
 
 import attrs
 
 from .asyncio import stdio, stoppable_iterator
-from .exceptions import RPCError
+from .exceptions import RPCError, UsageError
+from .utils import is_debug
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +54,100 @@ def fmt_rpc_call(name: str, args: Collection, kwargs: dict) -> str:
     return f"{name}({', '.join(all_args)})"
 
 
-def _handle_error(body: str, name: str, args, kwargs):
-    """Format the raw traceback body into an `RPCError`."""
+@attrs.define(frozen=True)
+class RemoteError:
+    """The server-side exception of a failed RPC call, as sent back to the client.
+
+    Only strings and a bool, so that the reply is always picklable,
+    no matter how exotic the original exception is.
+    """
+
+    module: str = attrs.field()
+    """The `__module__` of the exception class, e.g. `stepup.core.exceptions`."""
+
+    qualname: str = attrs.field()
+    """The `__qualname__` of the exception class, e.g. `CyclicError`."""
+
+    message: str = attrs.field()
+    """The result of `str(exc)`."""
+
+    traceback_text: str = attrs.field()
+    """The formatted server-side traceback."""
+
+    usage: bool = attrs.field()
+    """Whether the exception is a `UsageError`, i.e. a mistake the user can fix.
+
+    This is decided on the server, where the exception class is guaranteed importable,
+    rather than reconstructed on the client from the type name.
+    """
+
+    @classmethod
+    def from_exception(cls, exc: BaseException) -> "RemoteError":
+        """Summarize an exception raised while handling an RPC call."""
+        return cls(
+            type(exc).__module__,
+            type(exc).__qualname__,
+            str(exc),
+            "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+            isinstance(exc, UsageError),
+        )
+
+
+def _rebuild_exception(err: RemoteError) -> BaseException:
+    """Recreate a server-side `UsageError` in the client process.
+
+    Every step is guarded and falls back to an `RPCError` with the original message,
+    so that a payload which cannot be reconstructed faithfully
+    never makes the client raise something arbitrary.
+
+    Parameters
+    ----------
+    err
+        The error payload received from the server.
+
+    Returns
+    -------
+    exc
+        An instance of the original exception class,
+        or an `RPCError` when the class could not be reconstructed.
+        The server-side traceback is not carried over:
+        `_handle_request` logs it to `.stepup/director.log`,
+        which is the record to consult when it is needed.
+    """
+    try:
+        cls = getattr(importlib.import_module(err.module), err.qualname)
+    except (ImportError, AttributeError):
+        # The class is not importable in the client process.
+        return RPCError(err.message)
+    if not (isinstance(cls, type) and issubclass(cls, UsageError)):
+        # Checking `UsageError` (and not `Exception`) keeps the reconstruction inside the set
+        # of classes this design vouches for: a plain-message constructor and a meaning the
+        # user can act on.
+        return RPCError(err.message)
+    try:
+        return cls(err.message)
+    except TypeError:
+        # A subclass with a richer constructor signature. None exist today.
+        return RPCError(err.message)
+
+
+def _handle_error(err: RemoteError, name: str, args, kwargs) -> NoReturn:
+    """Raise a client-side exception for an RPC call that failed on the server.
+
+    A usage error is re-raised as the class the server raised, without the server traceback,
+    so that the user is confronted with their own mistake instead of StepUp's plumbing.
+    Anything else indicates a bug in StepUp, for which the full traceback is what a bug
+    report needs, so it is wrapped in an `RPCError` that embeds it.
+    `STEPUP_DEBUG` selects the latter treatment for every exception.
+    """
+    if err.usage and not is_debug():
+        # `from None`: a chained `RPCError` would put StepUp's plumbing back in the traceback.
+        raise _rebuild_exception(err) from None
     fmt_call = fmt_rpc_call(name, args, kwargs)
-    raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
+    raise RPCError(
+        f"An exception was raised in the server during the call {fmt_call}: "
+        f"\n\n{err.traceback_text}"
+    )
 
 
 def allow_rpc(func):
@@ -197,8 +289,18 @@ async def _handle_request(handler, name: str, args: list, kwargs: dict) -> tuple
             result = await result
         return result, False
     except BaseException as exc:  # noqa: BLE001
-        message = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
-        return message, True
+        err = RemoteError.from_exception(exc)
+        # Keep a server-side record of the traceback, because the client may hide it.
+        # `WARNING` and not `INFO`: the director's default log level is `WARNING`
+        # (see `__main__.py`), so an `INFO` record would be dropped in exactly the case
+        # this record exists for, i.e. a build without `STEPUP_DEBUG`.
+        # `WARNING` and not `ERROR`: the last pattern in `DIRECTOR_LOG_CHECKS` (`utils.py`)
+        # anchors on the level field, so an `ERROR` record here would turn every reported
+        # usage error into a build finding.
+        logger.warning(
+            "Exception in RPC call %s:\n%s", fmt_rpc_call(name, args, kwargs), err.traceback_text
+        )
+        return err, True
 
 
 def _queue_done(call_id: int, tasks: set[asyncio.Task], queue: asyncio.Queue, task: asyncio.Task):

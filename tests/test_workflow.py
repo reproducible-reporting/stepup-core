@@ -16,7 +16,7 @@ from path import Path
 
 from stepup.core.constants import STEPUP_DIR
 from stepup.core.enums import FileState, HashUpdateCause, Need, StepState
-from stepup.core.exceptions import GraphError
+from stepup.core.exceptions import ConsistencyError, GraphError
 from stepup.core.file import File
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NamedGlob
@@ -3661,7 +3661,10 @@ async def test_consistency_parent(wfp: Workflow):
         wfp.db.execute("UPDATE node SET label = 'local.txt' WHERE label = 'sub/local.txt'")
 
 
-async def test_consistency_succeeded_step(wfp: Workflow):
+async def test_consistency_succeeded_step(wfp: Workflow, monkeypatch: pytest.MonkeyPatch):
+    # `_check_consistency` only raises in strict mode; without `STEPUP_DEBUG`
+    # it logs the problem and repairs it by marking the step pending.
+    monkeypatch.setenv("STEPUP_DEBUG", "1")
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog", out_paths=["out.txt"])
@@ -3675,7 +3678,7 @@ async def test_consistency_succeeded_step(wfp: Workflow):
         assert file_hashes == {"out.txt": fake_hash("out.txt")}
     # Manually change the output file to AWAITED, which must clear the file hash.
     # However, this is still the output of a BUILT step, which should trip the consistency check.
-    with pytest.raises(GraphError):  # noqa: PT012
+    with pytest.raises(ConsistencyError):  # noqa: PT012
         async with wfp.db:
             out.set_state(FileState.AWAITED)
             file_hashes = wfp.get_file_hashes(["out.txt"])

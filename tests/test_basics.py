@@ -9,7 +9,7 @@ import pytest
 from path import Path
 
 from stepup.core.enums import Need
-from stepup.core.exceptions import RPCError
+from stepup.core.exceptions import GraphError, RPCError
 from stepup.core.rpc import AsyncRPCClient
 
 
@@ -300,11 +300,17 @@ async def test_hold_nested_rpc_smoke(client: AsyncRPCClient):
     await client("wait")
 
 
-async def test_release_without_hold_raises_rpc_error(client: AsyncRPCClient):
-    """`release()` with no matching `hold()` raises rather than corrupting scheduler state."""
+async def test_release_without_hold_raises_graph_error(client: AsyncRPCClient):
+    """`release()` with no matching `hold()` raises rather than corrupting scheduler state.
+
+    The director's `GraphError` is a `UsageError`, so the client re-raises that same class
+    instead of wrapping it in an `RPCError`.
+    That requires `STEPUP_DEBUG` to be unset, which the `_unset_stepup_debug` fixture
+    in `conftest.py` guarantees.
+    """
     try:
         job_i = _get_job_i()
-        with pytest.raises(RPCError):
+        with pytest.raises(GraphError):
             await client("release", job_i)
     finally:
         with open("DONE.txt", "w") as fh:

@@ -60,6 +60,7 @@ from .path import (
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
 from .step import RESERVED_ENV_VARS
 from .stepinfo import StepInfo
+from .tracebacks import install_excepthook
 from .utils import extract_env_overrides, format_command, parse_resources, string_to_list
 
 __all__ = (
@@ -1899,6 +1900,13 @@ def get_rpc_client(socket: str | None = None) -> DummySyncRPCClient | SocketSync
 
 
 RPC_CLIENT = get_rpc_client()
+
+if isinstance(RPC_CLIENT, SocketSyncRPCClient):
+    # Only when this module is imported by a step running under a director.
+    # A `python plan.py` by hand keeps stock Python behavior.
+    # The forkserver path does not need this, as it prints the traceback itself,
+    # but installing the hook there too is harmless: the exception never reaches it.
+    install_excepthook()
 
 
 def get_job_i() -> int:

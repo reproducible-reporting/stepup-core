@@ -14,7 +14,7 @@ from path import Path
 from stepup.core import interact
 from stepup.core.constants import DIRECTOR_LOG
 from stepup.core.enums import ReturnCode
-from stepup.core.exceptions import InteractError
+from stepup.core.exceptions import GraphError, InteractError
 
 
 def _write_director_log(path_tmp: Path, socket_path: Path, pid: int) -> None:
@@ -76,3 +76,20 @@ def test_wait_tool_reports_missing_director(
         interact.wait_tool(argparse.Namespace())
     assert exc_info.value.code == ReturnCode.INTERNAL.value
     assert "ERROR:" in capsys.readouterr().err
+
+
+def test_report_errors_prints_usage_error_message(capsys: pytest.CaptureFixture) -> None:
+    """A director-side usage error is printed as is, not as a connection problem.
+
+    The director was reached just fine: it is the call itself that was rejected,
+    so the `Could not connect ...` wording of the `RPCError` clause would be wrong.
+    """
+
+    @interact._report_errors
+    def tool(args: argparse.Namespace):
+        raise GraphError("boom")
+
+    with pytest.raises(SystemExit) as exc_info:
+        tool(argparse.Namespace())
+    assert exc_info.value.code == ReturnCode.INTERNAL.value
+    assert capsys.readouterr().err == "ERROR: boom\n"

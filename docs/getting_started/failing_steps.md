@@ -19,6 +19,21 @@ Here, we provide guidance on how to handle these failing steps.
   the file will be automatically reloaded when the workflow is rerun.
   (There is a similar file `.stepup/warning.log` for warnings.)
 
+- **Shortened tracebacks:**
+  When a Python step raises an exception,
+  StepUp removes the frames of the machinery that started the step,
+  because they only show how StepUp ran your script, not why it failed.
+  When the exception is one that you can fix in your own code,
+  such as declaring a [cyclic dependency](../advanced_topics/cyclic_dependencies.md)
+  or passing an invalid path to an API function,
+  StepUp's internal frames are removed as well,
+  so that only your own call site remains.
+  Such an error is also reported without the traceback of the director process,
+  which would only show how the director validated your request.
+  A traceback with frames removed is marked as shortened,
+  and setting `STEPUP_DEBUG=1` restores all the details.
+  (Errors caused by a bug in StepUp itself always keep their full traceback.)
+
 - **External causes:**
   If the source of the problem is unrelated to static files known to StepUp,
   fixing the problem will not result in a file change that StepUp can detect.

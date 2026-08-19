@@ -193,6 +193,9 @@ fall back to Python only when SQL cannot express the check or cannot repair a vi
   not on every mutation:
   since every write already goes through the CHECK/trigger-guarded path,
   a startup-only pass is enough to catch whatever a crash could have left behind.
+  These checks raise `ConsistencyError`, not `GraphError`:
+  no plan can reach them through the public API, so they report a bug in StepUp,
+  and unlike a `GraphError` (a `UsageError`) they keep their full traceback on the client.
 - A startup check that also **repairs** what it finds
   (e.g. `Workflow._check_consistency()` marking a succeeded step with a non-`BUILT` output
   back to `PENDING`) belongs in Python regardless,

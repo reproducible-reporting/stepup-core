@@ -26,7 +26,7 @@ from .enums import (
     Need,
     StepState,
 )
-from .exceptions import GraphError
+from .exceptions import ConsistencyError, GraphError
 from .file import File
 from .hash import FileHash, fmt_digest
 from .nglob import NamedGlob, glob_base_dir, has_any_wildcards
@@ -35,7 +35,7 @@ from .sqlite3 import escape_like_pattern
 from .static_tree import StaticTree
 from .step import RESERVED_ENV_VARS, Step
 from .trellis import Node, Root, Trellis
-from .utils import string_to_bool
+from .utils import is_debug
 
 __all__ = ("GlobViolation", "Workflow")
 
@@ -397,7 +397,7 @@ class Workflow(Trellis):
 
     def _check_consistency(self):
         """Check whether the initial graph satisfies all constraints."""
-        strict = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
+        strict = is_debug()
         super()._check_consistency()
 
         # Verify that all succeeded steps only have BUILT outputs.
@@ -412,7 +412,7 @@ class Workflow(Trellis):
         for file_state_value, flabel, si, slabel in self.db.execute(sql, data):
             file_state = FileState(file_state_value)
             if strict:
-                raise GraphError(
+                raise ConsistencyError(
                     f"{file_state.name} output of succeeded step: path_out={flabel} step={slabel}"
                 )
             logger.error(

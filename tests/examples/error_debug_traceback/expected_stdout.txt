@@ -1,4 +1,3 @@
-DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
  STARTUP │ (Re)initialized boot script
    PHASE │ build
    START │ ./plan.py
@@ -6,15 +5,12 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
 ──────────────────────────────── Failed command ────────────────────────────────
 ./plan.py  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
-Shortened traceback (most recent call last). Set STEPUP_DEBUG=1 for details:
-  File "./plan.py", line 5, in <module>
-    copy("b.txt", "a.txt")
-    ~~~~^^^^^^^^^^^^^^^^^^
-stepup.core.exceptions.CyclicError: New relation introduces a cyclic dependency
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 1 job(s).
  WARNING │ 1 step(s) failed.
  WARNING │ Scheduler is put on hold. Not reporting pending steps.
  WARNING │ Skipping file cleanup due to incomplete build
  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
 DIRECTOR │ See you!

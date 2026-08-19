@@ -38,6 +38,21 @@ def pytest_collection_modifyitems(items):
                 item.add_marker(skip)
 
 
+@pytest.fixture(autouse=True)
+def _unset_stepup_debug(monkeypatch: pytest.MonkeyPatch):
+    """Pin `STEPUP_DEBUG` off, because unit tests inherit the developer's environment.
+
+    Several code paths read the variable at call time
+    (`_handle_error` in `rpc.py`, `_shorten` in `tracebacks.py`),
+    and `docs/development.md` recommends exporting it while working on StepUp,
+    so without this fixture those tests would assert different things for different people.
+    Tests that exercise the debug path set the variable themselves.
+    The examples are unaffected either way:
+    `run_example` passes `STEPUP_DEBUG=1` in the child environment regardless.
+    """
+    monkeypatch.delenv("STEPUP_DEBUG", raising=False)
+
+
 BUILD_UNTIL_DONE = """\
 #!/usr/bin/env python3
 import os

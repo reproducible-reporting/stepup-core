@@ -23,7 +23,7 @@ from stepup.core.config import ConfigLoader
 from stepup.core.constants import PERF_DATA
 from stepup.core.director import DirectorHandler
 from stepup.core.enums import ReturnCode
-from stepup.core.exceptions import TUIError
+from stepup.core.exceptions import PathError, TUIError
 from stepup.core.rpc import allow_rpc, serve_socket_rpc
 from stepup.core.tui import (
     _KEY_ACTIONS,
@@ -1153,6 +1153,14 @@ class _RaisingDirectorHandler:
         raise RuntimeError("graph failed")
 
 
+class _RejectingDirectorHandler:
+    """A director stand-in whose `graph` method rejects the call with a usage error."""
+
+    @allow_rpc
+    async def graph(self, path: str) -> None:
+        raise PathError("bad path")
+
+
 async def _drive_keyboard(
     handler,
     socket_path: Path,
@@ -1251,6 +1259,30 @@ def test_keyboard_reports_director_side_failure(
     )
     assert handler.called
     assert fake_reporter_handler.reports == [("ERROR", "Key g failed in the director.")]
+    # A bug in the director comes with a traceback, which is what the page holds.
+    assert [heading for heading, _ in fake_reporter_handler.pages] == ["Traceback"]
+
+
+def test_keyboard_reports_usage_error_as_a_message(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A rejected call is reported under a `Message` heading, not under `Traceback`.
+
+    The director raised a `UsageError`, which reaches the client as a one-line message
+    without a traceback, so the `RPCError` wording below would show an empty-looking block.
+    """
+    socket_path = path_tmp / "director"
+    fake_reporter_handler = FakeReporterHandler()
+    asyncio.run(
+        asyncio.wait_for(
+            _drive_keyboard(
+                _RejectingDirectorHandler(), socket_path, ["g"], fake_reporter_handler, monkeypatch
+            ),
+            timeout=5,
+        )
+    )
+    assert fake_reporter_handler.reports == [("ERROR", "Key g failed in the director.")]
+    assert fake_reporter_handler.pages == [("Message", "bad path")]
 
 
 def test_keyboard_survives_director_side_failure(
