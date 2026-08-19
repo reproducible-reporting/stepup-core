@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """The `Builder` drives the build by pulling runnable jobs and sending them to the executor.
 
-`Builder` always runs a single **build phase** per `run_phase()` call:
+`Builder` always runs a single **build phase** per `run_once()` call:
 it waits for the `resume` event,
 executes all currently runnable jobs via `job_loop`,
 and ends with `finalize`,
@@ -122,7 +122,7 @@ class Builder:
     returncode: ReturnCode = attrs.field(init=False, default=ReturnCode.PENDING)
     """Exit code for the director, based on the last build phase."""
 
-    async def run_phase(self, stop_event: asyncio.Event) -> bool:
+    async def run_once(self, stop_event: asyncio.Event) -> bool:
         """Wait for `resume`, then run a single build phase (`job_loop` + `finalize`).
 
         Parameters
@@ -134,7 +134,7 @@ class Builder:
         -------
         ran
             `False` if `stop_event` fired before `resume` was set, meaning no phase ran.
-            `True` otherwise, meaning a phase was run and the caller may call `run_phase`
+            `True` otherwise, meaning a phase was run and the caller may call `run_once`
             again to run another one.
         """
         await wait_for_any_event(self.resume, stop_event)

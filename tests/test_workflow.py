@@ -1370,15 +1370,15 @@ async def test_change_is_relevant_glob_match_without_node(wfp: Workflow):
 
 
 async def test_change_is_relevant_during_build_glob_match_without_node(wfp: Workflow):
-    """Stricter than `change_is_relevant` for a real node, but the same for a nodeless glob
+    """Stricter than the watch-phase test for a real node, but the same for a nodeless glob
     match: no step can be building it, since a pattern may not match a build product.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.register_nglob(plan, NamedGlob("*.txt"))
         assert wfp.find(File, "unknown.txt") is None
-        assert wfp.change_is_relevant_during_build("unknown.txt")
-        assert not wfp.change_is_relevant_during_build("unknown.dat")
+        assert wfp.change_is_relevant("unknown.txt", during_build=True)
+        assert not wfp.change_is_relevant("unknown.dat", during_build=True)
 
 
 async def test_relevant_paths_under_includes_glob_matches(wfp: Workflow):
@@ -1405,6 +1405,41 @@ async def test_relevant_paths_under_directory_with_underscore(wfp: Workflow):
         declare_static(wfp, plan, ["a_b/kept.txt", "aXb/other.txt"])
 
         assert set(wfp.relevant_paths_under("a_b/")) == {"a_b/kept.txt"}
+
+
+async def test_relevant_paths_under_ignores_siblings_sharing_the_prefix(wfp: Workflow):
+    """A directory without a trailing separator must not match its siblings by prefix.
+
+    The watcher reports a removed directory as a bare path,
+    so `sub` may not drag in a file called `subtitle.txt` next to it.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["sub/kept.txt", "subtitle.txt"])
+        ng = NamedGlob("*/*.txt")
+        ng.extend(["sub/match.txt", "subtitle/other.txt"])
+        wfp.register_nglob(plan, ng)
+
+        assert set(wfp.relevant_paths_under("sub")) == {"sub/kept.txt", "sub/match.txt"}
+
+
+async def test_relevant_paths_under_during_build_keeps_only_static_files(wfp: Workflow):
+    """A build removing its own output directory is not news, a removed static file is.
+
+    Both live under the same directory here,
+    so only the state set can tell them apart.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["data/static.txt"])
+        wfp.define_step(plan, "prog", out_paths=["data/out.txt"])
+        wfp.update_file_hashes(
+            {"data/out.txt": fake_hash("data/out.txt")}, cause=HashUpdateCause.SUCCEEDED
+        )
+        assert wfp.find(File, "data/out.txt").get_state() == FileState.BUILT
+
+        assert set(wfp.relevant_paths_under("data/")) == {"data/static.txt", "data/out.txt"}
+        assert set(wfp.relevant_paths_under("data/", during_build=True)) == {"data/static.txt"}
 
 
 async def test_register_glob_rejects_built_match(wfp: Workflow):

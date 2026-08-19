@@ -211,7 +211,7 @@ _HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState
     (HashUpdateCause.CONFIRMED, FileState.CONFIRMED, False): (FileState.MISSING, "deleted"),
     # A stray UNCONFIRMED row is normally confirmed directly via CONFIRMED above, changed or not.
     # These two entries are a defensive fallback:
-    # Watcher.watch_changes's EXTERNAL refresh loop may be reachable
+    # Watcher.run_once's EXTERNAL refresh loop may be reachable
     # for an attached UNCONFIRMED file
     # (Workflow.change_is_relevant() does not exclude UNCONFIRMED, only PLANNED/VOLATILE),
     # even though hitting one is not expected in normal operation.
@@ -273,6 +273,24 @@ _RELEVANT_STATES_DURING_BUILD = frozenset({FileState.CONFIRMED, FileState.MISSIN
 
 Stricter than `_RELEVANT_STATES`, because a build phase is writing outputs concurrently.
 """
+
+
+def _relevant_states(during_build: bool) -> frozenset[FileState]:
+    """Select the file states in which a change to an attached file node matters.
+
+    Parameters
+    ----------
+    during_build
+        Whether the change was observed while a build phase was running.
+        The build is writing its own outputs then,
+        so only a change to a static file can be news.
+
+    Returns
+    -------
+    relevant_states
+        `_RELEVANT_STATES_DURING_BUILD` or `_RELEVANT_STATES`.
+    """
+    return _RELEVANT_STATES_DURING_BUILD if during_build else _RELEVANT_STATES
 
 
 #
@@ -2418,8 +2436,8 @@ class Workflow(Trellis):
     # Watch phase
     #
 
-    def _change_is_relevant(self, path: str, relevant_states: Collection[FileState]) -> bool:
-        """Judge a file system change against a set of file states.
+    def change_is_relevant(self, path: str, *, during_build: bool = False) -> bool:
+        """Return whether a file system change to `path` can affect the workflow.
 
         An attached file node decides the answer through its state.
         A path with no attached node of its own is judged by the registered glob patterns,
@@ -2429,8 +2447,9 @@ class Workflow(Trellis):
         ----------
         path
             The path that changed.
-        relevant_states
-            The states an attached file node must be in for the change to matter.
+        during_build
+            Whether the change was observed while a build phase was running,
+            see `_relevant_states`.
 
         Returns
         -------
@@ -2439,39 +2458,34 @@ class Workflow(Trellis):
         """
         file = self.find_attached(File, path)
         if file is not None:
-            return file.get_state() in relevant_states
+            return file.get_state() in _relevant_states(during_build)
         return self.matches_any_glob(path)
 
-    def change_is_relevant(self, path: str) -> bool:
-        """Return whether a file system change to `path` can affect the workflow.
-
-        An attached file node makes the change relevant unless the build itself owns the path
-        (`PLANNED` or `VOLATILE`).
-        """
-        return self._change_is_relevant(path, _RELEVANT_STATES)
-
-    def change_is_relevant_during_build(self, path: str) -> bool:
-        """Relevance test for events observed while a build phase was running.
-
-        Stricter than `change_is_relevant`: a file the build itself is writing is not a user edit,
-        so only `CONFIRMED` and `MISSING` nodes qualify.
-        No step can be building such a path, since a pattern may not match a build product.
-        """
-        return self._change_is_relevant(path, _RELEVANT_STATES_DURING_BUILD)
-
-    def relevant_paths_under(self, directory: str) -> Iterator[str]:
+    def relevant_paths_under(self, directory: str, *, during_build: bool = False) -> Iterator[str]:
         """Iterate over all paths under `directory` whose disappearance is relevant.
 
         Called when a directory itself is deleted, so every path below it is gone at once.
         Both file nodes and the recorded matches of glob patterns are considered: a
         match has no node of its own, so the pattern is the only place it is recorded.
+
+        Parameters
+        ----------
+        directory
+            The directory that was removed, with or without a trailing separator.
+        during_build
+            Whether the removal was observed while a build phase was running,
+            see `_relevant_states`.
+            The recorded glob matches are yielded in either case,
+            because a pattern may not match a build product.
         """
+        if not directory.endswith(os.sep):
+            directory += os.sep
+        states = ", ".join(str(state.value) for state in sorted(_relevant_states(during_build)))
         seen = set()
         clause, pattern = prefix_clause("node.label", directory)
         sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
-            f"WHERE state NOT IN ({FileState.PLANNED.value}, {FileState.VOLATILE.value}) AND "
-            f"{clause} AND NOT detached"
+            f"WHERE state IN ({states}) AND {clause} AND NOT detached"
         )
         for (path,) in self.db.execute(sql, (pattern,)):
             seen.add(path)

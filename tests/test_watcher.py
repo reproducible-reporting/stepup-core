@@ -4,6 +4,9 @@
 
 import asyncio
 import contextlib
+import os
+
+from path import Path
 
 from stepup.core.enums import Change, HashUpdateCause
 from stepup.core.executor import Executor
@@ -58,13 +61,11 @@ class _FakeReporter:
         pass
 
 
-async def test_watch_changes_reports_unchanged_and_updates_only_the_changed_file(
-    wfp: Workflow, tmpdir
-):
+async def test_run_once_reports_unchanged_and_updates_only_the_changed_file(wfp: Workflow, tmpdir):
     """A file whose content still matches its cached hash must be reported UNCHANGED and
     pruned from `self.updated` before `process_nglob_changes` runs; a genuinely changed
     file must keep its UPDATED report and get its new hash applied. Exercises the
-    `gather_hashes`-based path in `watch_changes` with more than one file at once."""
+    `gather_hashes`-based path in `run_once` with more than one file at once."""
     with contextlib.chdir(tmpdir):
         with open("same.txt", "w") as fh:
             fh.write("same")
@@ -88,10 +89,10 @@ async def test_watch_changes_reports_unchanged_and_updates_only_the_changed_file
         watcher = _make_watcher(wfp)
         reporter = _FakeReporter()
         watcher.reporter = reporter
-        watcher.interrupt.set()
+        watcher.end_watching.set()
         watcher.updated.update(["same.txt", "changed.txt"])
 
-        await watcher.watch_changes(asyncio.Queue())
+        await watcher.run_once(asyncio.Queue())
 
         # "UPDATED" is reported by record_change() for the raw inotify event, not by the
         # hash-confirmation loop under test here (which only ever reports "UNCHANGED");
@@ -104,9 +105,9 @@ async def test_watch_changes_reports_unchanged_and_updates_only_the_changed_file
             assert wfp.find(File, "changed.txt").get_hash() != changed_hash
 
 
-async def test_watch_changes_drain_records_missing_file(wfp: Workflow, tmpdir):
+async def test_run_once_drain_records_missing_file(wfp: Workflow, tmpdir):
     """A build-phase inotify event for a confirmed-`MISSING` file must be recorded
-    by the drain loop in `watch_changes`, not discarded,
+    by the drain loop in `run_once`, not discarded,
     so the file can flip back to `CONFIRMED` in the following watch phase.
     """
     with contextlib.chdir(tmpdir):
@@ -128,8 +129,76 @@ async def test_watch_changes_drain_records_missing_file(wfp: Workflow, tmpdir):
         change_queue.put_nowait((Change.UPDATED, "ghost.txt"))
 
         watcher = _make_watcher(wfp)
-        watcher.interrupt.set()
-        await watcher.watch_changes(change_queue)
+        watcher.end_watching.set()
+        await watcher.run_once(change_queue)
 
         async with wfp.db:
             assert ghost.get_state() == FileState.CONFIRMED
+
+
+async def test_run_once_drain_records_files_under_removed_dir(wfp: Workflow, tmpdir):
+    """A `DELETED_PARENT` event queued during the build phase must reach the files under it.
+
+    StepUp has no node for the directory itself,
+    so a removed directory can only be judged through the files recorded under it.
+    """
+    with contextlib.chdir(tmpdir):
+        os.mkdir("sub")
+        with open("sub/a.txt", "w") as fh:
+            fh.write("hello")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.declare_static_files(plan, ["sub/a.txt"])
+            wfp.update_file_hashes(
+                {"sub/a.txt": FileHash.unknown().refreshed("sub/a.txt")},
+                cause=HashUpdateCause.CONFIRMED,
+            )
+
+        # Simulate the directory being removed while the build phase was still running.
+        os.remove("sub/a.txt")
+        os.rmdir("sub")
+        change_queue = asyncio.Queue()
+        change_queue.put_nowait((Change.DELETED_PARENT, Path("sub")))
+
+        watcher = _make_watcher(wfp)
+        watcher.end_watching.set()
+        await watcher.run_once(change_queue)
+
+        async with wfp.db:
+            assert wfp.find(File, "sub/a.txt").get_state() == FileState.MISSING
+
+
+async def test_record_deleted_parent_skips_build_products_during_build(wfp: Workflow, tmpdir):
+    """A step removing its own output directory is not news, so nothing is reported.
+
+    The same removal in the watch phase is news,
+    because no step is running then to have caused it.
+    """
+    with contextlib.chdir(tmpdir):
+        os.mkdir("sub")
+        with open("sub/out.txt", "w") as fh:
+            fh.write("built")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.define_step(plan, "prog", out_paths=["sub/out.txt"])
+            wfp.update_file_hashes(
+                {"sub/out.txt": FileHash.unknown().refreshed("sub/out.txt")},
+                cause=HashUpdateCause.SUCCEEDED,
+            )
+            assert wfp.find(File, "sub/out.txt").get_state() == FileState.BUILT
+
+        # Simulate the step cleaning up its output directory before regenerating it.
+        os.remove("sub/out.txt")
+        os.rmdir("sub")
+        watcher = _make_watcher(wfp)
+        reporter = _FakeReporter()
+        watcher.reporter = reporter
+        async with wfp.db:
+            await watcher.record_change(Change.DELETED_PARENT, Path("sub"), during_build=True)
+        assert watcher.deleted == set()
+        assert reporter.calls == []
+
+        async with wfp.db:
+            await watcher.record_change(Change.DELETED_PARENT, Path("sub"))
+        assert watcher.deleted == {"sub/out.txt"}
+        assert reporter.calls == [("DELETED", "sub/out.txt")]

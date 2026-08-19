@@ -3,8 +3,10 @@
 """Unit tests for stepup.core.director."""
 
 import asyncio
+import contextlib
 import signal
 import time
+from collections.abc import Generator
 from decimal import Decimal
 
 import attrs
@@ -120,10 +122,20 @@ async def await_interrupt(handler: DirectorHandler) -> None:
 class FakeWatcher:
     """Stands in for the watcher, with the events and sets that a waiting RPC call consults."""
 
-    active: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    busy_watching: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     files_changed_events: set[asyncio.Event] = attrs.field(init=False, factory=set)
-    updated: set[Path] = attrs.field(init=False, factory=set)
-    deleted: set[Path] = attrs.field(init=False, factory=set)
+    updated: set[str] = attrs.field(init=False, factory=set)
+    deleted: set[str] = attrs.field(init=False, factory=set)
+
+    @contextlib.contextmanager
+    def subscribe_changes(self) -> Generator[asyncio.Event]:
+        """Provide an event that is set on every recorded change, as the watcher does."""
+        event = asyncio.Event()
+        self.files_changed_events.add(event)
+        try:
+            yield event
+        finally:
+            self.files_changed_events.discard(event)
 
     def notify_update(self, path: Path) -> None:
         """Record an observed update and wake up the waiters, as the watcher does."""
@@ -269,7 +281,7 @@ async def start_wait_for_update(handler: DirectorHandler, path: str) -> asyncio.
 async def test_wait_for_update_returns_when_the_file_changes():
     """The plain case: `stepup wait --update` returns as soon as the watcher sees the change."""
     handler = make_director_handler(watcher=FakeWatcher())
-    handler.watcher.active.set()
+    handler.watcher.busy_watching.set()
     task = await start_wait_for_update(handler, "foo.txt")
     handler.watcher.notify_update(Path("foo.txt"))
     await asyncio.wait_for(task, timeout=5.0)
@@ -279,7 +291,7 @@ async def test_wait_for_update_returns_when_the_file_changes():
 async def test_wait_for_update_gives_up_when_stopping():
     """A file that never changes must not hold the call after the director has stopped."""
     handler = make_director_handler(watcher=FakeWatcher())
-    handler.watcher.active.set()
+    handler.watcher.busy_watching.set()
     task = await start_wait_for_update(handler, "foo.txt")
     handler.stop_event.set()
     await asyncio.wait_for(task, timeout=5.0)

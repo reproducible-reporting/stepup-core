@@ -622,10 +622,10 @@ async def _wire_director(
     )
     watcher = (
         Watcher(
-            workflow,
-            db,
-            reporter,
-            dir_queue,
+            workflow=workflow,
+            db=db,
+            reporter=reporter,
+            dir_queue=dir_queue,
             executor=executor,
             hash_queue=builder.hash_queue,
             njob=config.njob,
@@ -714,24 +714,23 @@ async def build_loop(builder: Builder, watcher: Watcher | None, stop_event: asyn
     after each phase, hand off to `watcher` to resume file-system monitoring, or,
     without a watcher, stop after a single phase.
     """
-    while await builder.run_phase(stop_event):
+    while await builder.run_once(stop_event):
         if watcher is None:
             stop_event.set()
         else:
-            watcher.resume.set()
+            watcher.start_watching.set()
 
 
 async def watch_first_loop(watcher: Watcher, handler: "DirectorHandler", stop_event: asyncio.Event):
     """Run pending steps 0.5 seconds after the watcher observes a file change."""
-    changed_event = asyncio.Event()
-    watcher.files_changed_events.add(changed_event)
-    while True:
-        await watcher.active.wait()
-        await wait_for_any_event(changed_event, stop_event)
-        if stop_event.is_set():
-            break
-        await asyncio.sleep(0.5)
-        await handler.start_build_phase()
+    with watcher.subscribe_changes() as changed_event:
+        while True:
+            await watcher.busy_watching.wait()
+            await wait_for_any_event(changed_event, stop_event)
+            if stop_event.is_set():
+                break
+            await asyncio.sleep(0.5)
+            await handler.start_build_phase()
 
 
 @attrs.define
@@ -1061,10 +1060,10 @@ class DirectorHandler:
         """Block until the build phase ends (or the watch phase starts when using `--watch`)."""
         events = [self.stop_event]
         if self.watcher is not None:
-            events.append(self.watcher.active)
+            events.append(self.watcher.busy_watching)
         await wait_for_any_event(*events)
 
-    async def _wait_for_change(self, path: str, observed: set[Path]) -> None:
+    async def _wait_for_change(self, path: str, observed: set[str]) -> None:
         """Block until `path` shows up in `observed`, a live set owned by the watcher.
 
         This also returns when the director is stopping,
@@ -1073,9 +1072,7 @@ class DirectorHandler:
         """
         path = Path(path).normpath()
         await self._wait_for_end_build_phase()
-        event = asyncio.Event()
-        self.watcher.files_changed_events.add(event)
-        try:
+        with self.watcher.subscribe_changes() as event:
             while True:
                 # The observation is checked before the stop event,
                 # so a change that arrives together with the shutdown still counts.
@@ -1083,8 +1080,6 @@ class DirectorHandler:
                     return
                 await wait_for_any_event(event, self.stop_event)
                 event.clear()
-        finally:
-            self.watcher.files_changed_events.discard(event)
 
     @allow_rpc
     async def drain(self) -> None:
@@ -1122,14 +1117,14 @@ class DirectorHandler:
         -----
         This has no effect during the build phase.
         """
-        if self.watcher is None or not self.watcher.active.is_set():
+        if self.watcher is None or not self.watcher.busy_watching.is_set():
             return
         async with self.db:
             # Make all failed steps pending again for rerun.
             for step in self.workflow.steps(StepState.FAILED):
                 self.workflow.mark_step_pending(step)
-        self.watcher.interrupt.set()
-        await wait_for_any_event(self.watcher.processed, self.stop_event)
+        self.watcher.end_watching.set()
+        await wait_for_any_event(self.watcher.done_watching, self.stop_event)
         self.scheduler.draining = False
         self.builder.resume.set()
 
@@ -1180,7 +1175,7 @@ class DirectorHandler:
         self.scheduler.draining = True
         self.stop_event.set()
         if self.watcher is not None:
-            self.watcher.interrupt.set()
+            self.watcher.end_watching.set()
 
     def interrupt(self, sig: signal.Signals) -> None:
         """Abort the build because a terminal signal was received.
