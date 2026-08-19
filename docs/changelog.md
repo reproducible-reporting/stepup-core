@@ -169,7 +169,8 @@ and will be updated with any further changes before the final release.
   step (cp -p a.txt b.txt).`
   This covers every combination of a `static()` declaration, a step output and a
   volatile output, and the message does not depend on which declaration came first.
-  Defining the same command twice in the same working directory is reported likewise.
+  Defining the same command twice in the same working directory is reported likewise,
+  as is registering the same static tree from two different steps.
 - At the end of every build, StepUp scans `.stepup/director.log` for symptoms of internal
   problems: logged errors, unawaited coroutines, tasks destroyed while still pending,
   and exceptions that escaped a callback, a thread or a destructor.

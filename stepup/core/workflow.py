@@ -434,6 +434,31 @@ def _duplicate_step_message(step_label: str, creator_a: str, creator_b: str) -> 
     )
 
 
+def _duplicate_static_tree_message(tree_path: str, creator_a: str, creator_b: str) -> str:
+    """Format the error for a static tree that is registered while an identical one exists.
+
+    Like `_duplicate_step_message`, the text does not depend on which of the two
+    registrations came first: the two creators are sorted.
+
+    Parameters
+    ----------
+    tree_path
+        The static tree's label, with a trailing slash, that both registrations share.
+    creator_a, creator_b
+        The creators of the two registrations, as returned by `_creator_phrase`.
+
+    Returns
+    -------
+    message
+        The error message.
+    """
+    creator1, creator2 = sorted([creator_a, creator_b])
+    return (
+        f"Static tree ({tree_path}) cannot be declared by both {creator1} and {creator2}. "
+        "A static tree has a single creator: drop one of the two declarations."
+    )
+
+
 def _claim_collision_message(path: str, claim: Claim, decl: Decl) -> str:
     """Format the error for a declaration of `path` that collides with an existing claim.
 
@@ -1619,6 +1644,14 @@ class Workflow(Trellis):
                 # This creator already covers `path` with a static tree of its own,
                 # so re-registering it adds nothing.
                 return {}
+            if static_tree.label == path:
+                raise GraphError(
+                    _duplicate_static_tree_message(
+                        path,
+                        _creator_phrase(own_creator.kind(), own_creator.label),
+                        _creator_phrase(creator.kind(), creator.label),
+                    )
+                )
             raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
         sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"
         pattern = f"{escape_like_pattern(path)}%"

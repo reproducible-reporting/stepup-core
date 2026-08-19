@@ -31,6 +31,7 @@ from stepup.core.workflow import (
     UNCONFIRMED_INPUTS,
     GlobViolation,
     Workflow,
+    _duplicate_static_tree_message,
     _static_tree_file_message,
     _static_tree_product_message,
 )
@@ -3700,6 +3701,23 @@ async def test_register_static_tree_same_creator_subdirectory(wfp: Workflow):
         wfp.register_static_tree(plan, "static")
         assert wfp.register_static_tree(plan, "static/sub") == {}
         assert wfp.find(StaticTree, "static/sub/") is None
+
+
+@pytest.mark.parametrize("swap", [False, True])
+async def test_register_static_tree_other_creator_same_path_raises(wfp: Workflow, swap: bool):
+    """Two creators registering the same static tree get the same message, in either order."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "aaa")
+        wfp.define_step(plan, "bbb")
+        first, second = wfp.find(Step, "aaa"), wfp.find(Step, "bbb")
+        if swap:
+            first, second = second, first
+        wfp.register_static_tree(first, "data")
+    message = _duplicate_static_tree_message("data/", "step (aaa)", "step (bbb)")
+    with pytest.raises(GraphError, match=re.escape(message)):
+        async with wfp.db:
+            wfp.register_static_tree(second, "data")
 
 
 async def test_register_static_tree_other_creator_subdirectory_raises(wfp: Workflow):
