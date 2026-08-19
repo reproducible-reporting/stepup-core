@@ -158,13 +158,13 @@ def record_subprocess(
         they are recorded as a short summary (byte length and a truncated SHA-256),
         since the archival record is `TEXT` and informative rather than authoritative.
     """
-    from stepup.core.api import RPC_CLIENT, get_job_i  # noqa: PLC0415
+    from stepup.core.api import get_job_i, get_rpc_client  # noqa: PLC0415
 
     job_i = get_job_i()
     if job_i < 0:
         return
     max_output_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
-    RPC_CLIENT.call.record_subprocess(
+    get_rpc_client().call.record_subprocess(
         job_i,
         cmd,
         translate(workdir),

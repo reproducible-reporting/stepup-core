@@ -328,15 +328,28 @@ extract and re-apply the affixes when needed.
 
 `plan.py` scripts call functions in `api.py` (e.g., `static()`, `step()`, `glob()`)
 which send RPC calls to the director.
-The module must not be imported by other `stepup.core` modules,
-except `interact.py` (top-level import) and `call.py`, `script.py`, `run.py`,
-`render_jinja.py`, and `extapi.py` (local, inside-function imports only).
+Only `extapi.py` imports from `api.py` through local (inside-function) imports,
+to break the cycle between the two modules.
+Everywhere else, a module-level import is correct.
+
+**Importing `api.py` must never connect to the director.**
+The connection is opened by the first call to `get_rpc_client()`, which caches its result.
+
+- The director imports `api.py` indirectly, through `executor.py` and `run.py`,
+  while `STEPUP_DIRECTOR_SOCKET` holds `DIRECTOR_SOCKET_SENTINEL`.
+  Creating a client there raises `RuntimeError`.
+- A forkserver child must open its own connection.
+  Nothing may call `get_rpc_client()` before the fork,
+  or every child would share the parent's socket.
+- Console scripts such as `sc-render-jinja` may be invoked outside a build.
+
+`install_excepthook()` is the one thing `api.py` still does at import time.
+It is guarded by `_is_step_under_director()`, which only reads the environment,
+because a step that fails before its first RPC call must still get a shortened traceback.
 
 ## Extension Developer API (`extapi.py`)
 
 `extapi.py` collects utilities for authors of StepUp extension packages.
-`get_rpc_client`, `RPC_CLIENT` and `get_job_i` live in `api.py`, not `extapi.py`:
+`get_rpc_client` and `get_job_i` live in `api.py`, not `extapi.py`:
 together they are how an extension addresses the director.
 `subs_env_vars` is re-exported from `api.py` for backward compatibility.
-`extapi.py` imports from `api.py` only via local (inside-function) imports to avoid
-circular dependencies at module load time.

@@ -23,6 +23,7 @@ import attrs
 from parse import parse
 from path import Path
 
+from .api import run, static
 from .stepinfo import dump_step_info
 from .utils import format_command
 
@@ -307,10 +308,6 @@ def parse_args(script_path: str) -> argparse.Namespace:
 
 def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper) -> None:
     """Create the steps that run the script."""
-    # Local import to delay setting up the synchronous connection
-    # to the StepUp director until it is needed.
-    from stepup.core.api import run, static  # noqa: PLC0415
-
     # Plan the script.
     step_info = None
     if wrapper.has_single:

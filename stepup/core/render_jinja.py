@@ -17,6 +17,7 @@ import json
 import jinja2
 from path import Path
 
+from .api import amend, loadns
 from .extapi import get_local_import_paths
 
 __all__ = ("render_jinja",)
@@ -51,11 +52,6 @@ def main() -> None:
         help="Variables are given as a JSON string (overrules the variables defined in files)",
     )
     args = parser.parse_args()
-
-    # Local import to delay setting up the synchronous connection
-    # to the StepUp director until it is needed.
-    from stepup.core.api import amend, loadns  # noqa: PLC0415
-
     if args.mode == "plain":
         latex = False
     elif args.mode == "latex":

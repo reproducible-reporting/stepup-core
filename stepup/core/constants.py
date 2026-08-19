@@ -1,12 +1,13 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Shared path constants across StepUp."""
+"""Shared constants across StepUp."""
 
 from path import Path
 
 __all__ = (
     "DIRECTOR_LOG",
     "DIRECTOR_PROF",
+    "DIRECTOR_SOCKET_SENTINEL",
     "FAIL_LOG",
     "GRAPH_DB",
     "JOBLOG_CSV",
@@ -34,3 +35,9 @@ JOBLOG_CSV = STEPUP_DIR / "joblog.csv"
 
 # The planning script that StepUp executes first to define the workflow.
 PLAN_PY = Path("plan.py")
+
+# The value that the director assigns to its own STEPUP_DIRECTOR_SOCKET environment variable.
+# The director must never call itself over RPC,
+# so it makes the variable name a socket that cannot be connected to
+# instead of leaving it unset, which would silently yield a dummy client.
+DIRECTOR_SOCKET_SENTINEL = "_invalid_socket_for_director_process_"

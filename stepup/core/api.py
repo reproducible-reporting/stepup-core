@@ -12,6 +12,7 @@ pass a `str` or a `path.Path` to preserve them.
 """
 
 import contextlib
+import functools
 import inspect
 import json
 import keyword
@@ -30,6 +31,7 @@ import yaml
 from path import Path
 
 from .cattrs import json_converter, yaml_converter
+from .constants import DIRECTOR_SOCKET_SENTINEL
 from .enums import Need
 from .exceptions import (
     AmendWhileHoldingError,
@@ -58,7 +60,6 @@ from .tracebacks import install_excepthook
 from .utils import extract_env_overrides, format_command, parse_resources, string_to_list
 
 __all__ = (
-    "RPC_CLIENT",
     "CommandArg",
     "amend",
     "call",
@@ -244,7 +245,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     # A pattern without matches must still reach the director,
     # so it can make this step pending when a match appears later.
     if len(tr_trees) + len(tr_files) + len(tr_patterns) > 0:
-        RPC_CLIENT.call.static(get_job_i(), tr_trees, tr_files, tr_patterns)
+        get_rpc_client().call.static(get_job_i(), tr_trees, tr_files, tr_patterns)
 
     # Report what this call covers, relative to the caller's working directory.
     return sorted(
@@ -332,7 +333,7 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
 
     # The director records the pattern with the calling step and validates the matches:
     # a match that is a known build product, or lies under `.stepup`, raises.
-    RPC_CLIENT.call.glob(get_job_i(), tr_pattern, subs, tr_paths)
+    get_rpc_client().call.glob(get_job_i(), tr_pattern, subs, tr_paths)
     return ng
 
 
@@ -542,7 +543,7 @@ def step(
     # and hashed/confirmed by the director in the background;
     # a step consuming one simply does not become runnable until that resolves
     # (see scheduler.py).
-    RPC_CLIENT.call.step(
+    get_rpc_client().call.step(
         get_job_i(),
         command,
         tr_inp_paths,
@@ -871,7 +872,7 @@ def amend(
     # which can exceed `STEPUP_SYNC_RPC_TIMEOUT` for a large file,
     # hence the disabled socket timeout.
     job_i = get_job_i()
-    carry_on = RPC_CLIENT.call.amend(
+    carry_on = get_rpc_client().call.amend(
         job_i,
         tr_inp_paths,
         sorted(env_deps),
@@ -925,7 +926,7 @@ def hold() -> Iterator[None]:
     so `amend()`'s guard correctly stays active if the release call could not be confirmed.
     """
     job_i = get_job_i()
-    RPC_CLIENT.call.hold(job_i)
+    get_rpc_client().call.hold(job_i)
     _HOLD_STATE.holding += 1
     try:
         yield
@@ -936,7 +937,7 @@ def hold() -> Iterator[None]:
         # instead of one already propagating from `yield`.
         had_exception = sys.exc_info()[0] is not None
         try:
-            RPC_CLIENT.call.release(job_i)
+            get_rpc_client().call.release(job_i)
         except Exception:
             if had_exception:
                 logger.warning(
@@ -961,7 +962,7 @@ def get_info() -> StepInfo:
         For consistency with other functions in this module, the `inp`, `out` and `vol`
         paths are relative to the working directory of the step.
     """
-    step_info = RPC_CLIENT.call.get_info(get_job_i())
+    step_info = get_rpc_client().call.get_info(get_job_i())
     # Update paths to make them relative to the working directory of the step.
     step_info.inp = sorted(translate_back(inp) for inp in step_info.inp)
     step_info.out = sorted(translate_back(out) for out in step_info.out)
@@ -971,7 +972,7 @@ def get_info() -> StepInfo:
 
 def graph(prefix: StrPath) -> None:
     """Write the workflow graph files in text and dot formats."""
-    return RPC_CLIENT.call.graph(coerce_path(prefix))
+    return get_rpc_client().call.graph(coerce_path(prefix))
 
 
 def shq(paths: StrPath | Iterable[StrPath]) -> str:
@@ -1925,19 +1926,67 @@ def _prepare_run_command(
     return command, exe, env_overrides
 
 
-def get_rpc_client(socket: str | None = None) -> DummySyncRPCClient | SocketSyncRPCClient:
-    """Return a synchronous RPC client, or a dummy client when no director socket is configured."""
+def _is_step_under_director() -> bool:
+    """Whether this process is a step launched by a director.
+
+    This only inspects the environment and never connects to the director,
+    which makes it usable at import time and before a fork.
+    """
+    socket = os.getenv("STEPUP_DIRECTOR_SOCKET")
+    return socket is not None and socket != DIRECTOR_SOCKET_SENTINEL
+
+
+def _make_rpc_client(socket: str | None) -> DummySyncRPCClient | SocketSyncRPCClient:
+    """Create a synchronous RPC client, or a dummy client when no director socket is known."""
     stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET", socket)
-    if stepup_director_socket == "_invalid_socket_for_director_process_":
+    if stepup_director_socket == DIRECTOR_SOCKET_SENTINEL:
         raise RuntimeError("The RPC client is being used within the director process.")
     if stepup_director_socket is None:
         return DummySyncRPCClient()
     return SocketSyncRPCClient(stepup_director_socket)
 
 
-RPC_CLIENT = get_rpc_client()
+@functools.cache
+def _get_cached_rpc_client() -> DummySyncRPCClient | SocketSyncRPCClient:
+    """Create the RPC client of the current process, once."""
+    return _make_rpc_client(None)
 
-if isinstance(RPC_CLIENT, SocketSyncRPCClient):
+
+def get_rpc_client(socket: str | None = None) -> DummySyncRPCClient | SocketSyncRPCClient:
+    """Return a synchronous RPC client.
+
+    Without arguments, the client of the current process is returned.
+    It is created upon the first call and reused by every later one,
+    in line with the assumption that one process talks to at most one director.
+    Because of this, importing this module does not connect to the director,
+    and a process that forks children must not call this before forking:
+    the children would inherit the parent's connection instead of opening their own.
+
+    Parameters
+    ----------
+    socket
+        The path of the director's RPC socket, for a caller that knows it up front.
+        It is only used when the `STEPUP_DIRECTOR_SOCKET` environment variable is unset.
+        Without either, the result is a dummy client that prints the calls
+        instead of sending them to a director.
+
+    Returns
+    -------
+    rpc_client
+        The RPC client of the current process when `socket` is `None`,
+        a newly created one otherwise.
+
+    Raises
+    ------
+    RuntimeError
+        When called within the director process, which must not call itself over RPC.
+    """
+    if socket is None:
+        return _get_cached_rpc_client()
+    return _make_rpc_client(socket)
+
+
+if _is_step_under_director():
     # Only when this module is imported by a step running under a director.
     # A `python plan.py` by hand keeps stock Python behavior.
     # The forkserver path does not need this, as it prints the traceback itself,
@@ -1951,16 +2000,16 @@ def get_job_i() -> int:
     Returns
     -------
     job_i
-        The job id, or -1 if the variable is unset and the RPC client is the dummy one.
+        The job id, or -1 when the variable is unset outside of a step.
 
     Raises
     ------
     RuntimeError
-        When the variable is unset and the RPC client is not the dummy one.
+        When the variable is unset within a step running under a director.
     """
     job_i = os.getenv("STEPUP_JOB_I")
     if job_i is None:
-        if not isinstance(RPC_CLIENT, SocketSyncRPCClient):
-            return -1
-        raise RuntimeError("The STEPUP_JOB_I environment variable is not defined.")
+        if _is_step_under_director():
+            raise RuntimeError("The STEPUP_JOB_I environment variable is not defined.")
+        return -1
     return int(job_i)

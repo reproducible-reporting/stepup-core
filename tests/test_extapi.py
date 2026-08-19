@@ -151,7 +151,8 @@ def test_record_subprocess_no_director(monkeypatch):
         call = FakeCall()
 
     monkeypatch.setattr(api, "get_job_i", lambda: -1)
-    monkeypatch.setattr(api, "RPC_CLIENT", FakeClient())
+    client = FakeClient()
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     record_subprocess("echo hi", 0)
     assert calls == []
 

@@ -16,6 +16,7 @@ from typing import Any, get_type_hints
 from path import Path
 from rich.console import Console
 
+from .api import loadns
 from .cattrs import json_converter
 
 __all__ = ("driver",)
@@ -85,8 +86,6 @@ def _dispatch(script_path: str, obj: dict[str, Any], args: argparse.Namespace) -
     if args.json_inp is not None:
         all_kwargs = json.loads(args.json_inp)
     elif args.path_inp is not None:
-        from stepup.core.api import loadns  # noqa: PLC0415
-
         all_kwargs = vars(loadns(args.path_inp))
     else:
         all_kwargs = {}

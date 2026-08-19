@@ -4,7 +4,7 @@ import time
 
 from path import Path
 
-from stepup.core.api import RPC_CLIENT, run, static
+from stepup.core.api import get_rpc_client, run, static
 
 static("work.py")
 
@@ -22,7 +22,7 @@ run("./work.py")
 # The plan will be deferred as long as the counter is positive.
 if counter > 0:
     job_i = int(os.getenv("STEPUP_JOB_I"))
-    RPC_CLIENT.call.defer_step(job_i, ["never.txt"])
+    get_rpc_client().call.defer_step(job_i, ["never.txt"])
 else:
     # The work script is waiting for this trigger.
     with open("trigger_plan.txt", "w") as f:

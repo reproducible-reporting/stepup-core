@@ -28,7 +28,15 @@ except ImportError:
 from .asyncio import wait_for_events
 from .builder import Builder
 from .cgroups import get_ncore_from_cgroup
-from .constants import DIRECTOR_PROF, GRAPH_DB, JOBLOG_CSV, PLAN_PY, SQLLOG_CSV, SQLLOG_JSON
+from .constants import (
+    DIRECTOR_PROF,
+    DIRECTOR_SOCKET_SENTINEL,
+    GRAPH_DB,
+    JOBLOG_CSV,
+    PLAN_PY,
+    SQLLOG_CSV,
+    SQLLOG_JSON,
+)
 from .enums import FileState, HashUpdateCause, Need, ReturnCode, StepState
 from .exceptions import CgroupError, GraphError
 from .executor import Executor
@@ -372,9 +380,9 @@ async def async_main(
     print(f"SOCKET {args.director_socket}", file=sys.stderr)
     print(f"PID {os.getpid()}", file=sys.stderr)
     print(f"LOG_LEVEL {args.log_level}", file=sys.stderr)
-    # To detect invalid usage of RPC_CLIENT in stepup.core.api within the director process,
+    # To detect invalid usage of the RPC client of stepup.core.api within the director process,
     # we set STEPUP_DIRECTOR_SOCKET to an invalid value.
-    os.environ["STEPUP_DIRECTOR_SOCKET"] = "_invalid_socket_for_director_process_"
+    os.environ["STEPUP_DIRECTOR_SOCKET"] = DIRECTOR_SOCKET_SENTINEL
     if args.yappi:
         if yappi is None:
             print(

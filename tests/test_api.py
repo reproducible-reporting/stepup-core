@@ -29,6 +29,7 @@ from stepup.core.api import (
     static,
     step,
 )
+from stepup.core.constants import DIRECTOR_SOCKET_SENTINEL
 from stepup.core.exceptions import AmendWhileHoldingError, PathError, StepUpError
 from stepup.core.nglob import NamedGlob
 from stepup.core.rpc import DummySyncRPCClient
@@ -153,21 +154,35 @@ def test_loadns_json(path_tmp, monkeypatch):
     assert ns.a == 10
 
 
-def test_get_rpc_client_no_socket(monkeypatch):
+@pytest.fixture
+def no_cached_rpc_client(monkeypatch):
+    """Discard the RPC client that other tests may have cached, and the one created here."""
     monkeypatch.delenv("STEPUP_DIRECTOR_SOCKET", raising=False)
+    api._get_cached_rpc_client.cache_clear()
+    yield
+    api._get_cached_rpc_client.cache_clear()
+
+
+def test_get_rpc_client_no_socket(no_cached_rpc_client):
     client = get_rpc_client()
     assert isinstance(client, DummySyncRPCClient)
 
 
-def test_get_rpc_client_explicit_none(monkeypatch):
-    monkeypatch.delenv("STEPUP_DIRECTOR_SOCKET", raising=False)
+def test_get_rpc_client_explicit_none(no_cached_rpc_client):
     client = get_rpc_client(socket=None)
     assert isinstance(client, DummySyncRPCClient)
 
 
-def test_get_rpc_client_invalid_socket():
+def test_get_rpc_client_invalid_socket(no_cached_rpc_client):
     with pytest.raises(RuntimeError, match="director process"):
-        get_rpc_client(socket="_invalid_socket_for_director_process_")
+        get_rpc_client(socket=DIRECTOR_SOCKET_SENTINEL)
+
+
+def test_get_rpc_client_is_created_once(no_cached_rpc_client):
+    """The client is created upon first use, so that importing `api` does not connect."""
+    assert api._get_cached_rpc_client.cache_info().currsize == 0
+    assert get_rpc_client() is get_rpc_client()
+    assert api._get_cached_rpc_client.cache_info().currsize == 1
 
 
 def test_getenv_pathlib_default(monkeypatch):
@@ -525,7 +540,8 @@ def test_hold_release_failure_alone_propagates_and_stays_held(monkeypatch):
     exists to prevent.
     """
     monkeypatch.setattr(api._HOLD_STATE, "holding", 0)
-    monkeypatch.setattr(api, "RPC_CLIENT", _ReleaseFailsClient())
+    client = _ReleaseFailsClient()
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     with pytest.raises(RuntimeError, match="simulated release"), hold():
         pass
     assert api._HOLD_STATE.holding == 1
@@ -537,7 +553,8 @@ def test_hold_genuine_exception_not_masked_by_release_failure(monkeypatch, caplo
     is logged instead of silently dropped.
     """
     monkeypatch.setattr(api._HOLD_STATE, "holding", 0)
-    monkeypatch.setattr(api, "RPC_CLIENT", _ReleaseFailsClient())
+    client = _ReleaseFailsClient()
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     with (
         caplog.at_level(logging.WARNING, logger="stepup.core.api"),
         pytest.raises(ValueError, match="boom"),
@@ -607,7 +624,7 @@ def test_glob_dir_pattern_keeps_trailing_slash(path_tmp, monkeypatch):
     (path_tmp / "src" / "sub").makedirs()
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureNglobClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     glob("src/*/")
     assert len(client.calls) == 1
     tr_pattern = client.calls[0][1]
@@ -621,7 +638,7 @@ def test_glob_sends_no_dir_paths(path_tmp, monkeypatch):
     (path_tmp / "src" / "a.txt").write_text("content")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureNglobClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     glob("src/*.txt")
     assert len(client.calls) == 1
     # job_i, pattern, subs, matches -- 3 arguments after job_i, no dir_paths.
@@ -653,7 +670,7 @@ def test_static_tree_before_file_regardless_of_argument_order(path_tmp, monkeypa
     (path_tmp / "src" / "foo.txt").write_text("content")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureCallOrderClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     static(*order)
     assert len(client.calls) == 1
     name, args = client.calls[0]
@@ -686,7 +703,7 @@ def test_static_pattern_splits_files_and_dirs(path_tmp, monkeypatch):
     (path_tmp / "src" / "foo.txt").write_text("content")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     static("src/*")
     assert len(client.calls) == 1
     _job_i, tree_paths, file_paths, _patterns = client.calls[0]
@@ -702,7 +719,7 @@ def test_static_pattern_registers_pattern_with_matches(path_tmp, monkeypatch):
     (path_tmp / "src" / "b.txt").write_text("content")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     static("src/*.txt")
     assert len(client.calls) == 1
     _job_i, _tree_paths, file_paths, patterns = client.calls[0]
@@ -721,7 +738,7 @@ def test_static_dir_pattern_keeps_trailing_slash(path_tmp, monkeypatch):
     (path_tmp / "src" / "sub").makedirs()
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     static("src/*/")
     assert len(client.calls) == 1
     _job_i, tree_paths, _file_paths, patterns = client.calls[0]
@@ -734,7 +751,7 @@ def test_static_empty_pattern_still_registered(path_tmp, monkeypatch):
     monkeypatch.chdir(path_tmp)
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     static("nothing*.txt")
     assert len(client.calls) == 1
     _job_i, tree_paths, file_paths, patterns = client.calls[0]
@@ -748,7 +765,7 @@ def test_static_no_arguments_makes_no_call(path_tmp, monkeypatch):
     monkeypatch.chdir(path_tmp)
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     static()
     static([])
     assert len(client.calls) == 0
@@ -761,7 +778,7 @@ def test_static_named_wildcard_pattern(path_tmp, monkeypatch):
     (path_tmp / "f2.txt").write_text("content")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     static("f${*i}.txt")
     assert len(client.calls) == 1
     _job_i, _tree_paths, file_paths, patterns = client.calls[0]
@@ -778,7 +795,7 @@ def test_static_named_wildcard_consistency(path_tmp, monkeypatch):
     (path_tmp / "b" / "c.txt").write_text("content")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     static("${*n}/${*n}.txt")
     assert len(client.calls) == 1
     _job_i, _tree_paths, file_paths, _patterns = client.calls[0]
@@ -794,7 +811,7 @@ def test_static_recursive_wildcard_rejected(path_tmp, monkeypatch, pattern):
     monkeypatch.chdir(path_tmp)
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     with pytest.raises(PathError, match="recursive"):
         static(pattern)
     assert len(client.calls) == 0
@@ -809,7 +826,7 @@ def test_static_accepts_middle_recursive_wildcard(path_tmp, monkeypatch):
     (path_tmp / "src" / "sub" / "c.txt").write_text("content")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     result = static("src/**/*.c")
     assert result == ["src/a.c", "src/sub/b.c"]
     assert len(client.calls) == 1
@@ -829,7 +846,7 @@ def test_static_accepts_recursive_named_glob(path_tmp, monkeypatch):
     (path_tmp / "src" / "sub" / "a.txt").write_text("content")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     ng = NamedGlob("src/**")
     ng.glob()
     static(ng)
@@ -844,7 +861,7 @@ def test_static_returns_covered_paths(path_tmp, monkeypatch):
     (path_tmp / "data" / "sub").makedirs()
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     result = static("a.txt", "src/", "data/*")
     assert result == sorted(result)
     assert Path("src/") in result
@@ -861,7 +878,7 @@ def test_static_accepts_named_glob(path_tmp, monkeypatch):
     monkeypatch.setenv("STEPUP_JOB_I", "0")
 
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     ng = NamedGlob("src/*.txt")
     ng.glob()
     static(ng)
@@ -874,7 +891,7 @@ def test_static_accepts_named_glob(path_tmp, monkeypatch):
     # which is exactly the case `_iter_static_args` has to special-case.
     (path_tmp / "f1.txt").write_text("content")
     client2 = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client2)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client2)
     ng_named = NamedGlob("f${*i}.txt")
     ng_named.glob()
     static(ng_named)
@@ -885,7 +902,7 @@ def test_static_accepts_named_glob(path_tmp, monkeypatch):
 
     # Nested form: a `NamedGlob` inside an iterable argument.
     client3 = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client3)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client3)
     static([ng])
     assert len(client3.calls) == 1
     _job_i, _tree_paths, file_paths3, patterns3 = client3.calls[0]
@@ -901,7 +918,7 @@ def test_static_env_var_in_pattern(path_tmp, monkeypatch):
     monkeypatch.setenv("DATA", "src")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
-    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     static("${DATA}/*.txt")
     assert len(client.calls) == 1
     _job_i, _tree_paths, file_paths, patterns = client.calls[0]

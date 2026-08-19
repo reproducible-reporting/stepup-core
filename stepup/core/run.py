@@ -30,6 +30,7 @@ from typing import Any
 import attrs
 from path import Path
 
+from .api import amend
 from .asyncio import await_fd_readable
 from .exceptions import RunError
 from .extapi import get_local_import_paths
@@ -821,11 +822,9 @@ def _forkserver_entry(
                 with contextlib.suppress(AttributeError):
                     atexit._run_exitfuncs()
                 if ep_value is None:
-                    # Must be imported ONLY in the forked process:
-                    # it opens a new connection to the director socket,
-                    # which must not happen in the parent.
-                    from stepup.core.api import amend  # noqa: PLC0415
-
+                    # This is the first call that connects to the director in this child.
+                    # The connection must not be opened before the fork,
+                    # which is why `get_rpc_client()` creates it lazily.
                     amend(inp=get_local_import_paths(script_path=Path(cmd)))
         except BaseException as exc:  # noqa: BLE001
             # All exceptions must be caught here,
