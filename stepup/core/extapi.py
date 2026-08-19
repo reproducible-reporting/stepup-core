@@ -278,12 +278,25 @@ def run_subprocess(
 #
 
 
+DEFAULT_PATH_FILTER = "-.venv:-venv:-.tox:-.nox:-.direnv:-.pixi:-node_modules"
+"""The filter used when `${STEPUP_PATH_FILTER}` is not set.
+
+It ignores the top-level directories in which tools install dependencies,
+because these hold files that are not edited by hand
+and that would only bloat the workflow graph.
+Directories holding build outputs, such as `build` or `dist`, are not ignored,
+because StepUp may be the tool creating them.
+"""
+
+
 def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     """Select the paths retained by `${STEPUP_PATH_FILTER}`.
 
     A filter item matches as a plain string prefix of the absolute path,
     not as a sequence of path components,
-    so the default `-venv` also ignores paths under `venv2`.
+    so the default item `-venv` also ignores paths under `venv2`.
+    Because a prefix is anchored at `${STEPUP_ROOT}`,
+    the default `DEFAULT_PATH_FILTER` only covers top-level directories.
 
     Parameters
     ----------
@@ -305,7 +318,7 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     # Parse the ${STEPUP_PATH_FILTER} environment variable.
     # The getenv function from StepUp amends the current step to depend on the variable,
     # so that every step using it is re-executed when the variable changes.
-    filter_str = getenv("STEPUP_PATH_FILTER", "-venv")
+    filter_str = getenv("STEPUP_PATH_FILTER", DEFAULT_PATH_FILTER)
     # The two appended items are the catch-all rules:
     # retain everything under `${STEPUP_ROOT}` and ignore everything else.
     # The latter is why every absolute path matches a rule,

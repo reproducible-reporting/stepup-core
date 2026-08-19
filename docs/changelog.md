@@ -387,6 +387,10 @@ and will be updated with any further changes before the final release.
   The config-file key moves from the top level to the `[build]` section,
   and the environment variable changes from `STEPUP_LOG_LEVEL` to `STEPUP_BUILD_LOG_LEVEL`.
   The director exports the level to its steps under the new name as well.
+- The default of `${STEPUP_PATH_FILTER}` is broadened from `-venv` to
+  `-.venv:-venv:-.tox:-.nox:-.direnv:-.pixi:-node_modules`,
+  so the directories in which common tools install dependencies
+  are ignored without having to configure the filter.
 
 ### Deprecated
 

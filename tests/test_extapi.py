@@ -60,6 +60,33 @@ def test_filter_dependencies_relative1(monkeypatch, path_tmp):
         assert filter_dependencies(rel_paths) == {"foo.txt", "egg.py"}
 
 
+def test_filter_dependencies_default_ignores(monkeypatch, path_tmp):
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.delenv("STEPUP_PATH_FILTER", raising=False)
+    rel_paths = [
+        ".venv/mod.py",
+        ".tox/py313/mod.py",
+        ".nox/test/mod.py",
+        ".direnv/python-3.13/mod.py",
+        ".pixi/envs/default/mod.py",
+        "node_modules/pkg/index.js",
+        # Names that share a prefix with an ignored item, but are not ignored.
+        "tox.ini",
+        "noxfile.py",
+        ".envrc",
+        "environment.yml",
+        "build/out.txt",
+    ]
+    with contextlib.chdir(path_tmp):
+        assert filter_dependencies(rel_paths) == {
+            "tox.ini",
+            "noxfile.py",
+            ".envrc",
+            "environment.yml",
+            "build/out.txt",
+        }
+
+
 def test_filter_dependencies_relative2(monkeypatch, path_tmp):
     monkeypatch.setenv("STEPUP_ROOT", path_tmp / "project")
     monkeypatch.setenv("STEPUP_PATH_FILTER", "+../external")

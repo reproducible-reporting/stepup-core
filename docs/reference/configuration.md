@@ -156,8 +156,18 @@ and cannot be configured through config files or command-line options.
     but `+data` also retains dependencies under `database`.
     A trailing separator does not restrict an item to one directory,
     because it is removed when the prefix is resolved to an absolute path.
-    The default is `-venv`.
+
+    The default is `-.venv:-venv:-.tox:-.nox:-.direnv:-.pixi:-node_modules`,
+    which ignores the top-level directories in which tools install dependencies.
+    Because every prefix is anchored at `${STEPUP_ROOT}`,
+    the default cannot ignore an environment nested deeper in the tree,
+    such as `packages/foo/.venv`.
+    Setting this variable replaces the default in full,
+    so an environment directory has to be listed again
+    when the variable is used to retain files outside `${STEPUP_ROOT}`.
+
     Regardless of whether a filter is defined, the filters `:+.:-/` are always appended.
+
     This feature can be used for several purposes:
 
     - You may have source files that are not part of the StepUp project,
@@ -167,7 +177,7 @@ and cannot be configured through config files or command-line options.
 
     - You have a virtual environment with many packages installed,
       but you don't want to include them in the dependency graph for performance reasons.
-      (This is done by default for the `venv` virtual environment.)
+      (The default filter already does this for the most common environment directories.)
 
 `STEPUP_ROOT`
 
