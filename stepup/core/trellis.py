@@ -321,9 +321,23 @@ class Node:
         for i, kind, label in self.db.execute(query, data):
             yield self.graph.node_from_row(i, kind, label)
 
-    def product_keys(self, node_type: type[NodeType] | None = None) -> Iterator[str]:
-        """Iterate over the products of this node, formatted as `kind:label` keys."""
-        sql = "SELECT kind, label, detached FROM node WHERE creator = ?"
+    def _node_keys(self, sql: str, node_type: type[NodeType] | None = None) -> Iterator[str]:
+        """Iterate over the nodes selected by a partial query, formatted as `kind:label` keys.
+
+        Parameters
+        ----------
+        sql
+            A query selecting `kind, label, detached` from `node`,
+            ending in a `WHERE` clause with one placeholder bound to this node's id.
+        node_type
+            When given, only nodes of this type are included.
+
+        Returns
+        -------
+        keys
+            The `kind:label` key of every selected node, ordered by kind and label,
+            with the keys of detached nodes wrapped in parentheses.
+        """
         data = [self.i]
         if node_type is not None:
             sql += " AND kind = ?"
@@ -334,6 +348,12 @@ class Node:
             if detached:
                 key = f"({key})"
             yield key
+
+    def product_keys(self, node_type: type[NodeType] | None = None) -> Iterator[str]:
+        """Iterate over the products of this node, formatted as `kind:label` keys."""
+        yield from self._node_keys(
+            "SELECT kind, label, detached FROM node WHERE creator = ?", node_type
+        )
 
     def _dependencies(
         self,
@@ -377,19 +397,11 @@ class Node:
         Detached edges are wrapped in parentheses.
         Subclasses may decorate the strings with additional information.
         """
-        sql = "SELECT kind, label, detached FROM node JOIN dependency ON node.i = " + (
-            "source WHERE sink = ?" if upstream else "sink WHERE source = ?"
+        yield from self._node_keys(
+            "SELECT kind, label, detached FROM node JOIN dependency ON node.i = "
+            + ("source WHERE sink = ?" if upstream else "sink WHERE source = ?"),
+            node_type,
         )
-        data = [self.i]
-        if node_type is not None:
-            sql += " AND kind = ?"
-            data.append(node_type.kind())
-        sql += " ORDER BY kind, label"
-        for kind, label, detached in self.db.execute(sql, data):
-            key = f"{kind}:{label}"
-            if detached:
-                key = f"({key})"
-            yield key
 
     def source_keys(self, node_type: type[NodeType] | None = None) -> Iterator[str]:
         """Iterate over nodes that supply to this one, formatted as `kind:label` keys."""

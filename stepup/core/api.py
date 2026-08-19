@@ -1327,9 +1327,8 @@ def script(
 
     !!! warning
 
-        The script interface for calling user Python scripts from `plan.py` has been deprecated
-        in favor of the new [Call](../getting_started/call.md) interface.
-        You are encouraged to migrate your `plan.py` files to the new API.
+        The script interface is deprecated in favor of the
+        [Call](../getting_started/call.md) interface.
         See [the migration guide][sc] for a step-by-step walkthrough.
 
         [sc]: ../migration/from_3x_to_40.md#optional-migration-from-script-to-call
