@@ -11,7 +11,7 @@ Same inp hash        demovars.py
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./demovars.py > output.txt
  SUCCESS │ ./demovars.py > output.txt
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot

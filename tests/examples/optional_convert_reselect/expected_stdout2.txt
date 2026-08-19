@@ -17,7 +17,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
  SUCCESS │ cp -p raw1.txt converted1.txt
    START │ cp -p converted1.txt used.txt
  SUCCESS │ cp -p converted1.txt used.txt
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 3 job(s).
  WARNING │ Marked 1 old optional (volatile) output file(s) for deletion.
 DIRECTOR │ Trying to remove 1 outdated output(s)
   REMOVE │ converted3.txt

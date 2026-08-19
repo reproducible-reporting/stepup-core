@@ -4,7 +4,7 @@
    PHASE │ build
    START │ cp -p a_input.txt out/a.txt
  SUCCESS │ cp -p a_input.txt out/a.txt
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
  WARNING │ Skipping file cleanup for a build restricted to targets
  WARNING │ Check logs: .stepup/warning.log
    PHASE │ watch

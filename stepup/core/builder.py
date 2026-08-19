@@ -193,7 +193,7 @@ class Builder:
 
     async def finalize(self):
         """Final steps after the builder has executed a bunch of jobs."""
-        await self.reporter("DIRECTOR", f"Ran {self.scheduler.job_counter} job(s).")
+        await self.reporter("DIRECTOR", f"Ran {self.scheduler.run_counter} job(s).")
         self.returncode = await report_completion(
             self.db, self.workflow, self.scheduler, self.reporter
         )

@@ -13,7 +13,7 @@ Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p inp3.txt out3.txt
  SUCCESS │ cp -p inp3.txt out3.txt
-DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot

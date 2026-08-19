@@ -15,7 +15,7 @@ Modified inp hash    out.txt (digest de3b107b ➜ 26725e7b)
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p out.txt final.txt
  SUCCESS │ cp -p out.txt final.txt
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot

@@ -17,7 +17,7 @@ Same step hash       explained, inp_digest 08f0693f, out_digest 1b3b11b4
 Same inp hash        src/foo.txt
 Same out hash        copy.txt
 ────────────────────────────────────────────────────────────────────────────────
-DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph4.txt, current_graph4_provenance.dot and current_graph4_dependency.dot

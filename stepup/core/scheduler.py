@@ -430,6 +430,14 @@ class Scheduler:
     job_counter: int = attrs.field(init=False, default=0)
     """Counter used to assign a unique `job_i` to each `Job` created by `_derive_job()`."""
 
+    run_counter: int = attrs.field(init=False, default=0)
+    """Number of jobs in the current build phase that executed a step's command.
+
+    Jobs that only skip a step or validate its dynamic inputs are not counted,
+    so this is the number of steps the build actually had work for.
+    Reset by `build_completed()`, like `job_counter`.
+    """
+
     write_joblog: bool = attrs.field(kw_only=True, default=False)
     """Whether to record `--joblog` events."""
 
@@ -753,7 +761,7 @@ class Scheduler:
 
         The following actions are performed:
 
-        - Reset the job counter.
+        - Reset the job and run counters.
         - Write accumulated step durations to the database and clear the buffer.
         - Run `_update_meta_after()` to refresh the tail times of steps with `_check_after=1`.
         - Clear the start/stop time buffers used to detect unfresh inputs.
@@ -761,6 +769,7 @@ class Scheduler:
         Note that this requires that the `initialize()` method has been called.
         """
         self.job_counter = 0
+        self.run_counter = 0
         if len(self.new_durations) > 0:
             async with self.db:
                 self.db.executemany(

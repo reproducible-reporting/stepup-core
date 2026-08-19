@@ -13,7 +13,7 @@ Modified step hash   compact ➜ explained, inp_digest db3db621 ➜ f60dbc8d, ou
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest dabbddf5, out_digest 463361ab
 ────────────────────────────────────────────────────────────────────────────────
-DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 1 outdated output(s)
   REMOVE │ bar.txt
    PHASE │ watch

@@ -9,7 +9,7 @@
  SUCCESS │ ./generate.py run
    START │ cp -p runout.txt copy.txt
  SUCCESS │ cp -p runout.txt copy.txt
-DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot

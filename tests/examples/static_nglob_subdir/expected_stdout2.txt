@@ -15,7 +15,7 @@ Same step hash       compact, inp_digest 571a6c85, out_digest c2c4c1bb
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p inp3.txt out3.txt  # wd=sub
  SUCCESS │ cp -p inp3.txt out3.txt  # wd=sub
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot

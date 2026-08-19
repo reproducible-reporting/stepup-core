@@ -33,7 +33,7 @@ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot an
  SUCCESS │ cp original.txt between.txt
    START │ cp between.txt another.txt
  SUCCESS │ cp between.txt another.txt
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 1 outdated output(s)
   REMOVE │ copy.txt
    PHASE │ watch

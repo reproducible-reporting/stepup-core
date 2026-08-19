@@ -7,7 +7,7 @@
  SUCCESS │ ./plan.py  # wd=a
    START │ cp hop1.txt hop2.txt  # wd=a
  SUCCESS │ cp hop1.txt hop2.txt  # wd=a
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 2 job(s).
  WARNING │ 1 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
             OUTDATED: (a/hop2.txt)  1 step(s)

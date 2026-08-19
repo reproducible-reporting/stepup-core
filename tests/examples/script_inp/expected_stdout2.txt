@@ -8,7 +8,7 @@
  SUCCESS │ ./script.py run egg
    START │ ./script.py run spam
  SUCCESS │ ./script.py run spam
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 2 outdated output(s)
   REMOVE │ out_foo.txt
   REMOVE │ out_bar.txt

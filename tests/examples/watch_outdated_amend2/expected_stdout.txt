@@ -50,7 +50,7 @@ Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./work.py subs2.txt > subs3.txt
  SUCCESS │ ./work.py subs2.txt > subs3.txt
-DIRECTOR │ Ran 7 job(s).
+DIRECTOR │ Ran 5 job(s).
 DIRECTOR │ Trying to remove 1 outdated output(s)
   REMOVE │ conv1.txt
    PHASE │ watch

@@ -14,7 +14,7 @@ Same step hash       compact, inp_digest 4e6353a4, out_digest 9e7bd348
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest 2fafb296, out_digest 810dcef4
 ────────────────────────────────────────────────────────────────────────────────
-DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 2 outdated output(s)
   REMOVE │ out1.txt
   REMOVE │ foo1.txt

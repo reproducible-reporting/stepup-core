@@ -6,7 +6,7 @@
  SUCCESS │ ./plan.py
    START │ cp -p input.txt out.txt
  SUCCESS │ cp -p input.txt out.txt
-DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Ran 2 job(s).
  WARNING │ Skipping file cleanup for a build restricted to targets
  WARNING │ Check logs: .stepup/warning.log
    PHASE │ watch

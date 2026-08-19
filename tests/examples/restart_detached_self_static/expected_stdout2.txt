@@ -4,7 +4,7 @@
    PHASE │ build
    START │ ./plan.py
  SUCCESS │ ./plan.py
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 1 outdated output(s)
   REMOVE │ sub/copy.txt
    PHASE │ watch

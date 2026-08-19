@@ -37,7 +37,7 @@ Same inp hash        tmp1.txt
 Same inp hash        work.py
 Same out hash        log.txt
 ────────────────────────────────────────────────────────────────────────────────
-DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
@@ -62,7 +62,7 @@ Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./work.py > log.txt
  SUCCESS │ ./work.py > log.txt
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot

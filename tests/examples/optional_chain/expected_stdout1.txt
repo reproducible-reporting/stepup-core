@@ -11,7 +11,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./plan.py
  SUCCESS │ ./plan.py
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
  WARNING │ Reverted 4 optional step(s) to PENDING.
  WARNING │ Marked 4 old optional (volatile) output file(s) for deletion.
 DIRECTOR │ Trying to remove 5 outdated output(s)

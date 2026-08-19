@@ -15,7 +15,7 @@ Same out hash        out3.txt
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p inp4.txt out4.txt
  SUCCESS │ cp -p inp4.txt out4.txt
-DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 1 outdated output(s)
   REMOVE │ out2.txt
    PHASE │ watch

@@ -6,7 +6,7 @@
    PHASE │ build
    START │ ./work1.py
  SUCCESS │ ./work1.py
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 2 outdated output(s)
   REMOVE │ out3.txt
   REMOVE │ out2.txt

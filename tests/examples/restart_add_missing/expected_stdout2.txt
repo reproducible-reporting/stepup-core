@@ -10,7 +10,7 @@ Modified step hash   compact ➜ explained, inp_digest 46ace8b8, out_digest b193
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p inp.txt out.txt
  SUCCESS │ cp -p inp.txt out.txt
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot

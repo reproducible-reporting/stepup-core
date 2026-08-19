@@ -4,7 +4,7 @@
    PHASE │ build
    START │ ./plan.py
  SUCCESS │ ./plan.py
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
  WARNING │ Marked 1 old optional (volatile) output file(s) for deletion.
 DIRECTOR │ Trying to remove 2 outdated output(s)
   REMOVE │ sub/hop3.txt

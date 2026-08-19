@@ -26,7 +26,7 @@ UNCHANGED │ cases.txt
  SUCCESS │ ./work.py case3.txt
    START │ ./work.py case4.txt
  SUCCESS │ ./work.py case4.txt
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 1 outdated output(s)
   REMOVE │ case1.txt
    PHASE │ watch

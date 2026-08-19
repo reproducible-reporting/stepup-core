@@ -6,7 +6,7 @@
  SUCCESS │ ./plan.py
    START │ cp -p hello.txt other/hello.txt
  SUCCESS │ cp -p hello.txt other/hello.txt
-DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 1 outdated output(s)
   REMOVE │ sub/hello.txt
   REMOVE │ sub

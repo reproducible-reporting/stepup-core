@@ -15,7 +15,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
  SUCCESS │ cp source_both.txt copy_both2.txt
    START │ cp source2.txt copy2.txt
  SUCCESS │ cp source2.txt copy2.txt
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 2 outdated output(s)
   REMOVE │ copy_both1.txt
   REMOVE │ copy1.txt

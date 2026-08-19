@@ -16,7 +16,7 @@ Same inp hash        asource2.txt
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p asource2.txt data2.txt
  SUCCESS │ cp -p asource2.txt data2.txt
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
  WARNING │ 2 step(s) remained pending.
 ────────────────────────────── Unavailable inputs ──────────────────────────────
              MISSING: asource1.txt  2 step(s)

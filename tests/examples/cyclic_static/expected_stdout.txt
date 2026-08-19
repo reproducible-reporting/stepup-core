@@ -12,7 +12,7 @@ inp2.txt
    START │ ./work1.py
  SUCCESS │ ./work1.py
     SKIP │ ./work2.py
-DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Ran 4 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot

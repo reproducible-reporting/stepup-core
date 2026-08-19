@@ -26,7 +26,7 @@ Same inp hash        raw3.txt
  SUCCESS │ cp -p raw3.txt converted3.txt
    START │ cp -p converted3.txt used.txt
  SUCCESS │ cp -p converted3.txt used.txt
-DIRECTOR │ Ran 5 job(s).
+DIRECTOR │ Ran 3 job(s).
  WARNING │ Marked 1 old optional (volatile) output file(s) for deletion.
 DIRECTOR │ Trying to remove 1 outdated output(s)
   REMOVE │ converted1.txt

@@ -16,7 +16,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
  WARNING │ 1 step(s) failed.
  WARNING │ Scheduler is put on hold. Not reporting pending steps.
  WARNING │ Skipping file cleanup due to incomplete build

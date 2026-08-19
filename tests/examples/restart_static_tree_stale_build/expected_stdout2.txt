@@ -18,7 +18,7 @@ Modified inp hash    data/foo.txt (digest 5891b5b5 ➜ e258d248)
 ────────────────────────────────────────────────────────────────────────────────
    START │ cp -p data/foo.txt result.txt
  SUCCESS │ cp -p data/foo.txt result.txt
-DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot

@@ -326,6 +326,7 @@ class Executor:
         but the defer cap has been exceeded,
         the step fails instead of being scheduled for another execution attempt.
         """
+        self.scheduler.run_counter += 1
         run, new_hash = await self._new_run(job_i, step, inp_hashes, env_deps)
         if new_hash is None:
             # Step failed early due to unexpected input changes, error already reported.

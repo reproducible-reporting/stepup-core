@@ -11,7 +11,7 @@ First input
 
 Second input
 ────────────────────────────────────────────────────────────────────────────────
-DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot

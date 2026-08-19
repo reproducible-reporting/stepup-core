@@ -8,6 +8,6 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
    START │ ./plan.py
  SUCCESS │ ./plan.py
     SKIP │ cat average.txt
-DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
 DIRECTOR │ See you!

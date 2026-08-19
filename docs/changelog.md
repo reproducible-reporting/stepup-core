@@ -326,6 +326,10 @@ and will be updated with any further changes before the final release.
     - Cascade has been renamed to Trellis.
     - Supplier has been renamed to Source.
     - Consumer has been renamed to Sink.
+- The `Ran N job(s).` message at the end of a build phase now counts only the jobs
+  that executed a step's command.
+  Skipped steps and internal validation jobs are no longer included,
+  which used to make the number confusingly large for builds with many skipped steps.
 
 ### Deprecated
 
