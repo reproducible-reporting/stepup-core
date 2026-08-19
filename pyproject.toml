@@ -102,6 +102,7 @@ select = [
     "PT", "PYI", "RET", "RSE", "RUF", "SIM", "TRY", "UP", "W"
 ]
 ignore = [
+    "ISC004",  # https://docs.astral.sh/ruff/rules/isc004/
     "PLR0904",  # https://docs.astral.sh/ruff/rules/too-many-public-methods/
     "PLR0911",  # https://docs.astral.sh/ruff/rules/too-many-return-statements/
     "PLR0912",  # https://docs.astral.sh/ruff/rules/too-many-branches/

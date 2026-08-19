@@ -346,5 +346,5 @@ class Builder:
         # Never let a flush failure mask the original error or block shutdown.
         try:
             await self.scheduler.build_completed()
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning("Failed to flush step durations during shutdown.", exc_info=True)

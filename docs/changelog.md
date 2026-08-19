@@ -13,9 +13,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-## [4.0.0rc10][] - 2026-07-27 {: #v4.0.0rc10 }
+## [4.0.0rc11][] - 2026-08-19 {: #v4.0.0rc11 }
 
-This is release candidate 10 of the upcoming StepUp Core 4.0 release.
+This is release candidate 11 of the upcoming StepUp Core 4.0 release.
 
 Note that all changes of the release candidates are included below.
 This section is treated as a draft of the changelog for the final 4.0.0 release,
@@ -1267,7 +1267,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
-[4.0.0rc10]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc10
+[4.0.0rc11]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc11
 [3.2.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3
 [3.2.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.2
 [3.2.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.1
