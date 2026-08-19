@@ -991,9 +991,9 @@ class DirectorHandler:
         self,
         job_i: int,
         cmd: str,
+        returncode: int,
         workdir: str,
         env_overrides: dict[str, str] | None,
-        returncode: int,
         shell: bool,
         stdin: str,
         stdout: str,
@@ -1003,20 +1003,21 @@ class DirectorHandler:
 
         Notes
         -----
-        This is an RPC wrapper for `Step.add_subprocess`.
+        This is an RPC wrapper for `Step.add_subprocess`,
+        whose parameters are ordered as the columns of the `step_subprocess` table instead.
         The recorded metadata is informative for archival and debugging, not authoritative.
         """
         async with self.db:
             step = self.scheduler.get_step(job_i)
             step.add_subprocess(
-                cmd,
-                workdir,
-                env_overrides,
-                returncode,
-                shell,
-                stdin,
-                stdout,
-                stderr,
+                cmd=cmd,
+                workdir=workdir,
+                env_overrides=env_overrides,
+                returncode=returncode,
+                shell=shell,
+                stdin=stdin,
+                stdout=stdout,
+                stderr=stderr,
             )
 
     @allow_rpc

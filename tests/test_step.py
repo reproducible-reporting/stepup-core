@@ -277,6 +277,17 @@ def test_truncate_output_unlimited():
     assert truncate_output(content, -1) is content
 
 
+def test_truncate_output_env_default(monkeypatch):
+    """Without an explicit max_bytes, the budget is taken from STEPUP_MAX_OUTPUT_SIZE."""
+    content = "abcdefghij"
+    monkeypatch.delenv("STEPUP_MAX_OUTPUT_SIZE", raising=False)
+    assert truncate_output(content) is content
+    monkeypatch.setenv("STEPUP_MAX_OUTPUT_SIZE", "5")
+    assert truncate_output(content) == "abcde\n[output truncated at 5 bytes]\n"
+    # An explicit budget still wins over the environment variable.
+    assert truncate_output(content, 0) is content
+
+
 def test_truncate_output_under_limit():
     """Content within the byte budget is returned unchanged."""
     content = "hello\n"

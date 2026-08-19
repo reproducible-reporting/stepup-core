@@ -365,8 +365,7 @@ class Executor:
                 # `run.outcome` itself stays untruncated,
                 # because `set_outcome` only truncates what it writes to the database,
                 # so `_report_run` below still forwards the full text to the TUI.
-                max_bytes = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
-                step.set_outcome(run.outcome, max_bytes=max_bytes)
+                step.set_outcome(run.outcome)
         self._report_step_counts()
 
         # Report the result of running the step

@@ -149,6 +149,13 @@ and cannot be configured through config files or command-line options.
     If it is preceded by a `+`, the dependency is retained and rewritten relative to `${STEPUP_ROOT}`.
     A path in the filter can be absolute or relative to `${STEPUP_ROOT}`,
     but matching is always done based on absolute paths.
+    A prefix is matched as a plain string, not as a sequence of path components,
+    so a filter item also matches paths whose first differing character is not a separator.
+    For example, `-venv` ignores dependencies under `venv` and under `venv311`,
+    which is convenient when several virtual environments sit next to each other,
+    but `+data` also retains dependencies under `database`.
+    A trailing separator does not restrict an item to one directory,
+    because it is removed when the prefix is resolved to an absolute path.
     The default is `-venv`.
     Regardless of whether a filter is defined, the filters `:+.:-/` are always appended.
     This feature can be used for several purposes:

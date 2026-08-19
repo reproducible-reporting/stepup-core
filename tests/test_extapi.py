@@ -12,7 +12,7 @@ import pytest
 
 from stepup.core import api, extapi
 from stepup.core.extapi import (
-    _prepare_stream,
+    _stream_for_record,
     filter_dependencies,
     record_subprocess,
     run_subprocess,
@@ -155,6 +155,13 @@ def test_record_subprocess_no_director(monkeypatch):
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     record_subprocess("echo hi", 0)
     assert calls == []
+
+
+def test_record_subprocess_no_director_still_checks_streams(monkeypatch):
+    """A stream of an unsupported type is rejected, even without a director to record to."""
+    monkeypatch.setattr(api, "get_job_i", lambda: -1)
+    with pytest.raises(TypeError, match="stream must be str, bytes, or None"):
+        record_subprocess("echo hi", 0, stdout=42)
 
 
 def test_run_subprocess_no_director_still_runs(monkeypatch):
@@ -315,30 +322,35 @@ def test_run_subprocess_stdin_str_text_false_raises():
         run_subprocess(shlex.join([sys.executable, "-c", ""]), stdin="data", text=False)
 
 
-def test_prepare_stream_none():
-    """_prepare_stream passes through None."""
-    assert _prepare_stream(None) == ""
+def test_stream_for_record_none():
+    """_stream_for_record passes through None."""
+    assert _stream_for_record(None) == ""
 
 
-def test_prepare_stream_str_unlimited():
-    """_prepare_stream passes through str when max_bytes is 0 (unlimited)."""
+def test_stream_for_record_str_unlimited():
+    """_stream_for_record passes through str when STEPUP_MAX_OUTPUT_SIZE is unset."""
     s = "hello"
-    assert _prepare_stream(s, max_bytes=0) == s
+    assert _stream_for_record(s) == s
 
 
-def test_prepare_stream_str_truncated():
-    """_prepare_stream truncates str when it exceeds max_bytes."""
-    s = "hello world"
-    result = _prepare_stream(s, max_bytes=5)
-    # The result should be truncated and include a note about truncation
-    assert len(result) <= 5 + 50  # Some allowance for the truncation note
+def test_stream_for_record_str_truncated(monkeypatch):
+    """_stream_for_record truncates str when it exceeds STEPUP_MAX_OUTPUT_SIZE."""
+    monkeypatch.setenv("STEPUP_MAX_OUTPUT_SIZE", "5")
+    result = _stream_for_record("hello world")
+    assert result == "hello\n[output truncated at 5 bytes]\n"
 
 
-def test_prepare_stream_bytes():
-    """_prepare_stream summarizes bytes into a short digest."""
+def test_stream_for_record_bytes():
+    """_stream_for_record summarizes bytes into a short digest."""
     data = b"\x00\x01\x02hi"
-    result = _prepare_stream(data)
+    result = _stream_for_record(data)
     expected_digest = hashlib.sha256(data).hexdigest()[:16]
     assert result == f"<{len(data)} bytes of binary data, sha256={expected_digest}>"
     assert result.startswith(f"<{len(data)} bytes of binary data, sha256=")
     assert result.endswith(">")
+
+
+def test_stream_for_record_wrong_type():
+    """_stream_for_record rejects a stream that is neither str, bytes nor None."""
+    with pytest.raises(TypeError, match="stream must be str, bytes, or None"):
+        _stream_for_record(42)

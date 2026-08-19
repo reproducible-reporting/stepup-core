@@ -3,8 +3,8 @@
 """Utilities for developers of StepUp extension packages.
 
 These functions are not intended for end users writing `plan.py` files.
-They are meant for authors of new StepUp extensions who need to interact with the director,
-filter step dependencies, or implement custom API functions that handle environment variables.
+They are meant for authors of new StepUp extensions
+who need to interact with the director or filter step dependencies.
 """
 
 import hashlib
@@ -12,7 +12,7 @@ import os
 import shlex
 import subprocess
 import sys
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 
 from path import Path
 
@@ -30,15 +30,18 @@ __all__ = (
 )
 
 
-def _prepare_stream(data: str | bytes | None, max_bytes: int = 0) -> str:
-    """Return a text representation of `data` suitable for the archival record.
+#
+# Subprocess Recording
+#
+
+
+def _stream_for_record(stream: str | bytes | None) -> str:
+    """Return a text representation of `stream` suitable for the archival record.
 
     `None` becomes an empty string.
 
-    A `str` remains unchanged if `max_bytes` is `0` (unlimited)
-    or the string fits within `max_bytes` UTF-8 bytes.
-    Otherwise, the string is truncated to `max_bytes` bytes
-    and a note is appended to indicate that it was truncated.
+    A `str` is capped by `truncate_output`,
+    which appends a note when it has to cut the text.
 
     `bytes` are summarized into a short, human-readable placeholder
     (byte length and a truncated SHA-256),
@@ -46,14 +49,14 @@ def _prepare_stream(data: str | bytes | None, max_bytes: int = 0) -> str:
     and a raw binary blob is neither valid UTF-8
     nor meaningful to a human inspecting the database.
     """
-    if data is None:
+    if stream is None:
         return ""
-    if isinstance(data, str):
-        return truncate_output(data, max_bytes)
-    if isinstance(data, bytes):
-        digest = hashlib.sha256(data).hexdigest()[:16]
-        return f"<{len(data)} bytes of binary data, sha256={digest}>"
-    raise TypeError(f"data must be str, bytes, or None, not {type(data).__name__}")
+    if isinstance(stream, str):
+        return truncate_output(stream)
+    if isinstance(stream, bytes):
+        digest = hashlib.sha256(stream).hexdigest()[:16]
+        return f"<{len(stream)} bytes of binary data, sha256={digest}>"
+    raise TypeError(f"stream must be str, bytes, or None, not {type(stream).__name__}")
 
 
 def record_subprocess(
@@ -106,21 +109,59 @@ def record_subprocess(
         they are recorded as a short summary (byte length and a truncated SHA-256),
         since the archival record is `TEXT` and informative rather than authoritative.
     """
+    # The streams are prepared before the early return below,
+    # so that a stream of an unsupported type is rejected whether or not a director is listening.
+    stdin_text = _stream_for_record(stdin)
+    stdout_text = _stream_for_record(stdout)
+    stderr_text = _stream_for_record(stderr)
     job_i = get_job_i()
     if job_i < 0:
         return
-    max_output_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
     get_rpc_client().call.record_subprocess(
-        job_i,
-        cmd,
-        translate(workdir),
-        env_overrides,
-        returncode,
-        shell,
-        _prepare_stream(stdin, max_output_size),
-        _prepare_stream(stdout, max_output_size),
-        _prepare_stream(stderr, max_output_size),
+        job_i=job_i,
+        cmd=cmd,
+        returncode=returncode,
+        workdir=translate(workdir),
+        env_overrides=env_overrides,
+        shell=shell,
+        stdin=stdin_text,
+        stdout=stdout_text,
+        stderr=stderr_text,
     )
+
+
+def _resolve_text_mode(stdin: str | bytes | None, text: bool | None) -> bool:
+    """Determine whether a subprocess runs in text mode, given `stdin` and an explicit `text` flag.
+
+    Parameters
+    ----------
+    stdin
+        The standard input to be fed to the subprocess, or `None`.
+    text
+        The requested mode, or `None` to derive it from the type of `stdin`.
+
+    Returns
+    -------
+    text_mode
+        `True` for text mode, `False` for binary mode.
+
+    Raises
+    ------
+    TypeError
+        When `stdin` is not `str`, `bytes`, or `None`,
+        or when its type contradicts an explicitly requested mode.
+    """
+    if stdin is None:
+        return True if text is None else text
+    if isinstance(stdin, str):
+        if text is False:
+            raise TypeError("stdin must be bytes when text=False")
+        return True
+    if isinstance(stdin, bytes):
+        if text is True:
+            raise TypeError("stdin must be str when text=True")
+        return False
+    raise TypeError("stdin must be str, bytes, or None")
 
 
 def run_subprocess(
@@ -173,6 +214,9 @@ def run_subprocess(
         Whether to run in text or binary mode.
         By default, the mode follows the type of `stdin`: text for `str`, binary for `bytes`.
         When no `stdin` is provided, the default is text mode.
+        In binary mode, the captured standard output and error are recorded
+        as a short summary (byte length and a truncated SHA-256) rather than verbatim,
+        just like binary `stdin`.
 
     Returns
     -------
@@ -191,44 +235,25 @@ def run_subprocess(
         env_overrides = None
     else:
         env_overrides, cmd = extract_env_overrides(cmd)
+    text = _resolve_text_mode(stdin, text)
     run_env = dict(os.environ)
     if env_overrides is not None:
         run_env.update(env_overrides)
-    run_kwargs = {
-        "cwd": workdir,
-        "env": run_env,
-        "stdout": subprocess.PIPE,
-        "stderr": subprocess.PIPE,
-        "check": False,  # handled below, so the subprocess can be recorded with its return code
-        "shell": shell,
-    }
-    if stdin is None:
-        run_kwargs["stdin"] = subprocess.DEVNULL
-    else:
-        run_kwargs["input"] = stdin
-        if isinstance(stdin, str):
-            if text is None:
-                text = True
-            elif text is False:
-                raise TypeError("stdin must be bytes when text=False")
-        elif isinstance(stdin, bytes):
-            if text is None:
-                text = False
-            elif text is True:
-                raise TypeError("stdin must be str when text=True")
-        else:
-            raise TypeError("stdin must be str, bytes, or None")
-    if text is None:
-        text = True
-    run_kwargs["text"] = text
-    if text:
-        # Useful to deal with ill-behaved subprocesses like LaTeX.
-        run_kwargs["errors"] = "ignore"
-    if shell:
-        cp = subprocess.run(cmd, **run_kwargs)  # noqa: PLW1510
-    else:
-        argv = shlex.split(cmd)
-        cp = subprocess.run(argv, **run_kwargs)  # noqa: PLW1510
+    cp = subprocess.run(
+        cmd if shell else shlex.split(cmd),
+        cwd=workdir,
+        env=run_env,
+        shell=shell,
+        input=stdin,
+        stdin=None if stdin is not None else subprocess.DEVNULL,
+        capture_output=True,
+        text=text,
+        # Ignoring decoding errors is useful to deal with ill-behaved subprocesses like LaTeX.
+        # A non-`None` `errors` switches `Popen` to text mode by itself,
+        # so it must stay `None` in binary mode.
+        errors="ignore" if text else None,
+        check=False,  # handled below, so the subprocess can be recorded with its return code
+    )
     record_subprocess(
         cmd,
         cp.returncode,
@@ -248,8 +273,17 @@ def run_subprocess(
     return cp
 
 
+#
+# Dependency Filtering
+#
+
+
 def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     """Select the paths retained by `${STEPUP_PATH_FILTER}`.
+
+    A filter item matches as a plain string prefix of the absolute path,
+    not as a sequence of path components,
+    so the default `-venv` also ignores paths under `venv2`.
 
     Parameters
     ----------
@@ -272,6 +306,10 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     # The getenv function from StepUp amends the current step to depend on the variable,
     # so that every step using it is re-executed when the variable changes.
     filter_str = getenv("STEPUP_PATH_FILTER", "-venv")
+    # The two appended items are the catch-all rules:
+    # retain everything under `${STEPUP_ROOT}` and ignore everything else.
+    # The latter is why every absolute path matches a rule,
+    # which makes the `ConsistencyError` below unreachable through the public API.
     filter_str += ":+.:-/"
     rules = []
     stepup_root = get_stepup_root()
@@ -304,6 +342,27 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     return result
 
 
+def _iter_loaded_module_paths() -> Iterator[Path]:
+    """Iterate over the paths of the modules in `sys.modules` that have an existing file.
+
+    A module without a `__file__` (a built-in or a namespace package)
+    and one whose `__file__` is a placeholder like `<frozen importlib._bootstrap>` are skipped.
+    Non-existent files are ignored:
+    they can only be the result of a dynamically created module,
+    as in issue <https://github.com/reproducible-reporting/stepup-core/issues/21>.
+    There is no risk of missing files that still need to be created,
+    as all imports have already been successfully resolved at this point.
+    """
+    # A snapshot of the modules is taken because the paths are consumed lazily:
+    # an import in another thread would otherwise end the iteration with a `RuntimeError`.
+    for module in list(sys.modules.values()):
+        mod_path = getattr(module, "__file__", None)
+        if not (mod_path is None or mod_path.startswith("<")):
+            mod_path = Path(mod_path).normpath()
+            if mod_path.exists():
+                yield mod_path
+
+
 def get_local_import_paths(script_path: StrPath | None = None) -> list[Path]:
     """Get all local files from `sys.modules`.
 
@@ -311,6 +370,8 @@ def get_local_import_paths(script_path: StrPath | None = None) -> list[Path]:
     ----------
     script_path
         The path of the script that is currently running, or `None` if unknown.
+        It is excluded from the result,
+        because it is an input of the step by construction.
 
     Returns
     -------
@@ -320,23 +381,10 @@ def get_local_import_paths(script_path: StrPath | None = None) -> list[Path]:
     Notes
     -----
     Files are only included if they match the `${STEPUP_PATH_FILTER}` environment variable.
-    Non-existent files are ignored:
-    they can only be the result of a dynamically created module,
-    as in issue <https://github.com/reproducible-reporting/stepup-core/issues/21>.
-    There is no risk of missing files that still need to be created,
-    as all imports have already been successfully resolved at this point.
+    Modules without an existing file (built-in, frozen or dynamically created ones)
+    are ignored.
     """
-
-    def iter_module_paths():
-        for module in sys.modules.values():
-            mod_path = getattr(module, "__file__", None)
-            if not (mod_path is None or mod_path.startswith("<")):
-                mod_path = Path(mod_path).normpath()
-                if mod_path.exists():
-                    yield mod_path
-
-    mod_paths = filter_dependencies(iter_module_paths())
-    # The script itself is not returned because it is an input of the step by construction.
+    mod_paths = filter_dependencies(_iter_loaded_module_paths())
     if script_path is not None:
         mod_paths.discard(Path(script_path).normpath())
     return sorted(mod_paths)

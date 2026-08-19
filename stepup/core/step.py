@@ -534,7 +534,7 @@ CREATE INDEX IF NOT EXISTS step_subprocess_node ON step_subprocess(node);
 """
 
 
-def truncate_output(content: str, max_bytes: int) -> str:
+def truncate_output(content: str, max_bytes: int | None = None) -> str:
     """Truncate `content` to at most `max_bytes` UTF-8 bytes, appending a sentinel if cut.
 
     A `max_bytes` of `0` (or any non-positive value) means unlimited: the content is
@@ -549,6 +549,8 @@ def truncate_output(content: str, max_bytes: int) -> str:
     max_bytes
         Maximum number of UTF-8 bytes to keep, or `0` (or any non-positive value) for
         unlimited.
+        The default `None` takes the budget from `${STEPUP_MAX_OUTPUT_SIZE}`,
+        which is unlimited when unset.
 
     Returns
     -------
@@ -556,6 +558,10 @@ def truncate_output(content: str, max_bytes: int) -> str:
         The original content if within the budget or unlimited, otherwise the content cut
         to `max_bytes` bytes with a sentinel line appended.
     """
+    if max_bytes is None:
+        # The variable is read on every call, not cached,
+        # because a test may change it and because a step's environment is not the director's.
+        max_bytes = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
     if max_bytes <= 0:
         return content
     encoded = content.encode("utf-8")
@@ -1426,7 +1432,7 @@ class Step(Node):
         """Clear the stored step hash, if any."""
         self.db.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
 
-    def set_outcome(self, outcome: ChildOutcome, max_bytes: int) -> None:
+    def set_outcome(self, outcome: ChildOutcome, max_bytes: int | None = None) -> None:
         """Persist captured child process outcome for this step in a single update.
 
         Parameters
@@ -1435,6 +1441,7 @@ class Step(Node):
             The child outcome to store.
         max_bytes
             Maximum number of UTF-8 bytes to store per stream, or `0` for unlimited.
+            The default `None` takes the budget from `${STEPUP_MAX_OUTPUT_SIZE}`.
             See `truncate_output`.
         """
         self.db.execute(
