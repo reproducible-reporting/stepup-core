@@ -833,7 +833,7 @@ class DirectorHandler:
             creator = self.scheduler.get_step(job_i)
             for path in tree_paths:
                 to_check.update(self.workflow.register_static_tree(creator, path))
-            to_check.update(self.workflow.declare_unconfirmed(creator, file_paths))
+            to_check.update(self.workflow.declare_static_files(creator, file_paths))
             for pattern, matches in patterns:
                 ng = NamedGlob(pattern)
                 ng.extend(matches)

@@ -2223,7 +2223,7 @@ async def test_pop_runnable_job_dispatches_checkable_step_to_checking(wfs: Workf
     await scheduler.initialize(None)
 
     async with wfs.db:
-        wfs.define_step(wfs.root, "echo", safe=True)
+        wfs.define_step(wfs.root, "echo", _safe=True)
         step = wfs.find(Step, "echo")
         assert step.get_state() == StepState.PENDING
         step.set_hash(StepHash(b"deadbeef"))

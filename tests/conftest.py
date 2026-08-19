@@ -107,9 +107,9 @@ def declare_static(workflow, creator, paths):
     This a heavily simplified version of the stepup.core.api.static function.
     This is solely used for testing the workflow.
     """
-    unconfirmed = workflow.declare_unconfirmed(creator, paths)
+    unconfirmed = workflow.declare_static_files(creator, paths)
     checked = {path: fake_hash(path) for path in unconfirmed}
-    workflow.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
+    workflow.update_file_hashes(checked, cause=HashUpdateCause.CONFIRMED)
     return [workflow.find(File, path) for path in paths]
 
 
@@ -144,7 +144,7 @@ async def wfs(request) -> AsyncIterator[Workflow]:
     # Tests using this fixture can use `async with db:`
     # to acquire the lock for the duration of their test.
     with DBSession.open(":memory:") as db:
-        workflow = Workflow(db, makedirs=False, dir_queue=dir_queue, defer_cap=defer_cap)
+        workflow = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue, defer_cap=defer_cap)
         await workflow.initialize()
         yield workflow
         async with db:
@@ -156,7 +156,7 @@ async def wfp() -> AsyncIterator[Workflow]:
     """A workflow with a boot step plan.py"""
     dir_queue = asyncio.Queue()
     with DBSession.open(":memory:") as db:
-        workflow = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        workflow = Workflow(db, create_parent_dirs=False, dir_queue=dir_queue)
         await workflow.initialize()
         async with db:
             # Prepare the basic workflow with a plan script.

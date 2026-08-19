@@ -619,7 +619,7 @@ def glob_base_dir(pattern: str) -> str:
     """Return the longest wildcard-free directory prefix of a glob pattern.
 
     The result never has a trailing separator, and is `.` when the first path component
-    already contains a wildcard, so it can be handed to `Workflow.put_dir_queue` directly.
+    already contains a wildcard, so it can be handed to `Workflow.watch_dir` directly.
 
     Parameters
     ----------

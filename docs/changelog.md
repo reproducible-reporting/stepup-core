@@ -283,9 +283,6 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
       File hashing is offloaded to dedicated threads.
     - Strict database sessions management and transaction correctness has been implemented
       to avoid database corruption, e.g. due to race conditions.
-    - The `declare_unconfirmed` and `static_trees` RPC calls are replaced by a single
-      `static` call, so one `static()` invocation is always one round trip and the
-      director registers static trees before the files they contain within one transaction.
     - When a step is detached while it is running (and not recreated before it ends),
       an explicit `DETACHED` warning is shown and its result is discarded.
     - The `STEPUP_STEP_I` environment variable has been replaced by `STEPUP_JOB_I`.

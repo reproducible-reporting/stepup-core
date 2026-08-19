@@ -155,7 +155,7 @@ def _make_executor(workflow: Workflow) -> Executor:
 async def test_gather_hashes_returns_results_in_input_order_and_applies_them(wfs: Workflow, tmpdir):
     with contextlib.chdir(tmpdir):
         async with wfs.db:
-            wfs.declare_unconfirmed(wfs.root, ["a.txt", "b.txt"])
+            wfs.declare_static_files(wfs.root, ["a.txt", "b.txt"])
         with open("a.txt", "w") as fh:
             fh.write("aaa")
         with open("b.txt", "w") as fh:

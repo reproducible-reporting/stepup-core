@@ -5,7 +5,9 @@
 from enum import Flag, IntEnum, auto
 
 __all__ = (
+    "BUILT_PRODUCT_STATES",
     "REGULAR_OUTPUT_STATES",
+    "STATIC_DECLARED_STATES",
     "TARGET_FORBIDDEN_STATES",
     "Change",
     "FileState",
@@ -106,6 +108,22 @@ TARGET_FORBIDDEN_STATES = frozenset(
     {FileState.VOLATILE, FileState.STATIC, FileState.MISSING, FileState.UNCONFIRMED}
 )
 """`FileState` values a `stepup build` target file may never be in."""
+
+STATIC_DECLARED_STATES = (FileState.UNCONFIRMED, FileState.STATIC, FileState.MISSING)
+"""The three file states a static declaration (as opposed to a build product) can leave behind.
+
+Shared by `Workflow._already_declared_static_by` and the static-tree ownership checks in
+`Workflow._declare_file` and`Workflow.register_static_tree`,
+so the triple cannot drift between them.
+"""
+
+BUILT_PRODUCT_STATES = (FileState.BUILT, FileState.OUTDATED, FileState.VOLATILE)
+"""The three file states that mean "a step builds this".
+
+The complement of STATIC_DECLARED_STATES within the states a glob match can resolve to,
+except for AWAITED, which is a build product whose producer may not have run yet
+and is therefore reported as a warning, not an error (see `Workflow.find_glob_violations`).
+"""
 
 
 class StepState(IntEnum):

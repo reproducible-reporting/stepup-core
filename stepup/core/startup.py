@@ -107,7 +107,7 @@ async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: Report
 
     # File-node directories are known to exist and are watched directly. Glob-pattern
     # directories are not: a pattern only observes the filesystem, so they go through
-    # put_glob_dir_queue instead, which never creates a directory (see there).
+    # watch_existing_dir instead, which never creates a directory (see there).
     # A root-level path's parent is "", normalized to "." so it folds into the same
     # set entry as glob_base_dir's own root value, keeping the reported count accurate.
     file_dirs = {str(Path(path).parent) or "." for (path,) in rows}
@@ -121,9 +121,9 @@ async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: Report
     if len(parents) > 0:
         await reporter("STARTUP", f"Watching {len(parents)} director(y|ies)")
         for path in file_dirs:
-            workflow.put_dir_queue(path)
+            workflow.watch_dir(path)
         for path in glob_dirs - file_dirs:
-            workflow.put_glob_dir_queue(path)
+            workflow.watch_existing_dir(path)
 
 
 async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: Builder):
@@ -182,7 +182,7 @@ async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: Repor
     """
     # Load all nglobs
     async with db:
-        nglobs = list(workflow.nglobs(yield_step=True))
+        nglobs = list(workflow.nglob_registrations())
     if len(nglobs) == 0:
         return
 

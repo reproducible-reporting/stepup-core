@@ -303,11 +303,11 @@ async def _report_missing_targets(
             target for target in workflow.targets if not workflow.is_regular_output(target)
         )
         # Directory targets that matched zero regular outputs: weaker than the exact-target
-        # warning above by design (best-effort semantics), see Workflow.dir_has_regular_output.
+        # warning above by design (best-effort semantics), see Workflow.has_regular_output_under.
         missing_target_dirs = sorted(
             target_dir
             for target_dir in workflow.target_dirs
-            if not workflow.dir_has_regular_output(target_dir)
+            if not workflow.has_regular_output_under(target_dir)
         )
     return_code = ReturnCode(0)
     if len(missing_targets) > 0:
@@ -360,7 +360,7 @@ async def _report_glob_matches(
 ) -> ReturnCode:
     """Report glob matches that no static declaration justifies."""
     async with db:
-        violations = workflow.check_glob_matches()
+        violations = workflow.find_glob_violations()
     returncode = ReturnCode(0)
     warnings = [violation for violation in violations if not violation.is_error]
     errors = [violation for violation in violations if violation.is_error]

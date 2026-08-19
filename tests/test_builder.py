@@ -223,7 +223,7 @@ async def test_run_promoted_hash_jobs_applies_result(wfs: Workflow, tmpdir):
     the workflow, same as one drained normally from the queue."""
     with contextlib.chdir(tmpdir):
         async with wfs.db:
-            wfs.declare_unconfirmed(wfs.root, ["a.txt"])
+            wfs.declare_static_files(wfs.root, ["a.txt"])
         with open("a.txt", "w") as fh:
             fh.write("aaa")
 

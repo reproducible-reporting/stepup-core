@@ -23,7 +23,7 @@ from stepup.core.workflow import Workflow
 def _make_stray_unconfirmed(workflow: Workflow, path: str) -> None:
     """Move an already-STATIC file back to UNCONFIRMED, keeping its cached hash.
 
-    A direct DB poke rather than a second `declare_unconfirmed()` call: recycling a
+    A direct DB poke rather than a second `declare_static_files()` call: recycling a
     node's state through the public API requires it to be detached first (e.g. via a
     step's `reset_for_rerun()`), which is more machinery than this test needs. This
     reproduces the on-disk shape of a director killed after redeclaring an
@@ -101,8 +101,8 @@ async def test_check_file_changes_confirms_unchanged_stray_unconfirmed_row(wfs: 
         # only holds if the cached hash actually matches what regen() computes from disk.
         real_hash = FileHash.unknown().regen("foo.txt")
         async with wfs.db:
-            wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
-            wfs.update_file_hashes({"foo.txt": real_hash}, HashUpdateCause.CONFIRMED)
+            wfs.declare_static_files(wfs.root, ["foo.txt"])
+            wfs.update_file_hashes({"foo.txt": real_hash}, cause=HashUpdateCause.CONFIRMED)
             _make_stray_unconfirmed(wfs, "foo.txt")
             assert wfs.find(File, "foo.txt").get_state() == FileState.UNCONFIRMED
 

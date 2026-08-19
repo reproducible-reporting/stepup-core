@@ -157,7 +157,7 @@ class Watcher:
         async with self.db:
             while not change_queue.empty():
                 change, path = change_queue.get_nowait()
-                if self.workflow.is_relevant_during_build(path):
+                if self.workflow.change_is_relevant_during_build(path):
                     await self.record_change(change, path)
 
         # Wait for new changes to show up.
@@ -207,21 +207,21 @@ class Watcher:
     async def record_change(self, change: Change, path: Path):
         """Record a single event taken from the change_queue."""
         if change == Change.DELETED and path not in self.deleted:
-            if self.workflow.is_relevant(path):
+            if self.workflow.change_is_relevant(path):
                 await self.reporter("DELETED", path)
                 self.deleted.add(path)
                 self.updated.discard(path)
                 for event in self.files_changed_events:
                     event.set()
         elif change == Change.UPDATED and path not in self.updated:
-            if self.workflow.is_relevant(path):
+            if self.workflow.change_is_relevant(path):
                 await self.reporter("UPDATED", path)
                 self.deleted.discard(path)
                 self.updated.add(path)
                 for event in self.files_changed_events:
                     event.set()
         elif change == Change.DELETED_PARENT:
-            for sub_path in self.workflow.relevant_paths(path):
+            for sub_path in self.workflow.relevant_paths_under(path):
                 if sub_path not in self.deleted:
                     await self.reporter("DELETED", sub_path)
                     self.deleted.add(sub_path)

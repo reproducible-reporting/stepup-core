@@ -142,7 +142,7 @@ class Builder:
         if not self.live_progress:
             return
         async with self.db:
-            nsuccess, ntotal = self.workflow.get_counts()
+            nsuccess, ntotal = self.workflow.count_required_steps()
         await self.reporter.update_counts(nsuccess, ntotal)
 
     async def job_loop(self):

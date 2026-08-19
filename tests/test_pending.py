@@ -50,9 +50,9 @@ async def _settle(workflow: Workflow, scheduler: Scheduler) -> None:
 
 def _declare_missing(workflow: Workflow, creator: Step, paths: list[str]) -> None:
     """Declare `paths` as static and confirm them absent, i.e. `FileState.MISSING`."""
-    workflow.declare_unconfirmed(creator, paths)
+    workflow.declare_static_files(creator, paths)
     workflow.update_file_hashes(
-        {path: FileHash.unknown() for path in paths}, HashUpdateCause.CONFIRMED
+        {path: FileHash.unknown() for path in paths}, cause=HashUpdateCause.CONFIRMED
     )
 
 
@@ -208,7 +208,7 @@ async def test_deferred_no_blocking_input(wfp: Workflow):
         work = wfp.find(Step, "work")
         work.set_state(StepState.RUNNING)
         amend_step(wfp, work, inp_paths=["side.txt"])
-        wfp.update_file_hashes({"side.txt": fake_hash("side.txt")}, HashUpdateCause.SUCCEEDED)
+        wfp.update_file_hashes({"side.txt": fake_hash("side.txt")}, cause=HashUpdateCause.SUCCEEDED)
         work.set_state(StepState.PENDING, deferred=True)
     await _settle(wfp, scheduler)
     async with wfp.db:
@@ -404,7 +404,7 @@ async def test_partition_invariant(wfp: Workflow):
         deferred_work = wfp.find(Step, "deferred_work")
         deferred_work.set_state(StepState.RUNNING)
         amend_step(wfp, deferred_work, inp_paths=["side.txt"])
-        wfp.update_file_hashes({"side.txt": fake_hash("side.txt")}, HashUpdateCause.SUCCEEDED)
+        wfp.update_file_hashes({"side.txt": fake_hash("side.txt")}, cause=HashUpdateCause.SUCCEEDED)
         deferred_work.set_state(StepState.PENDING, deferred=True)
         # Dynamic cycle (see test_dynamic_cycle for why this needs a child-step indirection).
         wfp.define_step(plan, "cyc1")

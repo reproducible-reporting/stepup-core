@@ -312,7 +312,7 @@ class Executor:
             # If output hashes changed fortuitously,
             # e.g. the user restored them to the expected state,
             # we still want to record the new hash.
-            self.workflow.update_file_hashes(new_out_hashes, HashUpdateCause.SUCCEEDED)
+            self.workflow.update_file_hashes(new_out_hashes, cause=HashUpdateCause.SUCCEEDED)
             step.mark_completed(new_hash, False)
             # Do not call `scheduler.record_stop_time`, as no start time was recorded either.
         self._report_step_counts()
@@ -350,7 +350,7 @@ class Executor:
             )
             self.workflow.update_file_hashes(
                 new_out_hashes,
-                HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
+                cause=HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
             )
             run.detached, run.interrupted_defer = step.mark_completed(new_hash, wants_defer)
             self.scheduler.record_stop_time(step.i, succeeded=new_hash is not None)
@@ -427,7 +427,7 @@ class Executor:
             run.unavailable.clear()
             run.unfresh.clear()
             wants_defer = False
-            self.workflow.update_file_hashes(new_inp_hashes, HashUpdateCause.FAILED)
+            self.workflow.update_file_hashes(new_inp_hashes, cause=HashUpdateCause.FAILED)
         elif wants_defer:
             # Rescheduling in the completed() method needs the new hash to be None,
             # so the step is not marked as succeeded.
@@ -446,7 +446,7 @@ class Executor:
         (`live_progress` is `False`). Otherwise, it schedules `_flush_step_counts`
         `PROGRESS_REFRESH_DELAY` from now, unless a flush is already pending, so that a
         burst of calls (e.g. several steps completing in the same event-loop iteration)
-        collapses into a single `get_counts()` scan and RPC call.
+        collapses into a single `count_required_steps()` scan and RPC call.
 
         Mirrors `ReporterClient._request_jobs_flush`'s coalescing timer.
         """
@@ -466,7 +466,7 @@ class Executor:
     async def _flush_step_counts(self) -> None:
         """Send the current step-state counts to the reporter."""
         async with self.db:
-            nsuccess, ntotal = self.workflow.get_counts()
+            nsuccess, ntotal = self.workflow.count_required_steps()
         await self.reporter.update_counts(nsuccess, ntotal)
 
     async def _reset_step_to_pending(self, step: Step) -> None:
@@ -517,7 +517,7 @@ class Executor:
         unexpected_input_changes = len(new_inp_hashes) > 0
         if unexpected_input_changes:
             async with self.db:
-                self.workflow.update_file_hashes(new_inp_hashes, HashUpdateCause.FAILED)
+                self.workflow.update_file_hashes(new_inp_hashes, cause=HashUpdateCause.FAILED)
         await self._finalize_failed_run(run)
         if unexpected_input_changes:
             await self._hold_for_unexpected_input_changes()
@@ -652,10 +652,10 @@ class Executor:
             # CONFIRMED must be applied even when unchanged:
             # only the update flips UNCONFIRMED -> STATIC/MISSING.
             # Unchanged results under other causes are deliberately NOT applied:
-            # e.g. (EXTERNAL, STATIC, known) would call file_externally_updated
+            # e.g. (EXTERNAL, STATIC, known) would call handle_external_update
             # and needlessly mark all sinks pending. (They should already be pending.)
             async with self.db:
-                self.workflow.update_file_hashes({hash_job.path: new_hash}, hash_job.cause)
+                self.workflow.update_file_hashes({hash_job.path: new_hash}, cause=hash_job.cause)
         if not hash_job.future.done():
             # Resolved after the DB write, so an awaiter that re-reads file state on wake always
             # sees the post-transition state.

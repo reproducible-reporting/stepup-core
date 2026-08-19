@@ -72,12 +72,12 @@ async def test_watch_changes_reports_unchanged_and_updates_only_the_changed_file
             fh.write("before")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
-            wfp.declare_unconfirmed(plan, ["same.txt", "changed.txt"])
+            wfp.declare_static_files(plan, ["same.txt", "changed.txt"])
             same_hash = FileHash.unknown().regen("same.txt")
             changed_hash = FileHash.unknown().regen("changed.txt")
             wfp.update_file_hashes(
                 {"same.txt": same_hash, "changed.txt": changed_hash},
-                HashUpdateCause.CONFIRMED,
+                cause=HashUpdateCause.CONFIRMED,
             )
 
         # Simulate "changed.txt" having been rewritten while the build phase was active,
@@ -112,8 +112,10 @@ async def test_watch_changes_drain_records_missing_file(wfp: Workflow, tmpdir):
     with contextlib.chdir(tmpdir):
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
-            wfp.declare_unconfirmed(plan, ["ghost.txt"])
-            wfp.update_file_hashes({"ghost.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED)
+            wfp.declare_static_files(plan, ["ghost.txt"])
+            wfp.update_file_hashes(
+                {"ghost.txt": FileHash.unknown()}, cause=HashUpdateCause.CONFIRMED
+            )
             ghost = wfp.find(File, "ghost.txt")
             assert ghost.get_state() == FileState.MISSING
 

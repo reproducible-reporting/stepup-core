@@ -325,10 +325,11 @@ BEGIN
 END;
 
 -- Bucketed counts of non-detached steps by (_implied_need, succeeded), maintained
--- incrementally so Workflow.get_counts() can answer with a lookup over at most
+-- incrementally so Workflow.count_required_steps() can answer with a lookup over at most
 -- 2 * (1 + max(Need) - min(Need)) rows instead of scanning every step in the workflow.
--- The bucketing (rather than one row per StepState) is deliberate: get_counts() only ever
--- needs "succeeded" vs. "not succeeded", so PENDING/RUNNING/CHECKING/FAILED transitions
+-- The bucketing (rather than one row per StepState) is deliberate:
+-- count_required_steps() only ever needs "succeeded" vs. "not succeeded",
+-- so PENDING/RUNNING/CHECKING/FAILED transitions
 -- among each other never have to touch this table at all.
 -- Deliberately a temp table (like path_list/node_list in FILE_SCHEMA), not persisted: that
 -- sidesteps ever having to migrate/backfill it for on-disk databases written before this
@@ -660,10 +661,10 @@ class Step(Node):
     def initialize_row(
         self,
         *,
-        safe: bool = False,
         need: Need = Need.DEFAULT,
         shell: bool = False,
         duration: float | None = None,
+        _safe: bool = False,
         **kwargs,  # workdir is consumed by adjust_label, not used here
     ):
         """Create extra information in the database about this node.
@@ -722,8 +723,8 @@ class Step(Node):
                 "state": StepState.PENDING.value,
                 "duration": 1.0 if duration is None else duration,
                 "shell": int(shell),
-                "safe": int(safe),
-                "check_safe": int(not safe),
+                "safe": int(_safe),
+                "check_safe": int(not _safe),
                 "implied_need": need.value,
             },
         )
@@ -1378,7 +1379,7 @@ class Step(Node):
             for file in self.products(File):
                 if file.get_state() == FileState.OUTDATED:
                     file.set_state(FileState.BUILT)
-                    self.graph.mark_sinks_pending(file)
+                    self.graph.mark_consuming_steps_pending(file)
             self.set_hash(new_hash)
         return False, interrupted_defer
 

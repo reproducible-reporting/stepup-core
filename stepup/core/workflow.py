@@ -3,7 +3,6 @@
 """The `Workflow` is a `Trellis` subclass with more concrete node implementations."""
 
 import asyncio
-import functools
 import json
 import logging
 import os
@@ -18,7 +17,9 @@ from path import Path
 from .cattrs import json_converter
 from .constants import PLAN_PY, STEPUP_DIR
 from .enums import (
+    BUILT_PRODUCT_STATES,
     REGULAR_OUTPUT_STATES,
+    STATIC_DECLARED_STATES,
     TARGET_FORBIDDEN_STATES,
     FileState,
     HashUpdateCause,
@@ -196,35 +197,12 @@ _HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState
     # startup.py's scan_file_changes no longer relies on these: it confirms stray
     # UNCONFIRMED rows directly via CONFIRMED above, changed or not. Kept as a defensive
     # fallback for Watcher.watch_changes, whose EXTERNAL regen loop is not known to be
-    # unreachable for a non-detached UNCONFIRMED file (Workflow.is_relevant() does not
+    # unreachable for a non-detached UNCONFIRMED file (Workflow.change_is_relevant() does not
     # exclude UNCONFIRMED, only AWAITED/VOLATILE) even though it is not expected to hit
     # one in normal operation.
     (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, True): (FileState.STATIC, "updated"),
     (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, False): (FileState.MISSING, "deleted"),
 }
-
-
-@functools.lru_cache(maxsize=1024)
-def _compiled(regex: str) -> re.Pattern[str]:
-    """Compile and cache a glob pattern's regex.
-
-    The regexes come from the `nglob` table and are re-read on every check, while the
-    set of distinct patterns in a project is small, so caching the compilation is what
-    keeps the check cheap.
-    """
-    return re.compile(regex)
-
-
-# The three file states a static declaration (as opposed to a build product) can leave
-# behind. Shared by `_is_own_static_file` and the static-tree ownership checks in
-# `_declare_file` and `register_static_tree`, so the triple cannot drift between them.
-STATIC_DECLARED_STATES = (FileState.UNCONFIRMED, FileState.STATIC, FileState.MISSING)
-
-# The three file states that mean "a step builds this". The complement of
-# STATIC_DECLARED_STATES within the states a glob match can resolve to, except for
-# AWAITED, which is a build product whose producer may not have run yet and is therefore
-# reported as a warning, not an error (see Workflow.check_glob_matches).
-BUILT_PRODUCT_STATES = (FileState.BUILT, FileState.OUTDATED, FileState.VOLATILE)
 
 
 def _static_tree_file_message(tree_path: str, path: str) -> str:
@@ -340,11 +318,14 @@ class GlobViolation:
 
 @attrs.define(eq=False)
 class Workflow(Trellis):
-    makedirs: bool = attrs.field(kw_only=True, default=True)
-    """Whether to create parent directories of output files when they are supplied or created."""
+    create_parent_dirs: bool = attrs.field(kw_only=True, default=True)
+    """Whether to create parent directories of output files when they are supplied or created.
+
+    This is disabled in tests only. StepUp normally always creates directories when needed.
+    """
 
     dir_queue: asyncio.Queue | None = attrs.field(kw_only=True)
-    """Directories to be (un)watched can be added to this queue."""
+    """Directories to be watched can be added to this queue."""
 
     defer_cap: int = attrs.field(kw_only=True, default=100)
     """Maximum number of consecutive defers (since the last SUCCEEDED) before a
@@ -354,23 +335,30 @@ class Workflow(Trellis):
     targets: frozenset[Path] = attrs.field(kw_only=True, factory=frozenset, converter=frozenset)
     """The paths `stepup build` was asked to produce.
 
-    Set once at construction and never mutated afterward — the only way to change the
-    target set is to restart the director. An empty set (the default) means
-    "build everything," unchanged behavior."""
+    This is set once at construction and never mutated afterward.
+    The only way to change the target set is to restart the director.
+    An empty set (the default) means "build everything".
+    """
 
     target_dirs: frozenset[Path] = attrs.field(kw_only=True, factory=frozenset, converter=frozenset)
     """The directories `stepup build` was asked to produce everything under.
 
-    Entries always carry their trailing slash. Set once at construction and never mutated
-    afterward, mirroring `targets`. An empty set (the default) means no directory targets
-    were given."""
+    Entries always carry their trailing slash.
+    This is set once at construction and never mutated afterward, mirroring `targets`.
+    An empty set (the default) means no directory targets were given.
+    """
 
     to_be_deleted: dict[str, FileHash | None] = attrs.field(init=False, factory=dict)
-    """Files that can be deleted, plus any parent directories left empty by that.
+    """Files that can be deleted, including parent directories left empty after file deletion.
 
-    Maps a path to its file hash. This dict contains BUILT/OUTDATED file nodes (with their
-    file hash) and VOLATILE file nodes (hash always `None`) that were removed from the graph.
+    Maps a path to its file hash. This dict contains BUILT/OUTDATED file nodes
+    (with their file hash) and VOLATILE file nodes (hash always `None`)
+    that were removed from the graph by the `Workflow.clean()` method.
     """
+
+    #
+    # Configuration and derived properties
+    #
 
     @property
     def need_threshold(self) -> Need:
@@ -378,7 +366,7 @@ class Workflow(Trellis):
         return Need.DEFAULT if self.targets or self.target_dirs else Need.OPTIONAL
 
     #
-    # Initialization and schema
+    # Base class overrides and initialization
     #
 
     @staticmethod
@@ -394,7 +382,7 @@ class Workflow(Trellis):
         """Seed `step_need_count` once per fresh connection, then chain to the base class."""
         super()._rebuild_temp_tables()
 
-        # step_need_count (see STEP_SCHEMA / get_counts()) is a temp table, empty on every
+        # step_need_count (see STEP_SCHEMA / count_required_steps()) is a temp table, empty on every
         # fresh connection, and only kept in sync with the step table going forward by
         # triggers. This can run more than once per connection (e.g. tests call
         # initialize() more than once), so it is unconditionally rebuilt from scratch here
@@ -437,6 +425,20 @@ class Workflow(Trellis):
         for step in to_mark_pending:
             self.mark_step_pending(step)
 
+    def clean(self):
+        """Delete all detached nodes that can be removed safely.
+
+        This includes a cleanup of static tree files that are no longer used,
+        after which the regular `Trellis.clean()` is called to remove any other detached nodes.
+        """
+        # Get rid of static tree files that are no longer used.
+        for st in self.nodes(StaticTree):
+            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
+            for file in files:
+                if not any(file.sinks()):
+                    file.detach()
+        super().clean()
+
     def initialize_boot(self) -> bool:
         """Initialize the (new) boot script.
 
@@ -460,23 +462,36 @@ class Workflow(Trellis):
         # Need to (re)initialize the boot steps.
         for node in nodes.values():
             node.detach()
-        to_check = self.declare_unconfirmed(self.root, [PLAN_PY])
+        to_check = self.declare_static_files(self.root, [PLAN_PY])
         checked = {path: file_hash.regen(path) for path, file_hash in to_check.items()}
-        self.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
-        self.define_step(self.root, command, inp_paths=[PLAN_PY], need=Need.PLAN, safe=True)
+        self.update_file_hashes(checked, cause=HashUpdateCause.CONFIRMED)
+        self.define_step(self.root, command, inp_paths=[PLAN_PY], need=Need.PLAN, _safe=True)
         return True
 
     #
-    # Target reconciliation
+    # Build targets
     #
+
+    def _raise_if_forbidden_target(self, path: str, state: FileState):
+        """Raise when `path` is a build target in a state a target may never have.
+
+        Raises
+        ------
+        GraphError
+            When `path` is in `self.targets` and `state` is in `TARGET_FORBIDDEN_STATES`.
+        """
+        if path in self.targets and state in TARGET_FORBIDDEN_STATES:
+            if state == FileState.VOLATILE:
+                raise GraphError(f"A build target cannot be a volatile output: {path}")
+            raise GraphError(f"A build target cannot be a static file: {path}")
 
     def reconcile_targets(self):
         """Validate targets against the loaded graph and flag affected steps for recompute.
 
-        Declaration-time validation (in `_declare_file` and `_resolve_supply_file`) only
-        runs when `define_step`/`amend_step`/`declare_unconfirmed` are actually called, which
-        does not happen for a database-resumed run against an unchanged `plan.py`. Call
-        this once at director startup, after the boot/resume step
+        Declaration-time validation (in `_declare_file` and `_resolve_supply_file`) only runs
+        when `define_step`/`amend_step`/`declare_static_files` are actually called,
+        which does not happen for a database-resumed run against an unchanged `plan.py`.
+        Call this once at director startup, after the boot/resume step
         (`serve`'s `Workflow.initialize_boot`/`startup_from_db`) so that a changed `plan.py`
         has already been marked `PENDING`, and before the first scheduler tick, and after
         `Scheduler.initialize()` has created and populated the `target_dir` temp table.
@@ -484,12 +499,12 @@ class Workflow(Trellis):
         recomputation (see `scheduler.UPDATE_CHECK_AFTER`) that runs on the next
         metadata pass for every step flagged here.
 
-        Directory targets (`self.target_dirs`) are handled separately from `self.targets`
-        below, by a single bulk range `UPDATE`. Unlike exact targets, directory-target
-        elevation is best-effort and never raises: the stale direction (a step that was
-        elevated by a directory target in a previous run) is already covered by the reset
-        below, since such a step also has `_implied_need = TARGET`; only the newly-matching
-        direction needs new code.
+        Directory targets (`self.target_dirs`) are handled separately from `self.targets` below,
+        by a single bulk range `UPDATE`.
+        Unlike exact targets, directory-target elevation is best-effort and never raises:
+        the stale direction (a step that was elevated by a directory target in a previous run)
+        is already covered by the reset below, since such a step also has `_implied_need = TARGET`;
+        only the newly-matching direction needs new code.
 
         Raises
         ------
@@ -499,27 +514,27 @@ class Workflow(Trellis):
             that file state is not going to be re-evaluated. Never raised for directory
             targets.
         """
-        # Stale TARGET values in _implied_need (left behind by a previous run with a
-        # different target set) must be recomputed; over-flagging is always safe since
-        # recomputation is state-free.
+        # Stale TARGET values in _implied_need (from a previous run with different targets)
+        # must be recomputed.
+        # Over-flagging is always safe since recomputation is state-free.
         self.db.execute(
             f"UPDATE step SET _check_after = 1 WHERE _implied_need = {Need.TARGET.value}"
         )
         # One-time startup cost, several queries per target instead of one batched query.
-        # Accepted for now given small typical target counts; revisit if this shows up in
-        # profiling.
+        # Accepted for now given small typical target counts; revisit if this shows up in profiling.
         for path in sorted(self.targets):
             file, detached = self.find_and_detached(File, path)
             if file is None or detached:
-                # Not (yet) in the graph, or detached. Detached rows are deliberately
-                # skipped: they may be garbage from an abandoned plan, and raising on
-                # those would block legitimate builds. Declaration-time checks and the
-                # not-produced warning cover these.
+                # Not (yet) in the graph, or detached.
+                # Detached rows are deliberately skipped:
+                # they may be garbage from an abandoned plan,
+                # and raising on those would block legitimate builds.
+                # Declaration-time checks and the not-produced warning cover these.
                 continue
             state = file.get_state()
             if state in TARGET_FORBIDDEN_STATES:
-                # Only raise when the declaration producing this row is still current: a
-                # PENDING step in the creator chain may re-declare the file differently
+                # Only raise when the declaration producing this row is still current:
+                # a PENDING step in the creator chain may re-declare the file differently
                 # when it reruns, in which case declaration-time checks take over.
                 if not self._creator_chain_pending(file):
                     self._raise_if_forbidden_target(path, state)
@@ -542,9 +557,92 @@ class Workflow(Trellis):
             if isinstance(node, Step) and node.get_state() == StepState.PENDING:
                 return True
 
+    def is_regular_output(self, path: str) -> bool:
+        """Return whether `path` is currently a regular (non-volatile) output of a step."""
+        file, detached = self.find_and_detached(File, path)
+        return (
+            file is not None
+            and not detached
+            and isinstance(file.creator(), Step)
+            and file.get_state() in REGULAR_OUTPUT_STATES
+        )
+
+    def has_regular_output_under(self, dir_path: str) -> bool:
+        """Return whether any active step's regular (non-volatile) output falls under `dir_path`.
+
+        Parameters
+        ----------
+        dir_path
+            A directory-target label (trailing slash).
+
+        Returns
+        -------
+        has_output
+            True if any active step produces a regular output under `dir_path`, False otherwise.
+
+        Notes
+        -----
+        Backs the end-of-build matched-nothing warning for directory targets.
+        (See `builder.report_completion`.)
+
+        The query scans the label range `[dir_path, dir_range_upper(dir_path))`,
+        i.e. exactly the file labels under the directory target.
+        Within that range, a file counts as a regular output when it is attached,
+        is the sink of a dependency edge (whose source is then the step that produces it),
+        and its state is not `VOLATILE`.
+        The dependency sinks of a step are its `out_paths` (`AWAITED`, `BUILT` or `OUTDATED`)
+        and its `vol_paths` (`VOLATILE`),
+        so ruling out `VOLATILE` leaves precisely the regular outputs.
+        `is_regular_output()` answers the same question for one exact label,
+        but reaches the step through the file's creator instead of a dependency edge.
+
+        This condition is copied from the directory arm of `scheduler.UPDATE_CHECK_AFTER`,
+        which elevates a step to `Need.TARGET` when one of its outputs falls under a
+        directory target, so the two can never disagree about what counts as an output there.
+        One filter of that arm is deliberately dropped: `step.need = DEFAULT`.
+        Elevation leaves steps declared `OPTIONAL` alone,
+        so a directory holding only `OPTIONAL` outputs elevates nothing,
+        yet it is a correctly spelled path and must not be reported.
+        The warning is meant to catch a mistyped or obsolete directory target
+        ("nothing is ever produced here"),
+        not a deliberate opt-out ("things are produced here, but you excluded them").
+        This makes it weaker than the exact-target warning:
+        it can stay silent for a directory target that ended up elevating no step at all.
+        """
+        row = self.db.execute(
+            "SELECT EXISTS ("
+            "SELECT 1 FROM node AS onode "
+            "JOIN file AS ofile ON ofile.node = onode.i "
+            "JOIN dependency AS depo ON depo.sink = onode.i "
+            f"WHERE onode.kind = '{File.kind()}' "
+            "AND onode.label >= ? AND onode.label < ? "
+            "AND NOT onode.detached "
+            f"AND ofile.state != {FileState.VOLATILE.value})",
+            (dir_path, dir_range_upper(dir_path)),
+        ).fetchone()
+        return bool(row[0])
+
     #
     # Workflow introspection
     #
+
+    def format_dot_provenance(self) -> str:
+        """Return the provenance graph (creator->product) in GraphViz DOT format."""
+        node_sql = "SELECT i, kind, label FROM node"
+        edge_sql = "SELECT creator, i FROM node"
+        return self._format_dot_generic("empty", node_sql, edge_sql)
+
+    def format_dot_dependency(self) -> str:
+        """Return the dependency graph (source-product) in GraphViz DOT format."""
+        return self._format_dot_generic(
+            "normal",
+            "SELECT i, kind, label FROM node WHERE NOT (kind = 'root')",
+            "SELECT source, sink FROM dependency "
+            "JOIN node AS snode ON snode.i = source "
+            "JOIN node AS cnode ON cnode.i = sink "
+            "WHERE NOT ((snode.kind = 'file' AND snode.label LIKE '%/')"
+            "OR (cnode.kind = 'file' AND cnode.label LIKE '%/'))",
+        )
 
     def _format_dot_generic(self, arrowhead: str, node_sql: str, edge_sql: str) -> str:
         lines = [
@@ -571,31 +669,22 @@ class Workflow(Trellis):
         lines.append("}")
         return "\n".join(lines)
 
-    def format_dot_provenance(self) -> str:
-        """Return the provenance graph (creator->product) in GraphViz DOT format."""
-        node_sql = "SELECT i, kind, label FROM node"
-        edge_sql = "SELECT creator, i FROM node"
-        return self._format_dot_generic("empty", node_sql, edge_sql)
+    def count_required_steps(self) -> tuple[int, int]:
+        """Return completion counts of the required steps (succeeded and total).
 
-    def format_dot_dependency(self) -> str:
-        """Return the dependency graph (source-product) in GraphViz DOT format."""
-        return self._format_dot_generic(
-            "normal",
-            "SELECT i, kind, label FROM node WHERE NOT (kind = 'root')",
-            "SELECT source, sink FROM dependency "
-            "JOIN node AS snode ON snode.i = source "
-            "JOIN node AS cnode ON cnode.i = sink "
-            "WHERE NOT ((snode.kind = 'file' AND snode.label LIKE '%/')"
-            "OR (cnode.kind = 'file' AND cnode.label LIKE '%/'))",
-        )
+        Only steps whose `_implied_need` exceeds `need_threshold` are counted,
+        i.e. the steps this run is actually required to complete.
 
-    def get_counts(self) -> tuple[int, int]:
-        """Return completion counts (succeeded and total).
+        Reads from `step_need_count`, a table of per-`(implied_need, succeeded)` bucket counts
+        kept incrementally in sync with the `step` table by triggers (see `STEP_SCHEMA`),
+        so this is a lookup over at most a handful of rows instead of a full step table scan.
 
-        Reads from `step_need_count`, a table of per-`(implied_need, succeeded)` bucket
-        counts kept incrementally in sync with the `step` table by triggers (see
-        `STEP_SCHEMA`), so this is a lookup over at most a handful of rows instead of a
-        scan of every step in the workflow.
+        Returns
+        -------
+        nsucceeded
+            The number of required steps that have succeeded.
+        ntotal
+            The total number of required steps.
         """
         sql = (
             "SELECT coalesce(sum(succeeded * n), 0), coalesce(sum(n), 0) "
@@ -605,6 +694,7 @@ class Workflow(Trellis):
         return nsucceeded, ntotal
 
     def steps(self, state: StepState) -> Iterator[Step]:
+        """Iterate over all steps with the given state."""
         sql = (
             "SELECT i, label FROM node JOIN step ON node.i = step.node "
             "WHERE state = ? AND NOT detached"
@@ -612,47 +702,11 @@ class Workflow(Trellis):
         for i, label in self.db.execute(sql, (state.value,)):
             yield Step(self, i, label)
 
-    def is_regular_output(self, path: str) -> bool:
-        """Return whether `path` is currently a regular (non-volatile) output of a step."""
-        file, detached = self.find_and_detached(File, path)
-        return (
-            file is not None
-            and not detached
-            and isinstance(file.creator(), Step)
-            and file.get_state() in REGULAR_OUTPUT_STATES
-        )
-
-    def dir_has_regular_output(self, path: str) -> bool:
-        """Return whether any active step's regular (non-volatile) output falls under `path`.
-
-        `path` is a directory-target label (trailing slash). Backs the end-of-build
-        matched-nothing warning for directory targets (`builder.report_completion`). Unlike
-        `is_regular_output()`, this checks a label range instead of a single label, and
-        deliberately has no `step.need = DEFAULT` filter: the warning catches typos
-        ("nothing is ever produced here"), not policy surprises ("things are produced here
-        but you opted them out" -- an `OPTIONAL`-only directory is a correctly-spelled path).
-        `state != VOLATILE` with a dependency-sink join mirrors the elevation arm's
-        condition verbatim (`scheduler.UPDATE_CHECK_AFTER`), so warning and elevation can
-        never disagree about what counts as an output.
-        """
-        row = self.db.execute(
-            "SELECT EXISTS ("
-            "SELECT 1 FROM node AS onode "
-            "JOIN file AS ofile ON ofile.node = onode.i "
-            "JOIN dependency AS depo ON depo.sink = onode.i "
-            f"WHERE onode.kind = '{File.kind()}' "
-            "AND onode.label >= ? AND onode.label < ? "
-            "AND NOT onode.detached "
-            f"AND ofile.state != {FileState.VOLATILE.value})",
-            (path, dir_range_upper(path)),
-        ).fetchone()
-        return bool(row[0])
-
     #
     # State propagation
     #
 
-    def update_file_hashes(self, file_hashes: Mapping[str, FileHash], cause: HashUpdateCause):
+    def update_file_hashes(self, file_hashes: Mapping[str, FileHash], *, cause: HashUpdateCause):
         """Update the hashes of existing files.
 
         Parameters
@@ -689,7 +743,7 @@ class Workflow(Trellis):
             )
 
         # Files grouped by the follow-up action to take on them, keyed by the action tags used
-        # in `_HASH_TRANSITIONS` (`"updated"` -> `file_externally_updated`, etc.).
+        # in `_HASH_TRANSITIONS` (`"updated"` -> `handle_external_update`, etc.).
         action_lists: dict[str, list[tuple[int, str]]] = {
             "updated": [],
             "deleted": [],
@@ -735,13 +789,45 @@ class Workflow(Trellis):
             action_lists["completed"],
         )
         for i, path in action_lists["updated"]:
-            self.file_externally_updated(File(self, i, path))
+            self.handle_external_update(File(self, i, path))
         for i, path in action_lists["deleted"]:
-            self.file_externally_deleted(File(self, i, path))
+            self.handle_external_delete(File(self, i, path))
         for i, path in action_lists["completed"]:
-            self.mark_sinks_pending(File(self, i, path))
+            self.mark_consuming_steps_pending(File(self, i, path))
 
-    def file_externally_updated(self, file: File):
+    def get_file_hashes(self, paths: Collection[str]) -> dict[str, FileHash]:
+        """Get the hashes of existing files.
+
+        Parameters
+        ----------
+        paths
+            A list of paths.
+
+        Returns
+        -------
+        file_hashes
+            The current hashes of the files, keyed by path, ordered by path.
+        """
+        # The `label IN (SELECT path FROM path_list)` form makes the planner drive from
+        # `node`'s `node_kind_label` index (probed once per requested path via a Bloom-filtered
+        # membership test), instead of a plain JOIN against path_list, which lets the planner
+        # drive from a full scan of `node` instead, an O(n_nodes) cost regardless of how few
+        # paths are requested. As a bonus, results come out pre-sorted by the covering index,
+        # so no separate ORDER BY sort is needed. `path_list` is a real indexed scratch table
+        # (see file.py), populated here and cleared before reuse, instead of `json_each(...)`,
+        # which was found to be slow in performance tests.
+        db = self.db
+        db.execute("DELETE FROM path_list")
+        db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
+        sql = (
+            "SELECT node.label, file.hash FROM node "
+            "JOIN file ON file.node = node.i "
+            "WHERE node.kind = 'file' AND node.label IN (SELECT path FROM path_list) "
+            "ORDER BY node.label"
+        )
+        return {path: FileHash.from_json(hash_value) for path, hash_value in db.execute(sql)}
+
+    def handle_external_update(self, file: File):
         """Modify the graph to account for the external changes to this file.
 
         File states and hashes have already been updated before this method is called.
@@ -757,7 +843,7 @@ class Workflow(Trellis):
             if creator is not None and creator.kind() == "step":
                 self.mark_step_pending(creator)
 
-    def file_externally_deleted(self, file: File):
+    def handle_external_delete(self, file: File):
         """Modify the graph to account for the fact this file was deleted.
 
         File states and hashes have already been updated before this method is called.
@@ -781,16 +867,14 @@ class Workflow(Trellis):
             # Make all sinks pending.
             for step in file.sinks(Step):
                 self.mark_step_pending(step)
-            for sink_file in file.sinks(File):
-                self.file_externally_deleted(sink_file)
 
-    def mark_sinks_pending(self, file: File):
-        """Mark all sink steps pending."""
+    def mark_consuming_steps_pending(self, file: File):
+        """Mark all steps that use this file as an input pending, detached ones included."""
         for step in file.sinks(Step, include_detached=True):
             self.mark_step_pending(step)
 
     def mark_step_pending(self, step: Step):
-        """Set SUCCEEDED or FAILED step pending (again).
+        """Make SUCCEEDED or FAILED step PENDING (again).
 
         There can be many reasons for marking a step pending again, after having been completed:
 
@@ -819,11 +903,12 @@ class Workflow(Trellis):
                     self.mark_file_outdated(file)
 
     def mark_file_outdated(self, file: File):
+        """Make a BUILT file OUTDATED."""
         state = file.get_state()
         if state == FileState.BUILT:
             logger.info("Mark %s file OUTDATED: %s", state.name, file.path)
             file.set_state(FileState.OUTDATED)
-            self.mark_sinks_pending(file)
+            self.mark_consuming_steps_pending(file)
         elif state != FileState.OUTDATED:
             raise ValueError(f"Cannot make file outdated when its state is {state.name}")
 
@@ -831,22 +916,23 @@ class Workflow(Trellis):
     # Build phase (helper methods)
     #
 
-    def _find_matching_static_tree(self, path: str) -> StaticTree | None:
-        srs = []
+    def _find_owning_static_tree(self, path: str) -> StaticTree | None:
+        """Return the static tree that owns `path`, or None if none exists."""
+        trees = []
         sql = (
             "SELECT i, label FROM node WHERE kind = 'st' AND NOT detached AND "
             "label = substr(?, 1, length(label))"
         )
         path = Path(path) / ""
         for i, label in self.db.execute(sql, (path,)):
-            srs.append(StaticTree(self, i, label))
-        if len(srs) > 1:
+            trees.append(StaticTree(self, i, label))
+        if len(trees) > 1:
             raise GraphError(f"Multiple static trees match: {path}")
-        if len(srs) == 1:
-            return srs[0]
+        if len(trees) == 1:
+            return trees[0]
         return None
 
-    def _is_own_static_file(self, creator: Node, path: str) -> bool:
+    def _already_declared_static_by(self, creator: Node, path: str) -> bool:
         """Test whether `creator` already declared `path` as a static file.
 
         Parameters
@@ -871,26 +957,13 @@ class Workflow(Trellis):
         )
         return self.db.execute(sql, (path, creator.i)).fetchone() is not None
 
-    def _raise_if_forbidden_target(self, path: str, state: FileState):
-        """Raise when `path` is a build target in a state a target may never have.
-
-        Raises
-        ------
-        GraphError
-            When `path` is in `self.targets` and `state` is in `TARGET_FORBIDDEN_STATES`.
-        """
-        if path in self.targets and state in TARGET_FORBIDDEN_STATES:
-            if state == FileState.VOLATILE:
-                raise GraphError(f"A build target cannot be a volatile output: {path}")
-            raise GraphError(f"A build target cannot be a static file: {path}")
-
     def _resolve_supply_file(
         self,
-        node: Node,
+        step: Step,
         path: str,
-        new: bool,
+        require_new_edge: bool,
     ) -> tuple[File, FileState, bool]:
-        """Find or create the file for a path and resolve its relation to node.
+        """Find or create the file for a path and resolve its relation to the step.
 
         This performs everything `_supply_files` needs except inserting the
         dependency edge, so the cyclic-dependency check can be batched
@@ -898,13 +971,13 @@ class Workflow(Trellis):
 
         Parameters
         ----------
-        node
-            The step node to supply to.
+        step
+            The step to supply to.
         path
-            The path of the file that should supply to the node.
-        new
-            When `True` the (file, node) relationship must be new.
-            If not, a `GraphError` is raised.
+            The path of the file that should supply to the step.
+        require_new_edge
+            When `True` the (file, step) dependency edge must not exist yet.
+            If it does, a `GraphError` is raised.
 
         Returns
         -------
@@ -913,18 +986,18 @@ class Workflow(Trellis):
         state
             See `SupplyInfo.state`.
         new_relation
-            `True` when the (file, node) dependency edge does not exist yet
+            `True` when the (file, step) dependency edge does not exist yet
             and still needs to be inserted by the caller.
 
         Raises
         ------
         GraphError
             When the path is volatile.
-            When the path exists while it is expected to be new.
+            When the edge exists while it is required to be new.
         """
         file, detached = self.find_and_detached(File, path)
         if file is None or detached:
-            st = self._find_matching_static_tree(path)
+            st = self._find_owning_static_tree(path)
             if st is None:
                 state = FileState.AWAITED
                 file = self.create(File, None, path, state=state)
@@ -932,7 +1005,7 @@ class Workflow(Trellis):
                 state = FileState.UNCONFIRMED
                 self._raise_if_forbidden_target(path, state)
                 file = self.create(File, st, path, state=state)
-            self.put_dir_queue(Path(path).parent)
+            self.watch_dir(Path(path).parent)
         else:
             state = file.get_state()
             if state == FileState.VOLATILE:
@@ -940,39 +1013,31 @@ class Workflow(Trellis):
             self._raise_if_forbidden_target(path, state)
         new_relation = (
             self.db.execute(
-                "SELECT 1 FROM dependency WHERE source = ? AND sink = ?", (file.i, node.i)
+                "SELECT 1 FROM dependency WHERE source = ? AND sink = ?", (file.i, step.i)
             ).fetchone()
             is None
         )
-        if not new_relation and new:
+        if not new_relation and require_new_edge:
             raise GraphError(f"Supplying file already exists: {path}")
         return file, state, new_relation
 
     def _supply_files(
         self,
-        node: Node,
+        step: Step,
         paths: Collection[str],
-        new: bool = True,
+        require_new_edge: bool = True,
     ) -> list[SupplyInfo]:
-        """Find or create files for several paths and make them sources of node.
-
-        Since `node` is the sink of every new edge in this batch,
-        the cyclic-dependency check is performed once for the whole batch
-        (via `Node.check_no_cycle_batch`) instead of once per path.
-        Note that if `paths` contains a duplicate, it is caught later than before:
-        as a `GraphError("Relation already exists")` from `add_source` instead of
-        `GraphError("Supplying file already exists")`.
-        This is unreachable in practice because callers already dedupe `paths`.
+        """Find or create files for several paths and make them sources of the step.
 
         Parameters
         ----------
-        node
-            The step node to supply to.
+        step
+            The step to supply to.
         paths
-            The paths of the files that should supply to the node.
-        new
-            When `True` every (file, node) relationship must be new.
-            If not, a `GraphError` is raised.
+            The paths of the files that should supply to the step.
+        require_new_edge
+            When `True` none of the (file, step) dependency edges may exist yet.
+            If one does, a `GraphError` is raised.
 
         Returns
         -------
@@ -983,19 +1048,29 @@ class Workflow(Trellis):
         ------
         GraphError
             When a path is volatile.
-            When a path exists while it is expected to be new.
+            When an edge exists while it is required to be new.
         CyclicError
             When adding the new relations would introduce a cyclic dependency.
+
+        Notes
+        -----
+        Since `step` is the sink of every new edge in this batch,
+        the cyclic-dependency check is performed once for the whole batch
+        (via `Node.check_no_cycle_batch`) instead of once per path.
+        Note that if `paths` contains a duplicate, it is caught later than before:
+        as a `GraphError("Relation already exists")` from `add_source` instead of
+        `GraphError("Supplying file already exists")`.
+        This is unreachable in practice because callers already dedupe `paths`.
         """
-        resolved = [self._resolve_supply_file(node, path, new) for path in paths]
+        resolved = [self._resolve_supply_file(step, path, require_new_edge) for path in paths]
         new_file_is = [file.i for file, _, new_relation in resolved if new_relation]
         if len(new_file_is) > 0:
-            node.check_no_cycle_batch(new_file_is)
+            step.check_no_cycle_batch(new_file_is)
         return [
             SupplyInfo(
                 file,
                 state,
-                new_idep=(node.add_source(file, skip_cycle_check=True) if new_relation else None),
+                new_idep=(step.add_source(file, skip_cycle_check=True) if new_relation else None),
             )
             for file, state, new_relation in resolved
         ]
@@ -1027,7 +1102,7 @@ class Workflow(Trellis):
         if file_state == FileState.VOLATILE and path.endswith(os.sep):
             raise GraphError("A volatile output cannot be a directory.")
         if creator.kind() != "st":
-            static_tree = self._find_matching_static_tree(path)
+            static_tree = self._find_owning_static_tree(path)
             if static_tree is not None:
                 if file_state == FileState.UNCONFIRMED:
                     raise GraphError(_static_tree_file_message(static_tree.label, path))
@@ -1044,42 +1119,10 @@ class Workflow(Trellis):
                 raise GraphError(f"An input to an existing step cannot be volatile: {path}")
         else:
             # Watch parent directories of non-volatile files.
-            self.put_dir_queue(Path(path).parent)
+            self.watch_dir(Path(path).parent)
         return file
 
-    def _raise_if_glob_match(self, step_label: str, paths: Collection[str]) -> None:
-        """Raise when a registered glob pattern matches a path a step is about to build.
-
-        This is the late-arriving half of the rule that a glob pattern may only match
-        static files: `register_nglob` catches the outputs that already exist, this
-        catches the ones declared afterwards. Whichever event happens second is the one
-        that raises, which is what makes the rule independent of execution order.
-
-        Parameters
-        ----------
-        step_label
-            The label of the step declaring `paths`, or its command when the step node
-            does not exist yet (`define_step`, before the recycle short-circuit).
-        paths
-            The output and volatile paths the step is about to declare.
-        """
-        if not paths:
-            return
-        sql = (
-            "SELECT node.i, node.label, nglob.pattern, nglob.regex FROM nglob "
-            "JOIN node ON node.i = nglob.node WHERE NOT node.detached"
-        )
-        for _node_i, glob_step_label, pattern, regex in self.db.execute(sql):
-            for path in sorted(paths):
-                if _compiled(regex).fullmatch(path):
-                    raise GraphError(
-                        f"Glob pattern ({pattern}) registered by step ({glob_step_label}) "
-                        f"matches ({path}), which step ({step_label}) builds. "
-                        "A glob pattern may only match static files: narrow the pattern, "
-                        "or declare the file with static() instead of building it."
-                    )
-
-    def _build_to_check(self, unconfirmed: Collection[File]) -> dict[str, FileHash]:
+    def _hashes_to_check(self, unconfirmed: Collection[File]) -> dict[str, FileHash]:
         """Collect the currently known hashes of UNCONFIRMED file nodes, keyed by path.
 
         This mapping is intended for the caller to submit as hash jobs
@@ -1112,26 +1155,11 @@ class Workflow(Trellis):
     # Build phase (low-level public API)
     #
 
-    def clean(self):
-        """Delete all detached nodes that can be removed safely.
-
-        This includes a cleanup of static tree files that are no longer used,
-        after which the regular `Trellis.clean()` is called to remove any other detached nodes.
-        """
-        # Get rid of static tree files that are no longer used.
-        for st in self.nodes(StaticTree):
-            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
-            for file in files:
-                if not any(file.sinks()):
-                    file.detach()
-        super().clean()
-
-    def declare_unconfirmed(self, creator: Node, paths: Collection[str]) -> dict[str, FileHash]:
+    def declare_static_files(self, creator: Node, paths: Collection[str]) -> dict[str, FileHash]:
         """Declare files as unconfirmed static candidates, to be confirmed shortly after.
 
-        A file declared here becomes STATIC once confirmed present, or MISSING once
-        confirmed absent, through a hash job submitted for its `to_check` entry
-        (see `Workflow.update_file_hashes`).
+        A file declared here becomes STATIC once confirmed present or MISSING once confirmed absent,
+        through a hash job submitted for its `to_check` entry (see `Workflow.update_file_hashes`).
 
         Parameters
         ----------
@@ -1159,34 +1187,33 @@ class Workflow(Trellis):
         if isinstance(paths, str):
             raise TypeError("The paths argument cannot be a string.")
         if creator.is_detached():
-            # The creator has moved on without this call (see Step.detach()), so
-            # declaring more files for it is moot.
+            # The creator is detached from its creator.
+            # Declaring more files for it is moot.
             return {}
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
         own_tree_paths = []
         if creator.kind() != "st":
-            # A path the same creator already declared static is a no-op, so that
-            # overlapping declarations (two patterns, or a pattern and its own literal
-            # match) compose instead of colliding. Its parent directory is already
-            # watched by the first declaration, so put_dir_queue is not repeated here.
+            # A path the same creator already declared static is a no-op, so that overlapping
+            # declarations (two patterns, or a pattern and its own literal match) compose
+            # instead of colliding.
+            # Its parent directory is already watched by the first declaration,
+            # so watch_dir is not repeated here.
             # A path inside a static tree belongs to that tree, which is its sole owner.
             # The step that declared the tree may name such a path as often as it likes:
             # the declaration is handed over to the tree, so that it does not matter
-            # whether the tree or the file was declared first. Any other step naming it
-            # is an error, again in either order (see `register_static_tree`).
-            # (`register_static_tree` calls this method with the tree itself as creator,
-            # for paths *inside* the tree being registered; hence the `kind() != "st"`
-            # guard here and in `_declare_file`.)
+            # whether the tree or the file was declared first.
+            # Any other step declarign it static is an error, again in either order
+            # (see `register_static_tree`).
             kept = []
             for path in paths:
-                static_tree = self._find_matching_static_tree(path)
+                static_tree = self._find_owning_static_tree(path)
                 if static_tree is not None:
                     tree_creator = static_tree.creator()
                     if tree_creator is None or tree_creator.i != creator.i:
                         raise GraphError(_static_tree_file_message(static_tree.label, path))
                     own_tree_paths.append((static_tree, path))
-                elif not self._is_own_static_file(creator, path):
+                elif not self._already_declared_static_by(creator, path):
                     kept.append(path)
             paths = kept
         # Define the files whose hashes must be checked.
@@ -1195,7 +1222,7 @@ class Workflow(Trellis):
             self._declare_file(static_tree, path, FileState.UNCONFIRMED)
             for static_tree, path in own_tree_paths
         )
-        return self._build_to_check(sorted(unconfirmed, key=lambda file: file.path))
+        return self._hashes_to_check(sorted(unconfirmed, key=lambda file: file.path))
 
     def register_static_tree(self, creator: Node, path: str) -> dict[str, FileHash]:
         """Install a static tree.
@@ -1226,21 +1253,21 @@ class Workflow(Trellis):
         if path == STEPUP_DIR or path.startswith(STEPUP_DIR + os.sep):
             raise GraphError(f"Cannot declare a static tree under {STEPUP_DIR}: {path}")
         if creator.is_detached():
-            # The creator has moved on without this call (see Step.detach()), so
-            # registering a static tree for it is moot.
+            # The creator is detached from its creator.
+            # Registering a static tree for it is moot.
             return {}
         path = Path(path) / ""
         if path in ("./", ""):
             # A root tree would have to own plan.py and every step output, which
             # defeats the point of a static tree. Reject it explicitly: without this
-            # check, `_find_matching_static_tree`'s `substr(label, 1, length(label))`
+            # check, `_find_owning_static_tree`'s `substr(label, 1, length(label))`
             # comparison never matches an in-root label (which carries no `./` prefix),
             # so a root tree would otherwise silently own nothing and block nothing.
             raise GraphError(
                 "A static tree cannot be the project root: it would have to own "
                 "plan.py and every step output. Declare the subdirectories instead."
             )
-        static_tree = self._find_matching_static_tree(path)
+        static_tree = self._find_owning_static_tree(path)
         if static_tree is not None:
             own_creator = static_tree.creator()
             if own_creator is not None and own_creator.i == creator.i:
@@ -1254,11 +1281,11 @@ class Workflow(Trellis):
             raise GraphError(
                 f"Static tree is a parent directory of an existing static tree: {path}"
             )
-        # A static tree is the sole owner of the files under it. Attached file nodes
-        # already present under this path are therefore either this creator's own static
-        # declarations, which the tree takes over below, or a violation. Which of the two
-        # declarations came first only decides where the error is raised, not what it
-        # says (see `_static_tree_file_message`).
+        # A static tree is the sole owner of the files under it.
+        # Attached file nodes already present under this path are therefore either this creator's
+        # own static declarations, which the tree takes over below, or a violation.
+        # Which of the two declarations came first only decides where the error is raised,
+        # not what it says (see `_static_tree_file_message`).
         pattern = f"{escape_like_pattern(path)}%"
         sql = (
             "SELECT node.i, node.label, node.creator, file.state "
@@ -1276,13 +1303,14 @@ class Workflow(Trellis):
                 raise GraphError(_static_tree_file_message(path, existing_path))
             handover.append(node_i)
         st = self.create(StaticTree, creator, path)
-        # The creator declared these files itself, before declaring the tree that
-        # contains them. The tree is their sole owner, so transfer them to it. This is a
-        # deliberate bypass of Trellis.create(): going through it would treat the
-        # transfer as a recycle and call Step.after_lost_product() on the old creator, deleting
-        # the hash of the very step that is handing them over and making it permanently
-        # unskippable. Nothing is lost here -- the creator re-declares both the files and
-        # the tree on its next run -- so the creator column is simply reassigned.
+        # The creator declared these files itself, before declaring the tree that contains them.
+        # The tree is their sole owner, so transfer them to it.
+        # This is a deliberate bypass of Trellis.create(): going through it would treat the transfer
+        # as a recycle and call Step.after_lost_product() on the old creator,
+        # deleting the hash of the very step that is handing them over and making it permanently
+        # unskippable.
+        # Nothing is lost: the creator re-declares both the files and the tree on its next run,
+        # so the creator column is simply reassigned.
         for node_i in handover:
             self.db.execute("UPDATE node SET creator = ? WHERE i = ?", (st.i, node_i))
         # Adopt matching detached file nodes, e.g. leftovers from a previous run.
@@ -1293,85 +1321,7 @@ class Workflow(Trellis):
             "WHERE node.detached AND node.label LIKE ? ESCAPE '\\'"
         )
         matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
-        return self.declare_unconfirmed(st, matching_paths)
-
-    def register_nglob(self, step: Step, ng: NamedGlob) -> None:
-        """Register a glob pattern used by a step and validate its matches.
-
-        Parameters
-        ----------
-        step
-            The step that called `glob()` (or `static()` with a pattern).
-        ng
-            The pattern and the matches found by the client's filesystem scan.
-
-        Raises
-        ------
-        GraphError
-            When a match is a known build product, or lies under the `.stepup` directory.
-
-        Notes
-        -----
-        A pattern owns nothing: this only records the pattern, so the step becomes
-        pending when the match set changes, and rejects matches that a glob may never
-        see. Matches that are not (yet) justified are accepted here; Phase 4 catches
-        the ones that never become justified.
-        """
-        if not isinstance(step, Step):
-            raise TypeError(f"step must be a Step instance, got: {step!r}")
-        if step.is_detached():
-            # The step's creator has moved on without it (see Step.detach()), so
-            # registering more nglobs for it is moot.
-            return
-
-        paths = ng.files()
-
-        # Eager check (a): a match cannot already be a known build product. Detached
-        # nodes are excluded: an AWAITED file with no producer is created with
-        # creator=None, and Trellis.create forces detached=True in that case, so such
-        # a node is not a claim that the file is a build product. The LEFT JOIN is
-        # therefore only defensive here.
-        if paths:
-            db = self.db
-            db.execute("DELETE FROM path_list")
-            db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
-            sql = (
-                "SELECT node.label, creator.label FROM node "
-                "JOIN file ON file.node = node.i "
-                "LEFT JOIN node AS creator ON creator.i = node.creator "
-                "WHERE node.kind = 'file' AND NOT node.detached "
-                "AND node.label IN (SELECT path FROM path_list) "
-                f"AND file.state IN ({FileState.AWAITED.value}, {FileState.BUILT.value}, "
-                f"{FileState.OUTDATED.value}, {FileState.VOLATILE.value}) "
-                "ORDER BY node.label LIMIT 1"
-            )
-            row = db.execute(sql).fetchone()
-            if row is not None:
-                path, creator_label = row
-                raise GraphError(
-                    f"Glob pattern ({ng.pattern}) registered by step ({step.label}) matches "
-                    f"({path}), which step ({creator_label}) builds. "
-                    "A glob pattern may only match static files: narrow the pattern, "
-                    "or declare the file with static() instead of building it."
-                )
-
-        # Reject matches under .stepup/, mirroring the rule _declare_file applies.
-        # This is load-bearing, not defensive: NamedGlob does not skip dot entries the
-        # way the standard library's glob does.
-        for path in paths:
-            if path.startswith(STEPUP_DIR + os.sep):
-                raise GraphError(
-                    f"Glob pattern ({ng.pattern}) matches a path under {STEPUP_DIR}: {path}"
-                )
-
-        step.add_nglob(ng)
-
-        # Watch the directories that could produce a new match: the parent of every
-        # current match, and the pattern's base directory, so a zero-match pattern
-        # still notices its first match appearing.
-        for path in paths:
-            self.put_glob_dir_queue(Path(path.rstrip(os.sep)).parent)
-        self.put_glob_dir_queue(glob_base_dir(ng.pattern))
+        return self.declare_static_files(st, matching_paths)
 
     def define_step(
         self,
@@ -1385,10 +1335,10 @@ class Workflow(Trellis):
         workdir: str = ".",
         need: Need = Need.DEFAULT,
         resources: dict[str, int] | None = None,
-        safe: bool = False,
         shell: bool = False,
         env_overrides: dict[str, str] | None = None,
         duration: float | None = None,
+        _safe: bool = False,
     ) -> dict[str, FileHash]:
         """Define a new step.
 
@@ -1414,6 +1364,8 @@ class Workflow(Trellis):
             The need of the step, see enums.Need for details.
         resources
             The resources required by the step, e.g. {"cpu": 2, "gpu": 1}.
+        shell
+            Whether the command should be executed in a shell.
         env_overrides
             Step-specific environment variable overrides, e.g. {"OMP_NUM_THREADS": "4"}.
             These keys must not overlap with `env_deps`.
@@ -1422,7 +1374,7 @@ class Workflow(Trellis):
             prioritize execution order before any measurement is available.
             When `None`, a new step gets the column's default (1.0), while a recycled step
             keeps its previously measured (or given) duration.
-        safe
+        _safe
             The initial value for the `safe` field of the step.
             This is an internal field, not controlled by the end user.
             It is used to prevent steps from being queued if their creator is not
@@ -1435,8 +1387,8 @@ class Workflow(Trellis):
             The known hashes of the files to check, keyed by path.
         """
         if creator.is_detached():
-            # The creator has moved on without this call (see Step.detach()), so
-            # defining a new child step for it is moot.
+            # The creator is detached from its creator.
+            # Defining a new child step for it is moot.
             # (This also sidesteps Node.reattach()'s "new creator must not be detached"
             # check, which Trellis.reattach() below could otherwise hit.)
             return {}
@@ -1470,15 +1422,13 @@ class Workflow(Trellis):
                 raise GraphError(
                     "Variable(s) set by StepUp cannot be overridden: " + ", ".join(sorted(reserved))
                 )
-        # This step does not exist yet, so a registered glob pattern that already matches
-        # one of its outputs is named by `command` rather than by a step label. Checked
-        # before the recycle short-circuit below, so it applies uniformly to a fresh
+        # Check overlap before the recycle short-circuit below, so it applies uniformly to a fresh
         # definition and a re-definition.
-        self._raise_if_glob_match(command, out_paths + vol_paths)
+        self._raise_if_glob_match(Step.adjust_label(command, workdir), out_paths + vol_paths)
 
-        # If a compatible detached step is found, fully recycle it, instead of creating
-        # a new one. This restores the step and its products (recursively), preserving
-        # its edges, state and stored hash.
+        # If a compatible detached step is found, fully recycle it, instead of creating a new one.
+        # This restores the step and its products (recursively), preserving its edges,
+        # state and stored hash.
         old_step = self.recycle(
             Step,
             creator,
@@ -1495,13 +1445,14 @@ class Workflow(Trellis):
             vol_paths=vol_paths,
         )
         if old_step is not None:
-            # Look for UNCONFIRMED inputs that match a static tree. Their existence still
-            # needs to be checked, ideally confirmed by a hash job submitted for them.
+            # Look for UNCONFIRMED inputs that match a static tree.
+            # Their existence still needs to be checked,
+            # ideally confirmed by a hash job submitted for them.
             unconfirmed = {
                 File(self, i, label)
                 for i, label in self.db.execute(UNCONFIRMED_INPUTS, (old_step.i,))
             }
-            return self._build_to_check(unconfirmed)
+            return self._hashes_to_check(unconfirmed)
 
         # Create new step
         step = self.create(
@@ -1510,9 +1461,9 @@ class Workflow(Trellis):
             command,
             workdir=workdir,
             need=need,
-            safe=safe,
             shell=shell,
             duration=duration,
+            _safe=_safe,
         )
         step.set_resources(resources)
         step.set_env_overrides(env_overrides)
@@ -1542,7 +1493,7 @@ class Workflow(Trellis):
 
         # Determine if the step needs executing and queue if relevant.
         logger.info("Define step: %s", step.label)
-        return self._build_to_check(unconfirmed)
+        return self._hashes_to_check(unconfirmed)
 
     def amend_step(
         self,
@@ -1585,15 +1536,15 @@ class Workflow(Trellis):
             A set of input paths that are available but fail the amend() freshness check.
         to_check
             The known hashes, keyed by path, of the files whose validity must still be checked,
-            e.g. by submitting a hash job for each (`cause=HashUpdateCause.CONFIRMED`). A path that
-            resolves to MISSING must then move from `unavailable`'s absence to its presence,
-            i.e. the caller must join it into `unavailable` after checking.
+            e.g. by submitting a hash job for each (`cause=HashUpdateCause.CONFIRMED`).
+            A path that resolves to MISSING must then move from `unavailable`'s absence to its
+            presence, i.e. the caller must join it into `unavailable` after checking.
         """
         if not isinstance(step, Step):
             raise TypeError(f"step must be a Step instance, got: {step!r}")
         if step.is_detached():
-            # The step's creator has moved on without it (see Step.detach()), so
-            # its amendments are moot.
+            # The step is detached from its creator, e.g. because reset_for_rerun was called on it.
+            # Any amendments to the step are moot.
             return True, set(), set(), {}
 
         # Normalize arguments
@@ -1614,7 +1565,7 @@ class Workflow(Trellis):
         dynamic_ideps = []
 
         # Process inp_paths
-        infos = self._supply_files(step, inp_paths, new=False)
+        infos = self._supply_files(step, inp_paths, require_new_edge=False)
         for info in infos:
             if not info.is_available:
                 unavailable.add(info.file.path)
@@ -1645,84 +1596,172 @@ class Workflow(Trellis):
             dynamic_ideps.append((new_idep,))
 
         self.db.executemany("INSERT INTO dynamic_dep VALUES (?)", dynamic_ideps)
-        return False, unavailable, unfresh, self._build_to_check(unconfirmed)
+        return False, unavailable, unfresh, self._hashes_to_check(unconfirmed)
 
     #
-    # Watch phase
+    # Glob patterns
     #
+
+    def nglobs(self) -> Iterator[NamedGlob]:
+        """Iterate over the patterns registered by all attached steps."""
+        sql = "SELECT data FROM node JOIN nglob ON node.i = nglob.node WHERE NOT node.detached"
+        for (data,) in self.db.execute(sql):
+            yield json_converter.structure(json.loads(data), NamedGlob)
+
+    def nglob_registrations(self) -> Iterator[tuple[int, NamedGlob, Step]]:
+        """Iterate over the patterns registered by all attached steps, with their context.
+
+        Yields
+        ------
+        nglob_i
+            The row identifier in the `nglob` table,
+            needed to update the persisted matches of this registration.
+        ng
+            The pattern and its recorded matches.
+        step
+            The step that registered the pattern.
+        """
+        sql = (
+            "SELECT node.i, label, nglob.i, data FROM node "
+            "JOIN nglob ON node.i = nglob.node WHERE NOT node.detached"
+        )
+        for node_i, label, nglob_i, data in self.db.execute(sql):
+            yield (
+                nglob_i,
+                json_converter.structure(json.loads(data), NamedGlob),
+                Step(self, node_i, label),
+            )
 
     def matches_any_glob(self, path: str) -> bool:
         """Test whether any registered glob pattern matches `path`.
 
-        This is the relevance test for a path with no node of its own: after a pattern
-        stopped declaring its matches, the pattern itself is the only record that the
-        path is interesting. Deliberately not `NamedGlob.may_change`, which answers a
-        different question (it discards a path that is already a recorded match, so it
-        cannot see a deletion) and deserializes every match set to do it.
+        This is the relevance test for a path with no node of its own: after a pattern stopped
+        declaring its matches, the pattern itself is the only record that the  path is interesting.
+        Deliberately not `NamedGlob.may_change`, which answers a different question
+        and deserializes every match set to do it.
         """
         sql = (
             "SELECT nglob.regex FROM nglob JOIN node ON node.i = nglob.node WHERE NOT node.detached"
         )
-        return any(_compiled(regex).fullmatch(path) for (regex,) in self.db.execute(sql))
+        return any(re.compile(regex).fullmatch(path) for (regex,) in self.db.execute(sql))
 
-    def is_relevant(self, path: str) -> bool:
-        file, detached = self.find_and_detached(File, path)
-        if not (file is None or detached):
-            return file.get_state() not in (FileState.AWAITED, FileState.VOLATILE)
-        return self.matches_any_glob(path)
+    def register_nglob(self, step: Step, ng: NamedGlob) -> None:
+        """Register a glob pattern used by a step and validate its matches.
 
-    def is_relevant_during_build(self, path: str) -> bool:
-        """Relevance test for events observed while a build phase was running.
+        Parameters
+        ----------
+        step
+            The step that called `glob()` (or `static()` with a pattern).
+        ng
+            The pattern and the matches found by the client's filesystem scan.
 
-        Stricter than `is_relevant`: a file the build itself is writing is not a user
-        edit, so only `STATIC` and `MISSING` nodes qualify. A path with no node at all
-        is judged by the registered glob patterns, as in `is_relevant`; no step can be
-        building it, since a pattern may not match a build product.
+        Raises
+        ------
+        GraphError
+            When a match is a known build product, or lies under the `.stepup` directory.
+
+        Notes
+        -----
+        A pattern owns nothing: this only records the pattern, so the step becomes pending
+        when the match set changes, and rejects matches that a glob may never see.
+        Matches that are not (yet) justified are accepted here.
+        Phase 4 catches the ones that never become justified.
         """
-        file, detached = self.find_and_detached(File, path)
-        if not (file is None or detached):
-            return file.get_state() in (FileState.STATIC, FileState.MISSING)
-        return self.matches_any_glob(path)
+        if not isinstance(step, Step):
+            raise TypeError(f"step must be a Step instance, got: {step!r}")
+        if step.is_detached():
+            # The step is detached from its creator, e.g. because reset_for_rerun was called on it.
+            # Registering more nglobs for this step has become moot.
+            return
 
-    def relevant_paths(self, parent: str) -> Iterator[str]:
-        """Iterate over all paths under `parent` whose disappearance is relevant.
+        paths = ng.files()
 
-        Both file nodes and the recorded matches of glob patterns are considered: a
-        match has no node of its own, so the pattern is the only place it is recorded.
+        # Eager check (a): a match cannot already be a known build product.
+        # Detached nodes are excluded: an AWAITED file with no producer is created with
+        # creator=None, and Trellis.create forces detached=True in that case, so such a node is not
+        # a claim that the file is a build product. The LEFT JOIN is therefore only defensive here.
+        if paths:
+            db = self.db
+            db.execute("DELETE FROM path_list")
+            db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
+            sql = (
+                "SELECT node.label, creator.label FROM node "
+                "JOIN file ON file.node = node.i "
+                "LEFT JOIN node AS creator ON creator.i = node.creator "
+                "WHERE node.kind = 'file' AND NOT node.detached "
+                "AND node.label IN (SELECT path FROM path_list) "
+                f"AND file.state IN ({FileState.AWAITED.value}, {FileState.BUILT.value}, "
+                f"{FileState.OUTDATED.value}, {FileState.VOLATILE.value}) "
+                "ORDER BY node.label LIMIT 1"
+            )
+            row = db.execute(sql).fetchone()
+            if row is not None:
+                path, creator_label = row
+                raise GraphError(
+                    f"Glob pattern ({ng.pattern}) registered by step ({step.label}) matches "
+                    f"({path}), which step ({creator_label}) builds. "
+                    "A glob pattern may only match static files: narrow the pattern, "
+                    "or declare the file with static() instead of building it."
+                )
+
+        # Reject matches under .stepup/, mirroring the rule _declare_file applies.
+        # This is load-bearing, not defensive: NamedGlob does not skip dot entries the
+        # way the standard library's glob does.
+        for path in paths:
+            if path.startswith(STEPUP_DIR + os.sep):
+                raise GraphError(
+                    f"Glob pattern ({ng.pattern}) matches a path under {STEPUP_DIR}: {path}"
+                )
+
+        step.add_nglob(ng)
+
+        # Watch directories that could produce a new match: the parent of every current match,
+        # and the pattern's base directory,
+        # so a zero-match pattern still notices its first match appearing.
+        for path in paths:
+            self.watch_existing_dir(Path(path.rstrip(os.sep)).parent)
+        self.watch_existing_dir(glob_base_dir(ng.pattern))
+
+    def _raise_if_glob_match(self, step_label: str, product_paths: Collection[str]) -> None:
+        """Raise when a registered glob pattern matches a path a step is about to build.
+
+        This is the late-arriving half of the rule that a glob pattern may only match static files.
+        `register_nglob` catches the outputs that already exist.
+        This method catches the ones declared afterwards.
+
+        Whichever event happens second is the one that raises,
+        which is what makes the rule independent of execution order.
+
+        Parameters
+        ----------
+        step_label
+            The label of the step declaring `product_paths`, or its command when the step node
+            does not exist yet (`define_step`, before the recycle short-circuit).
+        product_paths
+            The output and volatile paths the step is about to declare.
         """
-        seen = set()
+        if not product_paths:
+            return
         sql = (
-            "SELECT label FROM node JOIN file ON node.i = file.node "
-            f"WHERE state NOT IN ({FileState.AWAITED.value}, {FileState.VOLATILE.value}) AND "
-            "node.label LIKE ? AND NOT detached"
+            "SELECT node.i, node.label, nglob.pattern, nglob.regex FROM nglob "
+            "JOIN node ON node.i = nglob.node WHERE NOT node.detached"
         )
-        pattern = f"{escape_like_pattern(parent)}%"
-        for (path,) in self.db.execute(sql, (pattern,)):
-            seen.add(path)
-            yield path
-        for ng in self.nglobs():
-            for path in ng.files():
-                if path.startswith(parent) and path not in seen:
-                    seen.add(path)
-                    yield path
+        for _node_i, glob_step_label, pattern, regex in self.db.execute(sql):
+            for path in sorted(product_paths):
+                if re.compile(regex).fullmatch(path):
+                    raise GraphError(
+                        f"Glob pattern ({pattern}) registered by step ({glob_step_label}) "
+                        f"matches ({path}), which step ({step_label}) builds. "
+                        "A glob pattern may only match static files: narrow the pattern, "
+                        "or declare the file with static() instead of building it."
+                    )
 
-    def nglobs(self, yield_step: bool = False) -> Iterator[NamedGlob | tuple[int, NamedGlob, Step]]:
-        sql = (
-            "SELECT node.i, label, kind, nglob.i, data FROM node "
-            "JOIN nglob ON node.i = nglob.node WHERE NOT node.detached"
-        )
-        for node_i, label, kind, nglob_i, data in self.db.execute(sql):
-            if kind != "step":
-                raise ValueError("Only steps can define nglobs")
-            ng = json_converter.structure(json.loads(data), NamedGlob)
-            yield (nglob_i, ng, Step(self, node_i, label)) if yield_step else ng
-
-    def check_glob_matches(self) -> list[GlobViolation]:
+    def find_glob_violations(self) -> list[GlobViolation]:
         """Find recorded glob matches that no static declaration justifies.
 
         Runs once at the end of every build phase, over the persisted `nglob` table
-        rather than over the patterns registered during this phase, which makes it
-        order-independent and idempotent across restarts.
+        rather than over the patterns registered during this phase,
+        which makes it order-independent and idempotent across restarts.
         See `finalize.report_completion` for the reporting side.
 
         Returns
@@ -1732,7 +1771,7 @@ class Workflow(Trellis):
         """
         records = []
         paths = set()
-        for _nglob_i, ng, step in self.nglobs(yield_step=True):
+        for _nglob_i, ng, step in self.nglob_registrations():
             for path in ng.files():
                 records.append((step.label, ng.pattern, str(path)))
                 paths.add(str(path))
@@ -1788,7 +1827,7 @@ class Workflow(Trellis):
             static tree or a static file.
         """
         # A) Inside a static tree, or a static tree root itself.
-        # Appending a separator reproduces _find_matching_static_tree's `Path(path) / ""` exactly.
+        # Appending a separator reproduces _find_owning_static_tree's `Path(path) / ""` exactly.
         probe = path if path.endswith(os.sep) else path + os.sep
         if any(probe.startswith(label) for label in tree_labels):
             return True
@@ -1815,81 +1854,111 @@ class Workflow(Trellis):
             args = (path, dir_range_upper(path))
         return self.db.execute(sql + "LIMIT 1", args).fetchone() is not None
 
-    def process_nglob_changes(self, deleted: Collection[str], added: Collection[str]):
+    def process_nglob_changes(self, deleted: Collection[str], updated: Collection[str]):
         """Mark steps with nglob pending if they are affected by the deleted and updated paths.
 
         Parameters
         ----------
         deleted
             The deleted files.
-        added
-            The added files.
+        updated
+            The created or modified files, i.e. the watcher's `updated` set.
+            A path that did not exist before is a potential new match.
         """
-        if deleted & added:
-            raise ValueError("Deleted and added paths cannot overlap.")
-        for i, ng, step in self.nglobs(yield_step=True):
+        if deleted & updated:
+            raise ValueError("Deleted and updated paths cannot overlap.")
+        for i, ng, step in self.nglob_registrations():
             # Check if any of the deleted files matches an nglob.
             # If yes, step becomes pending.
-            # Check if added files could result in new nglob matches.
+            # Check if updated files could result in new nglob matches.
             # If yes, step becomes pending.
-            evolved = ng.will_change(deleted, added)
+            evolved = ng.will_change(deleted, updated)
             if evolved is not None:
                 step.delete_hash()
                 data = (json.dumps(json_converter.unstructure(evolved)), i)
                 self.db.execute("UPDATE nglob SET data = ? WHERE i = ?", data)
                 self.mark_step_pending(step)
 
-    def get_file_hashes(self, paths: Collection[str]) -> dict[str, FileHash]:
-        """Get the hashes of existing files.
+    #
+    # Watch phase
+    #
 
-        Parameters
-        ----------
-        paths
-            A list of paths.
+    def change_is_relevant(self, path: str) -> bool:
+        """Return whether a filesystem change to `path` can affect the workflow.
 
-        Returns
-        -------
-        file_hashes
-            The current hashes of the files, keyed by path, ordered by path.
+        An attached file node makes the change relevant unless the build itself owns the path
+        (`AWAITED` or `VOLATILE`).
+        A path with no node of its own is judged by the registered glob patterns.
         """
-        # The `label IN (SELECT path FROM path_list)` form makes the planner drive from
-        # `node`'s `node_kind_label` index (probed once per requested path via a Bloom-filtered
-        # membership test), instead of a plain JOIN against path_list, which lets the planner
-        # drive from a full scan of `node` instead, an O(n_nodes) cost regardless of how few
-        # paths are requested. As a bonus, results come out pre-sorted by the covering index,
-        # so no separate ORDER BY sort is needed. `path_list` is a real indexed scratch table
-        # (see file.py), populated here and cleared before reuse, instead of `json_each(...)`,
-        # which was found to be slow in performance tests.
-        db = self.db
-        db.execute("DELETE FROM path_list")
-        db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
-        sql = (
-            "SELECT node.label, file.hash FROM node "
-            "JOIN file ON file.node = node.i "
-            "WHERE node.kind = 'file' AND node.label IN (SELECT path FROM path_list) "
-            "ORDER BY node.label"
-        )
-        return {path: FileHash.from_json(hash_value) for path, hash_value in db.execute(sql)}
+        file, detached = self.find_and_detached(File, path)
+        if not (file is None or detached):
+            return file.get_state() not in (FileState.AWAITED, FileState.VOLATILE)
+        return self.matches_any_glob(path)
 
-    def put_dir_queue(self, path: str):
-        """Put a directory in the dir_queue, with some consistency checks."""
+    def change_is_relevant_during_build(self, path: str) -> bool:
+        """Relevance test for events observed while a build phase was running.
+
+        Stricter than `change_is_relevant`: a file the build itself is writing is not a user edit,
+        so only `STATIC` and `MISSING` nodes qualify.
+        A path with no node at all is judged by the registered glob patterns,
+        as in `change_is_relevant`.
+        No step can be building it, since a pattern may not match a build product.
+        """
+        file, detached = self.find_and_detached(File, path)
+        if not (file is None or detached):
+            return file.get_state() in (FileState.STATIC, FileState.MISSING)
+        return self.matches_any_glob(path)
+
+    def relevant_paths_under(self, directory: str) -> Iterator[str]:
+        """Iterate over all paths under `directory` whose disappearance is relevant.
+
+        Called when a directory itself is deleted, so every path below it is gone at once.
+        Both file nodes and the recorded matches of glob patterns are considered: a
+        match has no node of its own, so the pattern is the only place it is recorded.
+        """
+        seen = set()
+        sql = (
+            "SELECT label FROM node JOIN file ON node.i = file.node "
+            f"WHERE state NOT IN ({FileState.AWAITED.value}, {FileState.VOLATILE.value}) AND "
+            "node.label LIKE ? AND NOT detached"
+        )
+        pattern = f"{escape_like_pattern(directory)}%"
+        for (path,) in self.db.execute(sql, (pattern,)):
+            seen.add(path)
+            yield path
+        for ng in self.nglobs():
+            for path in ng.files():
+                if path.startswith(directory) and path not in seen:
+                    seen.add(path)
+                    yield path
+
+    #
+    # Directory watching
+    #
+
+    def watch_dir(self, path: str):
+        """Watch a directory, creating it first when `create_parent_dirs` is set.
+
+        The directory is handed to the watcher through `dir_queue`.
+        """
         path = Path(path)
         if path == "":
             path = Path(".")
-        if self.makedirs:
+        if self.create_parent_dirs:
             path.makedirs_p()
         if self.dir_queue is not None:
             self.dir_queue.put_nowait(path)
 
-    def put_glob_dir_queue(self, path: str):
+    def watch_existing_dir(self, path: str):
         """Watch the nearest existing ancestor of `path`, without creating directories.
 
-        Unlike `put_dir_queue`, this never calls `makedirs_p`: a glob pattern only
-        observes the filesystem, so registering one must not create the directory it
-        points at. When the directory does not exist, the closest existing ancestor is
-        watched instead, which is the best that can be done without creating anything.
+        Unlike `watch_dir`, this never calls `makedirs_p`:
+        a glob pattern only observes the filesystem,
+        so registering one must not create the directory it points at.
+        When the directory does not exist, the closest existing ancestor is watched instead,
+        which is the best that can be done without creating anything.
         """
         path = Path(path) if path else Path(".")
         while path not in ("", ".") and not path.is_dir():
             path = path.parent
-        self.put_dir_queue(path if path != "" else ".")
+        self.watch_dir(path if path != "" else ".")

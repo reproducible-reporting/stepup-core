@@ -480,9 +480,9 @@ def _spy_update_file_hashes(monkeypatch) -> list:
     calls = []
     orig = Workflow.update_file_hashes
 
-    def spy(self, file_hashes, cause):
+    def spy(self, file_hashes, *, cause):
         calls.append((dict(file_hashes), cause))
-        return orig(self, file_hashes, cause)
+        return orig(self, file_hashes, cause=cause)
 
     monkeypatch.setattr(Workflow, "update_file_hashes", spy)
     return calls
@@ -495,7 +495,7 @@ async def test_run_hash_job_confirmed_applies_even_when_unchanged(
     flips UNCONFIRMED -> STATIC."""
     with contextlib.chdir(tmpdir):
         async with wfs.db:
-            wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
+            wfs.declare_static_files(wfs.root, ["foo.txt"])
         with open("foo.txt", "w") as fh:
             fh.write("hello")
         real_hash = FileHash.unknown().regen("foo.txt")
@@ -514,16 +514,16 @@ async def test_run_hash_job_confirmed_applies_even_when_unchanged(
 
 async def test_run_hash_job_external_not_applied_when_unchanged(wfs: Workflow, tmpdir, monkeypatch):
     """An unchanged hash under a non-CONFIRMED cause must not trigger update_file_hashes:
-    e.g. (EXTERNAL, STATIC, known) would call file_externally_updated and needlessly mark
+    e.g. (EXTERNAL, STATIC, known) would call handle_external_update and needlessly mark
     all sinks pending."""
     with contextlib.chdir(tmpdir):
         async with wfs.db:
-            wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
+            wfs.declare_static_files(wfs.root, ["foo.txt"])
         with open("foo.txt", "w") as fh:
             fh.write("hello")
         real_hash = FileHash.unknown().regen("foo.txt")
         async with wfs.db:
-            wfs.update_file_hashes({"foo.txt": real_hash}, HashUpdateCause.CONFIRMED)
+            wfs.update_file_hashes({"foo.txt": real_hash}, cause=HashUpdateCause.CONFIRMED)
             assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
 
         calls = _spy_update_file_hashes(monkeypatch)
@@ -544,7 +544,7 @@ async def test_run_hash_job_brackets_progress_bar(wfs: Workflow, tmpdir):
         with open("foo.txt", "w") as fh:
             fh.write("hello")
         async with wfs.db:
-            wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
+            wfs.declare_static_files(wfs.root, ["foo.txt"])
         reporter = _FakeReporter()
         executor = _make_executor(reporter=reporter, workflow=wfs, db=wfs.db)
         hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.CONFIRMED, -1)
@@ -598,7 +598,7 @@ async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workf
 
     async with wfs.db:
         wfs.define_step(wfs.root, "cat foo.txt", inp_paths=["foo.txt"])
-        wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
+        wfs.declare_static_files(wfs.root, ["foo.txt"])
 
     monkeypatch.setattr(FileHash, "regen", _raise_permission_error)
     reporter = _FakeReporter()
