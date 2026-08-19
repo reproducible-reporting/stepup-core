@@ -798,7 +798,7 @@ class DBSession:
     ) -> int:
         """Check the freelist and incrementally reclaim dead space on disk.
 
-        This opens a transaction of its own, so it must not be called inside one.
+        This holds the connection in autocommit mode, so it must not be called inside a transaction.
 
         Parameters
         ----------
@@ -814,14 +814,16 @@ class DBSession:
         pages_freed
             The number of pages actually released by the incremental vacuum.
         """
-        async with self:
-            freelist_before = self.execute("PRAGMA freelist_count").fetchone()[0]
+        async with self._autocommit_con() as con:
+            freelist_before = con.execute("PRAGMA freelist_count").fetchone()[0]
             # Reclaim in whole chunks, to avoid locking up or spiking disk I/O.
             for _ in range(min(freelist_before, max_pages_to_free) // pages_per_chunk):
-                # The pragma result must be stepped through exhaustively
-                # for the pages to be freed.
-                self.execute(f"PRAGMA incremental_vacuum({pages_per_chunk:d})").fetchall()
-            freelist_after = self.execute("PRAGMA freelist_count").fetchone()[0]
+                # The pragma frees one page per step, yielding a row without columns for each.
+                # `executescript` steps through it exhaustively,
+                # whereas `execute().fetchall()` on Python 3.11 treats the first such row
+                # as the end of the result and leaves all but one page in place.
+                con.executescript(f"PRAGMA incremental_vacuum({pages_per_chunk:d});")
+            freelist_after = con.execute("PRAGMA freelist_count").fetchone()[0]
         return freelist_before - freelist_after
 
     async def reclaim_loop(
