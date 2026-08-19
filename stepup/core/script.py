@@ -24,8 +24,8 @@ from parse import parse
 from path import Path
 
 from .api import run, static
+from .path import format_local_executable
 from .stepinfo import dump_step_info
-from .utils import format_command
 
 __all__ = ("driver",)
 
@@ -313,7 +313,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
     if wrapper.has_single:
         static_paths, inp_paths, out_paths = wrapper.get_plan()
         static(*static_paths)
-        command = format_command(script_path) + " run"
+        command = format_local_executable(script_path) + " run"
         step_info = run(command, inp=inp_paths, out=out_paths, optional=args.optional)
     if wrapper.has_cases:
         # First collect all cases
@@ -326,7 +326,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
                 argstr = f"-- {argstr}"
             static_paths, inp_paths, out_paths = wrapper.get_case_plan(*case_args, **case_kwargs)
             static(*static_paths)
-            command = format_command(script_path) + " run " + argstr
+            command = format_local_executable(script_path) + " run " + argstr
             step_info.append(
                 run(
                     command,

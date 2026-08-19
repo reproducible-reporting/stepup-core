@@ -8,6 +8,8 @@ __all__ = (
     "CORE_ENV_VARS",
     "DIRECTOR_LOG",
     "DIRECTOR_LOG_DESCRIPTION",
+    "DIRECTOR_LOG_PID_PREFIX",
+    "DIRECTOR_LOG_SOCKET_PREFIX",
     "DIRECTOR_PROF",
     "DIRECTOR_SOCKET_SENTINEL",
     "FAIL_LOG",
@@ -30,6 +32,11 @@ GRAPH_DB = STEPUP_DIR / "graph.db"
 DIRECTOR_LOG = STEPUP_DIR / "director.log"
 # How an RPC client refers to the director's log when it must send the user there.
 DIRECTOR_LOG_DESCRIPTION = f"`{DIRECTOR_LOG}`"
+# The first two lines of `DIRECTOR_LOG` announce where the director listens and which
+# process it is, so that a client can find a running director without a handshake.
+# Both ends of this format live here, since the writer and the reader are different modules.
+DIRECTOR_LOG_SOCKET_PREFIX = "SOCKET "
+DIRECTOR_LOG_PID_PREFIX = "PID "
 DIRECTOR_PROF = STEPUP_DIR / "director.prof"
 PERF_DATA = STEPUP_DIR / "perf.data"
 FAIL_LOG = STEPUP_DIR / "fail.log"

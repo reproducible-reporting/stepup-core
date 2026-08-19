@@ -13,8 +13,10 @@ which keeps its section out of the configuration altogether.
 """
 
 import argparse
+import decimal
 import sqlite3
 from collections.abc import Callable
+from decimal import Decimal
 
 from path import Path
 from rich.console import Console
@@ -32,6 +34,8 @@ __all__ = (
     "ToolFunc",
     "connect_graph_db",
     "get_graph_db_path",
+    "positive_decimal",
+    "positive_int",
     "print_error",
 )
 
@@ -104,3 +108,40 @@ def connect_graph_db() -> sqlite3.Connection:
         If the database does not exist.
     """
     return connect(get_graph_db_path(), read_only=True)
+
+
+def positive_int(value: str | int) -> int:
+    """Convert a command-line or config value to an integer, requiring it to be strictly positive.
+
+    Raises
+    ------
+    ValueError
+        If the value is not an integer or is not strictly positive.
+    """
+    number = int(value)
+    if number <= 0:
+        raise ValueError(f"'{value}' is not strictly positive.")
+    return number
+
+
+def positive_decimal(value: str | float) -> Decimal:
+    """Convert a command-line or config value to a strictly positive `Decimal`.
+
+    The value is converted through its string form,
+    so that the number of digits after the decimal point is preserved:
+    `Decimal(3.0)` is `Decimal("3")` while `Decimal("3.0")` keeps the digit,
+    and a setting may give that digit a meaning of its own.
+    A config file may hold a TOML float here, unlike the command line, which is always a string.
+
+    Raises
+    ------
+    ValueError
+        If the value is not a number or is not strictly positive.
+    """
+    try:
+        number = Decimal(str(value))
+    except decimal.InvalidOperation as exc:
+        raise ValueError(f"not a number: {value!r}") from exc
+    if number <= 0:
+        raise ValueError(f"must be strictly positive: {value!r}")
+    return number

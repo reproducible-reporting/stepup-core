@@ -9,7 +9,7 @@ import pytest
 from path import Path
 
 from stepup.core.utils import (
-    escape_command_display,
+    escape_control_chars,
     extract_env_overrides,
     format_subprocess,
     is_process_running,
@@ -96,8 +96,8 @@ def test_merge_resources(base: str | None, override: str | None, expected: str) 
         "echo '\x01\x02'",
     ],
 )
-def test_escape_command_display_roundtrip(command, path_tmp):
-    escaped = escape_command_display(command)
+def test_escape_control_chars_roundtrip(command, path_tmp):
+    escaped = escape_control_chars(command)
     assert "\n" not in escaped
     original = subprocess.run(
         ["bash", "-c", command], capture_output=True, check=False, cwd=path_tmp
@@ -109,13 +109,13 @@ def test_escape_command_display_roundtrip(command, path_tmp):
     assert reproduced.returncode == original.returncode
 
 
-def test_escape_command_display_no_control_chars():
+def test_escape_control_chars_no_control_chars():
     command = 'echo "hello" > out.txt'
-    assert escape_command_display(command) == command
+    assert escape_control_chars(command) == command
 
 
 def test_format_subprocess_escapes_embedded_newline():
-    line = format_subprocess("echo a\nb", ".", None, 0, shell=True)
+    line = format_subprocess("echo a\nb", ".", returncode=0, shell=True)
     assert "\n" not in line
 
 

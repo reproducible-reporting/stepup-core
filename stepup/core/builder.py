@@ -30,11 +30,10 @@ from .executor import Executor
 from .finalize import remove_deletable_files, report_unbuilt, revert_optional_steps
 from .hash import FileHash
 from .hash_queue import HashJob, HashQueue
-from .job import Job
+from .job import Job, init_joblog
 from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
-from .utils import reset_joblog
 from .workflow import Workflow
 
 __all__ = ("AnyJob", "Builder")
@@ -158,7 +157,7 @@ class Builder:
         await self._report_counts()
         await self.reporter("PHASE", "build")
         if self.executor.write_joblog:
-            reset_joblog(self.njob)
+            init_joblog(self.njob)
 
         # Drain runnable work (done tasks, hash jobs, step jobs) as asyncio tasks.
         while True:

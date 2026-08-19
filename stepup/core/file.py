@@ -10,9 +10,8 @@ from path import Path
 
 from .enums import FileState
 from .exceptions import PathError
-from .hash import FileHash
+from .hash import FileHash, fmt_full_digest
 from .trellis import Node
-from .utils import format_digest
 
 __all__ = ("REGULAR_OUTPUT_WHERE", "File")
 
@@ -192,7 +191,7 @@ class File(Node):
         yield "state", str(self.get_state().name)
         file_hash = self.get_hash()
         if not file_hash.is_unknown:
-            yield "digest", format_digest(file_hash.digest)
+            yield "digest", fmt_full_digest(file_hash.digest)
 
     def after_lost_product(self):
         """Always raise, since a file node never has products and thus never loses one."""

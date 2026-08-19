@@ -371,7 +371,7 @@ class SQLLog:
         The row must have exactly the keys in `_SQLLOG_CSV_COLUMNS`.
 
         The file is opened and closed for every call, so the write reaches disk synchronously
-        and rows stay correctly ordered, mirroring `write_joblog_record()` in `utils.py`.
+        and rows stay correctly ordered, mirroring `append_joblog_record()` in `job.py`.
         """
         with open(self.path_timings, "a", newline="") as fh:
             csv.DictWriter(fh, _SQLLOG_CSV_COLUMNS).writerow(row)

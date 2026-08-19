@@ -32,9 +32,10 @@ __all__ = (
     "compute_file_digest",
     "compute_inp_hashes",
     "compute_out_hashes",
-    "fmt_digest",
     "fmt_env_value",
     "fmt_file_hash_diff",
+    "fmt_full_digest",
+    "fmt_short_digest",
 )
 
 
@@ -170,7 +171,7 @@ def compute_file_digest(
 #
 
 
-def fmt_digest(digest: bytes | None) -> str:
+def fmt_short_digest(digest: bytes | None) -> str:
     """Format a digest for display.
 
     Parameters
@@ -191,6 +192,12 @@ def fmt_digest(digest: bytes | None) -> str:
     if digest == b"u":
         return "UNKNOWN"
     return digest.hex()[:8]
+
+
+def fmt_full_digest(digest: bytes) -> str:
+    """Format a 32-byte digest as eight space-separated 8-character hex words."""
+    hexdigest = digest.hex()
+    return " ".join(hexdigest[i : i + 8] for i in range(0, 64, 8))
 
 
 def fmt_env_value(value: str | None) -> str:
@@ -237,7 +244,7 @@ class FileHash:
 
     # File properties whose changes are relevant.
 
-    digest: bytes = attrs.field(converter=bytes, repr=fmt_digest)
+    digest: bytes = attrs.field(converter=bytes, repr=fmt_short_digest)
     """The SHA-256 hash of the file's content, or `b"u"` when the hash is unknown."""
 
     mode: int = attrs.field(converter=int, repr=stat.filemode)
@@ -350,7 +357,9 @@ def fmt_file_hash_diff(old_hash: FileHash, new_hash: FileHash) -> str | None:
     """
     changes = []
     if old_hash.digest != new_hash.digest:
-        changes.append(f"digest {fmt_digest(old_hash.digest)} ➜ {fmt_digest(new_hash.digest)}")
+        changes.append(
+            f"digest {fmt_short_digest(old_hash.digest)} ➜ {fmt_short_digest(new_hash.digest)}"
+        )
     if old_hash.size != new_hash.size:
         changes.append(f"size {old_hash.size} ➜ {new_hash.size}")
     if old_hash.mode != new_hash.mode:
@@ -571,10 +580,10 @@ def _compare_step_digests(old_hash: StepHash, new_hash: StepHash) -> tuple[bool,
         ("out_digest", old_hash.out_digest, new_hash.out_digest),
     ]:
         if old_digest == new_digest:
-            parts.append(f"{label} {fmt_digest(old_digest)}")
+            parts.append(f"{label} {fmt_short_digest(old_digest)}")
         else:
             is_changed = True
-            parts.append(f"{label} {fmt_digest(old_digest)} ➜ {fmt_digest(new_digest)}")
+            parts.append(f"{label} {fmt_short_digest(old_digest)} ➜ {fmt_short_digest(new_digest)}")
     descr = "Modified step hash" if is_changed else "Same step hash"
     return is_changed, descr, ", ".join(parts)
 

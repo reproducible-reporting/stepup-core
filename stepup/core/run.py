@@ -37,7 +37,7 @@ from .extapi import get_local_import_paths
 from .outcome import ChildOutcome, ResourceUsage
 from .step import Step
 from .tracebacks import print_step_traceback
-from .utils import escape_command_display
+from .utils import escape_control_chars
 
 __all__ = (
     "ForkserverWorker",
@@ -285,7 +285,7 @@ class Run:
 
     @description.default
     def _default_description(self) -> str:
-        return escape_command_display(self.step.label)
+        return escape_control_chars(self.step.label)
 
     outcome: ChildOutcome | None = attrs.field(init=False, default=None)
     """The outcome of the child process, once it has finished."""

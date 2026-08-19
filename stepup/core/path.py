@@ -3,6 +3,7 @@
 """Specialized path operations."""
 
 import os
+import shlex
 from collections.abc import Iterable
 
 from path import Path
@@ -17,6 +18,7 @@ __all__ = (
     "coerce_paths2",
     "coerce_str",
     "dir_range_upper",
+    "format_local_executable",
     "get_affixes",
     "get_stepup_root",
     "make_path_out",
@@ -312,3 +314,21 @@ def dir_range_upper(parent: str) -> str:
     if not parent.endswith("/"):
         raise ValueError("Trailing slash expected to compute path range upper bound")
     return parent[:-1] + "0"
+
+
+def format_local_executable(executable: StrPath) -> str:
+    """Format a relative path to a local executable for execution in a shell.
+
+    A path without a leading `./` or `../` gets a `./` prefix,
+    so that a shell runs the file at that path instead of searching `PATH` for its name.
+
+    Raises
+    ------
+    PathError
+        If `executable` is an absolute path.
+    """
+    executable = coerce_path(executable)
+    if executable.isabs():
+        raise PathError(f"Executable is not a relative path: {executable}")
+    relative = executable if executable.startswith(("./", "../")) else "." / executable
+    return shlex.quote(relative)

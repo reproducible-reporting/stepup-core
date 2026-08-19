@@ -15,7 +15,6 @@ This module involves a bi-directional RPC connection between the director and th
 import argparse
 import asyncio
 import contextlib
-import decimal
 import os
 import signal
 import subprocess
@@ -49,15 +48,13 @@ from .exceptions import RPCError, ToolError, UsageError
 from .path import get_stepup_root
 from .reporter import ReporterHandler
 from .rpc import SocketAsyncRPCClient, SocketRPCServer
-from .tool import SubParsers, ToolFunc
+from .tool import SubParsers, ToolFunc, positive_decimal, positive_int
 from .utils import (
     is_debug,
     is_process_running,
     merge_resources,
-    positive_int,
     query_director_log,
     scan_director_log,
-    string_to_bool,
 )
 from .watcher import WATCHER_AVAILABLE
 
@@ -82,29 +79,6 @@ class MergeResourcesAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         accumulated = getattr(namespace, self.dest)
         setattr(namespace, self.dest, merge_resources(accumulated, values))
-
-
-def positive_decimal(value: str | float) -> Decimal:
-    """Convert a command-line or config value to a strictly positive `Decimal`.
-
-    The value is converted through its string form,
-    because `interpret_jobs` reads the number of digits after the decimal point
-    to tell a job count from a scale factor,
-    and `Decimal(3.0)` is `Decimal("3")` while `Decimal("3.0")` keeps the digit.
-    A config file may hold a TOML float here, unlike the command line, which is always a string.
-
-    Raises
-    ------
-    ValueError
-        If the value is not a number or is not strictly positive.
-    """
-    try:
-        number = Decimal(str(value))
-    except decimal.InvalidOperation as exc:
-        raise ValueError(f"not a number: {value!r}") from exc
-    if number <= 0:
-        raise ValueError(f"must be strictly positive: {value!r}")
-    return number
 
 
 def _add_build_parser(
@@ -813,7 +787,7 @@ def _report_director_log_problems(reporter_handler: ReporterHandler) -> int:
         return 0
     pages = [("Director log", "\n".join(findings))]
     description = f"Problems logged in {DIRECTOR_LOG}"
-    if string_to_bool(os.getenv("STEPUP_DEBUG", "0")):
+    if is_debug():
         # Every finding is due to a bug in StepUp, so a debug build must not pass silently.
         # The report is an error (not a warning) to also get it into `FAIL_LOG`.
         reporter_handler.report("ERROR", description, pages)

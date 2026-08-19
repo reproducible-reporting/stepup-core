@@ -29,6 +29,8 @@ from .asyncio import wait_for_any_event
 from .builder import Builder
 from .cgroups import get_ncore_from_cgroup
 from .constants import (
+    DIRECTOR_LOG_PID_PREFIX,
+    DIRECTOR_LOG_SOCKET_PREFIX,
     DIRECTOR_PROF,
     DIRECTOR_SOCKET_SENTINEL,
     GRAPH_DB,
@@ -49,8 +51,8 @@ from .scheduler import Scheduler
 from .sqlite3 import DBSession, SQLLog
 from .startup import resume_from_db
 from .stepinfo import StepInfo
+from .tool import positive_int
 from .usage import CgroupMemorySampler, finalize_resource_usage
-from .utils import positive_int
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
@@ -379,8 +381,8 @@ async def async_main(
         datefmt="%Y-%m-%d %H:%M:%S",
         level=args.log_level,
     )
-    print(f"SOCKET {args.director_socket}", file=sys.stderr)
-    print(f"PID {os.getpid()}", file=sys.stderr)
+    print(f"{DIRECTOR_LOG_SOCKET_PREFIX}{args.director_socket}", file=sys.stderr)
+    print(f"{DIRECTOR_LOG_PID_PREFIX}{os.getpid()}", file=sys.stderr)
     print(f"LOG_LEVEL {args.log_level}", file=sys.stderr)
     # To detect invalid usage of the RPC client of stepup.core.api within the director process,
     # we set STEPUP_DIRECTOR_SOCKET to an invalid value.

@@ -29,7 +29,7 @@ from .enums import (
 )
 from .exceptions import ConsistencyError, GraphError
 from .file import REGULAR_OUTPUT_WHERE, File
-from .hash import FileHash, fmt_digest
+from .hash import FileHash, fmt_short_digest
 from .nglob import NamedGlob, glob_base_dir, has_any_wildcards
 from .path import dir_range_upper, parent_dir
 from .sqlite3 import prefix_clause
@@ -1216,7 +1216,7 @@ class Workflow(Trellis):
             raise ConsistencyError(
                 f"Unexpected file hash update: cause={cause.name} path={path} "
                 f"state={old_state.name} "
-                f"digest={fmt_digest(fh.digest)} mode={stat.filemode(fh.mode)}"
+                f"digest={fmt_short_digest(fh.digest)} mode={stat.filemode(fh.mode)}"
             )
 
         # Decide how the file state must change and which other actions to take on the files,

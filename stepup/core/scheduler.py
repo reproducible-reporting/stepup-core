@@ -11,11 +11,11 @@ from .enums import FileState, Need, StepState
 from .exceptions import ConsistencyError
 from .file import REGULAR_OUTPUT_WHERE
 from .hash import FileHash
-from .job import Job, RunJob, ValidateDynamicJob
+from .job import Job, RunJob, ValidateDynamicJob, append_joblog_record
 from .path import dir_range_upper
 from .sqlite3 import DBSession
 from .step import STEP_DISPATCH_WHERE, Step, unavailable_input_sql
-from .utils import parse_resources, write_joblog_record
+from .utils import parse_resources
 from .workflow import Workflow
 
 __all__ = ("Scheduler",)
@@ -707,7 +707,7 @@ class Scheduler:
             # they may no longer be needed at all.
             job = ValidateDynamicJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
         if self.write_joblog:
-            write_joblog_record("CREATED", job_i, job.name)
+            append_joblog_record("CREATED", job_i, job.name)
         return job
 
     #
@@ -839,7 +839,7 @@ class Scheduler:
             # so it must not replace the duration that the tail times are derived from.
             self.new_durations[job.step.i] = job.duration()
         if self.write_joblog:
-            write_joblog_record("COMPLETED", job.job_i, job.name)
+            append_joblog_record("COMPLETED", job.job_i, job.name)
         logger.info("Done %s", job.name)
 
     def ran_concurrently(self, producer_i: int, consumer_i: int) -> bool:

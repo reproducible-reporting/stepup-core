@@ -331,7 +331,7 @@ def test_check_no_running_director_live_pid_raises(
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", path_tmp / "director.log")
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
-    (path_tmp / "director.log").write_text(f"SOCKET{stale_socket}\nPID{os.getpid()}\n")
+    (path_tmp / "director.log").write_text(f"SOCKET {stale_socket}\nPID {os.getpid()}\n")
     with pytest.raises(ToolError, match=f"pid {os.getpid()}"):
         _check_no_running_director()
 
@@ -344,7 +344,7 @@ def test_check_no_running_director_dead_pid_passes(
     monkeypatch.setattr("stepup.core.tui.is_process_running", lambda pid: False)
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
-    (path_tmp / "director.log").write_text(f"SOCKET{stale_socket}\nPID12345\n")
+    (path_tmp / "director.log").write_text(f"SOCKET {stale_socket}\nPID 12345\n")
     _check_no_running_director()
     assert "Ignoring stale socket" in capsys.readouterr().out
 
@@ -356,7 +356,7 @@ def test_check_no_running_director_missing_pid_line_raises(
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", path_tmp / "director.log")
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
-    (path_tmp / "director.log").write_text(f"SOCKET{stale_socket}\n")
+    (path_tmp / "director.log").write_text(f"SOCKET {stale_socket}\n")
     with pytest.raises(ToolError, match="may still be running"):
         _check_no_running_director()
 
@@ -367,7 +367,7 @@ def test_check_no_running_director_missing_socket_passes(
     """A missing director socket path does not raise."""
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", path_tmp / "director.log")
     missing_socket = path_tmp / "missing_socket"
-    (path_tmp / "director.log").write_text(f"SOCKET{missing_socket}\n")
+    (path_tmp / "director.log").write_text(f"SOCKET {missing_socket}\n")
     _check_no_running_director()
 
 
@@ -413,7 +413,7 @@ def test_reset_stepup_dir_keeps_log_when_director_runs(
     director_log = dir_stepup / "director.log"
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
-    director_log.write_text(f"SOCKET{stale_socket}\n")
+    director_log.write_text(f"SOCKET {stale_socket}\n")
     (dir_stepup / "other.log").touch()
     monkeypatch.setattr("stepup.core.tui.STEPUP_DIR", dir_stepup)
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)

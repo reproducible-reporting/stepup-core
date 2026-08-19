@@ -29,7 +29,9 @@ import keyword
 import logging
 import math
 import os
+import re
 import shlex
+import string
 import sys
 import tomllib
 from collections.abc import Callable, Iterable, Iterator
@@ -58,6 +60,7 @@ from .path import (
     coerce_path,
     coerce_paths,
     coerce_str,
+    format_local_executable,
     get_affixes,
     make_path_out,
     translate,
@@ -67,13 +70,7 @@ from .rpc import NO_RPC_TIMEOUT, BaseSyncRPCClient, DummySyncRPCClient, SocketSy
 from .step import RESERVED_ENV_VARS
 from .stepinfo import StepInfo
 from .tracebacks import install_excepthook
-from .utils import (
-    CaseSensitiveTemplate,
-    extract_env_overrides,
-    format_command,
-    parse_resources,
-    string_to_list,
-)
+from .utils import as_list, extract_env_overrides, parse_resources
 
 __all__ = (
     "CommandArg",
@@ -475,7 +472,7 @@ def step(
     # The command is resolved after the environment variable substitution below,
     # because a callable command is built from the substituted paths.
     inp_paths = coerce_paths(inp)
-    env_deps = string_to_list(env)
+    env_deps = as_list(env)
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
 
@@ -732,6 +729,17 @@ def call(
     )
 
 
+class _CaseSensitiveTemplate(string.Template):
+    """A case-sensitive `Template` class suitable for StepUp paths.
+
+    - Accepts named wildcards `${*foo}`.
+    - Accepts upper- and lowercase variables.
+    """
+
+    flags = re.NOFLAG
+    idpattern = r"(?a:[*]?[_a-zA-Z][_a-zA-Z0-9]*)"
+
+
 @attrs.define
 class EnvSubstitutor:
     """Substitute environment variables in paths, recording the variables used.
@@ -747,7 +755,7 @@ class EnvSubstitutor:
 
     def _substitute(self, path: StrPath) -> Path:
         """Substitute the environment variables in a path, without normalizing it."""
-        template = CaseSensitiveTemplate(coerce_str(path))
+        template = _CaseSensitiveTemplate(coerce_str(path))
         if not template.is_valid():
             raise EnvVarError("The path contains invalid shell variable identifiers.")
         mapping = {}
@@ -941,7 +949,7 @@ def amend(
     """
     # Pre-process the arguments for the Director process.
     inp_paths = coerce_paths(inp)
-    env_deps = string_to_list(env)
+    env_deps = as_list(env)
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_deps, out_paths, vol_paths]):
@@ -1517,7 +1525,7 @@ def script(
     executable = _keep_affixes(executable, Path.normpath)
 
     # Start building the command and the step inputs.
-    command = format_command(executable) + " plan"
+    command = format_local_executable(executable) + " plan"
     out = coerce_paths(out)
     if step_info is not None:
         step_info = coerce_path(step_info)

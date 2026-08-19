@@ -15,13 +15,12 @@ from .cattrs import json_converter
 from .enums import FILE_STATES_BY_ROLE, FileRole, FileState, Need, StepState
 from .exceptions import GraphError
 from .file import File
-from .hash import FileHash, StepHash
+from .hash import FileHash, StepHash, fmt_full_digest
 from .nglob import NamedGlob, convert_nglob_to_regex
 from .outcome import ChildOutcome, ResourceUsage
 from .static_tree import StaticTree
 from .stepinfo import StepInfo
 from .trellis import Node, NodeType
-from .utils import format_digest
 
 __all__ = (
     "RESERVED_ENV_VARS",
@@ -791,8 +790,8 @@ class Step(Node):
 
         step_hash = self.get_hash()
         if step_hash is not None:
-            yield "inp_digest", format_digest(step_hash.inp_digest)
-            yield "out_digest", format_digest(step_hash.out_digest)
+            yield "inp_digest", fmt_full_digest(step_hash.inp_digest)
+            yield "out_digest", fmt_full_digest(step_hash.out_digest)
             if step_hash.inp_info is not None:
                 yield "explained", "yes"
 

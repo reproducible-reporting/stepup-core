@@ -1,13 +1,14 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Definition of jobs to be executed by the executor."""
+"""Definition of jobs to be executed by the executor, and the `--joblog` record format."""
 
-from time import perf_counter
+import csv
+from time import monotonic_ns, perf_counter
 from typing import TYPE_CHECKING
 
 import attrs
 
-from .utils import write_joblog_record
+from .constants import JOBLOG_CSV
 
 if TYPE_CHECKING:
     from .executor import Executor
@@ -15,7 +16,54 @@ if TYPE_CHECKING:
     from .step import Step
 
 
-__all__ = ("Job", "RunJob", "ValidateDynamicJob")
+__all__ = ("Job", "RunJob", "ValidateDynamicJob", "append_joblog_record", "init_joblog")
+
+
+JOBLOG_COLUMNS = (
+    "time_ns",
+    "job_i",
+    "event",
+    "description",
+)
+"""Column names of the `--joblog` CSV file, in on-disk order."""
+
+
+def init_joblog(njob: int) -> None:
+    """(Re)create `JOBLOG_CSV`, writing its CSV header and an initial `INIT` record.
+
+    Any records of a previous build phase are discarded.
+    """
+    row = (monotonic_ns(), 0, "INIT", f"maximum concurrent jobs: {njob}")
+    with open(JOBLOG_CSV, "w", newline="") as fh:
+        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerows([JOBLOG_COLUMNS, row])
+
+
+def append_joblog_record(event: str, job_i: int, description: str) -> None:
+    """Append one job-execution event to `JOBLOG_CSV` as a CSV row.
+
+    This is the single place that fixes the row format, so every call site stays consistent.
+
+    Parameters
+    ----------
+    event
+        The kind of event, e.g. `"CREATED"`, `"STARTED"`, `"ENDED"`, `"COMPLETED"`.
+    job_i
+        The unique job identifier.
+    description
+        A human-readable description of the job or step, truncated to 100 characters.
+
+    Notes
+    -----
+    The file is opened and closed for every call,
+    so the write reaches disk synchronously
+    and events stay correctly ordered even when jobs complete only milliseconds apart.
+    Fields are quoted with `QUOTE_NONNUMERIC`, so `event` and `description` are always quoted
+    (and thus unambiguous even if a description contains a comma or looks numeric),
+    while the numeric columns stay bare.
+    """
+    row = (monotonic_ns(), job_i, event, description[:100])
+    with open(JOBLOG_CSV, "a", newline="") as fh:
+        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerow(row)
 
 
 @attrs.define(frozen=True)
@@ -130,8 +178,8 @@ class RunJob(Job):
 
 async def _run_job_with_log(job_i: int, description: str, coro):
     """Await `coro`, recording `--joblog` `STARTED`/`ENDED` events around it."""
-    write_joblog_record("STARTED", job_i, description)
+    append_joblog_record("STARTED", job_i, description)
     try:
         return await coro
     finally:
-        write_joblog_record("ENDED", job_i, description)
+        append_joblog_record("ENDED", job_i, description)

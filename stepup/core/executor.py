@@ -893,9 +893,8 @@ class Executor:
                     else "Failed command",
                     format_subprocess(
                         command,
-                        str(workdir),
-                        None,
-                        None if run.outcome is None else run.outcome.returncode,
+                        workdir,
+                        returncode=None if run.outcome is None else run.outcome.returncode,
                         shell=shell,
                     ),
                 )

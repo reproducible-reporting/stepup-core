@@ -361,6 +361,21 @@ and will be updated with any further changes before the final release.
     - Cascade has been renamed to Trellis.
     - Supplier has been renamed to Source.
     - Consumer has been renamed to Sink.
+    - The grab bag in `stepup.core.utils` is reduced to what is genuinely generic.
+      Digest formatting moved to `stepup.core.hash` (`fmt_full_digest`,
+      next to `fmt_digest`, which is renamed to `fmt_short_digest`),
+      local executable formatting to `stepup.core.path` (`format_local_executable`),
+      the `--joblog` record format to `stepup.core.job`
+      (`init_joblog` and `append_joblog_record`),
+      and the argparse converters to `stepup.core.tool`
+      (`positive_int`, joined there by `positive_decimal`).
+      What stays is renamed to say what it does:
+      `escape_command_display` became `escape_control_chars`,
+      `string_to_bool` became `to_bool`, and `string_to_list` became `as_list`.
+      The `env` and `returncode` arguments of `format_subprocess` became keyword arguments.
+    - The `SOCKET` and `PID` header lines of `.stepup/director.log` are defined once,
+      in `stepup.core.constants`, instead of being written and parsed with
+      literal prefixes and hardcoded offsets in two different modules.
 - The `Ran N job(s).` message at the end of a build phase now counts only the jobs
   that executed a step's command.
   Skipped steps and internal validation jobs are no longer included,

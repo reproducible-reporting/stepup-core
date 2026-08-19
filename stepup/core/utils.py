@@ -3,75 +3,34 @@
 """Small utilities used throughout."""
 
 import contextlib
-import csv
 import logging
 import os
 import re
 import shlex
-import string
 from collections.abc import Iterable
-from time import monotonic_ns
 
 from path import Path
 
-from .constants import JOBLOG_CSV
-from .exceptions import PathError, StepUpError
+from .constants import DIRECTOR_LOG_PID_PREFIX, DIRECTOR_LOG_SOCKET_PREFIX
+from .exceptions import StepUpError
+from .path import StrPath, coerce_str
 
 __all__ = (
-    "DIRECTOR_LOG_CHECKS",
-    "JOBLOG_COLUMNS",
-    "CaseSensitiveTemplate",
-    "escape_command_display",
+    "as_list",
+    "escape_control_chars",
     "extract_env_overrides",
-    "format_command",
-    "format_digest",
     "format_subprocess",
     "is_debug",
     "is_process_running",
     "merge_resources",
     "parse_resources",
-    "positive_int",
     "query_director_log",
-    "reset_joblog",
     "scan_director_log",
-    "string_to_bool",
-    "string_to_list",
-    "write_joblog_record",
+    "to_bool",
 )
 
 
 logger = logging.getLogger(__name__)
-
-
-#
-# Miscellaneous
-#
-
-
-class CaseSensitiveTemplate(string.Template):
-    """A case-sensitive `Template` class suitable for StepUp.
-
-    - Accepts named wildcards `${*foo}`.
-    - Accepts upper- and lowercase variables.
-    """
-
-    flags = re.NOFLAG
-    idpattern = r"(?a:[*]?[_a-zA-Z][_a-zA-Z0-9]*)"
-
-
-def format_digest(digest: bytes) -> str:
-    """Format a 32-byte digest as eight space-separated 8-character hex words."""
-    hexdigest = digest.hex()
-    return " ".join(hexdigest[i : i + 8] for i in range(0, 64, 8))
-
-
-def format_command(executable: str) -> str:
-    """Format a relative path to a local executable for execution in a shell."""
-    executable = Path(executable)
-    if executable.isabs():
-        raise PathError(f"Executable is not a relative path: {executable}")
-    relative = executable if executable.startswith(("./", "../")) else "." / executable
-    return shlex.quote(relative)
 
 
 # Matches a single leading `NAME=value` assignment in a command string,
@@ -143,25 +102,25 @@ _ANSI_C_ESCAPES = {
 }
 
 
-def escape_command_display(command: str) -> str:
-    """Rewrite control characters in a command line as `$'...'`-quoted escapes.
+def escape_control_chars(text: str) -> str:
+    """Rewrite the control characters in a shell command or step label as `$'...'`-quoted escapes.
 
     An embedded control character (e.g. a literal newline)
     is spliced in as a `$'\\n'`-style ANSI-C-quoted escape,
     closing and reopening whichever quote is currently open around it.
     This keeps the result on a single line and,
     because adjacent shell tokens with no separator are concatenated,
-    copy-pasting it into a POSIX shell reproduces `command` byte for byte.
+    copy-pasting it into a POSIX shell reproduces `text` byte for byte.
 
     Parameters
     ----------
-    command
-        A shell command line.
+    text
+        A shell command line, or a step label that reads as one.
 
     Returns
     -------
     escaped
-        A single-line, shell-pasteable version of `command`.
+        A single-line, shell-pasteable version of `text`.
 
     Notes
     -----
@@ -170,12 +129,12 @@ def escape_command_display(command: str) -> str:
     It does not recurse into nested `$(...)` or backtick command substitutions,
     so a control character embedded inside such a substitution's own quotes
     may be spliced incorrectly.
-    This only affects how the command is displayed.
+    This only affects how the text is displayed.
     """
     pieces = []
     quote = None  # None, "'", or '"'
     escaped = False
-    for char in command:
+    for char in text:
         if ord(char) < 0x20 or ord(char) == 0x7F:
             token = _ANSI_C_ESCAPES.get(char, f"\\x{ord(char):02x}")
             pieces.append(f"$'{token}'" if quote is None else f"{quote}$'{token}'{quote}")
@@ -199,10 +158,10 @@ def escape_command_display(command: str) -> str:
 
 def format_subprocess(
     cmd: str,
-    workdir: str,
-    env: dict[str, str] | None,
-    returncode: int | None,
+    workdir: StrPath,
     *,
+    env: dict[str, str] | None = None,
+    returncode: int | None = None,
     shell: bool = False,
 ) -> str:
     """Format a recorded subprocess invocation as a single, shell-pasteable line.
@@ -223,7 +182,8 @@ def format_subprocess(
         The environment overlay (variables set on top of the inherited environment),
         or `None` when no overlay was applied.
     returncode
-        The exit code of the subprocess, or `None` when the subprocess was not run.
+        The exit code of the subprocess,
+        or `None` when the subprocess was not run or its exit code is not of interest.
     shell
         Whether `cmd` is a shell command line (as in `subprocess.run(..., shell=True)`).
         When `True`, a `cd` wrapper groups `cmd` in an extra `(...)`,
@@ -238,8 +198,9 @@ def format_subprocess(
     parts = []
     if env:
         parts.extend(f"{key}={shlex.quote(value)}" for key, value in env.items())
-    parts.append(escape_command_display(cmd))
+    parts.append(escape_control_chars(cmd))
     line = " ".join(parts)
+    workdir = coerce_str(workdir)
     if workdir not in ("", "."):
         inner = f"({line})" if shell else line
         line = f"(cd {shlex.quote(workdir)} && {inner})"
@@ -250,7 +211,7 @@ def format_subprocess(
     return line
 
 
-def parse_resources(s: str) -> dict[str, int]:
+def parse_resources(spec: str) -> dict[str, int]:
     """Parse a resources string like `cpu:4,gpu:1,memgb:16` into a dict.
 
     An item with no value (e.g. `cpu`) is interpreted as `cpu:1`.
@@ -262,7 +223,7 @@ def parse_resources(s: str) -> dict[str, int]:
         or a resource value is not an integer.
     """
     result = {}
-    for item in s.split(","):
+    for item in spec.split(","):
         item = item.strip()
         if not item:
             continue
@@ -286,14 +247,6 @@ def merge_resources(base: str | None, override: str | None) -> str:
     """Merge two comma-separated resource specs. (`override` wins per resource name.)"""
     merged = {**parse_resources(base or ""), **parse_resources(override or "")}
     return ",".join(f"{k}:{v}" for k, v in merged.items())
-
-
-def positive_int(value):
-    """Convert the argument to an integer, requiring it to be strictly positive (> 0)."""
-    ivalue = int(value)
-    if ivalue <= 0:
-        raise ValueError(f"'{value}' is not strictly positive.")
-    return ivalue
 
 
 def is_process_running(pid: int) -> bool:
@@ -343,13 +296,13 @@ def query_director_log(director_log: Path) -> tuple[Path | None, int | None, str
     # Validate the header and return socket_path only if validated.
     # PID can be useful even if the socket is stale, so it is returned regardless.
     pid = None
-    if line_pid.startswith("PID"):
+    if line_pid.startswith(DIRECTOR_LOG_PID_PREFIX):
         with contextlib.suppress(ValueError):
-            pid = int(line_pid[3:])
-    if not line_socket.startswith("SOCKET"):
+            pid = int(line_pid.removeprefix(DIRECTOR_LOG_PID_PREFIX))
+    if not line_socket.startswith(DIRECTOR_LOG_SOCKET_PREFIX):
         return None, pid, f"File {director_log} does not start with SOCKET line."
 
-    socket_path = Path(line_socket[6:].strip())
+    socket_path = Path(line_socket.removeprefix(DIRECTOR_LOG_SOCKET_PREFIX).strip())
     if socket_path and socket_path.exists():
         return socket_path, pid, ""
     message = f"Socket {socket_path} read from {director_log} does not exist. StepUp not running?"
@@ -429,65 +382,17 @@ def scan_director_log(path_director_log: Path) -> list[str]:
     return findings
 
 
-JOBLOG_COLUMNS = (
-    "time_ns",
-    "job_i",
-    "event",
-    "description",
-)
-"""Column names of the `--joblog` CSV file, in on-disk order."""
+def as_list(values: Iterable[str] | str) -> list[str]:
+    """Normalize a single string or an iterable of strings to a list of strings."""
+    return [values] if isinstance(values, str) else list(values)
 
 
-def reset_joblog(njob: int) -> None:
-    """(Re)create `JOBLOG_CSV`, writing its CSV header and an initial `INIT` record.
-
-    Any records of a previous build phase are discarded.
-    """
-    row = (monotonic_ns(), 0, "INIT", f"maximum concurrent jobs: {njob}")
-    with open(JOBLOG_CSV, "w", newline="") as fh:
-        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerow(JOBLOG_COLUMNS)
-        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerow(row)
-
-
-def write_joblog_record(event: str, job_i: int, description: str) -> None:
-    """Append one job-execution event to `JOBLOG_CSV` as a CSV row.
-
-    This is the single place that fixes the row format, so every call site stays consistent.
-
-    Parameters
-    ----------
-    event
-        The kind of event, e.g. `"CREATED"`, `"STARTED"`, `"ENDED"`, `"COMPLETED"`.
-    job_i
-        The unique job identifier.
-    description
-        A human-readable description of the job or step, truncated to 100 characters.
-
-    Notes
-    -----
-    The file is opened and closed for every call,
-    so the write reaches disk synchronously
-    and events stay correctly ordered even when jobs complete only milliseconds apart.
-    Fields are quoted with `QUOTE_NONNUMERIC`, so `event` and `description` are always quoted
-    (and thus unambiguous even if a description contains a comma or looks numeric),
-    while the numeric columns stay bare.
-    """
-    row = (monotonic_ns(), job_i, event, description[:100])
-    with open(JOBLOG_CSV, "a", newline="") as fh:
-        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerow(row)
-
-
-def string_to_list(arg: Iterable[str] | str) -> list[str]:
-    """Normalize a string or iterable of strings to a list of strings."""
-    return [arg] if isinstance(arg, str) else list(arg)
-
-
-def string_to_bool(v: str | bool) -> bool:
+def to_bool(value: str | bool) -> bool:
     """Convert a string to a boolean value, passing a boolean through unchanged.
 
     Parameters
     ----------
-    v
+    value
         The value to convert to a boolean.
 
     Returns
@@ -500,28 +405,30 @@ def string_to_bool(v: str | bool) -> bool:
     StepUpError
         If the string cannot be interpreted as a boolean value.
     TypeError
-        If the input is not a string or boolean.
+        If the input is neither a string nor a boolean.
+        A configuration file can hold any TOML type here,
+        so this guard names the mistake instead of failing on a missing string method.
 
     Examples
     --------
-    >>> string_to_bool('yes')
+    >>> to_bool('yes')
     True
-    >>> string_to_bool('no')
+    >>> to_bool('no')
     False
-    >>> string_to_bool(True)
+    >>> to_bool(True)
     True
-    >>> string_to_bool(False)
+    >>> to_bool(False)
     False
     """
-    if isinstance(v, bool):
-        return v
-    if isinstance(v, str):
-        if v.lower() in ("yes", "true", "t", "y", "1"):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        if value.lower() in ("yes", "true", "t", "y", "1"):
             return True
-        if v.lower() in ("no", "false", "f", "n", "0"):
+        if value.lower() in ("no", "false", "f", "n", "0"):
             return False
-        raise StepUpError(f"Cannot interpret '{v}' as a boolean value.")
-    raise TypeError(f"Expected a boolean value or string. Got {type(v).__name__}")
+        raise StepUpError(f"Cannot interpret '{value}' as a boolean value.")
+    raise TypeError(f"Expected a boolean value or string. Got {type(value).__name__}")
 
 
 def is_debug() -> bool:
@@ -530,4 +437,4 @@ def is_debug() -> bool:
     The variable is read on every call, not cached, because a test may change it
     and because a step's environment is not the director's.
     """
-    return string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
+    return to_bool(os.getenv("STEPUP_DEBUG", "0"))

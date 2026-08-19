@@ -20,7 +20,7 @@ from rich.theme import Theme
 
 from .constants import FAIL_LOG, SUCCESS_LOG, WARNING_LOG
 from .rpc import BaseAsyncRPCClient, DummyAsyncRPCClient, SocketAsyncRPCClient, allow_rpc
-from .utils import escape_command_display
+from .utils import escape_control_chars
 
 logger = logging.getLogger(__name__)
 
@@ -378,7 +378,7 @@ class ReporterHandler:
     def update_running_jobs(self, started: dict[int, tuple[str, str]], stopped: set[int]):
         if self.progress_bar is not None:
             started = {
-                job_i: (letter, escape_command_display(description))
+                job_i: (letter, escape_control_chars(description))
                 for job_i, (letter, description) in started.items()
             }
             self.progress_bar.update_running_jobs(started, stopped, perf_counter())

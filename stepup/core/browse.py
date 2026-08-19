@@ -21,12 +21,12 @@ import jinja2
 from .cattrs import json_converter
 from .config_loader import ConfigLoader
 from .enums import FileState, Need, StepState
-from .hash import FileHash, StepHash, fmt_digest, fmt_env_value
+from .hash import FileHash, StepHash, fmt_env_value, fmt_short_digest
 from .nglob import NamedGlob
 from .sqlite3 import connect
 from .step import Step
-from .tool import SubParsers, ToolFunc, get_graph_db_path
-from .utils import escape_command_display, format_subprocess, positive_int
+from .tool import SubParsers, ToolFunc, get_graph_db_path, positive_int
+from .utils import escape_control_chars, format_subprocess
 
 __all__ = ("add_browse_subcommand",)
 
@@ -470,7 +470,7 @@ class GraphServer(BaseHTTPRequestHandler):
         if kind != "root":
             kind_name = f"<a href='/search_{kind}/'>{kind_name}</a>"
         yield f"<p><b>Kind:</b> {kind_name}</p>"
-        display_label = escape_command_display(label) if kind == "step" else label
+        display_label = escape_control_chars(label) if kind == "step" else label
         yield f"<p><b>Label:</b> {html.escape(display_label)}</p>"
 
         # Format the state, which exists only for files and steps.
@@ -638,8 +638,8 @@ class GraphServer(BaseHTTPRequestHandler):
                     line = format_subprocess(
                         cmd,
                         workdir,
-                        None if env_overrides is None else json.loads(env_overrides),
-                        returncode,
+                        env=None if env_overrides is None else json.loads(env_overrides),
+                        returncode=returncode,
                         shell=bool(shell_int),
                     )
                     yield f"<pre>{html.escape(line)}</pre>"
@@ -661,7 +661,7 @@ class GraphServer(BaseHTTPRequestHandler):
             state = FileState(state_i)
             file_hash = FileHash.from_json(hash_value)
             yield f'<p><b>State:</b> <span class="{state.name.lower()}">{state.name}</span></p>'
-            yield f"<p><b>Digest:</b> {fmt_digest(file_hash.digest)}</p>"
+            yield f"<p><b>Digest:</b> {fmt_short_digest(file_hash.digest)}</p>"
             if len(file_hash.digest) > 1:
                 yield f"<p><b>Mode:</b> {stat.filemode(file_hash.mode)}</p>"
                 yield (
@@ -786,7 +786,7 @@ class GraphServer(BaseHTTPRequestHandler):
         dynamic: bool = False,
     ) -> str:
         sym = KIND_SYMBOLS.get(kind, f"?{kind}?")
-        display_label = escape_command_display(label) if kind == "step" else label
+        display_label = escape_control_chars(label) if kind == "step" else label
         node_str = html.escape(display_label)
         if i is not None:
             node_str = f'<a href="/node/?i={i}">{node_str}</a>'
@@ -817,8 +817,8 @@ class GraphServer(BaseHTTPRequestHandler):
             yield "<p>No digest stored for this step.</p>"
             return
         step_hash = StepHash.from_json(row[0])
-        yield f"<p><b>Input Digest:</b> {fmt_digest(step_hash.inp_digest)}</p>"
-        yield f"<p><b>Output Digest:</b> {fmt_digest(step_hash.out_digest)}</p>"
+        yield f"<p><b>Input Digest:</b> {fmt_short_digest(step_hash.inp_digest)}</p>"
+        yield f"<p><b>Output Digest:</b> {fmt_short_digest(step_hash.out_digest)}</p>"
 
         inp_info = step_hash.inp_info
         if inp_info is not None:
@@ -851,7 +851,7 @@ class GraphServer(BaseHTTPRequestHandler):
         for path in sorted(hashes):
             file_hash = hashes[path]
             yield f"<tr><td><code>{html.escape(path)}</code></td>"
-            yield f"<td>{fmt_digest(file_hash.digest)}</td>"
+            yield f"<td>{fmt_short_digest(file_hash.digest)}</td>"
             if file_hash.is_unknown:
                 yield "<td>-</td><td>-</td><td>-</td><td>-</td></tr>"
             else:
