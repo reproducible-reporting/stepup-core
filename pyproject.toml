@@ -55,6 +55,7 @@ dev = [
     "pytest-xdist",
     "psutil",
     "reuse",
+    "yappi",
 ]
 
 [project.urls]
