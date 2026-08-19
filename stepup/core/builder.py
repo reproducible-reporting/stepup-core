@@ -4,8 +4,9 @@
 
 `Builder` always runs a single **build phase** per `run_phase()` call: it waits for the
 `resume` event, executes all currently runnable jobs via `job_loop`, and ends with
-`finalize`, which reverts optional steps, reports pending/failed steps, and removes
-outdated outputs. `Builder` has no notion of watch mode; repeating build phases and
+`finalize`, which reports pending/failed steps and, unless cleanup is skipped,
+reverts optional steps and removes outdated outputs.
+`Builder` has no notion of watch mode; repeating build phases and
 deciding what happens between them (e.g. handing control to a `Watcher`) is the caller's
 responsibility, see `build_loop` in `director.py`.
 
@@ -193,13 +194,17 @@ class Builder:
     async def finalize(self):
         """Final steps after the builder has executed a bunch of jobs."""
         await self.reporter("DIRECTOR", f"Ran {self.scheduler.job_counter} job(s).")
-        await revert_optional(self.db, self.workflow, self.reporter)
         self.returncode = await report_completion(
             self.db, self.workflow, self.scheduler, self.reporter
         )
+        # Reverting optional steps resets their outputs in the database, which only makes sense
+        # paired with removing the files from disk, so it shares the guard below with the rest
+        # of the cleanup.
+        #
         # A build restricted to targets leaves the outputs of every step outside the target's
         # dependencies OUTDATED, so cleaning up would delete results the user never asked to
-        # rebuild. A warning on its own does not make the build incomplete, so it is masked out.
+        # rebuild. `ReturnCode.WARNING` is masked out below because a warning on its own does
+        # not make the build incomplete.
         if len(self.workflow.targets) > 0 or len(self.workflow.target_dirs) > 0:
             await self.reporter(
                 "WARNING", "Skipping file cleanup for a build restricted to targets"
@@ -209,13 +214,13 @@ class Builder:
         elif not self.do_remove_outdated:
             await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean)")
         else:
+            await revert_optional(self.db, self.workflow, self.reporter)
             async with self.db:
                 self.workflow.delete_detached()
             await remove_outdated_outputs(self.db, self.workflow, self.reporter)
-        # Flush the step durations and refresh the derived tail times,
-        # now that delete_detached() has settled the graph.
+        # Step durations and tail times are derived from the settled graph,
+        # so this runs after delete_detached().
         await self.scheduler.build_completed()
-        # Finalize the reporter status.
         await self._report_counts()
         await self.reporter.check_logs()
 

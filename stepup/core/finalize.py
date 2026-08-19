@@ -4,9 +4,12 @@
 
 `Builder.finalize` (in `builder.py`) calls, in this order:
 
-- `revert_optional`, which puts optional steps back to `PENDING`,
 - `report_completion`, which reports whatever could not be built and derives a `ReturnCode`,
+- `revert_optional`, which puts optional steps back to `PENDING`,
 - `remove_outdated_outputs`, which deletes files that are no longer built by any step.
+
+The last two form the cleanup pass and are skipped together,
+e.g. after an incomplete build.
 
 None of these touch `Builder` state:
 they work with the workflow, the scheduler and the reporter only,

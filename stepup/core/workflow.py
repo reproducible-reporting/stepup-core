@@ -673,8 +673,12 @@ class Workflow(Trellis):
     """Files that can be deleted, including parent directories left empty after file deletion.
 
     Maps a path to its file hash. This dict contains BUILT/OUTDATED file nodes
-    (with their file hash) and VOLATILE file nodes (hash always `None`)
-    that were removed from the graph by the `Workflow.delete_detached()` method.
+    (with their file hash) and VOLATILE file nodes (hash always `None`).
+
+    Entries are keyed by path, not by node, so they are only meaningful for as long as the
+    graph does not change underneath them: a path may acquire a new node, whose file must not
+    be deleted. Whatever fills this dict must therefore belong to the same cleanup pass as
+    `remove_outdated_outputs`, which deletes the files and empties the dict again.
     """
 
     #

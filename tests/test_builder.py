@@ -9,24 +9,26 @@ from types import SimpleNamespace
 
 import pytest
 from conftest import get_duration_and_tail_time
+from path import Path
 
 from stepup.core.builder import Builder
-from stepup.core.enums import HashUpdateCause
+from stepup.core.enums import HashUpdateCause, Need, StepState
 from stepup.core.executor import Executor
 from stepup.core.file import File, FileState
-from stepup.core.hash import FileHash
+from stepup.core.hash import FileHash, StepHash
 from stepup.core.reporter import ReporterClient
 from stepup.core.scheduler import Scheduler
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
 
-def _make_builder(scheduler: Scheduler, workflow: Workflow) -> Builder:
-    """Build a `Builder` with dummy collaborators, sufficient for `stop()` tests.
+def _make_builder(
+    scheduler: Scheduler, workflow: Workflow, do_remove_outdated: bool = True
+) -> Builder:
+    """Build a `Builder` with dummy collaborators, sufficient for `stop()` and `finalize()`.
 
-    Mirrors `_make_executor()` in `test_executor.py`: `stop()` only touches
-    `executor.interrupt()`, `running_tasks`, `db` and `scheduler`, so the other
-    collaborators can be dummies.
+    Mirrors `_make_executor()` in `test_executor.py`: neither method touches the executor
+    beyond `interrupt()`, so the other collaborators can be dummies.
     """
     executor = Executor(
         scheduler=None,
@@ -47,6 +49,7 @@ def _make_builder(scheduler: Scheduler, workflow: Workflow) -> Builder:
         reporter=ReporterClient(),
         live_progress=False,
         executor=executor,
+        do_remove_outdated=do_remove_outdated,
     )
 
 
@@ -98,6 +101,59 @@ async def test_stop_swallows_flush_failure(wfs: Workflow, caplog, monkeypatch):
         await builder.stop()  # must not raise
 
     assert "Failed to flush step durations" in caplog.text
+
+
+@pytest.mark.parametrize("do_remove_outdated", [True, False])
+async def test_finalize_reverts_optional_only_when_cleaning(
+    wfp: Workflow, tmpdir, do_remove_outdated: bool
+):
+    """`revert_optional` must happen if and only if the outdated outputs are removed too.
+
+    Reverting resets the outputs of the optional step in the database and queues their paths
+    in `to_be_deleted`. Without the removal that follows it, the database would claim the
+    outputs are gone while the files are still there, and the queued paths would survive into
+    a later build phase, which can no longer tell whether they still refer to the same nodes.
+    """
+    with contextlib.chdir(tmpdir):
+        for path in "data.txt", "vol.log":
+            with open(path, "w") as fh:
+                fh.write(path)
+
+        scheduler = Scheduler(wfp, db=wfp.db)
+        await scheduler.initialize(None)
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            # The plan step must succeed as well: a pending step anywhere makes the build
+            # incomplete, which is itself a reason to skip the cleanup.
+            plan.mark_completed(StepHash(b"ppp", None, b"qqq", None), False)
+            wfp.define_step(
+                plan, "foo", out_paths=["data.txt"], vol_paths=["vol.log"], need=Need.OPTIONAL
+            )
+            foo = wfp.find(Step, "foo")
+            wfp.update_file_hashes(
+                {"data.txt": FileHash.unknown().regen("data.txt")},
+                cause=HashUpdateCause.SUCCEEDED,
+            )
+            foo.mark_completed(StepHash(b"aaa", None, b"zzz", None), False)
+            assert foo.get_state() == StepState.SUCCEEDED
+            assert wfp.find(File, "data.txt").get_state() == FileState.BUILT
+
+        builder = _make_builder(scheduler, wfp, do_remove_outdated=do_remove_outdated)
+        await builder.finalize()
+
+        # Either way, nothing may be left queued for a later build phase to delete blindly.
+        assert wfp.to_be_deleted == {}
+        async with wfp.db:
+            if do_remove_outdated:
+                assert foo.get_state() == StepState.PENDING
+                assert wfp.find(File, "data.txt").get_state() == FileState.PLANNED
+                assert not Path("data.txt").exists()
+                assert not Path("vol.log").exists()
+            else:
+                assert foo.get_state() == StepState.SUCCEEDED
+                assert wfp.find(File, "data.txt").get_state() == FileState.BUILT
+                assert Path("data.txt").exists()
+                assert Path("vol.log").exists()
 
 
 class _FakeReporter:

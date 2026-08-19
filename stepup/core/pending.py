@@ -148,9 +148,8 @@ class PendingSummary:
 
     runnable: PendingOther
     """Steps with no candidate blocker at all: dispatch should have picked them up.
-    Not expected in practice --
-    `revert_optional` can leave `_safe` stale just before a report is generated,
-    see `Builder.finalize`.
+    Not expected in practice: a non-empty bucket points at `_safe` metadata that is stale
+    at report time, i.e. a gap in the `_check_safe` bookkeeping.
     """
 
 
