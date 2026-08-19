@@ -24,7 +24,7 @@ from .cattrs import json_converter
 from .config import ConfigLoader
 from .constants import GRAPH_DB
 from .enums import FileState, Need, StepState
-from .hash import FileHash, fmt_digest
+from .hash import FileHash, StepHash, fmt_digest, fmt_env_value
 from .nglob import NamedGlob
 from .sqlite3 import connect
 from .step import Step
@@ -266,14 +266,16 @@ HTML_TEMPLATE = """\
     .deferred { color: var(--orange); }
     .clean { color: var(--green); }
     .required { color: var(--blue); }
-    table.nglob {
+    table.nglob, table.hashes {
       margin: 12px;
     }
-    table.nglob, table.nglob tr, table.nglob tr td, table.nglob tr th {
+    table.nglob, table.nglob tr, table.nglob tr td, table.nglob tr th,
+    table.hashes, table.hashes tr, table.hashes tr td, table.hashes tr th {
       border: 1px solid var(--link-color);
       border-collapse: collapse;
     }
-    table.nglob tr td, table.nglob tr th {
+    table.nglob tr td, table.nglob tr th,
+    table.hashes tr td, table.hashes tr th {
       vertical-align: top;
       text-align: left;
       padding: 1px 4px 4px 4px;
@@ -594,6 +596,8 @@ class GraphServer(BaseHTTPRequestHandler):
                         yield "</tr>"
                     yield "</table>"
 
+            yield from self._format_step_hash(node_i)
+
             sql_outcome = (
                 "SELECT returncode, stdout, stderr, utime, stime, wtime "
                 "FROM step_outcome WHERE node = ?"
@@ -804,3 +808,56 @@ class GraphServer(BaseHTTPRequestHandler):
             f'<tr><td class="{state_str.lower()}">{state_str}</td>'
             f"<td>{sym}</td><td>{node_str}</td></tr>"
         )
+
+    def _format_step_hash(self, node_i: int) -> Iterator[str]:
+        """Format the stored `StepHash` of a step, if any, as HTML."""
+        row = self.con.execute("SELECT hash FROM step_hash WHERE node = ?", (node_i,)).fetchone()
+        yield "<h3>Digest</h3>"
+        if row is None:
+            yield "<p>No digest stored for this step.</p>"
+            return
+        step_hash = StepHash.from_json(row[0])
+        yield f"<p><b>Input Digest:</b> {fmt_digest(step_hash.inp_digest)}</p>"
+        yield f"<p><b>Output Digest:</b> {fmt_digest(step_hash.out_digest)}</p>"
+
+        inp_info = step_hash.inp_info
+        if inp_info is not None:
+            if len(inp_info.inp_hashes) > 0:
+                yield "<h3>Digest: Input Files</h3>"
+                yield from self._format_file_hash_table(inp_info.inp_hashes)
+            if len(inp_info.env_values) > 0:
+                yield "<h3>Digest: Input Environment Variables</h3>"
+                for env_var, value in sorted(inp_info.env_values.items()):
+                    yield f"<p><b>{html.escape(env_var)}:</b> {fmt_env_value(value)}</p>"
+            if len(inp_info.env_overrides) > 0:
+                yield "<h3>Digest: Input Environment Overrides</h3>"
+                block = "\n".join(
+                    f"{name}={value}" for name, value in sorted(inp_info.env_overrides.items())
+                )
+                yield f"<pre>{html.escape(block)}</pre>"
+
+        out_info = step_hash.out_info
+        if out_info is not None and len(out_info.out_hashes) > 0:
+            yield "<h3>Digest: Output Files</h3>"
+            yield from self._format_file_hash_table(out_info.out_hashes)
+
+    def _format_file_hash_table(self, hashes: dict[str, FileHash]) -> Iterator[str]:
+        """Format a path-to-`FileHash` mapping (as stored in a `StepHash`) as an HTML table."""
+        yield '<table class="hashes">'
+        yield (
+            "<tr><th>Path</th><th>Digest</th><th>Mode</th>"
+            "<th>Modified</th><th>Size</th><th>Inode</th></tr>"
+        )
+        for path in sorted(hashes):
+            file_hash = hashes[path]
+            yield f"<tr><td><code>{html.escape(path)}</code></td>"
+            yield f"<td>{fmt_digest(file_hash.digest)}</td>"
+            if file_hash.is_unknown:
+                yield "<td>-</td><td>-</td><td>-</td><td>-</td></tr>"
+            else:
+                modified = datetime.fromtimestamp(file_hash.mtime).strftime("%Y-%m-%d %H:%M:%S")
+                yield f"<td>{stat.filemode(file_hash.mode)}</td>"
+                yield f"<td>{modified}</td>"
+                yield f"<td>{file_hash.size}</td>"
+                yield f"<td>{file_hash.inode}</td></tr>"
+        yield "</table>"
