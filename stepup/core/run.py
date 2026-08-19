@@ -334,6 +334,10 @@ def _check_executable(executable: Path, shebang: str | None = None) -> str | Non
     message
         `None` when the executable is acceptable, otherwise a human-readable error message.
     """
+    # Normalize away redundant `.` components, e.g. `cwd / script` doubling up a leading
+    # `./` when `cwd` is itself `.`. `path.Path.__truediv__` does not collapse these on its
+    # own, unlike `pathlib`.
+    executable = executable.normpath()
     # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29
     if not executable.is_file():
         # The executable is probably in the PATH,
