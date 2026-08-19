@@ -513,10 +513,10 @@ def test_dumpns_does_not_raise_while_holding(path_tmp, monkeypatch):
 
 
 class _ReleaseFailsClient(DummySyncRPCClient):
-    """A dummy RPC client whose `release` call raises, to simulate an RPC failure."""
+    """A dummy RPC client whose `release_children` call raises, to simulate an RPC failure."""
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
-        if name == "release":
+        if name == "release_children":
             raise RuntimeError("simulated release() RPC failure")
         return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
 
@@ -603,12 +603,12 @@ def test_check_inp_paths_splits_files_and_dirs(path_tmp):
 
 @attrs.define
 class _CaptureNglobClient(DummySyncRPCClient):
-    """A dummy RPC client that records the arguments of the `glob` call."""
+    """A dummy RPC client that records the arguments of the `register_glob` call."""
 
     calls: list = attrs.field(factory=list)
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
-        if name == "glob":
+        if name == "register_glob":
             self.calls.append(args)
         return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
 
@@ -674,7 +674,7 @@ def test_static_tree_before_file_regardless_of_argument_order(path_tmp, monkeypa
     static(*order)
     assert len(client.calls) == 1
     name, args = client.calls[0]
-    assert name == "static"
+    assert name == "declare_static"
     _job_i, tree_paths, file_paths, patterns = args
     assert tree_paths == ["src"]
     assert file_paths == ["src/foo.txt"]
@@ -683,12 +683,12 @@ def test_static_tree_before_file_regardless_of_argument_order(path_tmp, monkeypa
 
 @attrs.define
 class _CaptureStaticClient(DummySyncRPCClient):
-    """A dummy RPC client that records the arguments of the `static` call."""
+    """A dummy RPC client that records the arguments of the `declare_static` call."""
 
     calls: list = attrs.field(factory=list)
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
-        if name == "static":
+        if name == "declare_static":
             self.calls.append(args)
         return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
 

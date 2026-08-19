@@ -311,7 +311,7 @@ def test_handle_error_raises_the_usage_error_class():
     """A usage error reaches the caller as itself, so `except GraphError:` works as expected."""
     err = _remote_error(CyclicError("cyclic"))
     with pytest.raises(CyclicError, match=r"^cyclic$") as exc_info:
-        _handle_error(err, "step", [], {})
+        _handle_error(err, "define_step", [], {})
     # `from None`: a chained `RPCError` would put StepUp's plumbing back in the traceback.
     assert exc_info.value.__cause__ is None
     assert exc_info.value.__context__ is None
@@ -321,8 +321,8 @@ def test_handle_error_wraps_a_usage_error_with_stepup_debug(monkeypatch: pytest.
     monkeypatch.setenv("STEPUP_DEBUG", "1")
     err = _remote_error(CyclicError("cyclic"))
     with pytest.raises(RPCError) as exc_info:
-        _handle_error(err, "step", ["cp a b"], {})
-    assert fmt_rpc_call("step", ["cp a b"], {}) in str(exc_info.value)
+        _handle_error(err, "define_step", ["cp a b"], {})
+    assert fmt_rpc_call("define_step", ["cp a b"], {}) in str(exc_info.value)
     assert err.traceback_text in str(exc_info.value)
 
 
@@ -330,7 +330,7 @@ def test_handle_error_wraps_an_internal_error():
     """A bug in the server keeps the full traceback, which is what a bug report needs."""
     err = _remote_error(RuntimeError("bug"))
     with pytest.raises(RPCError) as exc_info:
-        _handle_error(err, "step", [], {})
+        _handle_error(err, "define_step", [], {})
     assert err.traceback_text in str(exc_info.value)
 
 

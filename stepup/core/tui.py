@@ -444,12 +444,12 @@ async def _async_build(args: argparse.Namespace) -> int:
         finally:
             # Both are called unconditionally,
             # i.e. also when an exception escapes the try block above.
-            # The shutdown stops the Live display and restores the cursor,
-            # which the director's own shutdown RPC never got to do in that case.
-            # `ReporterHandler.shutdown` already sets `stop_event` as a side effect;
+            # Stopping the reporter stops the Live display and restores the cursor,
+            # which the director's own `stop_reporting` RPC never got to do in that case.
+            # `ReporterHandler.stop_reporting` already sets `stop_event` as a side effect;
             # setting it here as well keeps the await below from depending on that,
             # since it would hang forever if the event were ever left unset.
-            reporter_handler.shutdown()
+            reporter_handler.stop_reporting()
             stop_event.set()
             await task_reporter
 
@@ -725,19 +725,19 @@ async def _supervise_director(
                 with contextlib.suppress(ProcessLookupError):
                     process_director.kill()
                 await task_director
-        # The director normally calls reporter.shutdown() itself over RPC,
+        # The director normally calls reporter.stop_reporting() itself over RPC,
         # but a director that crashes or is killed never gets there.
         # Calling it here as well is idempotent,
         # and it stops the Live display before the report below,
         # so that the error line is not printed underneath a running progress bar.
-        reporter_handler.shutdown()
+        reporter_handler.stop_reporting()
         return signal_handler.translate_wait_status(wait_status)
     finally:
         if task_keyboard is not None:
             # The keyboard task reads keystrokes until stop_event is set.
             # The event is set here (idempotently, the caller sets it too)
             # because the await below would hang forever when an exception escapes the try block
-            # before the reporter shutdown that normally sets it.
+            # before the `stop_reporting` call that normally sets it.
             stop_event.set()
             await task_keyboard
         if raw_terminal is not None:
@@ -1052,7 +1052,7 @@ class KeyAction:
 
 _KEY_ACTIONS = {
     "g": KeyAction(
-        method="graph",
+        method="write_graph",
         label="graph",
         description="Write the workflow graph to graph.txt.",
         args=("graph",),
@@ -1064,7 +1064,7 @@ _KEY_ACTIONS = {
         message="Draining the scheduler.",
     ),
     "j": KeyAction(
-        method="join",
+        method="wait_and_shutdown",
         label="join",
         description="Wait for all steps to complete before shutting down.",
         message="Waiting for all steps before shutdown.",
@@ -1076,7 +1076,7 @@ _KEY_ACTIONS = {
         message="Shutting down.",
     ),
     "r": KeyAction(
-        method="run",
+        method="start_build_phase",
         label="run",
         description="Restart the builder. (Leaves watch phase.)",
         message="Restarting the builder.",

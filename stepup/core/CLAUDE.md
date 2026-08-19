@@ -25,7 +25,7 @@ StepUp runs as two process types:
   hash bookkeeping, reporting) together.
   A single `Executor` instance serves all concurrent steps; `--jobs` is the
   concurrency limit. Step child processes call back into the director over its RPC socket
-  (e.g. `amend()`, `step()`).
+  (e.g. `amend_step()`, `define_step()`).
   Launching the step's command and hashing its files are delegated to `run.py` and
   `hash.py` respectively (see below).
 - **Hashing** (`hash.py`):
@@ -49,7 +49,7 @@ Naming gotcha — two similar flags with different meanings:
 
 - `keep_going` (CLI `-k` / `--keep-going`, env `STEPUP_BUILD_KEEP_GOING`):
   keep building unrelated steps after a step has failed.
-- `carry_on` (internal, part of the director's `amend()` RPC result):
+- `carry_on` (internal, part of the director's `amend_step()` RPC result):
   whether a running step may continue after amending its inputs,
   or must abort because some dynamic inputs are not yet available.
 
@@ -272,7 +272,7 @@ and marked for removal when that step or its files leave the workflow.**
 `Executor._run_command` creates the working directory of a step
 and the parent directories of its regular and volatile outputs,
 right before launching the command.
-The `amend` RPC does the same for outputs declared while the step is already running.
+The `amend_step` RPC does the same for outputs declared while the step is already running.
 `Workflow.create_dirs` is the only place that calls `makedirs_p`.
 
 Declaring a file (`_declare_file`, `_resolve_supply_file`), registering a glob pattern

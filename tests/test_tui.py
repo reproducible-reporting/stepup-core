@@ -586,20 +586,21 @@ def test_build_director_argv_does_not_mutate_args() -> None:
 
 @attrs.define
 class FakeReporterHandler:
-    """Records the reports and `shutdown()` calls made by `_async_build`/`TerminalSignalHandler`."""
+    """Records the reports and `stop_reporting()` calls
+    made by `_async_build`/`TerminalSignalHandler`."""
 
     live_progress: bool = attrs.field(init=False, default=False)
     reports: list[tuple[str, str]] = attrs.field(init=False, factory=list)
     pages: list[tuple[str, str]] = attrs.field(init=False, factory=list)
-    shutdown_calls: int = attrs.field(init=False, default=0)
+    stop_reporting_calls: int = attrs.field(init=False, default=0)
     display_calls: list[str] = attrs.field(init=False, factory=list)
 
     def report(self, action: str, description: str, pages: list) -> None:
         self.reports.append((action, description))
         self.pages.extend(pages)
 
-    def shutdown(self) -> None:
-        self.shutdown_calls += 1
+    def stop_reporting(self) -> None:
+        self.stop_reporting_calls += 1
 
     def suspend_display(self) -> None:
         self.display_calls.append("suspend")
@@ -1075,8 +1076,8 @@ class _FakeDirectorHandler:
         self.calls: list[tuple[str, tuple]] = []
 
     @allow_rpc
-    async def run(self) -> None:
-        self.calls.append(("run", ()))
+    async def start_build_phase(self) -> None:
+        self.calls.append(("start_build_phase", ()))
 
     @allow_rpc
     async def shutdown(self) -> None:
@@ -1087,12 +1088,12 @@ class _FakeDirectorHandler:
         self.calls.append(("drain", ()))
 
     @allow_rpc
-    async def join(self) -> None:
-        self.calls.append(("join", ()))
+    async def wait_and_shutdown(self) -> None:
+        self.calls.append(("wait_and_shutdown", ()))
 
     @allow_rpc
-    async def graph(self, path: str) -> None:
-        self.calls.append(("graph", (path,)))
+    async def write_graph(self, path: str) -> None:
+        self.calls.append(("write_graph", (path,)))
 
 
 def test_keyboard_reports_unreachable_director(
@@ -1137,7 +1138,7 @@ def test_keyboard_survives_director_disappearing(
 
 
 class _RaisingDirectorHandler:
-    """A director stand-in whose `drain`/`graph` methods always raise, once called.
+    """A director stand-in whose `drain`/`write_graph` methods always raise, once called.
 
     Used to test the `report_after` ordering contract: the report must (or must not)
     already have happened by the time the failing call's exception reaches the caller.
@@ -1152,16 +1153,16 @@ class _RaisingDirectorHandler:
         raise RuntimeError("drain failed")
 
     @allow_rpc
-    async def graph(self, path: str) -> None:
+    async def write_graph(self, path: str) -> None:
         self.called = True
         raise RuntimeError("graph failed")
 
 
 class _RejectingDirectorHandler:
-    """A director stand-in whose `graph` method rejects the call with a usage error."""
+    """A director stand-in whose `write_graph` method rejects the call with a usage error."""
 
     @allow_rpc
-    async def graph(self, path: str) -> None:
+    async def write_graph(self, path: str) -> None:
         raise PathError("bad path")
 
 
@@ -1388,7 +1389,7 @@ def test_async_build_stops_reporter_on_nonzero_exit(
 ) -> None:
     """A director exiting with a positive, non-signal code must still stop the reporter.
 
-    Regression guard: calling `reporter_handler.shutdown()` only when the director was
+    Regression guard: calling `reporter_handler.stop_reporting()` only when the director was
     killed by a signal (`returncode < 0`) would leave the `Live` display running and the
     cursor hidden after any other non-clean director exit.
     The call is idempotent, so the exact number of calls is irrelevant.
@@ -1406,13 +1407,13 @@ def test_async_build_stops_reporter_on_nonzero_exit(
     with contextlib.chdir(path_tmp):
         returncode = asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
     assert returncode == 1
-    assert fake_reporter_handler.shutdown_calls >= 1
+    assert fake_reporter_handler.stop_reporting_calls >= 1
 
 
 def test_async_build_stops_reporter_on_clean_exit(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A director exiting cleanly still gets `shutdown()` called (idempotent no-op)."""
+    """A director exiting cleanly still gets `stop_reporting()` called (idempotent no-op)."""
     (path_tmp / "plan.py").touch()
     fake_reporter_handler = FakeReporterHandler()
     monkeypatch.setattr("stepup.core.tui.ReporterHandler", lambda *a, **kw: fake_reporter_handler)
@@ -1426,7 +1427,7 @@ def test_async_build_stops_reporter_on_clean_exit(
     with contextlib.chdir(path_tmp):
         returncode = asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
     assert returncode == 0
-    assert fake_reporter_handler.shutdown_calls >= 1
+    assert fake_reporter_handler.stop_reporting_calls >= 1
 
 
 def test_async_build_stops_reporter_on_spawn_failure(
@@ -1449,7 +1450,7 @@ def test_async_build_stops_reporter_on_spawn_failure(
     args = _base_build_args(progress=False)
     with contextlib.chdir(path_tmp), pytest.raises(FileNotFoundError):
         asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
-    assert fake_reporter_handler.shutdown_calls >= 1
+    assert fake_reporter_handler.stop_reporting_calls >= 1
 
 
 @pytest.fixture
@@ -1531,7 +1532,7 @@ def test_async_build_director_exits_before_socket(
     assert returncode == 1
     # There is nothing left to send keystrokes to.
     assert keyboard_calls == []
-    assert fake_reporter_handler.shutdown_calls >= 1
+    assert fake_reporter_handler.stop_reporting_calls >= 1
 
 
 def test_async_build_starts_keyboard_when_socket_appears(

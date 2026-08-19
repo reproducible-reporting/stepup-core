@@ -415,7 +415,7 @@ async def async_main(
             if serve_result is not None and len(serve_result.usage_summary) > 0:
                 await reporter("DIRECTOR", serve_result.usage_summary)
             await reporter("DIRECTOR", "See you!")
-            await reporter.shutdown()
+            await reporter.stop_reporting()
             if args.yappi and yappi is not None:
                 yappi.stop()
                 stats = yappi.get_func_stats()
@@ -747,7 +747,7 @@ async def watch_first_loop(watcher: Watcher, handler: "DirectorHandler", stop_ev
         if stop_event.is_set():
             break
         await asyncio.sleep(0.5)
-        await handler.run()
+        await handler.start_build_phase()
 
 
 @attrs.define
@@ -802,7 +802,7 @@ class DirectorHandler:
             self.builder.hash_queue.submit(path, old_hash, HashUpdateCause.CONFIRMED)
 
     @allow_rpc
-    async def static(
+    async def declare_static(
         self,
         job_i: int,
         tree_paths: list[str],
@@ -846,7 +846,9 @@ class DirectorHandler:
         self._submit_to_check(to_check)
 
     @allow_rpc
-    async def glob(self, job_i: int, pattern: str, subs: dict[str, str], paths: list[str]) -> None:
+    async def register_glob(
+        self, job_i: int, pattern: str, subs: dict[str, str], paths: list[str]
+    ) -> None:
         """Register a glob pattern with the calling step and validate its matches.
 
         A glob pattern is a pure query: it declares nothing and owns nothing.
@@ -872,7 +874,7 @@ class DirectorHandler:
             self.workflow.register_nglob(creator, ng)
 
     @allow_rpc
-    async def step(
+    async def define_step(
         self,
         job_i: int,
         command: str,
@@ -914,7 +916,7 @@ class DirectorHandler:
         self.builder.wake_job_loop.set()
 
     @allow_rpc
-    async def hold(self, job_i: int) -> None:
+    async def hold_children(self, job_i: int) -> None:
         """Hold back this step's children from dispatch until a matching `release()`.
 
         Notes
@@ -929,7 +931,7 @@ class DirectorHandler:
             step.hold()
 
     @allow_rpc
-    async def release(self, job_i: int) -> None:
+    async def release_children(self, job_i: int) -> None:
         """Release one `hold()` on this step, decrementing its open-hold counter.
 
         Notes
@@ -943,7 +945,7 @@ class DirectorHandler:
         self.builder.wake_job_loop.set()
 
     @allow_rpc
-    async def amend(
+    async def amend_step(
         self,
         job_i: int,
         inp_paths: list[str],
@@ -1029,7 +1031,7 @@ class DirectorHandler:
             )
 
     @allow_rpc
-    async def get_info(self, job_i: int) -> StepInfo:
+    async def get_step_info(self, job_i: int) -> StepInfo:
         """Return step information, matching the return values of functions in `stepup.core.api`.
 
         For the sake of consistency, dynamic dependencies are not included.
@@ -1211,20 +1213,20 @@ class DirectorHandler:
         """Stop dispatching new steps, leaving running steps to finish.
 
         This returns immediately, without waiting for the running steps:
-        a caller that wants to wait uses `wait` afterwards.
+        a caller that wants to wait uses `wait_for_idle` afterwards.
         When using the `--watch` option,
         StepUp switches to the watch phase when there are no more running steps.
         """
         self.scheduler.draining = True
 
     @allow_rpc
-    async def join(self) -> None:
+    async def wait_and_shutdown(self) -> None:
         """Block until the builder has completed all (runnable) steps, then shut down."""
         await self._wait_for_end_build_phase()
         await self.shutdown()
 
     @allow_rpc
-    async def graph(self, prefix: str) -> None:
+    async def write_graph(self, prefix: str) -> None:
         """Write out the graph in text and dot formats."""
         async with self.db:
             with open(f"{prefix}.txt", "w") as fh:
@@ -1239,8 +1241,8 @@ class DirectorHandler:
         )
 
     @allow_rpc
-    async def run(self) -> None:
-        """Run pending steps (based on file changes observed in the watch phase).
+    async def start_build_phase(self) -> None:
+        """Leave the watch phase and build the steps made pending by the observed file changes.
 
         Notes
         -----
@@ -1260,19 +1262,19 @@ class DirectorHandler:
         self.builder.resume.set()
 
     @allow_rpc
-    async def watch_update(self, path: str) -> None:
+    async def wait_for_update(self, path: str) -> None:
         """Block until the watcher has observed an update of the file."""
         if self.watcher is not None:
             await self._watch_change(path, self.watcher.updated)
 
     @allow_rpc
-    async def watch_delete(self, path: str) -> None:
+    async def wait_for_delete(self, path: str) -> None:
         """Block until the watcher has observed the deletion of the file."""
         if self.watcher is not None:
             await self._watch_change(path, self.watcher.deleted)
 
     @allow_rpc
-    async def wait(self) -> None:
+    async def wait_for_idle(self) -> None:
         """Block until the builder has completed all (runnable) steps."""
         await self._wait_for_end_build_phase()
 

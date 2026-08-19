@@ -100,7 +100,7 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
                 try:
                     yield result
                 finally:
-                    await result("join")
+                    await result("wait_and_shutdown")
             await director
 
 

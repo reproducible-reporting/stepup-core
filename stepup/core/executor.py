@@ -826,7 +826,7 @@ class Executor:
 
         # The step is about to run in its working directory and to write its outputs,
         # which is the moment these directories are needed.
-        # Outputs declared later are handled by the `amend` RPC.
+        # Outputs declared later are handled by the `amend_step` RPC.
         self.workflow.create_dirs([workdir, *(Path(path).parent for path in out_paths + vol_paths)])
 
         env = dict(self.base_env)

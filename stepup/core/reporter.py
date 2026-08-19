@@ -153,9 +153,9 @@ class ReporterClient:
         if self.client is not None:
             await self.client.call.check_logs()
 
-    async def shutdown(self):
+    async def stop_reporting(self):
         if self.client is not None:
-            await self.client.call.shutdown()
+            await self.client.call.stop_reporting()
 
     async def close(self):
         if self._flush_jobs_handle is not None:
@@ -262,7 +262,7 @@ class ReporterHandler:
     """Whether the user asked for progress information at all (the `--progress` option)."""
 
     stop_event: asyncio.Event = attrs.field(factory=asyncio.Event)
-    """Event set by `shutdown`, ending the RPC server that serves this handler."""
+    """Event set by `stop_reporting`, ending the RPC server that serves this handler."""
 
     console: Console = attrs.field(init=False)
     """The rich console that all output goes through."""
@@ -431,7 +431,8 @@ class ReporterHandler:
             self.progress_bar.do_refresh()
 
     @allow_rpc
-    def shutdown(self):
+    def stop_reporting(self):
+        """Stop the live display and end the RPC server that serves this handler."""
         if self.progress_bar is not None:
             self.progress_bar.stop()
         self.stop_event.set()

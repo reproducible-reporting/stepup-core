@@ -156,7 +156,7 @@ def join_tool(args: argparse.Namespace):
 
     This is the same as `stepup wait` followed by `stepup shutdown`.
     """
-    get_rpc_client(get_socket()).call.join(_rpc_timeout=-1)
+    get_rpc_client(get_socket()).call.wait_and_shutdown(_rpc_timeout=-1)
 
 
 def join_subcommand(subparsers, loader: ConfigLoader) -> Callable:
@@ -171,7 +171,7 @@ def join_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 @_report_errors
 def graph_tool(args: argparse.Namespace):
     """Write the workflow graph files in text and dot formats."""
-    get_rpc_client(get_socket()).call.graph(args.prefix)
+    get_rpc_client(get_socket()).call.write_graph(args.prefix)
 
 
 def graph_subcommand(subparsers, loader: ConfigLoader) -> Callable:
@@ -192,7 +192,7 @@ def graph_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 @_report_errors
 def run_tool(args: argparse.Namespace):
     """Exit the watch phase and start the build phase."""
-    get_rpc_client(get_socket()).call.run()
+    get_rpc_client(get_socket()).call.start_build_phase()
 
 
 def run_subcommand(subparsers, loader: ConfigLoader) -> Callable:
@@ -207,7 +207,7 @@ def run_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 @_report_errors
 def watch_update_tool(args: argparse.Namespace):
     """Block until the watcher has observed an update of the file."""
-    get_rpc_client(get_socket()).call.watch_update(args.path, _rpc_timeout=-1)
+    get_rpc_client(get_socket()).call.wait_for_update(args.path, _rpc_timeout=-1)
 
 
 def watch_update_subcommand(subparsers, loader: ConfigLoader) -> Callable:
@@ -226,7 +226,7 @@ def watch_update_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 @_report_errors
 def watch_delete_tool(args: argparse.Namespace):
     """Block until the watcher has observed the deletion of the file."""
-    get_rpc_client(get_socket()).call.watch_delete(args.path, _rpc_timeout=-1)
+    get_rpc_client(get_socket()).call.wait_for_delete(args.path, _rpc_timeout=-1)
 
 
 def watch_delete_subcommand(subparsers, loader: ConfigLoader) -> Callable:
@@ -245,7 +245,7 @@ def watch_delete_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 @_report_errors
 def wait_tool(args: argparse.Namespace):
     """Block until the builder has become idle."""
-    get_rpc_client(get_socket()).call.wait(_rpc_timeout=-1)
+    get_rpc_client(get_socket()).call.wait_for_idle(_rpc_timeout=-1)
 
 
 def wait_subcommand(subparsers, loader: ConfigLoader) -> Callable:

@@ -24,14 +24,14 @@ async def test_missing_argument(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("static")
+        await client("declare_static")
 
 
 async def test_wrong_type(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("static", 5)
+        await client("declare_static", 5)
 
 
 FROM_SCRATCH_GRAPH = """\
@@ -64,9 +64,9 @@ def _check_graph(path, expected):
 async def test_from_scratch(client: AsyncRPCClient, path_tmp: Path):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
-    await client("wait")
+    await client("wait_for_idle")
     prefix_graph = path_tmp / "graph"
-    await client("graph", prefix_graph)
+    await client("write_graph", prefix_graph)
     _check_graph(prefix_graph + ".txt", FROM_SCRATCH_GRAPH)
 
 
@@ -105,14 +105,14 @@ async def test_static(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("foo", "w") as fh:
             fh.write("bar")
-        result = await client("static", _get_job_i(), [], ["foo"], [])
+        result = await client("declare_static", _get_job_i(), [], ["foo"], [])
         assert result is None
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
-    await client("wait")
+    await client("wait_for_idle")
     prefix_graph = path_tmp / "graph"
-    await client("graph", prefix_graph)
+    await client("write_graph", prefix_graph)
     _check_graph(prefix_graph + ".txt", STATIC_GRAPH)
 
 
@@ -162,7 +162,7 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             fh.write("Hello world!")
         job_i = _get_job_i()
         await client(
-            "step",
+            "define_step",
             job_i,
             "cp -v original.txt copy.txt",
             ["original.txt"],
@@ -174,21 +174,21 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             {},
             True,
         )
-        result = await client("static", job_i, [], ["original.txt"], [])
+        result = await client("declare_static", job_i, [], ["original.txt"], [])
         assert result is None
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
-    await client("wait")
+    await client("wait_for_idle")
     prefix_graph = path_tmp / "graph"
-    await client("graph", prefix_graph)
+    await client("write_graph", prefix_graph)
     _check_graph(prefix_graph + ".txt", COPY_GRAPH)
 
 
 async def test_static_registers_tree_before_file(client: AsyncRPCClient, path_tmp: Path):
-    """One `static` RPC must register a tree before a file it contains.
+    """One `declare_static` RPC must register a tree before a file it contains.
 
-    This is the canonical same-creator case: `Director.static` groups directories
+    This is the canonical same-creator case: `DirectorHandler.declare_static` groups directories
     before files within a single call, so the tree is always registered first and
     hands the file over to itself, regardless of argument order.
 
@@ -202,10 +202,10 @@ async def test_static_registers_tree_before_file(client: AsyncRPCClient, path_tm
         os.mkdir("sub")
         with open("sub/data.txt", "w") as fh:
             fh.write("hello")
-        result = await client("static", job_i, ["sub/"], ["sub/data.txt"], [])
+        result = await client("declare_static", job_i, ["sub/"], ["sub/data.txt"], [])
         assert result is None
         await client(
-            "step",
+            "define_step",
             job_i,
             "cat sub/data.txt",
             ["sub/data.txt"],
@@ -220,9 +220,9 @@ async def test_static_registers_tree_before_file(client: AsyncRPCClient, path_tm
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
-    await client("wait")
+    await client("wait_for_idle")
     prefix_graph = path_tmp / "graph"
-    await client("graph", prefix_graph)
+    await client("write_graph", prefix_graph)
     with open(prefix_graph + ".txt") as fh:
         graph = fh.read()
     # The tree is the file's owner: a node is created, with the tree as its creator.
@@ -238,13 +238,13 @@ async def test_amend_blocks_until_static_tree_match_confirmed(client: AsyncRPCCl
         os.mkdir("sub")
         with open("sub/data.txt", "w") as fh:
             fh.write("hello")
-        await client("static", job_i, ["sub/"], [], [])
-        carry_on = await client("amend", job_i, ["sub/data.txt"], [], [], [])
+        await client("declare_static", job_i, ["sub/"], [], [])
+        carry_on = await client("amend_step", job_i, ["sub/data.txt"], [], [], [])
         assert carry_on is True
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
-    await client("wait")
+    await client("wait_for_idle")
 
 
 async def test_amend_reports_missing_static_tree_match(client: AsyncRPCClient):
@@ -253,31 +253,51 @@ async def test_amend_reports_missing_static_tree_match(client: AsyncRPCClient):
     try:
         job_i = _get_job_i()
         os.mkdir("sub")
-        await client("static", job_i, ["sub/"], [], [])
-        carry_on = await client("amend", job_i, ["sub/ghost.txt"], [], [], [])
+        await client("declare_static", job_i, ["sub/"], [], [])
+        carry_on = await client("amend_step", job_i, ["sub/ghost.txt"], [], [], [])
         assert carry_on is False
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
-    await client("wait")
+    await client("wait_for_idle")
 
 
 async def test_hold_release_rpc_smoke(client: AsyncRPCClient):
-    """`hold()`/`release()` RPCs round-trip: children declared while holding still run."""
+    """`hold_children`/`release_children` round-trip: children declared while holding still run."""
     try:
         job_i = _get_job_i()
-        await client("hold", job_i)
+        await client("hold_children", job_i)
         await client(
-            "step", job_i, "touch a.txt", [], {}, ["a.txt"], [], ".", Need.DEFAULT.value, {}, True
+            "define_step",
+            job_i,
+            "touch a.txt",
+            [],
+            {},
+            ["a.txt"],
+            [],
+            ".",
+            Need.DEFAULT.value,
+            {},
+            True,
         )
         await client(
-            "step", job_i, "touch b.txt", [], {}, ["b.txt"], [], ".", Need.DEFAULT.value, {}, True
+            "define_step",
+            job_i,
+            "touch b.txt",
+            [],
+            {},
+            ["b.txt"],
+            [],
+            ".",
+            Need.DEFAULT.value,
+            {},
+            True,
         )
-        await client("release", job_i)
+        await client("release_children", job_i)
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
-    await client("wait")
+    await client("wait_for_idle")
     assert Path("a.txt").is_file()
     assert Path("b.txt").is_file()
 
@@ -290,14 +310,14 @@ async def test_hold_nested_rpc_smoke(client: AsyncRPCClient):
     """
     try:
         job_i = _get_job_i()
-        await client("hold", job_i)
-        await client("hold", job_i)
-        await client("release", job_i)
-        await client("release", job_i)
+        await client("hold_children", job_i)
+        await client("hold_children", job_i)
+        await client("release_children", job_i)
+        await client("release_children", job_i)
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
-    await client("wait")
+    await client("wait_for_idle")
 
 
 async def test_release_without_hold_raises_graph_error(client: AsyncRPCClient):
@@ -311,8 +331,8 @@ async def test_release_without_hold_raises_graph_error(client: AsyncRPCClient):
     try:
         job_i = _get_job_i()
         with pytest.raises(GraphError):
-            await client("release", job_i)
+            await client("release_children", job_i)
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
-    await client("wait")
+    await client("wait_for_idle")

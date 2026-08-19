@@ -251,7 +251,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     # A pattern without matches must still reach the director,
     # so it can make this step pending when a match appears later.
     if len(tr_trees) + len(tr_files) + len(tr_patterns) > 0:
-        get_rpc_client().call.static(get_job_i(), tr_trees, tr_files, tr_patterns)
+        get_rpc_client().call.declare_static(get_job_i(), tr_trees, tr_files, tr_patterns)
 
     # Report what this call covers, relative to the caller's working directory.
     return sorted(
@@ -339,7 +339,7 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
 
     # The director records the pattern with the calling step and validates the matches:
     # a match that is a known build product, or lies under `.stepup`, raises.
-    get_rpc_client().call.glob(get_job_i(), tr_pattern, subs, tr_paths)
+    get_rpc_client().call.register_glob(get_job_i(), tr_pattern, subs, tr_paths)
     return ng
 
 
@@ -549,7 +549,7 @@ def step(
     # and hashed/confirmed by the director in the background;
     # a step consuming one simply does not become runnable until that resolves
     # (see scheduler.py).
-    get_rpc_client().call.step(
+    get_rpc_client().call.define_step(
         get_job_i(),
         command,
         tr_inp_paths,
@@ -927,7 +927,7 @@ def amend(
     # which can exceed `STEPUP_SYNC_RPC_TIMEOUT` for a large file,
     # hence the disabled socket timeout.
     job_i = get_job_i()
-    carry_on = get_rpc_client().call.amend(
+    carry_on = get_rpc_client().call.amend_step(
         job_i,
         tr_inp_paths,
         sorted(env_deps),
@@ -981,7 +981,7 @@ def hold() -> Iterator[None]:
     so `amend()`'s guard correctly stays active if the release call could not be confirmed.
     """
     job_i = get_job_i()
-    get_rpc_client().call.hold(job_i)
+    get_rpc_client().call.hold_children(job_i)
     _HOLD_STATE.holding += 1
     try:
         yield
@@ -992,7 +992,7 @@ def hold() -> Iterator[None]:
         # instead of one already propagating from `yield`.
         had_exception = sys.exc_info()[0] is not None
         try:
-            get_rpc_client().call.release(job_i)
+            get_rpc_client().call.release_children(job_i)
         except Exception:
             if had_exception:
                 logger.warning(
@@ -1017,7 +1017,7 @@ def get_info() -> StepInfo:
         For consistency with other functions in this module, the `inp`, `out` and `vol`
         paths are relative to the working directory of the step.
     """
-    step_info = get_rpc_client().call.get_info(get_job_i())
+    step_info = get_rpc_client().call.get_step_info(get_job_i())
     # Update paths to make them relative to the working directory of the step.
     step_info.inp = sorted(translate_back(inp) for inp in step_info.inp)
     step_info.out = sorted(translate_back(out) for out in step_info.out)
@@ -1027,7 +1027,7 @@ def get_info() -> StepInfo:
 
 def graph(prefix: StrPath) -> None:
     """Write the workflow graph files in text and dot formats."""
-    return get_rpc_client().call.graph(coerce_path(prefix))
+    return get_rpc_client().call.write_graph(coerce_path(prefix))
 
 
 def shq(paths: StrPath | Iterable[StrPath]) -> str:
