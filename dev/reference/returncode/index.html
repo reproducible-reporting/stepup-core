@@ -2352,35 +2352,44 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 <h1 id="stepup-return-codes">StepUp Return Codes<a class="headerlink" href="#stepup-return-codes" title="Permanent link">&para;</a></h1>
 <p>The StepUp return code indicates the status of the (last) build phase.
-It can be a sum of the following codes:</p>
+It can be a sum of the following codes:
+(Any other subcommand uses only the first two, as explained below.)</p>
 <ul>
-<li><code>1</code> = internal error (Python exception)</li>
+<li><code>1</code> = the build could not be completed for a reason outside the workflow itself,
+  e.g. a broken configuration file or an internal error (Python exception)</li>
 <li><code>2</code> = the build was aborted by Ctrl-C or <code>SIGTERM</code></li>
 <li><code>4</code> = at least one step failed</li>
 <li><code>8</code> = some workflow condition caused a warning (other than the following two)</li>
 <li><code>16</code> = at least one (non-optional) step remained pending</li>
-<li><code>32</code> = the scheduler was put on hold (not reporting pending steps)</li>
+<li><code>32</code> = the scheduler was draining (not reporting pending steps)</li>
 </ul>
 <p>The warning bit (<code>8</code>) is set by conditions that make the build questionable
 without making it fail, such as a target that no step produces
 or a <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> match that no <code>static()</code> declaration justifies.
 Such a build is still a successful one:
 the <code>FAILED</code> bit is never set on account of a warning.</p>
-<p>The internal error bit (<code>1</code>) is normally the only bit set:
-the director sets it when an exception escapes, and then it has nothing else to report.
+<p>The first bit (<code>1</code>) is normally the only bit set,
+because the situations that set it leave nothing else to report:
+a mistake in the <a href="../configuration/">configuration</a>, which stops a subcommand before it starts,
+a mistake that a subcommand reports as a short <code>ERROR:</code> message on standard error,
+such as <code>stepup status</code> in a directory where StepUp has never run,
+or an exception escaping the director.
 There is one exception, where it is combined with the outcome of a complete build:
 when <code>STEPUP_DEBUG</code> is set and StepUp finds problems in <code>.stepup/director.log</code>
 after the build, see <a href="../configuration/">Configuration</a>.</p>
+<p>The second bit (<code>2</code>) is likewise set by any subcommand that is stopped with Ctrl-C,
+not only by an aborted build.</p>
 <p>A few example combinations are:</p>
 <ul>
 <li><code>0</code> = all steps finished successfully.</li>
-<li><code>1</code> = internal error in the director (never combined with other codes).</li>
+<li><code>1</code> = a broken configuration file or an internal error in the director
+  (never combined with other codes).</li>
 <li><code>8</code> = every step succeeded, but the build reported a warning.</li>
 <li><code>20</code> = at least one step failed and at least one step remained pending.</li>
-<li><code>36</code> = a step failed and the scheduler was put on hold,
+<li><code>36</code> = a step failed and the scheduler was draining,
   which is what a failing step without <code>--keep-going</code> produces.</li>
 <li><code>38</code> = the build was aborted by Ctrl-C (<code>2</code>) while a step was running,
-  so that step counted as failed (<code>4</code>) and the scheduler was put on hold (<code>32</code>).</li>
+  so that step counted as failed (<code>4</code>) and the scheduler was draining (<code>32</code>).</li>
 </ul>
 <p>To test for a specific flag in Bash, use the bitwise AND operator <code>&amp;</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env bash</span>
@@ -2396,7 +2405,7 @@ after the build, see <a href="../configuration/">Configuration</a>.</p>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"At least one (non-optional) step remained pending"</span>
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="k">fi</span>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="k">$((</span><span class="nv">$RET</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="m">32</span><span class="k">))</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"The scheduler was put on hold"</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"The scheduler was draining"</span>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="k">fi</span>
 </span></code></pre></div>
 

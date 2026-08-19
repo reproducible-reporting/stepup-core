@@ -2721,20 +2721,28 @@ either rely on the Python entry point mechanism to benefit from the forkserver,
 or execute external commands directly.</p>
 <h2 id="extension-utilities">Extension utilities<a class="headerlink" href="#extension-utilities" title="Permanent link">&para;</a></h2>
 <p>The <a href="../../reference/stepup.core.extapi/"><code>stepup.core.extapi</code></a> module provides
-some reusable low-level functions for extension developers.</p>
+some reusable low-level functions for extension developers.
+One of them, <code>subs_env_vars()</code>, lives in
+<a href="../../reference/stepup.core.api/"><code>stepup.core.api</code></a> instead,
+because it is mutually recursive with <code>amend()</code>.</p>
 <h3 id="environment-variable-substitution">Environment variable substitution<a class="headerlink" href="#environment-variable-substitution" title="Permanent link">&para;</a></h3>
-<p>Use <a class="autorefs autorefs-internal" title="stepup.core.extapi.subs_env_vars()" href="../../reference/stepup.core.extapi/#stepup.core.extapi.subs_env_vars"><code>subs_env_vars()</code></a> in any custom API function that
+<p>Use <a class="autorefs autorefs-internal" title="stepup.core.api.subs_env_vars()" href="../../reference/stepup.core.api/#stepup.core.api.subs_env_vars"><code>subs_env_vars()</code></a> in any custom API function that
 accepts path arguments that may contain shell variable references (e.g. <code>${MYDIR}/file.txt</code>).
-It yields a <code>subs</code> function that performs the substitution and automatically tracks which
-variables were used, amending the current step&rsquo;s environment dependencies accordingly:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.extapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">subs_env_vars</span>
+It yields an <a class="autorefs autorefs-internal" title="stepup.core.api.EnvSubstitutor" href="../../reference/stepup.core.api/#stepup.core.api.EnvSubstitutor"><code>EnvSubstitutor</code></a> that performs the substitution
+and automatically tracks which variables were used,
+amending the current step&rsquo;s environment dependencies accordingly:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">subs_env_vars</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_api_function</span><span class="p">(</span><span class="n">path_inp</span><span class="p">,</span> <span class="n">path_out</span><span class="p">):</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="k">with</span> <span class="n">subs_env_vars</span><span class="p">()</span> <span class="k">as</span> <span class="n">subs</span><span class="p">:</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n">path_inp</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">path_inp</span><span class="p">)</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n">path_out</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">path_out</span><span class="p">)</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="c1"># path_inp and path_out are now resolved Path objects</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="k">with</span> <span class="n">subs_env_vars</span><span class="p">()</span> <span class="k">as</span> <span class="n">subs_env</span><span class="p">:</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n">su_path_inp</span> <span class="o">=</span> <span class="n">subs_env</span><span class="p">(</span><span class="n">path_inp</span><span class="p">)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n">su_path_out</span> <span class="o">=</span> <span class="n">subs_env</span><span class="p">(</span><span class="n">path_out</span><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="c1"># su_path_inp and su_path_out are now substituted and normalized Path objects</span>
 </span></code></pre></div>
+<p>Calling the substitutor normalizes the result,
+which removes a leading <code>./</code> and a trailing <code>/</code>.
+When such an affix is significant, e.g. because a trailing slash marks a destination
+directory, use <code>subs_env.keep_affixes(path)</code> instead.</p>
 <h3 id="dependency-filtering">Dependency filtering<a class="headerlink" href="#dependency-filtering" title="Permanent link">&para;</a></h3>
 <p><a class="autorefs autorefs-internal" title="stepup.core.extapi.filter_dependencies(paths)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.filter_dependencies"><code>filter_dependencies()</code></a> filters a collection of
 file paths according to the <code>${STEPUP_PATH_FILTER}</code> environment variable.

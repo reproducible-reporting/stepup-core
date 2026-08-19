@@ -2502,7 +2502,7 @@ Until such steps are executed, StepUp has no idea what output these steps will g
 which it would need to decide that an optional step is required by another step.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/optional_steps"><code>docs/advanced_topics/optional_steps/</code></a></p>
-<p>The example below uses the <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> feature introduced in
+<p>The example below uses the <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, function, /, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> feature introduced in
 the <a href="../../getting_started/call/">Call</a> tutorial
 to create a somewhat entertaining example.
 However, practically all step-generating functions support the <code>optional</code> argument,
@@ -2578,7 +2578,7 @@ for different values of the parameter <em>r</em>:</p>
 </span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>   START │ ./plot.py run '{"inp": ["matplotlibrc", "logmap_3.200.txt"], "out": ["plot_logmap.png"]}'
 </span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a> SUCCESS │ ./plot.py run '{"inp": ["matplotlibrc", "logmap_3.200.txt"], "out": ["plot_logmap.png"]}'
 </span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>DIRECTOR │ Ran 3 job(s).
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 </span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <p>Note that, in this case, it would be trivial to modify the <code>generate.py</code> script

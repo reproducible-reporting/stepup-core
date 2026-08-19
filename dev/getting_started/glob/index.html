@@ -2588,7 +2588,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 <p>StepUp&rsquo;s <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function looks like
 <a class="autorefs autorefs-internal" title="stepup.core.api.static(*paths)" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a> with a pattern, but does not declare its matches static.</p>
 <p><code>glob()</code> is a pure <em>query</em>.
-It scans the filesystem, records the pattern with the calling step,
+It scans the file system, records the pattern with the calling step,
 and returns the matches.
 It creates no node in the workflow and owns nothing it matches.
 However, every match must be declared static elsewhere, either by some <code>static()</code> call,
@@ -2631,7 +2631,7 @@ Also, create a <code>plan.py</code> file with the following contents:</p>
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>   START │ cat src/method_notes.txt src/result_notes.txt &gt; notes.txt
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a> SUCCESS │ cat src/method_notes.txt src/result_notes.txt &gt; notes.txt
 </span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>DIRECTOR │ Ran 5 job(s).
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 </span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <h2 id="overlapping-queries">Overlapping Queries<a class="headerlink" href="#overlapping-queries" title="Permanent link">&para;</a></h2>

@@ -2512,8 +2512,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 <p>The script interface for calling user Python scripts from <code>plan.py</code> has been deprecated
 in favor of the new <a href="../../getting_started/call/">Call</a> interface.
 You are encouraged to migrate your <code>plan.py</code> files to the new API.
-See <a href="../../migration/from_3x_to_40/#optional-migration-from-script-to-call">Migrating from the script interface to <code>call()</code></a>
-for a step-by-step guide.</p>
+See <a href="../../migration/from_3x_to_40/#optional-migration-from-script-to-call">the migration guide</a> for a step-by-step walkthrough.</p>
 </div>
 <p>StepUp Core implements a simple <em>script protocol</em>
 for defining scripts that combine planning and execution in a single source file.
@@ -2673,7 +2672,7 @@ serialized in a JSON file:</p>
 </span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>   START │ ./generate.py run
 </span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a> SUCCESS │ ./generate.py run
 </span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>DIRECTOR │ Ran 3 job(s).
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 </span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <p>As expected, this creates two files: <code>cos.npy</code> and <code>sin.npy</code>.</p>

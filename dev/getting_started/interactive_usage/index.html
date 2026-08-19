@@ -2510,10 +2510,12 @@ You will see at least the following:</p>
 <p>Now go back to the terminal and press the character <code>?</code>
 to display the supported keys with interactive commands:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>───────────────────────────────────── Keys ─────────────────────────────────────
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>   r = run     q = shutdown     d = drain     j = join     g = graph
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>────────────────────────────────────────────────────────────────────────────────
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  g = graph       Write the workflow graph to graph.txt.
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  d = drain       Drain the scheduler. (Leaves build phase.)
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  j = join        Wait for all steps to complete before shutting down.
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  q = shutdown    Shut down the system. (1st is graceful. 2nd kills steps.)
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  r = rebuild     Restart the builder. (Leaves watch phase.)
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>────────────────────────────────────────────────────────────────────────────────
 </span></code></pre></div>
 <p>Now press (lower case) <code>r</code> to run steps whose (indirect) inputs have changed.
 This will trigger a refresh/re-copy of files like <code>src/foo.txt</code>, while other steps are ignored.</p>

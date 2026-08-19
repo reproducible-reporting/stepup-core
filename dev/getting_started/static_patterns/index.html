@@ -2566,14 +2566,14 @@ Also, create a <code>plan.py</code> file with the following contents:</p>
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>   START │ cp -p src/foo.txt dst/foo.txt
 </span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a> SUCCESS │ cp -p src/foo.txt dst/foo.txt
 </span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>DIRECTOR │ Ran 3 job(s).
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 </span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <h2 id="patterns-make-steps-react-to-new-and-deleted-files">Patterns Make Steps React to New and Deleted Files<a class="headerlink" href="#patterns-make-steps-react-to-new-and-deleted-files" title="Permanent link">&para;</a></h2>
 <p>A pattern does more than save you some typing.
 Besides declaring the matches, StepUp records the <em>pattern itself</em> with the step that
 called <code>static()</code>, together with the set of matches it produced.</p>
-<p>On a later run, StepUp re-scans the filesystem and compares.
+<p>On a later run, StepUp re-scans the file system and compares.
 When a matching file was added or removed since the last build,
 the step that called <code>static()</code> is made pending and runs again,
 so the plan is rebuilt against the new set of files.
@@ -2656,7 +2656,7 @@ but the call to <code>static()</code> will fail in case of a missing file even w
 <li>
 <p>Run StepUp again without making any changes.
   You will notice that <code>./plan.py</code> is skipped this time: on startup, StepUp re-scans the
-  filesystem and compares it against the pattern&rsquo;s persisted matches, so a step is only
+  file system and compares it against the pattern&rsquo;s persisted matches, so a step is only
   made pending again when the match set actually changed.</p>
 </li>
 <li>

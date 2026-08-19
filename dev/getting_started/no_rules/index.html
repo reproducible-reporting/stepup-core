@@ -2427,7 +2427,7 @@ because Python functions and loops already provide similar facilities.</p>
 <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='.', resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a>,
 <a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>,
 <a class="autorefs autorefs-internal" title="stepup.core.api.getenv(name, default=None, *, path=False, back=False, multi=False)" href="../../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a> and
-<a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a>.
+<a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, function, /, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a>.
 Some of these were already discussed in the previous tutorials,
 and their source code offers some inspiration for writing your own.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -2461,7 +2461,7 @@ Then make the plan executable and launch StepUp:</p>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>   START │ tr '[:lower:]' '[:upper:]' &lt; lower2.txt &gt; upper2.txt
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a> SUCCESS │ tr '[:lower:]' '[:upper:]' &lt; lower2.txt &gt; upper2.txt
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>DIRECTOR │ Ran 3 job(s).
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 

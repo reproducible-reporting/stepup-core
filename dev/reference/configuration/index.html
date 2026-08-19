@@ -1912,10 +1912,32 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#internal-environment-variables" class="md-nav__link">
+  <a href="#configuration-errors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Internal environment variables
+        Configuration Errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unrecognized-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unrecognized Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stepup-core-module-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StepUp Core Module Environment Variables
       
     </span>
   </a>
@@ -1926,7 +1948,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#settings-for-all-subcommands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings for all subcommands
+        Settings for All Subcommands
       
     </span>
   </a>
@@ -2472,10 +2494,32 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#internal-environment-variables" class="md-nav__link">
+  <a href="#configuration-errors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Internal environment variables
+        Configuration Errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unrecognized-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unrecognized Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stepup-core-module-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StepUp Core Module Environment Variables
       
     </span>
   </a>
@@ -2486,7 +2530,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#settings-for-all-subcommands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings for all subcommands
+        Settings for All Subcommands
       
     </span>
   </a>
@@ -2623,25 +2667,90 @@ it will load its settings in the following order, with later settings overriding
 <li>Environment variables (<code>STEPUP_*</code>)</li>
 <li>Command-line options</li>
 </ul>
-<p>Settings shared by all subcommands are placed at the top level of the config file
-(or under <code>[tool.stepup]</code> in <code>pyproject.toml</code>).
-Settings specific to a subcommand, e.g. <code>build</code>, go under a subcommand-specific section,
-e.g. <code>[build]</code> (or <code>[tool.stepup.build]</code> in <code>pyproject.toml</code>).</p>
+<p>Every setting belongs to a subcommand, e.g. <code>build</code>,
+and is placed under a subcommand-specific section,
+e.g. <code>[build]</code> (or <code>[tool.stepup.build]</code> in <code>pyproject.toml</code>).
+The top level of a config file (or <code>[tool.stepup]</code> in <code>pyproject.toml</code>)
+is reserved for settings shared by all subcommands, of which there are currently none.</p>
 <p>Example <code>stepup.toml</code>:</p>
-<div class="language-toml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">log_level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"INFO"</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">[build]</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">jobs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">watch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">[build]</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">jobs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">log_level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"INFO"</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">watch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
 </span></code></pre></div>
 <p>Having multiple configuration files is convenient but can be confusing.
-StepUp provides a <code>stepup show-config</code> tool to help you understand which settings are in effect.
+StepUp provides a <code>stepup config</code> tool to help you understand which settings are in effect.
 This tool reads all the configuration files and environment variables,
 and shows the merged settings as a single, informative TOML file,
 including comments about the source of each setting.</p>
 <p>Positional command-line arguments (targets to build or paths to clean)
 cannot be set through configuration files or environment variables.</p>
-<h2 id="internal-environment-variables">Internal environment variables<a class="headerlink" href="#internal-environment-variables" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-errors">Configuration Errors<a class="headerlink" href="#configuration-errors" title="Permanent link">&para;</a></h2>
+<p>A subcommand refuses to start when anything is wrong with a configuration file:
+invalid TOML syntax, an unknown section, a key that is not a setting
+of the section it appears in, or a value that a setting cannot use.
+The value of an environment variable is checked in the same way,
+but its <strong>name</strong> is not: see <a href="#unrecognized-environment-variables">Unrecognized Environment Variables</a>.
+All problems are reported at once, so that a single run tells you everything to fix.
+Each one names the config file the way <code>stepup config</code> does,
+relative to the working directory when it lies below it:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ sb
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ERROR: Problems with the StepUp configuration:
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  ./stepup.toml: unsupported key 'speed' in section [build]
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  ./stepup.toml: unknown section [buidl] (did you mean 'build'?)
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>Run 'stepup config' to inspect the configuration.
+</span></code></pre></div>
+<p>This sets the first bit of the <a href="../returncode/">return code</a>,
+without a Python traceback unless <code>STEPUP_DEBUG</code> is set.
+Problems are shown in red when the terminal supports color.</p>
+<p>The <code>stepup config</code> subcommand is the one exception:
+it still prints the configuration it loaded, with the source of each setting.
+This makes it usable precisely when the configuration is broken.
+Each problem is shown on the line of the setting, section or config file it concerns,
+for the same <code>stepup.toml</code> as above:</p>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Config files (lowest to highest priority):</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">#   MISSING: /etc/stepup.toml</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">#   MISSING: ~/.config/stepup.toml</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">#   MISSING: .stepup.toml</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">#   FOUND:   ./stepup.toml</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">#   MISSING: ./pyproject.toml</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">#   MISSING: ./stepup-local.toml</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1"># Environment variables: STEPUP_*</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="k">[buidl]</span><span class="w">  </span><span class="c1"># &lt;-- ERROR: ./stepup.toml: unknown section [buidl] (did you mean 'build'?)</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="n">jobs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w">  </span><span class="c1"># ./stepup.toml</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="k">[build]</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="n">speed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="w">  </span><span class="c1"># ./stepup.toml  &lt;-- ERROR: unsupported key 'speed' in section [build]</span>
+</span></code></pre></div>
+<p>The problems are written in comments, so the output remains valid TOML.
+A problem that has no line of its own is listed afterwards on standard error.
+This happens when a config file with a higher priority overrides the setting at fault,
+and when a line already carries another problem,
+because a second comment cannot be opened on the same line.</p>
+<h2 id="unrecognized-environment-variables">Unrecognized Environment Variables<a class="headerlink" href="#unrecognized-environment-variables" title="Permanent link">&para;</a></h2>
+<p>A misspelled key in a config file is an error, but a misspelled <code>STEPUP_*</code> variable is not.
+The <code>STEPUP_*</code> namespace is shared with the variables that configure StepUp&rsquo;s internals,
+listed under <a href="#stepup-core-module-environment-variables">StepUp Core Module Environment Variables</a>,
+which no subcommand defines an option for.
+Rejecting every name that is not a setting would therefore reject StepUp&rsquo;s own environment.</p>
+<p>To make a typo visible anyway, <code>stepup config</code> lists the <code>STEPUP_*</code> variables
+in three groups, by what each of them does:</p>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Configuration environment variables:</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1">#   STEPUP_BUILD_JOBS = "4"</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># StepUp Core module environment variables:</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="c1">#   STEPUP_ROOT = "/home/user/project"</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Unrecognized environment variables, without effect:</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="c1">#   STEPUP_BUILD_JBOS = "4"</span>
+</span></code></pre></div>
+<p>When a setting does not take effect, the last group is the first place to look.
+It holds every <code>STEPUP_*</code> variable that StepUp does not act on,
+which for a variable you set deliberately means a misspelled name.
+Variables of an extension package appear there as well
+when they configure that package&rsquo;s internals rather than one of its settings.</p>
+<h2 id="stepup-core-module-environment-variables">StepUp Core Module Environment Variables<a class="headerlink" href="#stepup-core-module-environment-variables" title="Permanent link">&para;</a></h2>
 <p>Some environment variables affect StepUp&rsquo;s internals even when it is just imported as a Python library.
 These can only be set via environment variables,
 and cannot be configured through config files or command-line options.</p>
@@ -2664,9 +2773,23 @@ If the matching path prefix is preceded by a <code>-</code>, the dependency is i
 If it is preceded by a <code>+</code>, the dependency is retained and rewritten relative to <code>${STEPUP_ROOT}</code>.
 A path in the filter can be absolute or relative to <code>${STEPUP_ROOT}</code>,
 but matching is always done based on absolute paths.
-The default is <code>-venv</code>.
-Regardless of whether a filter is defined, the filters <code>:+.:-/</code> are always appended.
-This feature can be used for several purposes:</p>
+A prefix is matched as a plain string, not as a sequence of path components,
+so a filter item also matches paths whose first differing character is not a separator.
+For example, <code>-venv</code> ignores dependencies under <code>venv</code> and under <code>venv311</code>,
+which is convenient when several virtual environments sit next to each other,
+but <code>+data</code> also retains dependencies under <code>database</code>.
+A trailing separator does not restrict an item to one directory,
+because it is removed when the prefix is resolved to an absolute path.</p>
+<p>The default is <code>-.venv:-venv:-.tox:-.nox:-.direnv:-.pixi:-node_modules</code>,
+which ignores the top-level directories in which tools install dependencies.
+Because every prefix is anchored at <code>${STEPUP_ROOT}</code>,
+the default cannot ignore an environment nested deeper in the tree,
+such as <code>packages/foo/.venv</code>.
+Setting this variable replaces the default in full,
+so an environment directory has to be listed again
+when the variable is used to retain files outside <code>${STEPUP_ROOT}</code>.</p>
+<p>Regardless of whether a filter is defined, the filters <code>:+.:-/</code> are always appended.</p>
+<p>This feature can be used for several purposes:</p>
 <ul>
 <li>
 <p>You may have source files that are not part of the StepUp project,
@@ -2677,7 +2800,7 @@ This feature can be used for several purposes:</p>
 <li>
 <p>You have a virtual environment with many packages installed,
   but you don&rsquo;t want to include them in the dependency graph for performance reasons.
-  (This is done by default for the <code>venv</code> virtual environment.)</p>
+  (The default filter already does this for the most common environment directories.)</p>
 </li>
 </ul>
 </dd>
@@ -2688,19 +2811,24 @@ If not set, StepUp will look for this file in the current directory.</p>
 </dd>
 <dt><code>STEPUP_SYNC_RPC_TIMEOUT</code></dt>
 <dd>
-<p>The timeout in seconds for the synchronous RPC server.
-The default is 300 seconds.
-Set this to a smaller value if you want to detect deadlocks more quickly.</p>
+<p>The number of seconds a synchronous RPC client waits for a response from the director,
+which also bounds the connection setup that the first call triggers.
+The default is 600 seconds.
+Set this to a smaller value if you want to detect deadlocks more quickly.
+A negative or zero value disables the timeout,
+which some calls use because the director answers them
+only when the workflow is ready for it.</p>
 </dd>
 </dl>
-<h2 id="settings-for-all-subcommands">Settings for all subcommands<a class="headerlink" href="#settings-for-all-subcommands" title="Permanent link">&para;</a></h2>
+<h2 id="settings-for-all-subcommands">Settings for All Subcommands<a class="headerlink" href="#settings-for-all-subcommands" title="Permanent link">&para;</a></h2>
 <p>Each entry below lists the config file key, environment variable, and command-line option
 separated by slashes, where applicable.</p>
 <dl>
 <dt><code>STEPUP_DEBUG</code></dt>
 <dd>
 <p>Set to <code>1</code> to enable debugging features and strict consistency checks.
-This implies <code>STEPUP_LOG_LEVEL=DEBUG</code> (if the variable is unset)
+This changes the default log level of <code>stepup build</code> to <code>DEBUG</code>
+(see <code>log_level</code> below)
 and will require internal consistency checks to pass,
 rather than applying corrections to overcome the inconsistencies.
 (Every such inconsistency is due to a bug, which should be fixed eventually.)
@@ -2708,17 +2836,13 @@ It also makes the scan of <code>.stepup/director.log</code> at the end of a buil
 a logged error or a coroutine, task or thread left dangling is reported as an error
 and sets the internal error bit of the <a href="../returncode/">return code</a>,
 instead of only being reported as a warning.
-Finally, it disables the shortening of error reports described in
+It disables the shortening of error reports described in
 <a href="../../getting_started/failing_steps/">Failing Steps</a>:
 a failing step then prints its complete traceback,
 including StepUp&rsquo;s own frames and the traceback of the director process.
+Finally, a mistake that any subcommand reports as a short <code>ERROR:</code> message
+keeps its traceback, which is the only way to find out where it was raised.
 This variable cannot be set through config files or command-line options.</p>
-</dd>
-<dt><code>log_level</code> / <code>STEPUP_LOG_LEVEL</code> / <code>--log-level</code>, <code>-l</code></dt>
-<dd>
-<p>The log level for the log files in <code>~/.stepup/</code>.
-Possible values are <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code>, and <code>CRITICAL</code>.
-The default is <code>WARNING</code>.</p>
 </dd>
 </dl>
 <h2 id="settings-for-sb-or-stepup-build">Settings for <code>sb</code> or <code>stepup build</code><a class="headerlink" href="#settings-for-sb-or-stepup-build" title="Permanent link">&para;</a></h2>
@@ -2775,7 +2899,7 @@ The default is <code>1.0</code>.</p>
 <dd>
 <p>Set to <code>true</code> to keep dispatching new steps after another step has failed,
 as long as their own inputs remain available (like <code>make -k</code>).
-By default (<code>false</code>), the scheduler is put on hold after the first failure:
+By default (<code>false</code>), the scheduler starts draining after the first failure:
 steps already running are still allowed to finish, but no new steps are started.</p>
 </dd>
 <dt><code>defer_cap</code> / <code>STEPUP_BUILD_DEFER_CAP</code> / <code>--defer-cap</code></dt>
@@ -2855,6 +2979,13 @@ Each job produces four events:
 - <code>COMPLETED</code> (observed by the scheduler, freeing a slot for the next job).
 Comparing the timestamps across these events, and deriving the number of concurrently
 running jobs from them, helps diagnose scheduler/executor dispatch overhead.</p>
+</dd>
+<dt><code>log_level</code> / <code>STEPUP_BUILD_LOG_LEVEL</code> / <code>--log-level</code>, <code>-l</code></dt>
+<dd>
+<p>The level of the messages that the director writes to <code>.stepup/director.log</code>.
+Possible values are <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code>, and <code>CRITICAL</code>.
+The default is <code>WARNING</code>, or <code>DEBUG</code> when <code>STEPUP_DEBUG</code> is set.
+The director also exports the level as <code>STEPUP_BUILD_LOG_LEVEL</code> to the steps it runs.</p>
 </dd>
 <dt><code>perf</code> / <code>STEPUP_BUILD_PERF</code> / <code>--perf</code></dt>
 <dd>

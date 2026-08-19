@@ -2369,42 +2369,72 @@ The examples below assume that you want to add a tool called <code>fancy</code> 
    For example, a tool registered as the <code>fancy</code> subcommand should have the signature:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">fancy_tool</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">fancy_tool</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="o">...</span>
 </span></code></pre></div>
 <p>The <code>args</code> argument is a <code>Namespace</code> object that contains the command-line arguments
-passed to the tool.</p>
+passed to the tool.
+This signature is also available as the type alias <code>stepup.core.tool.ToolFunc</code>.</p>
+<p>A tool does not return a return code.
+It reports a mistake that the user can fix by raising <code>ToolError</code>,
+which <code>stepup</code> turns into a short message on standard error,
+ending the command with return code <code>1</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolError</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">fancy_tool</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="k">raise</span> <span class="n">ToolError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"File does not exist: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Any other exception keeps its traceback,
+because it points at a bug rather than at something the user can act on.
+Setting <code>STEPUP_DEBUG</code> also shows the traceback of a <code>ToolError</code>.</p>
+<p>A tool that must end the command with a return code of its own calls <code>sys.exit</code>,
+the way <code>stepup build</code> reports the outcome of a build.
+This is not how an error is reported, because raising already covers that case.</p>
 </li>
 <li>
 <p>Write a second function that registers the argument parser,
    again with a fixed signature:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigLoader</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">fancy_subcommand</span><span class="p">(</span><span class="n">subparsers</span><span class="p">,</span> <span class="n">loader</span><span class="p">:</span> <span class="n">ConfigLoader</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">parser</span> <span class="o">=</span> <span class="n">subparsers</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="s2">"fancy"</span><span class="p">,</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="n">help</span><span class="o">=</span><span class="s2">"Description of the tool"</span><span class="p">,</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="p">)</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="o">...</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">loader</span><span class="o">.</span><span class="n">patch_parser</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="s2">"fancy"</span><span class="p">)</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="k">return</span> <span class="n">fancy_tool</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigLoader</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolFunc</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">fancy_subcommand</span><span class="p">(</span><span class="n">subparsers</span><span class="p">,</span> <span class="n">loader</span><span class="p">:</span> <span class="n">ConfigLoader</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ToolFunc</span><span class="p">:</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">parser</span> <span class="o">=</span> <span class="n">subparsers</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="s2">"fancy"</span><span class="p">,</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">help</span><span class="o">=</span><span class="s2">"Description of the tool"</span><span class="p">,</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="p">)</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="o">...</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="n">loader</span><span class="o">.</span><span class="n">patch_parser</span><span class="p">(</span><span class="n">parser</span><span class="p">)</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="k">return</span> <span class="n">fancy_tool</span>
 </span></code></pre></div>
 <p>The <code>subparsers</code> argument is the sub-parsers object from the main <code>stepup</code> argument parser.
 The <code>loader</code> argument is a <code>ConfigLoader</code> instance that can be used to patch the parser
-with configuration file values (see existing tools in <code>stepup.core</code> for examples).</p>
+with configuration file values (see existing tools in <code>stepup.core</code> for examples).
+The section it reads is the last word of the parser&rsquo;s <code>prog</code>, here <code>[fancy]</code>.
+Patching never raises on a bad configuration:
+the problems are collected and reported by <code>stepup</code> itself,
+before it calls the tool, see <a href="../../reference/configuration/">Configuration</a>.</p>
 </li>
 <li>
 <p>Create an entry point in <code>pyproject.toml</code> pointing to this function:</p>
-<div class="language-toml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[project.entry-points.</span><span class="s2">"stepup.tools"</span><span class="k">]</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">fancy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your.package:fancy_subcommand"</span>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">[project.entry-points.</span><span class="s2">"stepup.tools"</span><span class="k">]</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">fancy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your.package:fancy_subcommand"</span>
 </span></code></pre></div>
 <p>where you replace <code>your.package</code> with the name of the module that contains
-<code>fancy_subcommand</code>.</p>
+<code>fancy_subcommand</code>.
+The name of the entry point is the name of the subcommand,
+so it must be identical to the name passed to <code>subparsers.add_parser</code>.
+StepUp refuses to start when the two differ,
+because the subcommand would otherwise be unreachable.</p>
 </li>
 </ol>
+<p>StepUp never imports these two functions directly:
+it only loads the registration function through the entry point,
+which in turn hands it the function implementing the tool.
+Both must therefore remain importable from the module named in the entry point,
+even though nothing seems to use them.</p>
 
 
 

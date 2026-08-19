@@ -2531,7 +2531,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 <p>StepUp Core implements a <em>call protocol</em>
 for invoking named functions in scripts from a <code>plan.py</code> file.
-Each <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> registers exactly one step,
+Each <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, function, /, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> registers exactly one step,
 and a called function may itself call <code>call()</code> to register further steps,
 enabling arbitrarily deep, dynamic planning.</p>
 <h2 id="call-protocol">Call Protocol<a class="headerlink" href="#call-protocol" title="Permanent link">&para;</a></h2>
@@ -2703,7 +2703,7 @@ Make the Python scripts executable and run StepUp:</p>
 </span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>   START │ ./plot.py run '{"airport": "ebos", "inp": ["matplotlibrc", "ebos.csv"], "out": ["plot_ebos.png"]}'
 </span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a> SUCCESS │ ./plot.py run '{"airport": "ebos", "inp": ["matplotlibrc", "ebos.csv"], "out": ["plot_ebos.png"]}'
 </span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>DIRECTOR │ Ran 5 job(s).
-</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 </span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <p>This produces the following figures:</p>

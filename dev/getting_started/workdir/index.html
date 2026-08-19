@@ -2475,7 +2475,7 @@ Instead of changing directory, pass paths relative to the step&rsquo;s <code>wor
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>   START │ echo 'a friendly file' &gt; hello.txt  # wd=out
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a> SUCCESS │ echo 'a friendly file' &gt; hello.txt  # wd=out
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>DIRECTOR │ Ran 2 job(s).
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <p>This will create an output file <code>out/hello.txt</code></p>
@@ -2485,7 +2485,7 @@ Instead of changing directory, pass paths relative to the step&rsquo;s <code>wor
 <p>The <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, env_overrides=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
   and related functions that use <code>step()</code> internally
   (<a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, shell=False, resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a>, <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='.', resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a>,
-  <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a>, &hellip;)
+  <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, function, /, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a>, &hellip;)
   all return a <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object,
   which may be used for defining follow-up steps.
   The <code>StepInfo</code> objects follow the same convention:

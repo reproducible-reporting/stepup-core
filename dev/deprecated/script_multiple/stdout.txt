@@ -10,5 +10,5 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
    START │ ./plot.py run plot_ebos
  SUCCESS │ ./plot.py run plot_ebos
 DIRECTOR │ Ran 4 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

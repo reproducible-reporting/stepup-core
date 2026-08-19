@@ -12,5 +12,5 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
    START │ cat src/method_notes.txt src/result_notes.txt > notes.txt
  SUCCESS │ cat src/method_notes.txt src/result_notes.txt > notes.txt
 DIRECTOR │ Ran 5 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

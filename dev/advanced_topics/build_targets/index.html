@@ -2500,7 +2500,7 @@ are simply left <code>PENDING</code>, without being reported at the end of the b
 they only run when something else actually needs their output,
 which now includes being a target itself.
 Steps that define other steps (like the <code>plan.py</code> script itself,
-or any step using <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> with <code>planning=True</code>)
+or any step using <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, function, /, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> with <code>planning=True</code>)
 always run, since StepUp cannot know in advance which targets they might produce.
 This also means a target does not need to exist in the workflow graph beforehand:
 it may only be discovered once an earlier planning step has run.</p>
@@ -2516,7 +2516,7 @@ at the end of the build, instead of silently doing nothing,
 and the exit code gets the warning bit (<code>8</code>) set,
 see <a href="../../reference/returncode/">Return Codes</a>.
 This warning only appears when the build phase completes normally.
-If the build is interrupted or put on hold
+If the build is interrupted or the scheduler drains
 (e.g. a step fails and <code>--keep-going</code> is not used),
 the warning is suppressed, since the workflow may not be fully defined yet.</p>
 <p>A build restricted to targets never cleans up outdated outputs,

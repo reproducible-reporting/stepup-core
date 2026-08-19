@@ -2539,15 +2539,15 @@ When a key is pressed on the keyboard, StepUp responds by executing a correspond
 If the key is not associated with a command, the following help message appears:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>───────────────────────────────────── Keys ─────────────────────────────────────
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  g = graph       Write the workflow graph to graph.txt.
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  d = drain       Put the scheduler on hold. (Leaves build phase.)
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  d = drain       Drain the scheduler. (Leaves build phase.)
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  j = join        Wait for all steps to complete before shutting down.
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  q = shutdown    Shut down the system. (1st is graceful. 2nd kills steps.)
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  r = run         Restart the builder. (Leaves watch phase.)
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  r = rebuild     Restart the builder. (Leaves watch phase.)
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>────────────────────────────────────────────────────────────────────────────────
 </span></code></pre></div>
 <p>These commands are defined as follows:</p>
 <ul>
-<li><code>r = run</code>:
+<li><code>r = rebuild</code>:
   Runs steps that are affected by file changes registered during the <em>watch phase</em>.</li>
 <li><code>q = shutdown</code>:
   StepUp waits for all running steps to complete and will not start new jobs.
@@ -2555,7 +2555,7 @@ If the key is not associated with a command, the following help message appears:
   If it takes too long for the steps to complete, you can press <code>q</code> again to kill them with <code>SIGINT</code>.
   Press <code>q</code> for a third time to kill the steps with <code>SIGKILL</code>. (nuclear option)</li>
 <li><code>d = drain</code>:
-  StepUp waits for all running steps to complete and will not start new jobs.
+  StepUp will not start new jobs and lets the running steps finish.
   As soon as no steps are running, StepUp transitions into the <em>watch phase</em>.</li>
 <li><code>j = join</code>:
   StepUp continues running jobs until no new jobs can be found.
@@ -2593,9 +2593,11 @@ so the durations reported for steps stay meaningful.</p>
   is stopped again by the operating system.
   If you want to run StepUp in the background,
   do so from the beginning as explained in the next section.</li>
-<li>A step that calls back into StepUp (with <code>amend()</code>, for instance) at the moment of
+<li>A step that calls back into StepUp (with <code>step()</code>, for instance) at the moment of
   the suspension gives up after <code>STEPUP_SYNC_RPC_TIMEOUT</code> seconds (600 by default),
-  so a build left suspended for longer than that may report a failed step.</li>
+  so a build left suspended for longer than that may report a failed step.
+  A few calls waive that timeout because the director answers them only when the workflow
+  is ready for it, <code>amend()</code> most notably, and those wait for as long as the suspension lasts.</li>
 </ul>
 <h2 id="interacting-with-a-background-stepup-process">Interacting With a Background StepUp Process<a class="headerlink" href="#interacting-with-a-background-stepup-process" title="Permanent link">&para;</a></h2>
 <p>You can run StepUp in the background in several ways:</p>
@@ -2613,7 +2615,7 @@ However, you can still interact with StepUp as follows:</p>
 <li>
 <p>Execute one of the following commands:</p>
 <ul>
-<li><code>stepup run</code></li>
+<li><code>stepup rebuild</code></li>
 <li><code>stepup shutdown</code></li>
 <li><code>stepup drain</code></li>
 <li><code>stepup join</code></li>
@@ -2626,7 +2628,7 @@ However, you can still interact with StepUp as follows:</p>
 <p>If you don&rsquo;t want to switch to a terminal to restart StepUp while working in an IDE,
 you can run it in &ldquo;watch mode&rdquo; (<code>sb -w</code>) and configure your IDE
 to bind the following command to a keyboard shortcut:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>stepup<span class="w"> </span>run
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>stepup<span class="w"> </span>rebuild
 </span></code></pre></div>
 <p>This command must be executed in the top-level directory
 where a <code>sb</code> command is running in interactive mode.
@@ -2648,9 +2650,9 @@ to start the build phase of a StepUp instance running in a terminal.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2.0.0"</span><span class="p">,</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">"tasks"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p">{</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="nt">"label"</span><span class="p">:</span><span class="w"> </span><span class="s2">"StepUp run"</span><span class="p">,</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="nt">"label"</span><span class="p">:</span><span class="w"> </span><span class="s2">"StepUp rebuild"</span><span class="p">,</span>
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"shell"</span><span class="p">,</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"eval \\"</span><span class="err">$(dire</span><span class="kc">n</span><span class="err">v</span><span class="w"> </span><span class="err">expor</span><span class="kc">t</span><span class="w"> </span><span class="err">bash)\\</span><span class="s2">"; stepup run"</span><span class="p">,</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"eval \\"</span><span class="err">$(dire</span><span class="kc">n</span><span class="err">v</span><span class="w"> </span><span class="err">expor</span><span class="kc">t</span><span class="w"> </span><span class="err">bash)\\</span><span class="s2">"; stepup rebuild"</span><span class="p">,</span>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">      </span><span class="nt">"options"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">        </span><span class="nt">"cwd"</span><span class="p">:</span><span class="w"> </span><span class="s2">"${fileDirname}"</span>
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">      </span><span class="p">},</span>
@@ -2674,7 +2676,7 @@ The rest of the <code>command</code> field is the same as the command we used in
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="p">{</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">"key"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ctrl+'"</span><span class="p">,</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workbench.action.tasks.runTask"</span><span class="p">,</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="s2">"StepUp run"</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="s2">"StepUp rebuild"</span>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="p">}</span>
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">]</span>
 </span></code></pre></div>

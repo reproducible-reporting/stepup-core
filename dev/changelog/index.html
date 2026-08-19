@@ -5735,8 +5735,21 @@ and will be updated with any further changes before the final release.</p>
 <li>StepUp can now also be configured through configuration files,
   in addition to environment variables and command-line arguments.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
-<li>The <code>stepup show-config</code> command shows the current configuration,
-  as the result of merging all config files and environment variables.</li>
+<li>The <code>stepup config</code> command shows the current configuration,
+  as the result of merging all config files and environment variables.
+  It also lists the <code>STEPUP_*</code> environment variables in three groups,
+  separating the ones it recognizes as settings from the ones used internally
+  and from the ones without any effect,
+  because the name of an environment variable cannot be checked the way a config key is.</li>
+<li>Mistakes in a config file or a <code>STEPUP_*</code> environment variable are reported as a list of
+  short messages instead of a Python traceback, and stop the subcommand with return code <code>1</code>.
+  All problems are listed at once, each naming the file or variable to fix.
+  Unknown sections and keys are now also detected, with a suggestion where a key belongs
+  or how it is spelled correctly.
+  The <code>stepup config</code> command is the exception that still runs,
+  so the configuration can be inspected precisely when it is broken.
+  It shows each problem on the line of the setting, section or config file it concerns.
+  Problems are shown in red when the terminal supports color.</li>
 <li><code>stepup build [targets...]</code> restricts the build to the steps needed to produce
   the given output files (and their dependencies), instead of the full default workflow.
   A target cannot name a volatile output or a static file, and a target that is never
@@ -5790,17 +5803,19 @@ and will be updated with any further changes before the final release.</p>
   matched by name, and receives the paths after environment variable substitution
   and normalization.
 - New <code>hold()</code> context manager in <code>stepup.core.api</code>, for a step (typically a <code>plan.py</code>) to
-  wrap a batch of declarations so its children are held back from dispatch until the block
-  closes, instead of each being dispatched as soon as it is declared.
+  wrap a batch of declarations so the steps declared inside are held back from dispatch
+  until the block closes, instead of each being dispatched as soon as it is declared.
   This lets the whole batch become simultaneously eligible and get sorted by <code>_tail_time</code>
-  once released, so slow children declared late no longer lose the race for job slots to
-  fast children declared early. <code>hold()</code> is re-entrant: nested <code>with hold():</code> blocks for the
-  same step (e.g. through a shared helper function) compose correctly, with children staying
+  once released, so slow steps declared late no longer lose the race for job slots to
+  fast steps declared early. <code>hold()</code> is re-entrant: nested <code>with hold():</code> blocks for the
+  same step (e.g. through a shared helper function) compose correctly, with steps staying
   held back until the outermost block exits.
 - New <code>stepup.core.extapi</code> module for StepUp extension developers,
-  collecting utilities previously scattered across <code>stepup.core.api</code> and <code>stepup.core.utils</code>.
+  collecting utilities previously buried in <code>stepup.core.utils</code>.
   See <a href="../reference/stepup.core.extapi/">stepup.core.extapi</a> for the full reference
   and <a href="../extending/api/">Custom API Functions</a> for usage guidance.
+  One utility aimed at extension developers stays in <code>stepup.core.api</code>,
+  because <code>stepup.core.extapi</code> is built on top of it: <code>subs_env_vars</code>.
 - Extension wrapper steps can now record the exact subprocess invocations they make,
   using <code>run_subprocess</code> in <code>stepup.core.extapi</code>,
   which executes the subprocess and records its invocation.
@@ -5846,10 +5861,17 @@ and will be updated with any further changes before the final release.</p>
 <li>The CPU affinity mask reported by the operating system.</li>
 <li>The total number of CPUs reported by the operating system.
   The first source that yields a usable value is used.</li>
-<li>After a step fails, the scheduler is now put on hold by default, like <code>make</code> without
+<li>After a step fails, the scheduler now drains by default, like <code>make</code> without
   <code>-k</code> (steps already running still finish; no new steps are started).
   Use the new <code>--keep-going</code> / <code>-k</code> flag (or <code>STEPUP_BUILD_KEEP_GOING</code>) to restore the
   previous behavior of continuing to build every step whose inputs remain available.</li>
+<li>The <code>stepup run</code> subcommand is renamed to <code>stepup rebuild</code>,
+  because the <em>run phase</em> it referred to is now called the <em>build phase</em>.
+  The keyboard shortcut in the terminal user interface is still <code>r</code>.</li>
+<li>The <code>stepup watch-update &lt;path&gt;</code> and <code>stepup watch-delete &lt;path&gt;</code> subcommands
+  have been merged into <code>stepup wait</code>, as <code>stepup wait -u &lt;path&gt;</code> / <code>--update &lt;path&gt;</code>
+  and <code>stepup wait -d &lt;path&gt;</code> / <code>--delete &lt;path&gt;</code> respectively.
+  Bare <code>stepup wait</code> still waits for the builder to become idle.</li>
 <li>The end-of-build pending report no longer prints one <code>PENDING Step</code> page per pending step.
   Instead, it summarizes the <strong>root causes</strong> as a fixed-size ranked report: the unavailable
   input files and blocked resources that account for the most pending steps, plus a
@@ -5875,7 +5897,8 @@ and will be updated with any further changes before the final release.</p>
   step (cp -p a.txt b.txt).</code>
   This covers every combination of a <code>static()</code> declaration, a step output and a
   volatile output, and the message does not depend on which declaration came first.
-  Defining the same command twice in the same working directory is reported likewise.</li>
+  Defining the same command twice in the same working directory is reported likewise,
+  as is registering the same static tree from two different steps.</li>
 <li>At the end of every build, StepUp scans <code>.stepup/director.log</code> for symptoms of internal
   problems: logged errors, unawaited coroutines, tasks destroyed while still pending,
   and exceptions that escaped a callback, a thread or a destructor.
@@ -5893,7 +5916,12 @@ and will be updated with any further changes before the final release.</p>
 <li>Redesigned <code>call()</code> interface:
   the old inp/out/pickle argument modes are replaced
   by explicit function dispatch and optional <code>args_file</code> support for file-based argument passing.
+  The executable and function name are positional-only parameters, <code>executable</code> and <code>function</code>,
+  so that keyword arguments with those names can be forwarded to the called function.
   See <a href="../getting_started/call/">Function Calls</a> for details.</li>
+<li><code>subs_env_vars()</code> yields an <code>EnvSubstitutor</code> instead of a plain function.
+  It is still called the same way, but it now also normalizes the substituted path.
+  Use its <code>keep_affixes()</code> method when a leading <code>./</code> or a trailing <code>/</code> is significant.</li>
 <li>The <code>getinfo()</code> function has been renamed to <code>get_info()</code>.</li>
 <li>File hashes are computed in concurrent hash jobs instead of the old serial client-side delegation.
   Similarly, the director uses the same mechanism to compute file hashes in parallel on startup.</li>
@@ -6005,7 +6033,7 @@ and will be updated with any further changes before the final release.</p>
   amending an <code>out</code> path that was declared as <code>vol</code>, or vice versa, is still an error.</li>
 <li>Several environment variables have been renamed for consistency.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
-<li>A new returncode was added to indicate that the scheduler was put on hold
+<li>A new returncode was added to indicate that the scheduler was draining
   and not reporting pending steps.
   See <a href="../reference/returncode/">StepUp Return Codes</a> for details.</li>
 <li>Documentation has been updated to reflect the API changes and to clarify some other points:<ul>
@@ -6020,6 +6048,14 @@ and will be updated with any further changes before the final release.</p>
   when the terminal browser is closed by the user.</li>
 </ul>
 </li>
+<li>The helper function <code>stepup.core.render_jinja.render_jinja()</code> is replaced by two functions:
+  <code>render_jinja_file()</code> renders a template file
+  and <code>render_jinja_str()</code> renders a template string.
+  The <code>latex</code> argument became keyword-only,
+  and the <code>str_in</code> argument is no longer needed
+  because <code>render_jinja_str()</code> takes the template as its first argument,
+  with an optional <code>name</code> for error messages.
+  (The <code>render_jinja()</code> function in <code>stepup.core.api</code> is unaffected.)</li>
 <li>Updates of many internals, including:<ul>
 <li>Renamed &ldquo;orphan&rdquo; and related names to &ldquo;detached&rdquo;, which is more intuitive.
   The new terminology is applied more consistently with consistent distinction between
@@ -6032,7 +6068,7 @@ and will be updated with any further changes before the final release.</p>
 <li>Strict database sessions management and transaction correctness has been implemented
   to avoid database corruption, e.g. due to race conditions.</li>
 <li>When a step is detached while it is running (and not recreated before it ends),
-  an explicit <code>DETACHED</code> warning is shown and its result is discarded.</li>
+  it is still skippable upon a rerun of the build if it gets recreated again.</li>
 <li>The <code>STEPUP_STEP_I</code> environment variable has been replaced by <code>STEPUP_JOB_I</code>.
   Instead of a step&rsquo;s (stable) node index, it now holds a unique id for the current
   job running the step, assigned by the scheduler when the job is created, so a
@@ -6043,8 +6079,53 @@ and will be updated with any further changes before the final release.</p>
 <li>Cascade has been renamed to Trellis.</li>
 <li>Supplier has been renamed to Source.</li>
 <li>Consumer has been renamed to Sink.</li>
+<li>The grab bag in <code>stepup.core.utils</code> is reduced to what is genuinely generic.
+  Digest formatting moved to <code>stepup.core.hash</code> (<code>fmt_full_digest</code>,
+  next to <code>fmt_digest</code>, which is renamed to <code>fmt_short_digest</code>),
+  local executable formatting to <code>stepup.core.path</code> (<code>format_local_executable</code>),
+  the <code>--joblog</code> record format to <code>stepup.core.job</code>
+  (<code>init_joblog</code> and <code>append_joblog_record</code>),
+  and the argparse converters to <code>stepup.core.tool</code>
+  (<code>positive_int</code>, joined there by <code>positive_decimal</code>).
+  What stays is renamed to say what it does:
+  <code>escape_command_display</code> became <code>escape_control_chars</code>,
+  <code>string_to_bool</code> became <code>to_bool</code>, and <code>string_to_list</code> became <code>as_list</code>.
+  The <code>env</code> and <code>returncode</code> arguments of <code>format_subprocess</code> became keyword arguments.</li>
+<li>The <code>SOCKET</code> and <code>PID</code> header lines of <code>.stepup/director.log</code> are defined once,
+  in <code>stepup.core.constants</code>, instead of being written and parsed with
+  literal prefixes and hardcoded offsets in two different modules.</li>
 </ul>
 </li>
+<li>The <code>Ran N job(s).</code> message at the end of a build phase now counts only the jobs
+  that executed a step&rsquo;s command.
+  Skipped steps and internal validation jobs are no longer included,
+  which used to make the number confusingly large for builds with many skipped steps.</li>
+<li>Every <code>stepup</code> subcommand now reports a mistake that the user can fix
+  as a short <code>ERROR:</code> message with return code <code>1</code>, instead of a Python traceback.
+  This used to be implemented separately by a few subcommands,
+  so <code>stepup status</code>, <code>stepup browse</code> and <code>stepup clean</code> still ended with a traceback
+  in a directory where StepUp had never run.
+  Setting <code>STEPUP_DEBUG</code> shows the traceback of such an error,
+  as it already did for a configuration error.
+  Stopping a subcommand with Ctrl-C is also reported as a message now,
+  and sets the <code>2</code> bit of the <a href="../reference/returncode/">return code</a>.</li>
+<li>Tools no longer return a return code:
+  the signature of <code>ToolFunc</code> is now <code>Callable[[argparse.Namespace], None]</code>.
+  A tool raises <code>ToolError</code> to report a mistake the user can fix,
+  and calls <code>sys.exit</code> when it needs a return code of its own, as <code>stepup build</code> does.
+  The alias has moved from <code>stepup.core.utils</code> to the new <code>stepup.core.tool</code> module,
+  which collects what the subcommands have in common.
+  See <a href="../extending/tool/">Custom Tools</a> for how to write one.</li>
+<li>The <code>--log-level</code> / <code>-l</code> option has moved from the <code>stepup</code> command to its <code>build</code>
+  subcommand, which is the only one acting on it:
+  write <code>sb -l INFO</code> or <code>stepup build -l INFO</code> instead of <code>stepup -l INFO build</code>.
+  The config-file key moves from the top level to the <code>[build]</code> section,
+  and the environment variable changes from <code>STEPUP_LOG_LEVEL</code> to <code>STEPUP_BUILD_LOG_LEVEL</code>.
+  The director exports the level to its steps under the new name as well.</li>
+<li>The default of <code>${STEPUP_PATH_FILTER}</code> is broadened from <code>-venv</code> to
+  <code>-.venv:-venv:-.tox:-.nox:-.direnv:-.pixi:-node_modules</code>,
+  so the directories in which common tools install dependencies
+  are ignored without having to configure the filter.</li>
 </ul>
 <h3 id="deprecated">Deprecated<a class="headerlink" href="#deprecated" title="Permanent link">&para;</a></h3>
 <ul>
@@ -6056,13 +6137,14 @@ and will be updated with any further changes before the final release.</p>
 <h3 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h3>
 <ul>
 <li>StepUp no longer tracks directories.
-  They are either assumed to be present (for static files) or created transparently when needed.
+  They are either assumed to be present (for static files)
+  or created transparently right before a step needs it as a workdir or writes an output into them.
   This has some consequences:<ul>
 <li>The <code>mkdir()</code> command has been removed.</li>
 <li>Input and output files can no longer be directories.
   Some of the internal logic that relied on directories being tracked,
   has been refactored to work without them:</li>
-<li>The internal watcher uses some simple heuristics to determine which directories to watch.
+<li>The watcher uses some simple heuristics to determine which directories to watch.
   It also handles renaming and moving of directories.</li>
 <li>The cleanup script (<code>stepup clean</code>) and the automatic cleanup at the end of a successful run
   will remove empty directories after having removed outdated output files they contained.</li>
@@ -6092,7 +6174,7 @@ and will be updated with any further changes before the final release.</p>
 <ul>
 <li>Previously computed file hashes of static files are now reused instead of recomputing them.</li>
 <li>Simple user mistakes no longer dump a full Python traceback:<ul>
-<li>A <code>TUIError</code> raised before the director starts
+<li>A <code>ToolError</code> raised before the director starts
   (e.g. an invalid <code>stepup build</code> target) now prints a short <code>ERROR: ...</code> message.</li>
 <li>A build target that resolves to a static file or a volatile output
   on a resumed database (invalid on a fresh database too, but previously only
@@ -6144,6 +6226,10 @@ and will be updated with any further changes before the final release.</p>
   Previously it was recycled in its succeeded state and silently kept its stale output.
   This could be observed after an incomplete build (or one run with <code>--no-clean</code>),
   which leaves detached steps in the graph for the next build to pick up.</li>
+<li>The RPC receive loops no longer leave a pending task behind
+  when the connection to the other end is closed.
+  Such a task ended up in the director log as <code>Task was destroyed but it is pending!</code>,
+  which is reported as an internal problem at the end of a build.</li>
 </ul>
 <h2 id="v3.2.3"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3">3.2.3</a> - 2026-04-16<a class="headerlink" href="#v3.2.3" title="Permanent link">&para;</a></h2>
 <p>Bugfix release: support large inodes in SQLite storage</p>
@@ -6607,7 +6693,7 @@ for more fine-grained control over automatic dependency tracking.</p>
   Similarly, all warnings (if any) are written to <code>.stepup/warning.log</code>.</li>
 <li><code>--perf</code> option to analyze performance bottlenecks in the director process.</li>
 <li>The &ldquo;call&rdquo; protocol is added as a light alternative to the &ldquo;script&rdquo; protocol.
-  It can be used through the new <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> function.</li>
+  It can be used through the new <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, function, /, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> function.</li>
 <li><code>getinfo()</code> function to retrieve the
   <a class="autorefs autorefs-internal" href="../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object of the current step.</li>
 <li>Cleanly exit the director process upon several types of exceptions (instead of hanging).</li>

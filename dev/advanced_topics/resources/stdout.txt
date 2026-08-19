@@ -20,5 +20,5 @@ B
 C
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 4 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

@@ -465,7 +465,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#tutorial-source-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tutorial source files
+        Tutorial Source Files
       
     </span>
   </a>
@@ -476,7 +476,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic usage
+        Basic Usage
       
     </span>
   </a>
@@ -487,24 +487,24 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#stepup-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        StepUp architecture
+        StepUp Architecture
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="StepUp architecture">
+    <nav class="md-nav" aria-label="StepUp Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#workflow-graphs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workflow (graphs)
+        Workflow (Graphs)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Workflow (graphs)">
+    <nav class="md-nav" aria-label="Workflow (Graphs)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -538,7 +538,18 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#software-components" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Software components
+        Software Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-two-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Two Processes?
       
     </span>
   </a>
@@ -2459,7 +2470,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#tutorial-source-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tutorial source files
+        Tutorial Source Files
       
     </span>
   </a>
@@ -2470,7 +2481,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic usage
+        Basic Usage
       
     </span>
   </a>
@@ -2481,24 +2492,24 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#stepup-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        StepUp architecture
+        StepUp Architecture
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="StepUp architecture">
+    <nav class="md-nav" aria-label="StepUp Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#workflow-graphs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workflow (graphs)
+        Workflow (Graphs)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Workflow (graphs)">
+    <nav class="md-nav" aria-label="Workflow (Graphs)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2532,7 +2543,18 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#software-components" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Software components
+        Software Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-two-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Two Processes?
       
     </span>
   </a>
@@ -2589,14 +2611,14 @@ We believe this offers the best learning experience.
 However, StepUp really shines in more complex use cases and when used interactively.
 Once you become familiar with StepUp,
 you&rsquo;ll be able to make workflows that would be difficult to manage with other tools.</p>
-<h2 id="tutorial-source-files">Tutorial source files<a class="headerlink" href="#tutorial-source-files" title="Permanent link">&para;</a></h2>
+<h2 id="tutorial-source-files">Tutorial Source Files<a class="headerlink" href="#tutorial-source-files" title="Permanent link">&para;</a></h2>
 <p>Input files for each tutorial are stored in a corresponding subdirectory under
 <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started"><code>docs/getting_started/</code></a>
 within StepUp Core&rsquo;s source code.
 Each directory contains a script named <code>main.sh</code>,
 which simply runs the example in non-interactive mode,
 generating the outputs that are included in the documentation.</p>
-<h2 id="basic-usage">Basic usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h2>
+<h2 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h2>
 <p>To use StepUp, you need to create a <code>plan.py</code> file in the root of your project.
 This file defines the steps and files that make up your workflow.
 The tutorials in this section explain the basics of how to write a <code>plan.py</code> file.
@@ -2609,11 +2631,11 @@ To execute the workflow, you run StepUp as follows:</p>
 <p>The <code>stepup</code> command provides several subcommands, of which <code>build</code> is the most important.
 Run <code>stepup --help</code> to see the full list of subcommands and their options.
 Each tool also accepts the <code>--help</code> option to see its own options, e.g. <code>stepup build --help</code>.</p>
-<h2 id="stepup-architecture">StepUp architecture<a class="headerlink" href="#stepup-architecture" title="Permanent link">&para;</a></h2>
+<h2 id="stepup-architecture">StepUp Architecture<a class="headerlink" href="#stepup-architecture" title="Permanent link">&para;</a></h2>
 <p>The tutorials use terminology defined in the small architecture overview given below.
 This overview summarizes the internals of StepUp, omitting many details for the sake of clarity.
 It provides just enough background to get a basic understanding of its core concepts.</p>
-<h3 id="workflow-graphs">Workflow (graphs)<a class="headerlink" href="#workflow-graphs" title="Permanent link">&para;</a></h3>
+<h3 id="workflow-graphs">Workflow (Graphs)<a class="headerlink" href="#workflow-graphs" title="Permanent link">&para;</a></h3>
 <p>StepUp keeps track of what it needs to do and what it has already done in a workflow data structure.
 This workflow is represented by <em>two</em>
 <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">direct acyclic graphs (DAGs)</a>,
@@ -2732,7 +2754,7 @@ illustrates this type of edge.
 <p><img alt="graph_provenance.svg" src="../dependencies/graph_provenance.svg" /></p>
 </li>
 </ul>
-<h3 id="software-components">Software components<a class="headerlink" href="#software-components" title="Permanent link">&para;</a></h3>
+<h3 id="software-components">Software Components<a class="headerlink" href="#software-components" title="Permanent link">&para;</a></h3>
 <p>The following diagram illustrates how different components of StepUp interact. Legend:</p>
 <ul>
 <li>White boxes: your fingers and eyes</li>
@@ -2751,6 +2773,27 @@ illustrates this type of edge.
 <li>Green arrows: remote procedure calls to extend the workflow</li>
 </ul>
 <p><img alt="processes" src="../processes.svg" /></p>
+<h3 id="why-two-processes">Why Two Processes?<a class="headerlink" href="#why-two-processes" title="Permanent link">&para;</a></h3>
+<p>The terminal user interface and the director always run together,
+so they could in principle be a single process.
+They are kept apart because they have conflicting responsibilities.
+The interface owns your terminal:
+it draws the progress bar, reads your keystrokes,
+and hands the terminal back to your shell when the build ends.
+The director owns the workflow and never writes to the terminal,
+so its own output goes to <code>.stepup/director.log</code> instead
+and can never interleave with what you are reading on screen.
+Because the two are separate processes,
+a director that crashes or gets stuck cannot leave your terminal in an unusable state:
+the interface outlives it, cleans up, and tells you what went wrong.</p>
+<p>The separation also keeps interactions and measurements meaningful.
+Drawing on the screen never competes with scheduling steps and hashing files,
+and the resource usage reported at the end of a build covers the director and its steps,
+not the cost of rendering.
+Moreover, the interface controls the director through the same remote procedure calls
+that other subcommands use, such as <code>stepup shutdown</code> and <code>stepup wait</code>.
+This makes the interface one of several possible clients of a director,
+instead of a layer that every build has to pass through.</p>
 
 
 

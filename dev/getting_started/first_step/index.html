@@ -2611,7 +2611,7 @@ It does capture standard output and error, as shown below.</p>
 </span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>Hello World
 </span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>────────────────────────────────────────────────────────────────────────────────
 </span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>DIRECTOR │ Ran 2 job(s).
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 </span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <p>Let&rsquo;s analyze the output:</p>
@@ -2636,12 +2636,11 @@ It does capture standard output and error, as shown below.</p>
 </span></code></pre></div>
 <p>You will see a slightly different output:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a> STARTUP │ Watching 1 director(y|ies)
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a> STARTUP │ Checking 1 file(s) for changes
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>   PHASE │ build
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>DIRECTOR │ Ran 0 job(s).
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>DIRECTOR │ See you!
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a> STARTUP │ Checking 1 file(s) for changes
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>   PHASE │ build
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>DIRECTOR │ Ran 0 job(s).
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <p>The startup sequence is now a bit longer because StepUp loads the workflow from <code>.stepup/graph.db</code>,
 which was created in the first run.
@@ -2690,7 +2689,7 @@ and reserve spaces for the contents of files rather than their names.</p>
   The terminal output shows the commands that would normally be sent to the StepUp director
   process when <code>plan.py</code> is executed by <code>stepup</code>.
   You should get the following screen output.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>step(-1, 'echo Hello World', [], [], [], [], Path('.'), 32, {}, False, None, None)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>define_step(-1, 'echo Hello World', [], [], [], [], Path('.'), 32, {}, False, None, None)
 </span></code></pre></div>
 <p>This output contains internal details of StepUp,
 which can be useful for debugging purposes.</p>

@@ -3093,7 +3093,9 @@ and your entire workflow will be re-executed to recreate the database in the new
 <p>What used to be called the <em>run phase</em> is now called the <em>build phase</em> in documentation and source code.
 For consistency, the <code>stepup build</code> command is now the main entry point for running the build phase,
 while <code>stepup boot</code> is deprecated and will be removed in a future release.
-You can use the new <code>sb</code> entrypoint as a shortcut for <code>stepup build</code>.</p>
+You can use the new <code>sb</code> entrypoint as a shortcut for <code>stepup build</code>.
+The <code>stepup run</code> subcommand, which starts a new build phase in a running StepUp instance,
+is renamed to <code>stepup rebuild</code> for the same reason.</p>
 <h2 id="the-new-run-function-replaces-the-old-runsh-and-runpy-functions">The New <code>run()</code> Function Replaces the Old <code>runsh()</code> and <code>runpy()</code> Functions<a class="headerlink" href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" title="Permanent link">&para;</a></h2>
 <p>StepUp 4 unifies <code>runsh()</code> and <code>runpy()</code> into a single and more powerful <code>run()</code> function,
 which takes an optional boolean <code>shell</code> argument (default <code>False</code>)
@@ -3444,6 +3446,14 @@ You could equally use <code>foo</code> and <code>bar</code> in this example and 
 <h2 id="changed-command-line-arguments">Changed Command-Line Arguments<a class="headerlink" href="#changed-command-line-arguments" title="Permanent link">&para;</a></h2>
 <p>The <code>sb</code> command was changed to have <code>-j</code> and <code>--jobs</code> options
 instead of <code>-n</code> and <code>--num-workers</code>.</p>
+<p>The <code>--log-level</code> (<code>-l</code>) option is no longer a global option of the <code>stepup</code> command,
+because only the build subcommand acts on it:
+write <code>sb -l INFO</code> or <code>stepup build -l INFO</code> instead of <code>stepup -l INFO boot</code>.</p>
+<p>The <code>stepup watch-update &lt;path&gt;</code> and <code>stepup watch-delete &lt;path&gt;</code> subcommands
+were merged into <code>stepup wait</code>:
+use <code>stepup wait -u &lt;path&gt;</code> / <code>--update &lt;path&gt;</code> instead of <code>watch-update</code>,
+and <code>stepup wait -d &lt;path&gt;</code> / <code>--delete &lt;path&gt;</code> instead of <code>watch-delete</code>.
+Bare <code>stepup wait</code>, which blocks until the builder becomes idle, is unchanged.</p>
 <h2 id="changed-environment-variable-names">Changed Environment Variable Names<a class="headerlink" href="#changed-environment-variable-names" title="Permanent link">&para;</a></h2>
 <p>The following environment variables have been renamed to have a <code>STEPUP_BUILD_</code> prefix instead of <code>STEPUP_</code>:</p>
 <table>
@@ -3461,6 +3471,10 @@ instead of <code>-n</code> and <code>--num-workers</code>.</p>
 <tr>
 <td><code>STEPUP_EXPLAIN_RERUN</code></td>
 <td><code>STEPUP_BUILD_EXPLAIN_RERUN</code></td>
+</tr>
+<tr>
+<td><code>STEPUP_LOG_LEVEL</code></td>
+<td><code>STEPUP_BUILD_LOG_LEVEL</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_NUM_WORKERS</code></td>
@@ -3537,7 +3551,7 @@ and the &ldquo;runnable&rdquo; flag was dropped because nothing ever set it.</p>
 <td><em>removed</em></td>
 </tr>
 <tr>
-<td>The scheduler was put on hold.</td>
+<td>The scheduler was draining.</td>
 <td>—</td>
 <td><code>32</code></td>
 </tr>
@@ -3563,7 +3577,7 @@ You are encouraged to migrate your <code>plan.py</code> files to the new API.</p
 <h2 id="optional-migration-from-script-to-call">Optional Migration from <code>script()</code> to <code>call()</code><a class="headerlink" href="#optional-migration-from-script-to-call" title="Permanent link">&para;</a></h2>
 <p>The old script interface still works
 (until it is removed, see <a href="#deprecated-features">Deprecated Features</a> above),
-but switching to <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> is recommended.
+but switching to <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, function, /, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> is recommended.
 See <a href="../../getting_started/call/">Function Calls</a> for a full introduction to the new interface.</p>
 <p>The translation is mechanical:</p>
 <ul>
@@ -3735,16 +3749,6 @@ the following utilities have moved to the new
 </thead>
 <tbody>
 <tr>
-<td><code>subs_env_vars</code></td>
-<td><code>stepup.core.api</code></td>
-<td><code>stepup.core.extapi</code></td>
-</tr>
-<tr>
-<td><code>get_rpc_client</code></td>
-<td><code>stepup.core.api</code></td>
-<td><code>stepup.core.extapi</code></td>
-</tr>
-<tr>
 <td><code>filter_dependencies</code></td>
 <td><code>stepup.core.utils</code></td>
 <td><code>stepup.core.extapi</code></td>
@@ -3758,12 +3762,15 @@ the following utilities have moved to the new
 </table>
 <p>Update your imports accordingly:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># StepUp 3 / early StepUp 4</span>
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_rpc_client</span><span class="p">,</span> <span class="n">subs_env_vars</span>
-</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span>
-</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
-</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1"># StepUp 4 (current)</span>
-</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.extapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span><span class="p">,</span> <span class="n">get_rpc_client</span><span class="p">,</span> <span class="n">subs_env_vars</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c1"># StepUp 4 (current)</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.extapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span>
 </span></code></pre></div>
+<p><code>subs_env_vars</code> stays in
+<a href="../../reference/stepup.core.api/"><code>stepup.core.api</code></a>.
+It cannot move to <code>stepup.core.extapi</code>,
+because that module now imports <code>stepup.core.api</code> at module level.</p>
 
 
 

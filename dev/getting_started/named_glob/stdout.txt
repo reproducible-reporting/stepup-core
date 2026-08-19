@@ -26,5 +26,5 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
    START │ cat ch4/sec4_1_summary.md > public/ch4.md
  SUCCESS │ cat ch4/sec4_1_summary.md > public/ch4.md
 DIRECTOR │ Ran 12 job(s).
-DIRECTOR │ Trying to remove 0 outdated output(s)
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

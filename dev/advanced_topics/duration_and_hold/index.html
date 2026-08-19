@@ -2480,7 +2480,8 @@ so the whole batch is compared by tail time at once,
 instead of being raced by declaration order.
 <code>hold()</code> is re-entrant, so nesting <code>with hold():</code> blocks
 (directly, or through a shared helper function) is safe;
-children only become eligible once the outermost block exits.</p>
+steps declared in any of the nested blocks
+only become eligible once the outermost block exits.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/duration_and_hold"><code>docs/advanced_topics/duration_and_hold/</code></a></p>
 <p>The <code>plan.py</code> below declares four steps with three job slots available (<code>-j 3</code>):
@@ -2526,7 +2527,7 @@ so both free slots go to the slow steps instead, even though they were declared 
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a> SUCCESS │ sleep 4.1
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a> SUCCESS │ sleep 2.0
 </span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>DIRECTOR │ Ran 5 job(s).
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 </span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>DIRECTOR │ See you!
 </span></code></pre></div>
 <p>Notice that <strong>both slow steps start together, right alongside <code>plan.py</code> itself</strong>,
