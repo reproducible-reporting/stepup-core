@@ -338,9 +338,29 @@ def _creator_phrase(kind: str, label: str) -> str:
     raise ConsistencyError(f"Cannot phrase a creator of kind {kind}: {label}")
 
 
-def _file_collision_message(
-    path: str, decl_a: tuple[FileRole, str], decl_b: tuple[FileRole, str]
-) -> str:
+@attrs.define(frozen=True, order=True)
+class Decl:
+    """A file declaration, with its creator named for the plan author."""
+
+    role: FileRole = attrs.field()
+    """The role in which the file is declared."""
+
+    creator: str = attrs.field()
+    """The declaring node, as returned by `_creator_phrase`."""
+
+
+@attrs.define(frozen=True)
+class Claim:
+    """A file declaration that already exists in the graph."""
+
+    role: FileRole = attrs.field()
+    """The role of the attached file node."""
+
+    creator: Node = attrs.field()
+    """The node that declared the file."""
+
+
+def _file_collision_message(path: str, decl_a: Decl, decl_b: Decl) -> str:
     """Format the error for two declarations of the same file that cannot coexist.
 
     The text is independent of the order in which the two declarations were made:
@@ -354,8 +374,7 @@ def _file_collision_message(
     path
         The (normalized) path of the file that both declarations claim.
     decl_a, decl_b
-        The two colliding declarations, each as a `(role, creator_phrase)` pair,
-        with a creator from `_creator_phrase`.
+        The two colliding declarations.
         Which one already exists and which one is new does not matter.
 
     Returns
@@ -370,18 +389,18 @@ def _file_collision_message(
         redeclaring a file in the same role by the same creator is a no-op,
         not a collision, and must be skipped before reaching here.
     """
-    (role1, creator1), (role2, creator2) = sorted([decl_a, decl_b])
-    verb1 = _FILE_ROLE_VERBS[role1]
-    verb2 = _FILE_ROLE_VERBS[role2]
-    hint = _FILE_COLLISION_HINTS[role1, role2]
-    if role1 == role2:
-        if creator1 == creator2:
+    decl1, decl2 = sorted([decl_a, decl_b])
+    verb1 = _FILE_ROLE_VERBS[decl1.role]
+    verb2 = _FILE_ROLE_VERBS[decl2.role]
+    hint = _FILE_COLLISION_HINTS[decl1.role, decl2.role]
+    if decl1.role == decl2.role:
+        if decl1.creator == decl2.creator:
             raise ConsistencyError(f"Identical declarations of file ({path}) are a no-op.")
-        clash = f"cannot be {verb1} by both {creator1} and {creator2}"
-    elif creator1 == creator2:
-        clash = f"cannot be both {verb1} and {verb2} by {creator1}"
+        clash = f"cannot be {verb1} by both {decl1.creator} and {decl2.creator}"
+    elif decl1.creator == decl2.creator:
+        clash = f"cannot be both {verb1} and {verb2} by {decl1.creator}"
     else:
-        clash = f"cannot be both {verb1} by {creator1} and {verb2} by {creator2}"
+        clash = f"cannot be both {verb1} by {decl1.creator} and {verb2} by {decl2.creator}"
     return f"File ({path}) {clash}. {hint}"
 
 
@@ -415,9 +434,7 @@ def _duplicate_step_message(step_label: str, creator_a: str, creator_b: str) -> 
     )
 
 
-def _claim_collision_message(
-    path: str, claim: tuple[FileRole, Node], role: FileRole, creator_phrase: str
-) -> str:
+def _claim_collision_message(path: str, claim: Claim, decl: Decl) -> str:
     """Format the error for a declaration of `path` that collides with an existing claim.
 
     Parameters
@@ -426,31 +443,27 @@ def _claim_collision_message(
         The (normalized) path of the file that both declarations claim.
     claim
         The claim that already exists, as returned by `Workflow._existing_claim`.
-    role
-        The role in which `path` is declared now.
-    creator_phrase
-        The node declaring `path` now, as returned by `_creator_phrase`.
+    decl
+        The declaration of `path` being made now.
 
     Returns
     -------
     message
         The error message.
     """
-    claim_role, claim_creator = claim
-    if isinstance(claim_creator, StaticTree):
+    if isinstance(claim.creator, StaticTree):
         # A static tree owns every path under it, so what is violated here is the tree's
         # ownership, not the exclusivity of two ordinary declarations.
         # Saying so keeps the advice sensible: there is no static() call to drop.
-        if role == FileRole.STATIC:
+        if decl.role == FileRole.STATIC:
             # `declare_static_files` hands a static declaration inside a tree over to that
             # tree, so only a build product can still collide with a tree here.
             raise ConsistencyError(f"Static declaration ({path}) not handed to its tree.")
-        return _static_tree_product_message(claim_creator.label, path)
-    return _file_collision_message(
-        path,
-        (claim_role, _creator_phrase(claim_creator.kind(), claim_creator.label)),
-        (role, creator_phrase),
-    )
+        return _static_tree_product_message(claim.creator.label, path)
+    # `_creator_phrase` has no phrase for a static tree, so the claim may only be turned into
+    # a `Decl` after the branch above has taken the tree creators out.
+    claim_decl = Decl(claim.role, _creator_phrase(claim.creator.kind(), claim.creator.label))
+    return _file_collision_message(path, claim_decl, decl)
 
 
 def _raise_if_out_and_vol(
@@ -476,8 +489,8 @@ def _raise_if_out_and_vol(
         raise GraphError(
             _file_collision_message(
                 first_collision,
-                (FileRole.OUTPUT, creator_phrase),
-                (FileRole.VOLATILE, creator_phrase),
+                Decl(FileRole.OUTPUT, creator_phrase),
+                Decl(FileRole.VOLATILE, creator_phrase),
             )
         )
 
@@ -1166,7 +1179,7 @@ class Workflow(Trellis):
             return trees[0]
         return None
 
-    def _existing_claim(self, path: str) -> tuple[FileRole, Node] | None:
+    def _existing_claim(self, path: str) -> Claim | None:
         """Look up the declaration that currently claims `path`.
 
         Every attached file node was declared by its creator in one of the three `FileRole` values,
@@ -1182,8 +1195,7 @@ class Workflow(Trellis):
         Returns
         -------
         claim
-            The role of the attached file node for `path` and the node that declared it,
-            or `None` when no attached file node claims `path`.
+            The claim on `path`, or `None` when no attached file node claims `path`.
         """
         sql = (
             "SELECT file.state, cnode.i, cnode.kind, cnode.label "
@@ -1196,21 +1208,22 @@ class Workflow(Trellis):
             return None
         state, creator_i, creator_kind, creator_label = row
         role = FILE_ROLE_BY_STATE[FileState(state)]
-        return role, self.node_from_row(creator_i, creator_kind, creator_label)
+        return Claim(role, self.node_from_row(creator_i, creator_kind, creator_label))
 
-    def _is_new_declaration(self, creator: Node, path: str, role: FileRole) -> bool:
+    def _check_declaration(self, creator: Node | str, path: str, role: FileRole) -> bool:
         """Check an intended declaration of `path` against the claim that already exists.
 
-        This is the guard against two declarations claiming the same file, for a creator that
-        may repeat a declaration it already made (`declare_static_files` and `amend_step`).
-        `define_step` cannot repeat itself and uses `_raise_if_claimed` instead.
-        Both sit at the declaration entry points rather than in `_declare_file`,
+        This is the guard against two declarations claiming the same file.
+        It sits at the declaration entry points rather than in `_declare_file`,
         so that a claim is looked up only once.
 
         Parameters
         ----------
         creator
-            The node declaring `path` now.
+            The node declaring `path` now,
+            or its phrase (as returned by `_creator_phrase`) when that node does not exist yet.
+            A node may hold the existing claim itself; a phrase never does,
+            because it names a creator that is not in the graph.
         path
             The (normalized) path of the file.
         role
@@ -1233,42 +1246,16 @@ class Workflow(Trellis):
         claim = self._existing_claim(path)
         if claim is None:
             return True
-        claim_role, claim_creator = claim
-        if claim_role == role and claim_creator.i == creator.i:
-            return False
-        creator_phrase = _creator_phrase(creator.kind(), creator.label)
-        raise GraphError(_claim_collision_message(path, claim, role, creator_phrase))
-
-    def _raise_if_claimed(self, creator_phrase: str, path: str, role: FileRole) -> None:
-        """Raise when any declaration already claims `path`.
-
-        The counterpart of `_is_new_declaration` for a creator that cannot hold the existing
-        claim itself, so that every claim found is a collision.
-        It takes a creator phrase instead of a node, which lets `define_step` check its
-        outputs before the step node is created.
-
-        Parameters
-        ----------
-        creator_phrase
-            The node declaring `path` now, as returned by `_creator_phrase`.
-        path
-            The (normalized) path of the file.
-        role
-            The role in which `path` is declared now.
-
-        Raises
-        ------
-        GraphError
-            When a declaration claims `path`.
-        """
-        claim = self._existing_claim(path)
-        if claim is not None:
-            raise GraphError(_claim_collision_message(path, claim, role, creator_phrase))
+        if isinstance(creator, Node):
+            if claim.role == role and claim.creator.i == creator.i:
+                return False
+            creator = _creator_phrase(creator.kind(), creator.label)
+        raise GraphError(_claim_collision_message(path, claim, Decl(role, creator)))
 
     def _raise_if_step_exists(self, creator: Node, step_label: str) -> None:
         """Raise when an attached step node with the same label already exists.
 
-        The file counterpart is `_is_new_declaration`; see there for why the check sits here
+        The file counterpart is `_check_declaration`; see there for why the check sits here
         instead of in `Trellis.create`.
         A detached step with this label is not a collision:
         `define_step` recycles it, either fully (`Trellis.try_recycle`)
@@ -1449,7 +1436,7 @@ class Workflow(Trellis):
         Notes
         -----
         Whether another declaration already claims `path` is checked by the caller
-        (`_is_new_declaration` or `_raise_if_claimed`), not here.
+        (`_check_declaration`), not here.
         """
         # Consistency checks before creating the file.
         if file_state == FileState.BUILT:
@@ -1539,7 +1526,7 @@ class Workflow(Trellis):
         ------
         GraphError
             When a path lies inside a static tree owned by another creator,
-            or when another declaration already claims it (`_is_new_declaration`).
+            or when another declaration already claims it (`_check_declaration`).
 
         Notes
         -----
@@ -1572,7 +1559,7 @@ class Workflow(Trellis):
             # Repeating a static declaration is a no-op, so that overlapping declarations
             # (two patterns, or a pattern and its own literal match) compose instead of
             # colliding. The parent directory is already watched by the first declaration.
-            if self._is_new_declaration(declarer, path, FileRole.STATIC):
+            if self._check_declaration(declarer, path, FileRole.STATIC):
                 to_declare.append((declarer, path))
         # Define the files whose hashes must be checked.
         # `to_declare` follows the sorted `paths`, so the files are declared in path order.
@@ -1818,9 +1805,9 @@ class Workflow(Trellis):
         self._raise_if_step_exists(creator, step_label)
         step_phrase = _creator_phrase(Step.kind(), step_label)
         for out_path in out_paths:
-            self._raise_if_claimed(step_phrase, out_path, FileRole.OUTPUT)
+            self._check_declaration(step_phrase, out_path, FileRole.OUTPUT)
         for vol_path in vol_paths:
-            self._raise_if_claimed(step_phrase, vol_path, FileRole.VOLATILE)
+            self._check_declaration(step_phrase, vol_path, FileRole.VOLATILE)
         _raise_if_out_and_vol(step_phrase, out_paths, vol_paths)
 
         # Create new step
@@ -1959,10 +1946,10 @@ class Workflow(Trellis):
         # turned into dynamic dependencies. This is done before the glob check because such
         # an amendment adds nothing to the graph and must therefore not be able to fail.
         out_paths = [
-            path for path in out_paths if self._is_new_declaration(step, path, FileRole.OUTPUT)
+            path for path in out_paths if self._check_declaration(step, path, FileRole.OUTPUT)
         ]
         vol_paths = [
-            path for path in vol_paths if self._is_new_declaration(step, path, FileRole.VOLATILE)
+            path for path in vol_paths if self._check_declaration(step, path, FileRole.VOLATILE)
         ]
         _raise_if_out_and_vol(_creator_phrase(Step.kind(), step.label), out_paths, vol_paths)
         self._raise_if_glob_match(step.label, out_paths + vol_paths)

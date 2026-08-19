@@ -214,6 +214,14 @@ When a module needs something private from another one,
 move that name to a module both may depend on (`utils.py` is often the right home),
 or promote it to part of the defining module's contract.
 
+### Data Classes
+
+The project uses `attrs` for data classes,
+in practice for as many classes as possible:
+`@attrs.define` (with `frozen=True` for value objects, and `order=True` when instances are
+sorted), fields declared with `attrs.field()`, and a docstring under each field.
+Prefer this over `dataclasses`, `typing.NamedTuple` or a hand-written `__init__`.
+
 ### Dependencies
 
 Runtime dependencies are declared in `pyproject.toml` under `[project] dependencies`.
