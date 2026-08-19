@@ -545,8 +545,10 @@ class DBSession:
                 wait_time = interval
 
             except asyncio.CancelledError:
-                # Handle standard cooperative task cancellation gracefully
-                break
+                # Let cooperative task cancellation propagate,
+                # so this task completes as cancelled instead of being logged as an error
+                # by the `BaseException` safeguard below.
+                raise
             except BaseException:
                 # Safeguard: log unexpected errors here,
                 # so a database hiccup does not propagate out of this background task.

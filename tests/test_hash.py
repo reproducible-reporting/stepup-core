@@ -63,6 +63,19 @@ def test_hash_wrong_dir(path_tmp: Path):
         compute_file_digest(path_tmp)
 
 
+def test_regen_dir(path_tmp: Path):
+    with pytest.raises(HashFailedError):
+        FileHash.unknown().regen(path_tmp)
+
+
+def test_regen_trailing_sep_on_file(path_tmp: Path):
+    path = path_tmp / "file.txt"
+    path.write_bytes(b"content")
+    # os.stat rejects the trailing separator, which regen reports as an unknown hash.
+    init_hash = FileHash.unknown()
+    assert init_hash.regen(path + os.sep) is init_hash
+
+
 def test_hash_symbolic_link_dir(path_tmp: Path):
     path_sub = path_tmp / "sub"
     path_sub.mkdir()

@@ -270,7 +270,7 @@ root:
 step:cp foo.txt bar.txt
                state = SUCCEEDED
                 need = DEFAULT
-          inp_digest = 34382035 af586a54 853762fe 5d990d98 7ff73e1d c2b19d68 ba446d0f a49e4b0e
+          inp_digest = 629e6e13 991d10cd efb7145e 175774ae aa1051a1 27c6a62d 119573e3 a25695df
           out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
              creator   root:
@@ -299,7 +299,7 @@ root:
 step:cp foo.txt bar.txt
                state = PENDING
                 need = DEFAULT
-          inp_digest = 34382035 af586a54 853762fe 5d990d98 7ff73e1d c2b19d68 ba446d0f a49e4b0e
+          inp_digest = 629e6e13 991d10cd efb7145e 175774ae aa1051a1 27c6a62d 119573e3 a25695df
           out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
              creator   root:
@@ -347,7 +347,7 @@ async def test_simple_example(wfs: Workflow):
         wfs.update_file_hashes(out_hashes, cause=HashUpdateCause.SUCCEEDED)
         inp_hashes = {"foo.txt": foo.get_hash()}
         env_values = {"A": "B"}
-        step_hash = StepHash.from_inp(step.key(), True, inp_hashes, env_values)
+        step_hash = StepHash.from_inp(step.label, True, inp_hashes, env_values)
         step_hash = step_hash.evolve_out(out_hashes)
         step.mark_completed(step_hash, False)
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH3
@@ -1104,7 +1104,7 @@ def _build_producer_sink(wfs: Workflow) -> tuple[Step, Step]:
     producer = wfs.find(Step, "producer")
     out_hashes = {"data.txt": fake_hash("data.txt")}
     wfs.update_file_hashes(out_hashes, cause=HashUpdateCause.SUCCEEDED)
-    step_hash = StepHash.from_inp(producer.key(), True, {}, {})
+    step_hash = StepHash.from_inp(producer.label, True, {}, {})
     step_hash = step_hash.evolve_out(out_hashes)
     producer.mark_completed(step_hash, False)
 
@@ -4305,7 +4305,7 @@ async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Wo
         # RUNNING step is a no-op, so nothing clears the (would-be) memo through that path.
         out_hashes = {"data.txt": fake_hash("data.txt")}
         wfs.update_file_hashes(out_hashes, cause=HashUpdateCause.SUCCEEDED)
-        step_hash = StepHash.from_inp(producer.key(), True, {}, {})
+        step_hash = StepHash.from_inp(producer.label, True, {}, {})
         step_hash = step_hash.evolve_out(out_hashes)
         producer.mark_completed(step_hash, False)
 

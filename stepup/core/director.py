@@ -49,7 +49,7 @@ from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .startup import startup_from_db
 from .stepinfo import StepInfo
-from .usage import CgroupMemorySampler, format_resource_usage
+from .usage import CgroupMemorySampler, finalize_resource_usage
 from .utils import positive_int
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
@@ -550,9 +550,9 @@ async def serve(
         handle_signals=handle_signals,
     )
 
-    usage_report, usage_summary = format_resource_usage(
+    usage_report, usage_summary = finalize_resource_usage(
         wtime_start,
-        handler.executor.step_accumulator,
+        handler.executor.step_usage,
         memory_sampler,
     )
 

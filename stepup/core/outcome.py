@@ -23,6 +23,24 @@ class ResourceUsage:
     wtime: float = attrs.field(default=0.0)
     """Wall-clock time [s]."""
 
+    def __add__(self, other: "ResourceUsage") -> "ResourceUsage":
+        """Combine the resource usage of two processes.
+
+        The CPU times are added up, while the wall times are combined with `max`,
+        because the two processes may have run concurrently,
+        in which case the sum of their wall times is not the duration of anything.
+
+        Returns
+        -------
+        combined
+            The combined resource usage.
+        """
+        return ResourceUsage(
+            utime=self.utime + other.utime,
+            stime=self.stime + other.stime,
+            wtime=max(self.wtime, other.wtime),
+        )
+
     @classmethod
     def from_diff(
         cls,

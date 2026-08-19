@@ -18,7 +18,7 @@ import attrs
 from path import Path
 
 from .cattrs import json_converter
-from .exceptions import HashCancelledError, HashFailedError
+from .exceptions import ConsistencyError, HashCancelledError, HashFailedError
 
 __all__ = (
     "HASH_CHUNK_SIZE",
@@ -178,22 +178,19 @@ def fmt_digest(digest: bytes | None) -> str:
     ----------
     digest
         A 32-byte SHA-256 hash,
-        the one-byte placeholder of a hash that could not be computed,
+        the `b"u"` placeholder of a file whose hash is unknown,
         or `None` when there is no digest at all.
 
     Returns
     -------
     formatted
         The first eight hexadecimal characters of the digest,
-        `(unset)` for `None`, `UNKNOWN` for the placeholder `b"u"`
-        and `?` for any other one-byte placeholder.
+        `(unset)` for `None` and `UNKNOWN` for the placeholder `b"u"`.
     """
     if digest is None:
         return "(unset)"
-    if len(digest) == 1:
-        if digest == b"u":
-            return "UNKNOWN"
-        return "?"
+    if digest == b"u":
+        return "UNKNOWN"
     return digest.hex()[:8]
 
 
@@ -268,15 +265,17 @@ class FileHash:
         ----------
         path
             Path to a file.
-            If the file or directory does not exist, the hash is set to "unknown",
+            If the file cannot be stat'ed, the hash is set to "unknown",
             i.e. the digest is set to `b"u"` and the mode to 0.
+            This covers a missing file, a broken symbolic link
+            and a trailing separator on a path that is not a directory.
         cancel_event
             When given, passed on to `compute_file_digest`
             so a digest computation in progress can be aborted promptly.
 
         Returns
         -------
-        evolved
+        refreshed
             The new hash.
             If the file has not changed, no new hash is created and `self` is returned.
             For a proper comparison between hashes, use the `==` operator, not the `is` operator.
@@ -288,35 +287,28 @@ class FileHash:
         HashCancelledError
             When `cancel_event` was set before the whole file was hashed.
         HashFailedError
-            When `path` is a directory or ends with a directory separator.
+            When `path` is an existing directory.
         """
         # Check for cancellation early.
         if cancel_event is not None and cancel_event.is_set():
             raise HashCancelledError(path)
-        # A file that does not exist has an unknown hash.
+        # A single stat call collects every property below and doubles as the existence test.
         path = Path(path)
-        if not path.exists():
+        try:
+            st = os.stat(path)
+        except OSError:
             return self if self.is_unknown else self.unknown()
-        # Collect the file properties and reject directories.
-        st = path.stat()
-        mode = st.st_mode
-        if path.is_dir():
-            raise HashFailedError(f"File digests of directories are not supported: {path}")
-        if path.endswith(os.sep):
-            raise HashFailedError(f"File digests of directories are not supported: {path}")
-        mtime = st.st_mtime
-        size = st.st_size
-        inode = st.st_ino
         # Decide whether the digest computation can be skipped.
         if (
-            self._mode == mode
-            and self._mtime == mtime
-            and self._size == size
-            and self._inode == inode
+            self._mode == st.st_mode
+            and self._mtime == st.st_mtime
+            and self._size == st.st_size
+            and self._inode == st.st_ino
         ):
             return self
+        # Directories are rejected by compute_file_digest.
         digest = compute_file_digest(path, cancel_event=cancel_event)
-        return self.__class__(digest, mode, mtime, size, inode)
+        return self.__class__(digest, st.st_mode, st.st_mtime, st.st_size, st.st_ino)
 
     @property
     def digest(self) -> bytes:
@@ -378,12 +370,28 @@ class OutInfo:
     out_hashes: dict[str, FileHash] = attrs.field(factory=dict)
 
 
+def _update_file_hashes(hw: HashWords, file_hashes: Mapping[str, FileHash]):
+    """Add a mapping of file hashes to `hw`, sorted by path.
+
+    Sorting here makes the digest independent of the order in which
+    the caller happened to collect the paths.
+    Both digests of a `StepHash` are built with this function,
+    so their file contribution can never drift apart.
+    """
+    for path in sorted(file_hashes):
+        file_hash = file_hashes[path]
+        hw.update(path)
+        hw.update(file_hash.mode.to_bytes(8))
+        hw.update(file_hash.size.to_bytes(8))
+        hw.update(file_hash.digest)
+
+
 @attrs.define
 class StepHash:
     """A hash used to detect whether a step can be skipped.
 
     The input digest covers everything a step depends on:
-    its key, whether it is a shell command,
+    its label, whether it is a shell command,
     its input files and the environment variables and overrides it uses.
     The output digest covers the files the step has created.
 
@@ -400,7 +408,7 @@ class StepHash:
     @classmethod
     def from_inp(
         cls,
-        step_key: str,
+        step_label: str,
         extended: bool,
         inp_hashes: Mapping[str, FileHash],
         env_values: dict[str, str | None],
@@ -409,21 +417,16 @@ class StepHash:
     ):
         """Create a new step hash with input information only.
 
-        The paths are sorted here, so the digest does not depend on the order in which
-        the caller happened to collect them.
+        The environment variables are sorted here, so the digest does not depend on the order
+        in which the caller happened to collect them.
         """
         env_overrides = {} if env_overrides is None else env_overrides
         hw = HashWords()
-        hw.update(step_key)
+        hw.update(step_label)
         hw.update("__shell__")
         hw.update(bytes([int(shell)]))
         hw.update("__inp_paths__")
-        for path in sorted(inp_hashes):
-            file_hash = inp_hashes[path]
-            hw.update(path)
-            hw.update(file_hash.mode.to_bytes(8))
-            hw.update(file_hash.size.to_bytes(8))
-            hw.update(file_hash.digest)
+        _update_file_hashes(hw, inp_hashes)
         hw.update("__env_vars__")
         for env_var, value in sorted(env_values.items()):
             hw.update(env_var)
@@ -439,17 +442,9 @@ class StepHash:
         return cls(inp_digest, inp_info)
 
     def evolve_out(self, out_hashes: Mapping[str, FileHash]):
-        """Create a copy of the StepHash with output information added/updated.
-
-        As in `from_inp`, the paths are sorted to make the digest order-independent.
-        """
+        """Create a copy of the StepHash with output information added/updated."""
         hw = HashWords()
-        for path in sorted(out_hashes):
-            file_hash = out_hashes[path]
-            hw.update(path)
-            hw.update(file_hash.mode.to_bytes(8))
-            hw.update(file_hash.size.to_bytes(8))
-            hw.update(file_hash.digest)
+        _update_file_hashes(hw, out_hashes)
         out_digest = hw.digest()
         extended = self._inp_info is not None
         out_info = OutInfo(dict(out_hashes)) if extended else None
@@ -646,7 +641,12 @@ class HashComputeResult:
     """
 
     messages: list[str] = attrs.field()
-    """Messages about unexpected input changes or vanished inputs."""
+    """What the caller must report about the files, one line per file.
+
+    The wording depends on the function that produced the result:
+    `compute_inp_hashes` writes a full sentence per unexpectedly changed or vanished input,
+    while `compute_out_hashes` writes the bare path of each output that is missing.
+    """
 
     new_hashes: dict[str, FileHash] = attrs.field()
     """The new hashes of the inputs/outputs whose hash changed, keyed by path."""
@@ -690,14 +690,20 @@ def compute_inp_hashes(
         new_file_hash = old_file_hash.regen(path, cancel_event)
         all_inp_hashes[path] = new_file_hash
         if new_file_hash != old_file_hash:
+            # Collect changed hashes, so callers can process them efficiently.
             new_inp_hashes[path] = new_file_hash
+            # If am input hash has changed,
+            # corresponding input files have changed or disappeared unexpectedly,
+            # which must be reported.
             if new_file_hash.is_unknown:
-                messages.append(f"Input vanished unexpectedly: {path} ")
+                messages.append(f"Input vanished unexpectedly: {path}")
             else:
                 messages.append(
                     f"Input changed unexpectedly: {path} "
                     + fmt_file_hash_diff(old_file_hash, new_file_hash)
                 )
+        elif old_file_hash.is_unknown:
+            raise ConsistencyError("A step was scheduled with a missing input file.")
 
     return HashComputeResult(messages, new_inp_hashes, all_inp_hashes)
 
@@ -728,19 +734,21 @@ def compute_out_hashes(
     HashFailedError
         When an output turned out to be a directory.
     """
-    out_missing = []
+    messages = []
     new_out_hashes = {}
     all_out_hashes = {}
     for path in sorted(out_hashes):
         old_file_hash = out_hashes[path]
         new_file_hash = old_file_hash.regen(path, cancel_event)
         all_out_hashes[path] = new_file_hash
+        # Collect changed hashes, so callers can process them efficiently.
         if new_file_hash != old_file_hash:
             new_out_hashes[path] = new_file_hash
+        # Missing files are always reported, even if they are missing again (unchanged hash).
         if new_file_hash.is_unknown:
-            out_missing.append(path)
+            messages.append(path)
 
-    return HashComputeResult(out_missing, new_out_hashes, all_out_hashes)
+    return HashComputeResult(messages, new_out_hashes, all_out_hashes)
 
 
 def compute_both_hashes(

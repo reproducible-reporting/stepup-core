@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Resource-usage accounting for the director process and its children.
 
-Aggregates CPU time and peak cgroup memory across the director process
-and the subprocess and forkserver children that run steps, for a compact summary report.
+Samples the peak cgroup memory of the director process
+and the subprocess and forkserver children that run steps,
+and formats a compact summary report of memory and CPU time at the end of a run.
 """
 
 import asyncio
@@ -20,29 +21,16 @@ from .outcome import ResourceUsage
 
 __all__ = (
     "CgroupMemorySampler",
-    "ResourceAccumulator",
-    "format_resource_usage",
+    "finalize_resource_usage",
 )
 
+MIB = 1024**2
+"""The number of bytes in a mebibyte."""
 
-@attrs.define
-class ResourceAccumulator:
-    """Running totals of CPU time for child processes."""
 
-    utime: float = attrs.field(init=False, default=0.0)
-    """Total accumulated user CPU time [s]."""
-
-    stime: float = attrs.field(init=False, default=0.0)
-    """Total accumulated system CPU time [s]."""
-
-    def add(self, utime: float, stime: float) -> None:
-        """Add one child process's user and system CPU time to the running totals."""
-        self.utime += utime
-        self.stime += stime
-
-    def add_usage(self, usage: ResourceUsage) -> None:
-        """Add one child process's resource usage to the running totals."""
-        self.add(usage.utime, usage.stime)
+#
+# Cgroup memory sampling
+#
 
 
 @attrs.define
@@ -59,16 +47,18 @@ class CgroupMemorySampler:
     including short-lived ones and grandchildren a step's own command might spawn,
     without any cooperation from the executor.
 
-    Note that the sampling loop is only needed for kernels older than 5.19,
-    where `memory.peak` is not available.
+    The periodic samples of `loop()` are the only source of a peak
+    on kernels older than 5.19, which do not provide `memory.peak`.
+    They keep running on newer kernels as well,
+    so that a recent reading is available if the final sample fails,
+    e.g. because the cgroup scope is being torn down.
     """
 
-    cgroup_dir: Path | None = attrs.field(default=None)
+    cgroup_dir: Path = attrs.field(factory=find_own_memory_cgroup)
     """The dedicated cgroup to sample.
 
-    Pass `None` (the default) to auto-detect it with `find_own_memory_cgroup()`
-    when the sampler is constructed.
-    Construction raises `CgroupError` if cgroup memory accounting is unavailable.
+    Defaults to this process's own cgroup, as detected by `find_own_memory_cgroup()`,
+    which raises `CgroupError` if cgroup memory accounting is unavailable.
     """
 
     interval: float = attrs.field(default=1.0)
@@ -77,9 +67,11 @@ class CgroupMemorySampler:
     peak_mib: float | None = attrs.field(init=False, default=None)
     """The highest aggregate memory usage observed so far [MiB]."""
 
-    def __attrs_post_init__(self) -> None:
-        if self.cgroup_dir is None:
-            self.cgroup_dir = find_own_memory_cgroup()
+    def _read_mib(self, name: str) -> float | None:
+        """Read a memory file of the cgroup [MiB], or return `None` if it is not readable."""
+        with contextlib.suppress(OSError, ValueError), open(self.cgroup_dir / name) as fh:
+            return int(fh.read()) / MIB
+        return None
 
     def sample_once(self) -> None:
         """Take one sample and update `peak_mib` if it is a new maximum.
@@ -87,84 +79,27 @@ class CgroupMemorySampler:
         Silently skips the sample if neither `memory.peak` nor `memory.current`
         is readable, e.g. due to a race with the cgroup scope being torn down.
         """
-        best_mib = None
-        with contextlib.suppress(OSError, ValueError), open(self.cgroup_dir / "memory.peak") as fh:
-            best_mib = int(fh.read()) / 1048576
-        if best_mib is None:
-            with (
-                contextlib.suppress(OSError, ValueError),
-                open(self.cgroup_dir / "memory.current") as fh,
-            ):
-                best_mib = int(fh.read()) / 1048576
-        if best_mib is not None:
-            self.peak_mib = best_mib if self.peak_mib is None else max(self.peak_mib, best_mib)
+        mib = self._read_mib("memory.peak")
+        if mib is None:
+            mib = self._read_mib("memory.current")
+        if mib is not None and (self.peak_mib is None or mib > self.peak_mib):
+            self.peak_mib = mib
 
     async def loop(self, stop_event: asyncio.Event) -> None:
-        """Sample memory usage periodically until `stop_event` is set or the task is cancelled."""
+        """Sample memory usage periodically until `stop_event` is set."""
         while not stop_event.is_set():
-            try:
-                self.sample_once()
-                with contextlib.suppress(asyncio.TimeoutError):
-                    await asyncio.wait_for(stop_event.wait(), timeout=self.interval)
-                if stop_event.is_set():
-                    break
-            except asyncio.CancelledError:
-                break
+            self.sample_once()
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(stop_event.wait(), timeout=self.interval)
 
 
-def format_resource_usage(
-    wtime_start: float,
-    step_accumulator: ResourceAccumulator,
-    memory_sampler: CgroupMemorySampler | None,
-) -> tuple[str, str]:
-    """Format a resource-usage report.
+#
+# Reporting
+#
 
-    Parameters
-    ----------
-    wtime_start
-        The wall-clock time when the director started, as returned by `time.perf_counter()`.
-    step_accumulator
-        The `ResourceAccumulator` that has been accumulating CPU times for all steps.
-    memory_sampler
-        The `CgroupMemorySampler` that has been sampling peak cgroup memory usage,
-        or `None` if no sampler was running.
-
-    Returns
-    -------
-    report
-        A table-like, multi-line overview of wall time, CPU times and peak memory.
-    summary
-        A one-line condensation of the same wall and CPU times.
-    """
-    # `ru_maxrss` is reported in kibibytes on Linux, but in bytes on macOS.
-    ru_self = resource.getrusage(resource.RUSAGE_SELF)
-    director_maxrss_mib = (
-        ru_self.ru_maxrss / 1024 if sys.platform == "linux" else ru_self.ru_maxrss / 1048576
-    )
-
-    wtime = time.perf_counter() - wtime_start
-    report = REPORT_TEMPLATE.format(
-        wtime=wtime,
-        director_utime=ru_self.ru_utime,
-        director_stime=ru_self.ru_stime,
-        step_utime=step_accumulator.utime,
-        step_stime=step_accumulator.stime,
-        director_mib=director_maxrss_mib,
-    )
-    sampler_reported = False
-    if memory_sampler is not None:
-        memory_sampler.sample_once()
-        if memory_sampler.peak_mib is not None:
-            report += "\n" + CGROUP_PEAK_MEM.format(aggregate_mib=memory_sampler.peak_mib)
-            sampler_reported = True
-    if not sampler_reported:
-        report += "\n" + CGROUP_UNAVAILABLE
-    summary = (
-        f"Wall {wtime:.1f}s, Director {ru_self.ru_utime:.1f}u/{ru_self.ru_stime:.1f}s, "
-        f"Steps {step_accumulator.utime:.1f}u/{step_accumulator.stime:.1f}s"
-    )
-    return report, summary
-
+# The memory lines of the report are aligned by hand:
+# the label fills the first 40 columns and the value ends at column 60,
+# which is also the width of the horizontal rules.
 
 REPORT_TEMPLATE = """\
 ────────────────────────────────────────────────────────────
@@ -177,8 +112,69 @@ Times in seconds                 user         sys       wall
 ────────────────────────────────────────────────────────────
 Director Peak Memory (incl. shared libs)       {director_mib:9.1f} MiB"""
 
-CGROUP_PEAK_MEM = """\
+CGROUP_PEAK_MEM_TEMPLATE = """\
 Director + Children Peak Memory (cgroup)       {aggregate_mib:9.1f} MiB"""
 
-CGROUP_UNAVAILABLE = """\
+CGROUP_NOT_ENABLED_LINE = """\
+Director + Children Peak Memory (cgroup)         not enabled"""
+
+CGROUP_UNAVAILABLE_LINE = """\
 Director + Children Peak Memory (cgroup)         unavailable"""
+
+SUMMARY_TEMPLATE = (
+    "Wall {wtime:.1f}s, Director {director_utime:.1f}u/{director_stime:.1f}s, "
+    "Steps {step_utime:.1f}u/{step_stime:.1f}s"
+)
+
+
+def finalize_resource_usage(
+    wtime_start: float,
+    step_usage: ResourceUsage,
+    memory_sampler: CgroupMemorySampler | None,
+) -> tuple[str, str]:
+    """Close off the resource-usage measurements and format them as a report.
+
+    This takes the final measurements itself:
+    the elapsed wall time, the director's own `getrusage` totals
+    and, when a sampler is given, one last memory sample.
+
+    Parameters
+    ----------
+    wtime_start
+        The wall-clock time when the director started, as returned by `time.perf_counter()`.
+    step_usage
+        The resource usage accumulated over all steps.
+    memory_sampler
+        The `CgroupMemorySampler` that has been sampling peak cgroup memory usage,
+        or `None` if cgroup accounting was not enabled.
+
+    Returns
+    -------
+    report
+        A table-like, multi-line overview of wall time, CPU times and peak memory.
+    summary
+        A one-line condensation of the same wall and CPU times.
+    """
+    # `ru_maxrss` is reported in kibibytes on Linux, but in bytes on macOS.
+    ru_self = resource.getrusage(resource.RUSAGE_SELF)
+    director_mib = ru_self.ru_maxrss / 1024 if sys.platform == "linux" else ru_self.ru_maxrss / MIB
+
+    if memory_sampler is None:
+        cgroup_line = CGROUP_NOT_ENABLED_LINE
+    else:
+        memory_sampler.sample_once()
+        cgroup_line = (
+            CGROUP_UNAVAILABLE_LINE
+            if memory_sampler.peak_mib is None
+            else CGROUP_PEAK_MEM_TEMPLATE.format(aggregate_mib=memory_sampler.peak_mib)
+        )
+
+    times = {
+        "wtime": time.perf_counter() - wtime_start,
+        "director_utime": ru_self.ru_utime,
+        "director_stime": ru_self.ru_stime,
+        "step_utime": step_usage.utime,
+        "step_stime": step_usage.stime,
+    }
+    report = REPORT_TEMPLATE.format(director_mib=director_mib, **times) + "\n" + cgroup_line
+    return report, SUMMARY_TEMPLATE.format(**times)

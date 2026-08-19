@@ -37,13 +37,12 @@ from .hash import (
     compute_out_hashes,
 )
 from .hash_queue import HashJob
-from .outcome import ChildOutcome
+from .outcome import ChildOutcome, ResourceUsage
 from .reporter import PROGRESS_REFRESH_DELAY, ReporterClient
 from .run import Run, ThreadWorker, launch_command
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .step import Step
-from .usage import ResourceAccumulator
 from .utils import format_subprocess
 from .workflow import Workflow
 
@@ -134,8 +133,8 @@ class Executor:
     `defer` does read step-specific attributes, but only ever gets the `job_i` of a step.
     """
 
-    step_accumulator: ResourceAccumulator = attrs.field(init=False, factory=ResourceAccumulator)
-    """Running totals of CPU time for steps."""
+    step_usage: ResourceUsage = attrs.field(init=False, factory=ResourceUsage)
+    """The resource usage accumulated over all steps."""
 
     _base_env_cache: dict | None = attrs.field(init=False, default=None)
     """Cache for `base_env`, populated lazily on first access."""
@@ -857,7 +856,7 @@ class Executor:
             usage = attrs.evolve(outcome.usage, wtime=max(0.0, outcome.usage.wtime - suspended))
             outcome = attrs.evolve(outcome, usage=usage)
 
-        self.step_accumulator.add_usage(outcome.usage)
+        self.step_usage += outcome.usage
         run.outcome = outcome
         if run.outcome.returncode != 0:
             run.success = False
