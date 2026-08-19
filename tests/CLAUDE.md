@@ -8,6 +8,15 @@ How the test suite is laid out.
 The commands for *running* tests, and the constraints on how to invoke `pytest`,
 are in the top-level `CLAUDE.md`.
 
+## Coding Conventions
+
+`tests/test_conventions.py` is a two-line subclass of `ConventionTests`,
+which lives in `stepup/core/pytest.py` together with the other pytest helpers.
+The checks are kept there, not in `tests/`,
+so that extension packages can impose the same conventions with the same two lines.
+Add a new convention check to that class,
+unless it can only ever apply to StepUp Core.
+
 ## Integration Examples
 
 `tests/examples/*/` contains integration test cases,

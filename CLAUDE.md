@@ -212,8 +212,11 @@ is meant to import.
 - `__all__ = ()` is a real claim — nothing outside the module may import from it —
   and is correct only for leaf modules.
 
-Consequence, enforced by `tests/test_conventions.py`: any `from .mod import X` inside
+Consequence, enforced by `ConventionTests` in `stepup/core/pytest.py`
+(subclassed in `tests/test_conventions.py`): any `from .mod import X` inside
 `stepup/` requires `X` to be in `mod.__all__`, with no exemption for underscore-prefixed names.
+The same holds for a name imported from another package in the `stepup` namespace,
+which is how an extension package inherits this convention.
 When a module needs something private from another one,
 move that name to a module both may depend on (`utils.py` is often the right home),
 or promote it to part of the defining module's contract.

@@ -2,19 +2,24 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Utilities for testing with pytest."""
 
+import ast
 import asyncio
+import functools
+import importlib.util
 import os
 import re
 import shutil
 import subprocess
 import sys
 
+import pytest
 from path import Path
 
 from .constants import DIRECTOR_LOG, STEPUP_DIR
+from .enums import ReturnCode
 from .utils import scan_director_log
 
-__all__ = ("remove_hashes", "run_example", "run_plan")
+__all__ = ("ConventionTests", "remove_hashes", "run_example", "run_plan")
 
 
 def remove_hashes(graph: dict) -> dict:
@@ -199,3 +204,164 @@ async def run_plan(srcdir: Path, tmpdir: Path):
     )
     await plan_proc.wait()
     assert plan_proc.returncode == 0
+
+
+@functools.cache
+def _parse(path: Path) -> ast.Module:
+    """The abstract syntax tree of a Python source file."""
+    return ast.parse(path.read_text(), filename=path)
+
+
+@functools.cache
+def _find_module_paths(package: str) -> tuple[Path, ...]:
+    """The source files of the top-level modules of a package, sorted by name.
+
+    Raises
+    ------
+    ModuleNotFoundError
+        When the package cannot be imported.
+    """
+    spec = importlib.util.find_spec(package)
+    if spec is None or not spec.submodule_search_locations:
+        raise ModuleNotFoundError(f"Not an importable package: {package}")
+    return tuple(sorted(Path(spec.submodule_search_locations[0]).glob("*.py")))
+
+
+@functools.cache
+def _find_module_path(module: str) -> Path | None:
+    """The source file of a module, or `None` when it is not a Python module.
+
+    A package is also rejected, because `from package import name` may import a submodule,
+    which is not part of the `__all__` contract of the package's `__init__.py`.
+    """
+    try:
+        spec = importlib.util.find_spec(module)
+    except (ImportError, ValueError):
+        return None
+    if spec is None or spec.submodule_search_locations is not None:
+        return None
+    if spec.origin is None or not spec.origin.endswith(".py"):
+        return None
+    return Path(spec.origin)
+
+
+@functools.cache
+def _get_dunder_all(path: Path) -> tuple[str, ...] | None:
+    """The `__all__` tuple of a module, or `None` when it is not declared."""
+    for node in _parse(path).body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
+        ):
+            if not isinstance(node.value, ast.Tuple):
+                raise TypeError("__all__ must be a tuple")
+            return tuple(element.value for element in node.value.elts)
+    return None
+
+
+class ConventionTests:
+    """Tests for coding conventions that ruff cannot express, shared by all StepUp packages.
+
+    Subclass this in a test module, under a name that pytest collects,
+    and point `package` at the package to be tested:
+
+    ```python
+    from stepup.core.pytest import ConventionTests
+
+
+    class TestConventions(ConventionTests):
+        package = "stepup.spam"
+    ```
+
+    For the assertions to explain themselves when they fail,
+    the test suite's `conftest.py` must contain:
+
+    ```python
+    pytest.register_assert_rewrite("stepup.core.pytest")
+    ```
+    """
+
+    package: str | None = None
+    """The dotted name of the package whose top-level modules are tested."""
+
+    example_rc: str | None = "examples/example.rc"
+    """The shell boilerplate of the integration examples, relative to the test module.
+
+    Set this to `None` when the test suite has no integration examples.
+    """
+
+    def pytest_generate_tests(self, metafunc):
+        """Parametrize the per-module tests over the top-level modules of `package`."""
+        if "module_path" in metafunc.fixturenames:
+            if self.package is None:
+                raise ValueError(f"{type(self).__name__} does not define the package to test.")
+            paths = _find_module_paths(self.package)
+            metafunc.parametrize("module_path", paths, ids=[path.name for path in paths])
+
+    def test_dunder_all_declared(self, module_path: Path):
+        """Every module declares `__all__`, even when it exports nothing."""
+        assert _get_dunder_all(module_path) is not None, (
+            f"{module_path.name} does not declare __all__"
+        )
+
+    def test_dunder_all_defined_here(self, module_path: Path):
+        """Names in `__all__` are defined in the module itself, not re-exported from another one."""
+        imported = set()
+        defined = set()
+        for node in ast.walk(_parse(module_path)):
+            if isinstance(node, ast.ImportFrom | ast.Import):
+                imported.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                defined.add(node.name)
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                defined.add(node.id)
+        for name in _get_dunder_all(module_path) or ():
+            assert name in defined or name not in imported, (
+                f"{module_path.name} re-exports {name}: "
+                f"import it from the module that defines it instead"
+            )
+
+    def test_imports_are_exported(self, module_path: Path):
+        """A name imported from another StepUp module must appear in that module's `__all__`.
+
+        There is no exemption for underscore-prefixed names:
+        reaching into another module's internals is exactly what this check is meant to prevent.
+        Move the name to a module both parties may depend on,
+        or promote it to part of the defining module's contract.
+        """
+        for node in ast.walk(_parse(module_path)):
+            if not isinstance(node, ast.ImportFrom) or node.module is None:
+                continue
+            if node.level == 1:
+                module = f"{self.package}.{node.module}"
+            elif node.level == 0 and node.module.startswith("stepup."):
+                module = node.module
+            else:
+                continue
+            path = _find_module_path(module)
+            if path is None:
+                continue
+            exported = _get_dunder_all(path)
+            assert exported is not None, (
+                f"{module_path.name} imports from {module}, which has no __all__"
+            )
+            for alias in node.names:
+                assert alias.name in exported, (
+                    f"{module_path.name} imports {alias.name} from {module}, "
+                    f"which does not list it in __all__"
+                )
+
+    def test_example_return_code_constants(self, request):
+        """The `RETURN_CODE_*` constants in `example.rc` match the `ReturnCode` enum.
+
+        The integration examples assert exit codes through these shell constants,
+        so a renumbered or renamed flag must not silently leave them behind:
+        the examples would keep passing while testing the wrong bit.
+        """
+        if self.example_rc is None:
+            pytest.skip("The test suite has no integration examples.")
+        text = (Path(request.path).parent / self.example_rc).read_text()
+        constants = {
+            match.group(1): int(match.group(2))
+            for match in re.finditer(r"^RETURN_CODE_(\w+)=(\d+)$", text, re.MULTILINE)
+        }
+        assert constants == {flag.name: flag.value for flag in ReturnCode}
