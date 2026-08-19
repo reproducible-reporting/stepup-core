@@ -350,6 +350,10 @@ class ConventionTests:
                     f"which does not list it in __all__"
                 )
 
+    @pytest.mark.skipif(
+        not Path("tests/examples").is_dir(),
+        reason="The test suite has no integration examples.",
+    )
     def test_example_return_code_constants(self, request):
         """The `RETURN_CODE_*` constants in `example.rc` match the `ReturnCode` enum.
 
