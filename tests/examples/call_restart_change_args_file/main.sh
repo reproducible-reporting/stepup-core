@@ -9,8 +9,8 @@ grep "v1: hello" result.txt
 
 # Change config to label=v2, which causes plan to rewrite args.json.
 echo '{"label": "v2"}' > config.json
-stepup watch-update config.json
-stepup run
+stepup wait -u config.json
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

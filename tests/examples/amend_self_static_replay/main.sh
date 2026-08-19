@@ -15,9 +15,9 @@ grep hello output.txt
 # the output, again without spurious pending dependencies.
 touch input.txt
 rm output.txt
-stepup watch-update input.txt
-stepup watch-delete output.txt
-stepup run
+stepup wait -u input.txt
+stepup wait -d output.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

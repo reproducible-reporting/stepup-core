@@ -23,9 +23,9 @@ grep Second out2.txt
 # Modify nglob results and rerun
 echo "Third input" > inp3.txt
 rm inp1.txt
-stepup watch-update inp3.txt
-stepup watch-delete inp1.txt
-stepup run
+stepup wait -u inp3.txt
+stepup wait -d inp1.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

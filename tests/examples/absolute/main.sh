@@ -23,8 +23,8 @@ grep hello $PATH_DST
 
 # Modify absolute path and rerun
 echo changed > $PATH_SRC
-stepup watch-update $PATH_SRC
-stepup run
+stepup wait -u $PATH_SRC
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

@@ -16,8 +16,8 @@ stepup graph current_graph1
 
 # Modify the plan.py script and rerun with the modified plan.py.
 cp -a plan2.py plan.py
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

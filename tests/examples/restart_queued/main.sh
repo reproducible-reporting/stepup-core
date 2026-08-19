@@ -18,7 +18,7 @@ grep version1 final.txt
 
 # Change  the input and make sure the change is observed, but don't update the output.
 echo version2 > inp.txt
-stepup watch-update inp.txt
+stepup wait -u inp.txt
 stepup graph current_graph2
 stepup join
 

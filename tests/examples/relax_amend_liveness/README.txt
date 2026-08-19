@@ -5,7 +5,7 @@ so the dependency edge to data.txt is created only after source.sh's own File.co
 Under the old single-bucket scheme nothing would ever call mark_pending() on this step again,
 so it would sit in PENDING forever.
 Here it converges to SUCCESS after deferring exactly once,
-with a single "stepup wait" and no watch-update/run push cycle,
+with a single "stepup wait" and no "stepup wait -u"/run push cycle,
 proving the self-resolving unfresh path works without needing one.
 This example does not include an expected_stdout.txt
 because the exact interleaving of concurrent output lines is not deterministic;

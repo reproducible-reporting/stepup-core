@@ -16,8 +16,8 @@ grep hello greeting.txt
 # Switch to plan2.py (GREETING=world) and rerun. Because the override is part of
 # the step hash, the new value is detected and the step is rerun, writing "world".
 cp plan2.py plan.py
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

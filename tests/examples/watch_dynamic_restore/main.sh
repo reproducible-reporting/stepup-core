@@ -11,16 +11,16 @@ grep hello out.txt
 
 # Delete the dynamic input and rerun; out.txt is unaffected.
 rm inp.txt
-stepup watch-delete inp.txt
-stepup run
+stepup wait -d inp.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 grep hello out.txt
 
 # Recreate the input with the same content and rerun; the recorded step is replayed.
 echo hello > inp.txt
-stepup watch-update inp.txt
-stepup run
+stepup wait -u inp.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

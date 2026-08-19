@@ -10,7 +10,7 @@ stepup wait
 stepup graph current_graph1
 
 # Rerun without changes; the result must be idempotent.
-stepup run
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

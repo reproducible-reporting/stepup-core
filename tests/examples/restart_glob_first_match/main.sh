@@ -29,8 +29,8 @@ grep "MATCHES: \['data/a.txt'\]" .stepup/success.log
 # fix under test, so a second live change is picked up only if that watch survived
 # the restart.
 echo two > data/b.txt
-stepup watch-update data/b.txt
-stepup run
+stepup wait -u data/b.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

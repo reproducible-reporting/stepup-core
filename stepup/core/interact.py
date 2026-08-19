@@ -28,11 +28,9 @@ __all__ = (
     "drain_subcommand",
     "graph_subcommand",
     "join_subcommand",
-    "run_subcommand",
+    "rebuild_subcommand",
     "shutdown_subcommand",
     "wait_subcommand",
-    "watch_delete_subcommand",
-    "watch_update_subcommand",
 )
 
 
@@ -190,68 +188,53 @@ def graph_subcommand(subparsers, loader: ConfigLoader) -> Callable:
 
 
 @_report_errors
-def run_tool(args: argparse.Namespace):
+def rebuild_tool(args: argparse.Namespace):
     """Exit the watch phase and start the build phase."""
     get_rpc_client(get_socket()).call.start_build_phase()
 
 
-def run_subcommand(subparsers, loader: ConfigLoader) -> Callable:
-    """Add the `run` subcommand to the parser."""
+def rebuild_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Add the `rebuild` subcommand to the parser."""
     subparsers.add_parser(
-        "run",
+        "rebuild",
         help="Exit the watch phase and start the build phase.",
     )
-    return run_tool
-
-
-@_report_errors
-def watch_update_tool(args: argparse.Namespace):
-    """Block until the watcher has observed an update of the file."""
-    get_rpc_client(get_socket()).call.wait_for_update(args.path, _rpc_timeout=-1)
-
-
-def watch_update_subcommand(subparsers, loader: ConfigLoader) -> Callable:
-    """Add the `watch-update` subcommand to the parser."""
-    parser = subparsers.add_parser(
-        "watch-update",
-        help="Block until the watcher has observed an update of the file.",
-    )
-    parser.add_argument(
-        "path",
-        help="Path to the file to watch.",
-    )
-    return watch_update_tool
-
-
-@_report_errors
-def watch_delete_tool(args: argparse.Namespace):
-    """Block until the watcher has observed the deletion of the file."""
-    get_rpc_client(get_socket()).call.wait_for_delete(args.path, _rpc_timeout=-1)
-
-
-def watch_delete_subcommand(subparsers, loader: ConfigLoader) -> Callable:
-    """Add the `watch-delete` subcommand to the parser."""
-    parser = subparsers.add_parser(
-        "watch-delete",
-        help="Block until the watcher has observed the deletion of the file.",
-    )
-    parser.add_argument(
-        "path",
-        help="Path to the file to watch.",
-    )
-    return watch_delete_tool
+    return rebuild_tool
 
 
 @_report_errors
 def wait_tool(args: argparse.Namespace):
-    """Block until the builder has become idle."""
-    get_rpc_client(get_socket()).call.wait_for_idle(_rpc_timeout=-1)
+    """Block until the builder becomes idle, or until a watched path changes."""
+    client = get_rpc_client(get_socket())
+    if args.update is not None:
+        client.call.wait_for_update(args.update, _rpc_timeout=-1)
+    elif args.delete is not None:
+        client.call.wait_for_delete(args.delete, _rpc_timeout=-1)
+    else:
+        client.call.wait_for_idle(_rpc_timeout=-1)
 
 
 def wait_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Add the `wait` subcommand to the parser."""
-    subparsers.add_parser(
+    parser = subparsers.add_parser(
         "wait",
-        help="Block until the builder has become idle.",
+        help="Block until the builder becomes idle, or until a watched path changes.",
+    )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "-u",
+        "--update",
+        metavar="PATH",
+        default=None,
+        help="Block until the watcher has observed an update of PATH, "
+        "instead of waiting for the builder to become idle.",
+    )
+    group.add_argument(
+        "-d",
+        "--delete",
+        metavar="PATH",
+        default=None,
+        help="Block until the watcher has observed the deletion of PATH, "
+        "instead of waiting for the builder to become idle.",
     )
     return wait_tool

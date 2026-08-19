@@ -18,8 +18,8 @@ stepup graph current_graph1
 chmod +x sub/plan.py
 
 # Wait and get graph.
-stepup watch-update sub/plan.py
-stepup run
+stepup wait -u sub/plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

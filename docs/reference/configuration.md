@@ -37,7 +37,7 @@ watch = true
 ```
 
 Having multiple configuration files is convenient but can be confusing.
-StepUp provides a `stepup show-config` tool to help you understand which settings are in effect.
+StepUp provides a `stepup config` tool to help you understand which settings are in effect.
 This tool reads all the configuration files and environment variables,
 and shows the merged settings as a single, informative TOML file,
 including comments about the source of each setting.
@@ -53,7 +53,7 @@ of the section it appears in, or a value that a setting cannot use.
 The value of an environment variable is checked in the same way,
 but its **name** is not: see [Unrecognized Environment Variables](#unrecognized-environment-variables).
 All problems are reported at once, so that a single run tells you everything to fix.
-Each one names the config file the way `stepup show-config` does,
+Each one names the config file the way `stepup config` does,
 relative to the working directory when it lies below it:
 
 ```text
@@ -61,14 +61,14 @@ $ sb
 ERROR: Problems with the StepUp configuration:
   ./stepup.toml: unsupported key 'speed' in section [build]
   ./stepup.toml: unknown section [buidl] (did you mean 'build'?)
-Run 'stepup show-config' to inspect the configuration.
+Run 'stepup config' to inspect the configuration.
 ```
 
 This sets the first bit of the [return code](returncode.md),
 without a Python traceback unless `STEPUP_DEBUG` is set.
 Problems are shown in red when the terminal supports color.
 
-The `stepup show-config` subcommand is the one exception:
+The `stepup config` subcommand is the one exception:
 it still prints the configuration it loaded, with the source of each setting.
 This makes it usable precisely when the configuration is broken.
 Each problem is shown on the line of the setting, section or config file it concerns,
@@ -105,7 +105,7 @@ listed under [StepUp Core Module Environment Variables](#stepup-core-module-envi
 which no subcommand defines an option for.
 Rejecting every name that is not a setting would therefore reject StepUp's own environment.
 
-To make a typo visible anyway, `stepup show-config` lists the `STEPUP_*` variables
+To make a typo visible anyway, `stepup config` lists the `STEPUP_*` variables
 in three groups, by what each of them does:
 
 ```toml

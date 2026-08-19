@@ -16,8 +16,8 @@ grep "MATCHES: \['data/a.txt'\]" .stepup/success.log
 # deletion so ./plan.py reruns, without removing the whole directory (that is
 # watch_glob_delete_dir's scenario).
 rm data/a.txt
-stepup watch-delete data/a.txt
-stepup run
+stepup wait -d data/a.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

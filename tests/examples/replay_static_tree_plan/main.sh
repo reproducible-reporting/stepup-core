@@ -18,8 +18,8 @@ grep hello out.txt
 cp plan2.py plan.py
 
 # Rerun; the static tree is orphaned but out.txt should remain.
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 
@@ -31,8 +31,8 @@ grep hello out.txt
 cp plan1.py plan.py
 
 # Rerun; the consumer should be skipped since data/inp.txt has not changed.
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 

@@ -11,8 +11,8 @@ grep hello out.txt
 
 # Delete the dynamic input and rerun. The step is not scheduled and out.txt is unaffected.
 rm inp.txt
-stepup watch-delete inp.txt
-stepup run
+stepup wait -d inp.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

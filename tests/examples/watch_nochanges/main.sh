@@ -15,7 +15,7 @@ stepup graph current_graph1
 
 # Rerun, no changes expected.
 touch input.txt
-stepup run
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

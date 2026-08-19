@@ -32,8 +32,8 @@ stepup graph current_graph2
 # Restore the directory and the input, which the watcher must still pick up.
 mkdir sub
 echo hello > sub/inp.txt
-stepup watch-update sub/inp.txt
-stepup run
+stepup wait -u sub/inp.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

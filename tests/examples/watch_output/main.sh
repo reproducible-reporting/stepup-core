@@ -15,8 +15,8 @@ stepup graph current_graph1
 
 # Remove an output file and rerun.
 rm output.txt
-stepup watch-delete output.txt
-stepup run
+stepup wait -d output.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

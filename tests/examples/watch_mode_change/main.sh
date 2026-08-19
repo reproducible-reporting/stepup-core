@@ -16,8 +16,8 @@ grep data output.txt
 
 # Change permissons and rerun the plan.
 chmod +x input.txt
-stepup watch-update input.txt
-stepup run
+stepup wait -u input.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

@@ -15,8 +15,8 @@ grep -qx cached cached.txt
 # inside a hold() block. plan.py itself checks (while still holding) that "cached" was
 # already skipped and "rerun" was not yet dispatched; see plan2.py.
 cp plan2.py plan.py
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 
 stepup wait
 stepup graph current_graph2

@@ -10,7 +10,7 @@ stepup graph current_graph1
 
 # Modify the volatile output file.
 echo spam spam > vol.txt; sleep 0.5
-stepup run
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

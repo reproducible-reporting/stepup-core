@@ -20,8 +20,8 @@ stat output.txt | grep 'Access: (0755/-rwxr-xr-x)'
 chmod -x input.txt
 
 # Wait and get graph.
-stepup watch-update input.txt
-stepup run
+stepup wait -u input.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

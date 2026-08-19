@@ -15,10 +15,10 @@ grep "FILES: \['src/a.txt'\]" .stepup/success.log
 
 # Add a new file matching the glob(), without consuming it as a step input.
 # Before the fix, the static tree's directory was never watched until a match
-# was used as a step input, so `stepup watch-update` below would hang forever.
+# was used as a step input, so `stepup wait -u` below would hang forever.
 echo bravo > src/b.txt
-stepup watch-update src/b.txt
-stepup run
+stepup wait -u src/b.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

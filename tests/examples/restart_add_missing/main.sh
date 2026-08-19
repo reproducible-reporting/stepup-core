@@ -16,9 +16,9 @@ stepup graph current_graph1
 
 # Remove the input and output and try to rerun
 rm inp.txt out.txt
-stepup watch-delete inp.txt
-stepup watch-delete out.txt
-stepup run
+stepup wait -d inp.txt
+stepup wait -d out.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

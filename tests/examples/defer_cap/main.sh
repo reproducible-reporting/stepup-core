@@ -13,20 +13,20 @@ stepup wait
 # Editing trigger.txt (an ordinary, already-CONFIRMED input) makes X eligible again
 # (mark_pending), without ever making the dynamic input never.txt available.
 echo v1 > trigger.txt
-stepup watch-update trigger.txt
-stepup run
+stepup wait -u trigger.txt
+stepup rebuild
 stepup wait
 # Dispatch 2 -> defer (count=2).
 
 echo v2 > trigger.txt
-stepup watch-update trigger.txt
-stepup run
+stepup wait -u trigger.txt
+stepup rebuild
 stepup wait
 # Dispatch 3 -> defer (count=3, still <= cap).
 
 echo v3 > trigger.txt
-stepup watch-update trigger.txt
-stepup run
+stepup wait -u trigger.txt
+stepup rebuild
 stepup wait
 # Dispatch 4 -> count=4 exceeds cap=3, X fails.
 

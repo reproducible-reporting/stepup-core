@@ -535,7 +535,7 @@ def test_patches_accumulate_across_calls(parser, plugin_parser, loader):
 
 
 def test_patches_recorded_despite_error(path_tmp, parser):
-    """A parser with a bad config is still recorded, so `show-config` can report on it."""
+    """A parser with a bad config is still recorded, so `config` can report on it."""
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b"unknown_key = 1\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
@@ -756,7 +756,7 @@ def test_check_deduplicates_aliased_parsers(path_tmp, plugin_parser):
 
 
 def test_check_short_path_in_working_directory(path_tmp, parser, monkeypatch):
-    """A config file below the working directory is named as in the show-config header."""
+    """A config file below the working directory is named as in the config header."""
     monkeypatch.chdir(path_tmp)
     cfg = Path(os.getcwd()) / "stepup.toml"
     cfg.write_bytes(b"bogus = 1\n")
@@ -872,10 +872,10 @@ def test_cli_config_error_traceback_in_debug(monkeypatch, path_tmp, clean_env):
         main()
 
 
-def test_cli_show_config_survives_config_error(monkeypatch, path_tmp, capsys, clean_env):
-    """`stepup show-config` runs despite a broken config, because it explains what is broken."""
+def test_cli_config_survives_config_error(monkeypatch, path_tmp, capsys, clean_env):
+    """`stepup config` runs despite a broken config, because it explains what is broken."""
     (path_tmp / "stepup.toml").write_bytes(b"jbos = 4\n")
-    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    assert _run_main(monkeypatch, path_tmp, ["config"]) == ReturnCode.INTERNAL.value
     captured = capsys.readouterr()
     assert "jbos = 4" in captured.out
     assert "<-- ERROR: unsupported key 'jbos'" in captured.out
@@ -884,16 +884,16 @@ def test_cli_show_config_survives_config_error(monkeypatch, path_tmp, capsys, cl
 
 
 def _find_line(out: str, prefix: str) -> str:
-    """Return the one line of the `show-config` output that starts with the given prefix."""
+    """Return the one line of the `config` output that starts with the given prefix."""
     (line,) = [line for line in out.splitlines() if line.startswith(prefix)]
     return line
 
 
-def test_cli_show_config_inlines_setting_problems(monkeypatch, path_tmp, capsys, clean_env):
+def test_cli_config_inlines_setting_problems(monkeypatch, path_tmp, capsys, clean_env):
     """A problem with a setting or a section is shown on the line it concerns."""
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b'build = 5\nfoo = "bar"\n[buidl]\nx = 1\n')
-    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    assert _run_main(monkeypatch, path_tmp, ["config"]) == ReturnCode.INTERNAL.value
     captured = capsys.readouterr()
     assert _find_line(captured.out, "build = 5").endswith(
         "<-- ERROR: 'build' is configured as a value, but a section [build] is expected"
@@ -910,22 +910,22 @@ def test_cli_show_config_inlines_setting_problems(monkeypatch, path_tmp, capsys,
     assert tomllib.loads(captured.out) == {"build": 5, "foo": "bar", "buidl": {"x": 1}}
 
 
-def test_cli_show_config_inlines_file_and_env_problems(monkeypatch, path_tmp, capsys, clean_env):
+def test_cli_config_inlines_file_and_env_problems(monkeypatch, path_tmp, capsys, clean_env):
     """A problem with a whole file or with an environment variable is shown where it is listed."""
     (path_tmp / "stepup.toml").write_bytes(b"jobs = = 4\n")
     monkeypatch.setenv("STEPUP_BUILD_JOBS", "abc")
-    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    assert _run_main(monkeypatch, path_tmp, ["config"]) == ReturnCode.INTERNAL.value
     captured = capsys.readouterr()
     assert "<-- ERROR: invalid TOML syntax: " in _find_line(captured.out, "#   FOUND:  ")
     assert "<-- ERROR: " in _find_line(captured.out, "#   STEPUP_BUILD_JOBS = ")
     assert captured.err == ""
 
 
-def test_cli_show_config_groups_env_vars(monkeypatch, path_tmp, capsys, clean_env):
+def test_cli_config_groups_env_vars(monkeypatch, path_tmp, capsys, clean_env):
     """A variable without effect is listed apart from the settings and the internal ones."""
     monkeypatch.setenv("STEPUP_BUILD_JOBS", "3")
     monkeypatch.setenv("STEPUP_BUILD_JBOS", "3")
-    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == 0
+    assert _run_main(monkeypatch, path_tmp, ["config"]) == 0
     lines = capsys.readouterr().out.splitlines()
     setting = lines.index("# Configuration environment variables:")
     internal = lines.index("# StepUp Core module environment variables:")
@@ -943,13 +943,13 @@ def test_core_env_vars_are_not_settings(monkeypatch, path_tmp, clean_env):
     assert CORE_ENV_VARS.isdisjoint(loader.known_env_vars())
 
 
-def test_cli_show_config_reports_second_problem_on_a_line_apart(
+def test_cli_config_reports_second_problem_on_a_line_apart(
     monkeypatch, path_tmp, capsys, clean_env
 ):
     """Two problems on one line would need two comments, so only the first is shown there."""
     (path_tmp / ".stepup.toml").write_bytes(b"[buidl]\njobs = 2\n")
     (path_tmp / "stepup.toml").write_bytes(b"[buidl]\njobs = 3\n")
-    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    assert _run_main(monkeypatch, path_tmp, ["config"]) == ReturnCode.INTERNAL.value
     captured = capsys.readouterr()
     header = _find_line(captured.out, "[buidl]")
     assert header.count("<-- ERROR: ") == 1
@@ -962,12 +962,12 @@ def test_cli_show_config_reports_second_problem_on_a_line_apart(
     assert tomllib.loads(captured.out) == {"buidl": {"jobs": 3}}
 
 
-def test_cli_show_config_reports_overridden_setting_apart(monkeypatch, path_tmp, capsys, clean_env):
+def test_cli_config_reports_overridden_setting_apart(monkeypatch, path_tmp, capsys, clean_env):
     """A problem about a setting that another config file overrides has no line of its own."""
     low = path_tmp / ".stepup.toml"
     low.write_bytes(b'[build]\njobs = "abc"\n')
     (path_tmp / "stepup.toml").write_bytes(b"[build]\njobs = 4\n")
-    assert _run_main(monkeypatch, path_tmp, ["show-config"]) == ReturnCode.INTERNAL.value
+    assert _run_main(monkeypatch, path_tmp, ["config"]) == ReturnCode.INTERNAL.value
     captured = capsys.readouterr()
     assert "<-- ERROR" not in captured.out
     assert f"{low}: jobs in section [build]: " in captured.err

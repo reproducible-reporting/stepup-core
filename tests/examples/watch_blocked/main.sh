@@ -15,8 +15,8 @@ stepup graph current_graph1
 
 # Modify a few things and rerun
 cp plan_unblocked.py plan.py
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

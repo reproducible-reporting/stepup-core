@@ -24,10 +24,6 @@ from .utils import is_debug
 __all__ = ("main", "sb_main")
 
 
-SHOW_CONFIG = "show-config"
-"""The subcommand that runs despite a broken configuration, because it reports what is wrong."""
-
-
 def main():
     """Run a StepUp subcommand, reporting a `ConfigError` as a message instead of a traceback.
 
@@ -50,10 +46,10 @@ def _main():
     if tool_func is None:
         parser.print_help()
         return
-    if args.tool != SHOW_CONFIG:
+    if args.tool != "config":
         problems = loader.problems()
         if len(problems) > 0:
-            hint = f"Run 'stepup {SHOW_CONFIG}' to inspect the configuration."
+            hint = "Run 'stepup config' to inspect the configuration."
             if is_debug():
                 raise ConfigError(f"{format_config_problems(problems)}\n{hint}")
             print_config_problems(problems, hint)

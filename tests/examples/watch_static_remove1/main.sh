@@ -19,8 +19,8 @@ stepup graph current_graph1
 # Remove the static file foo.txt, change the plan and rerun
 cp plan2.py plan.py
 rm foo.txt
-stepup watch-delete foo.txt
-stepup run
+stepup wait -d foo.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

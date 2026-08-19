@@ -17,8 +17,8 @@ grep hello out.txt
 cp plan2.py plan.py
 
 # Remove input and rerun the plan, should not do much.
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 
@@ -29,8 +29,8 @@ stepup graph current_graph2
 cp plan1.py plan.py
 
 # Remove input and rerun the plan, should not do much.
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

@@ -16,8 +16,8 @@ grep "MATCHES: \['data/a.txt'\]" .stepup/success.log
 # relevant_paths' glob-match extension notices its disappearance via a DELETED_PARENT
 # event on data/.
 rm -r data
-stepup watch-delete data/a.txt
-stepup run
+stepup wait -d data/a.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

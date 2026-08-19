@@ -16,9 +16,9 @@ stepup graph current_graph1
 
 # Remove both intermediates and output
 rm ping.txt pong.txt work.txt
-stepup watch-delete ping.txt
-stepup watch-delete pong.txt
-stepup run
+stepup wait -d ping.txt
+stepup wait -d pong.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

@@ -16,6 +16,8 @@ What used to be called the *run phase* is now called the *build phase* in docume
 For consistency, the `stepup build` command is now the main entry point for running the build phase,
 while `stepup boot` is deprecated and will be removed in a future release.
 You can use the new `sb` entrypoint as a shortcut for `stepup build`.
+The `stepup run` subcommand, which starts a new build phase in a running StepUp instance,
+is renamed to `stepup rebuild` for the same reason.
 
 ## The New `run()` Function Replaces the Old `runsh()` and `runpy()` Functions
 
@@ -397,6 +399,12 @@ The advantages of the new `plan()` function are:
 
 The `sb` command was changed to have `-j` and `--jobs` options
 instead of `-n` and `--num-workers`.
+
+The `stepup watch-update <path>` and `stepup watch-delete <path>` subcommands
+were merged into `stepup wait`:
+use `stepup wait -u <path>` / `--update <path>` instead of `watch-update`,
+and `stepup wait -d <path>` / `--delete <path>` instead of `watch-delete`.
+Bare `stepup wait`, which blocks until the builder becomes idle, is unchanged.
 
 ## Changed Environment Variable Names
 

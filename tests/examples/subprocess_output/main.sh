@@ -23,8 +23,8 @@ grep -F "subprocess-stderr-line" .stepup/success.log
 # (try_skip_job) does not call reset_for_rerun, so the stored output must survive.
 > .stepup/success.log
 cp plan2.py plan.py
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph1
 grep "SKIP │ ./work.py" .stepup/success.log

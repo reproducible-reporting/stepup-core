@@ -74,10 +74,10 @@ from stepup.core.utils import string_to_bool
 __all__ = (
     "ConfigLoader",
     "ConfigProblem",
+    "config_subcommand",
     "format_config_problems",
     "print_config_error",
     "print_config_problems",
-    "show_config_subcommand",
 )
 
 
@@ -107,7 +107,7 @@ def _short_path(path: str | Path) -> Path:
     """Shorten a config file path for display in a message.
 
     A path inside the working directory is made relative to it, with a `./` prefix,
-    which is how `stepup show-config` lists the config files.
+    which is how `stepup config` lists the config files.
     Any other path is shown as it is:
     an absolute path is easier to read than a relative one climbing out of the tree,
     and a path like `~/.config/stepup.toml` already says where it is.
@@ -147,7 +147,7 @@ def _hint(candidates: list[str]) -> str:
 _ERROR_STYLE = Style(color="red", bold=True, dim=False)
 """How a problem stands out from the rest of the output.
 
-`dim=False` is needed because a problem shown inline by `show-config` sits in a TOML comment,
+`dim=False` is needed because a problem shown inline by `config` sits in a TOML comment,
 whose syntax highlighting is dim.
 """
 
@@ -156,7 +156,7 @@ whose syntax highlighting is dim.
 class ConfigProblem:
     """Something wrong with the configuration, and where it was found.
 
-    The location is what `show-config` needs to display a problem
+    The location is what `config` needs to display a problem
     on the line of the setting, section or config file it concerns.
     """
 
@@ -744,27 +744,27 @@ class ConfigLoader:
         return " or ".join(sorted(self._location_phrase(path, section) for section in sections))
 
 
-def show_config_subcommand(subparsers, loader: ConfigLoader) -> Callable:
-    """Define command-line arguments for the show-config tool.
+def config_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Define command-line arguments for the config tool.
 
     Parameters
     ----------
     subparsers
-        The subparser to add the show-config tool to.
+        The subparser to add the config tool to.
     loader
         The configuration loader used to read and merge configuration sources.
 
     Returns
     -------
     tool_func
-        The function to call with the parsed args to execute the show-config command.
+        The function to call with the parsed args to execute the config command.
     """
     subparsers.add_parser(
-        "show-config",
+        "config",
         help="Print the effective StepUp configuration as TOML.",
     )
 
-    def show_config_tool(args: argparse.Namespace) -> int:
+    def config_tool(args: argparse.Namespace) -> int:
         problems = loader.problems()
         remaining = _render_config(loader, problems)
         if len(remaining) > 0:
@@ -772,7 +772,7 @@ def show_config_subcommand(subparsers, loader: ConfigLoader) -> Callable:
             print_config_problems(remaining)
         return ReturnCode.INTERNAL.value if len(problems) > 0 else 0
 
-    return show_config_tool
+    return config_tool
 
 
 def format_config_problems(problems: list[ConfigProblem]) -> str:

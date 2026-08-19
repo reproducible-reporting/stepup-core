@@ -25,8 +25,8 @@ stepup graph current_graph1
 
 # Remove input and rerun the plan.
 rm inp2.txt
-stepup watch-delete inp2.txt
-stepup run
+stepup wait -d inp2.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 
@@ -41,9 +41,9 @@ stepup graph current_graph2
 # Replace input and rerun the plan.
 echo "Something new" > inp0.txt
 echo "Second inp1.txt" > inp1.txt
-stepup watch-update inp0.txt
-stepup watch-update inp1.txt
-stepup run
+stepup wait -u inp0.txt
+stepup wait -u inp1.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

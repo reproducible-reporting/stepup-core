@@ -19,7 +19,7 @@ grep data output.txt
 echo modified > output.txt
 sleep 0.5
 rm input.txt
-stepup run
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

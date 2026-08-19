@@ -18,8 +18,8 @@ grep script.log copy.txt
 
 # Modify config.json and rerun.
 cp config2.json config.json
-stepup watch-update config.json
-stepup run
+stepup wait -u config.json
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

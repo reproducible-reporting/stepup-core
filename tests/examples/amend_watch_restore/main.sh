@@ -16,8 +16,8 @@ grep word2 out2.txt
 # Edit the dynamic input out of band. Its producer reverts it on the next run,
 # so work.py stays skipped.
 echo "word2 and some" > inp2.txt
-stepup watch-update inp2.txt
-stepup run
+stepup wait -u inp2.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

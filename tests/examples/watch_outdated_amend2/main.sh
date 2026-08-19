@@ -23,9 +23,9 @@ grep conv1.txt subs3.txt
 rm inp1.txt
 echo inp2 > inp2.txt
 echo conv2.txt > subs1.txt
-stepup watch-update subs1.txt
-stepup watch-delete inp1.txt
-stepup run
+stepup wait -u subs1.txt
+stepup wait -d inp1.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

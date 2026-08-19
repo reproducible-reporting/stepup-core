@@ -14,8 +14,8 @@ grep "MATCHES: \[\]" .stepup/success.log
 # so creating the first match is noticed.
 mkdir data
 echo one > data/a.txt
-stepup watch-update data/a.txt
-stepup run
+stepup wait -u data/a.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

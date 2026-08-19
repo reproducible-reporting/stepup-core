@@ -11,8 +11,8 @@ grep hello out.txt
 
 # Change the dynamic input's content and rerun; the step reruns and updates out.txt.
 echo bye > inp.txt
-stepup watch-update inp.txt
-stepup run
+stepup wait -u inp.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

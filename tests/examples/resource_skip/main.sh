@@ -16,7 +16,7 @@ stepup graph current_graph1
 # queues the update. At shutdown the watcher processes the change: the step is
 # made PENDING while its stored hash (= H(original content)) is preserved.
 echo "changed" > input.txt
-stepup watch-update input.txt
+stepup wait -u input.txt
 stepup join
 wait
 

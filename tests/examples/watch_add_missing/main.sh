@@ -17,9 +17,9 @@ grep boo out.txt
 
 # Remove the input and output and try to rerun
 rm inp.txt out.txt
-stepup watch-delete inp.txt
-stepup watch-delete out.txt
-stepup run
+stepup wait -d inp.txt
+stepup wait -d out.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 
@@ -30,8 +30,8 @@ stepup graph current_graph2
 
 # Restore the input and rerun
 echo hello > inp.txt
-stepup watch-update inp.txt
-stepup run
+stepup wait -u inp.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

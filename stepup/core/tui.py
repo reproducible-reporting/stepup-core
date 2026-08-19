@@ -1077,7 +1077,7 @@ _KEY_ACTIONS = {
     ),
     "r": KeyAction(
         method="start_build_phase",
-        label="run",
+        label="rebuild",
         description="Restart the builder. (Leaves watch phase.)",
         message="Restarting the builder.",
     ),

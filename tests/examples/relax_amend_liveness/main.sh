@@ -1,7 +1,7 @@
 #!/usr/bin/env -S bash -x
 source ../example.rc
 
-# Run the example. A single "stepup wait" with no intervening watch-update/run cycle
+# Run the example. A single "stepup wait" with no intervening "stepup wait -u"/run cycle
 # must be enough to converge to SUCCESS: the deferred step here is unfresh-only, which
 # self-resolves on the step's own next dispatch, unlike the pre-existing
 # unavailable-input deferred path, which needs an external push (mark_pending()).

@@ -13,9 +13,9 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
-             product   step:stepup show-config
+             product   step:stepup config
 
-step:stepup show-config
+step:stepup config
                state = SUCCEEDED
                 need = DEFAULT
              creator   step:./plan.py

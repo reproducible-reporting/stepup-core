@@ -72,14 +72,15 @@ When writing new examples, the following conventions ensure that they are proper
 - The following `stepup` subcommands are used to interact with the running director
   and to verify the workflow state at well-defined points in time:
     - `stepup wait` — waits until the builder has finished all pending steps.
-    - `stepup run` — signals the director to start another run cycle (used after file changes).
+      `stepup wait -u <file>` / `--update <file>` waits for an update (or creation)
+      of `<file>` instead, and `stepup wait -d <file>` / `--delete <file>` waits
+      for the deletion of `<file>` instead.
+    - `stepup rebuild` — signals the director to start another build phase (used after file changes).
     - `stepup graph <prefix>` — writes the current workflow graph to `<prefix>.txt`,
       which is compared against the corresponding `expected_<prefix>.txt`.
       `stepup wait` or file-update commands are called first to reach a stable state.
     - `stepup join` — waits for the director to shut down and collects its exit code.
     - `stepup shutdown` — asks the director to shut down immediately.
-    - `stepup watch-update <file>` — notifies the director that a file has been updated.
-    - `stepup watch-delete <file>` — notifies the director that a file has been deleted.
     - `stepup clean ...` — removes StepUp-managed outputs; its output is captured in
       `current_cleanup.txt` and compared against `expected_cleanup.txt`.
 
@@ -96,8 +97,8 @@ When writing new examples, the following conventions ensure that they are proper
   ...
 
   cp plan2.py plan.py        # second phase — triggers a rerun
-  stepup watch-update plan.py
-  stepup run
+  stepup wait -u plan.py
+  stepup rebuild
   stepup wait
   ```
 

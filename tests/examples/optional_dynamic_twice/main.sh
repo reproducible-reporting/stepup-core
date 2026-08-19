@@ -22,8 +22,8 @@ grep 'optional 2' work.out
 
 # Modify data.txt and rerun
 echo a2 > data2.txt
-stepup watch-update data2.txt
-stepup run
+stepup wait -u data2.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

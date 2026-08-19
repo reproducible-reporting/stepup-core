@@ -12,8 +12,8 @@ grep -F "data/a.txt" .stepup/warning.log
 # Replace the plan with one that declares the match static and rerun: the
 # warning disappears once the fixed plan runs, in the same watch session.
 cp plan2.py plan.py
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

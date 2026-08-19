@@ -30,13 +30,13 @@ If the key is not associated with a command, the following help message appears:
   d = drain       Drain the scheduler. (Leaves build phase.)
   j = join        Wait for all steps to complete before shutting down.
   q = shutdown    Shut down the system. (1st is graceful. 2nd kills steps.)
-  r = run         Restart the builder. (Leaves watch phase.)
+  r = rebuild     Restart the builder. (Leaves watch phase.)
 ────────────────────────────────────────────────────────────────────────────────
 ```
 
 These commands are defined as follows:
 
-- `r = run`:
+- `r = rebuild`:
   Runs steps that are affected by file changes registered during the *watch phase*.
 - `q = shutdown`:
   StepUp waits for all running steps to complete and will not start new jobs.
@@ -107,7 +107,7 @@ However, you can still interact with StepUp as follows:
 2. Use `cd` to go to the directory where StepUp is running.
 3. Execute one of the following commands:
 
-    - `stepup run`
+    - `stepup rebuild`
     - `stepup shutdown`
     - `stepup drain`
     - `stepup join`
@@ -121,7 +121,7 @@ you can run it in "watch mode" (`sb -w`) and configure your IDE
 to bind the following command to a keyboard shortcut:
 
 ```bash
-stepup run
+stepup rebuild
 ```
 
 This command must be executed in the top-level directory
@@ -149,9 +149,9 @@ Add the following to your user `tasks.json` file:
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "StepUp run",
+      "label": "StepUp rebuild",
       "type": "shell",
-      "command": "eval \\"$(direnv export bash)\\"; stepup run",
+      "command": "eval \\"$(direnv export bash)\\"; stepup rebuild",
       "options": {
         "cwd": "${fileDirname}"
       },
@@ -179,7 +179,7 @@ The following `keybindings.json` file will bind `ctrl+'` to run the task:
   {
     "key": "ctrl+'",
     "command": "workbench.action.tasks.runTask",
-    "args": "StepUp run"
+    "args": "StepUp rebuild"
   }
 ]
 ```

@@ -13,9 +13,9 @@ stepup graph current_graph1
 # Modify a few things and rerun
 cp plan_trimmed.py plan.py
 rm orig.txt
-stepup watch-update plan.py
-stepup watch-delete orig.txt
-stepup run
+stepup wait -u plan.py
+stepup wait -d orig.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

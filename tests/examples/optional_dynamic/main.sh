@@ -18,8 +18,8 @@ grep pass1 optional.txt
 
 # Modify data.txt and rerun
 echo pass2 > data.txt
-stepup watch-update data.txt
-stepup run
+stepup wait -u data.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

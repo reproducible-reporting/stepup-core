@@ -26,8 +26,8 @@ stepup graph current_graph1
 
 # Rename file and run again
 mv ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-original.txt
-stepup watch-update ch-2-theory/sec-2-2-original.txt
-stepup run
+stepup wait -u ch-2-theory/sec-2-2-original.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

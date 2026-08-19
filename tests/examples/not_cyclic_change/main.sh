@@ -13,8 +13,8 @@ grep hello output.txt
 
 # Change the input. The step reruns without spurious pending dependencies.
 echo "bye" > input.txt
-stepup watch-update input.txt
-stepup run
+stepup wait -u input.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

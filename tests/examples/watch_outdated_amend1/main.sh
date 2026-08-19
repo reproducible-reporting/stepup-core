@@ -21,9 +21,9 @@ grep inp1 copy.txt
 rm data/inp1.txt
 echo inp2 > data/inp2.txt
 echo data/inp2.txt > subs.txt
-stepup watch-update subs.txt
-stepup watch-delete data/inp1.txt
-stepup run
+stepup wait -u subs.txt
+stepup wait -d data/inp1.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

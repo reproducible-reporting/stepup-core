@@ -16,8 +16,8 @@ cp current_variables.txt current_variables1.txt
 
 # Touch variables.json without changing its content. The step must NOT rerun.
 touch variables.json
-stepup watch-update variables.json
-stepup run
+stepup wait -u variables.json
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

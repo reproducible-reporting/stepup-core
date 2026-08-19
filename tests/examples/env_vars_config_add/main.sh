@@ -17,8 +17,8 @@ cp current_variables.txt current_variables1.txt
 # Add a second requested variable by changing the content of variables.json.
 # This grows the step's environment set, so it must rerun.
 cp variables2.json variables.json
-stepup watch-update variables.json
-stepup run
+stepup wait -u variables.json
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

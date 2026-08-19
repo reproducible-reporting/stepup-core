@@ -11,8 +11,8 @@ stepup graph current_graph1
 
 # Remove plan and rerun.
 rm plan.py
-stepup watch-delete plan.py
-stepup run
+stepup wait -d plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 
@@ -23,8 +23,8 @@ stepup graph current_graph2
 
 # Replace plan and rerun.
 cp plan2.py plan.py
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

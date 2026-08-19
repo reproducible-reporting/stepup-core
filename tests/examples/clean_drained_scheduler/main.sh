@@ -18,7 +18,7 @@ stepup graph current_graph1
 [[ ! -f case2.txt ]] || exit 1
 
 # Get the graph after completion of the pending steps.
-stepup run
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

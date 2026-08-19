@@ -14,8 +14,8 @@ stepup graph current_graph1
 
 # Phase 2: drop the consumer, so the producer is reverted to PENDING.
 cp plan2.py plan.py
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 
@@ -28,8 +28,8 @@ stepup graph current_graph2
 # Phase 3: restore the consumer, so the producer becomes needed again
 # without being redeclared, and recreates both outputs.
 cp plan1.py plan.py
-stepup watch-update plan.py
-stepup run
+stepup wait -u plan.py
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

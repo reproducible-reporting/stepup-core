@@ -21,9 +21,9 @@ sleep 0.1
 rmdir sub/
 sleep 0.1
 rm message.txt
-stepup watch-delete sub/message.txt
-stepup watch-delete message.txt
-stepup run
+stepup wait -d sub/message.txt
+stepup wait -d message.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 
@@ -36,8 +36,8 @@ stepup graph current_graph2
 mkdir sub/
 echo hello > sub/message.txt
 
-stepup watch-update sub/message.txt
-stepup run
+stepup wait -u sub/message.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

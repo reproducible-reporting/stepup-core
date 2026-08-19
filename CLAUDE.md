@@ -31,6 +31,19 @@ Guidance that applies to only part of the repo lives next to the code it governs
 
 ## Commands
 
+### Environment
+
+The development environment is managed with [uv](https://docs.astral.sh/uv/), not with `pip`.
+Reinstall the development version with:
+
+```bash
+uv sync --extra dev
+```
+
+This is needed after changing the `stepup.tools` entry points in `pyproject.toml`,
+because subcommands are looked up through the installed package metadata,
+so a renamed or added subcommand is invisible until the environment is synced.
+
 ### Linting
 
 Pre-commit hooks run `ruff format` and `ruff check` automatically on commit.

@@ -26,7 +26,7 @@ and will be updated with any further changes before the final release.
 - StepUp can now also be configured through configuration files,
   in addition to environment variables and command-line arguments.
   See [Configuration files](reference/configuration.md) for details.
-- The `stepup show-config` command shows the current configuration,
+- The `stepup config` command shows the current configuration,
   as the result of merging all config files and environment variables.
   It also lists the `STEPUP_*` environment variables in three groups,
   separating the ones it recognizes as settings from the ones used internally
@@ -37,7 +37,7 @@ and will be updated with any further changes before the final release.
   All problems are listed at once, each naming the file or variable to fix.
   Unknown sections and keys are now also detected, with a suggestion where a key belongs
   or how it is spelled correctly.
-  The `stepup show-config` command is the exception that still runs,
+  The `stepup config` command is the exception that still runs,
   so the configuration can be inspected precisely when it is broken.
   It shows each problem on the line of the setting, section or config file it concerns.
   Problems are shown in red when the terminal supports color.
@@ -160,6 +160,13 @@ and will be updated with any further changes before the final release.
   `-k` (steps already running still finish; no new steps are started).
   Use the new `--keep-going` / `-k` flag (or `STEPUP_BUILD_KEEP_GOING`) to restore the
   previous behavior of continuing to build every step whose inputs remain available.
+- The `stepup run` subcommand is renamed to `stepup rebuild`,
+  because the *run phase* it referred to is now called the *build phase*.
+  The keyboard shortcut in the terminal user interface is still `r`.
+- The `stepup watch-update <path>` and `stepup watch-delete <path>` subcommands
+  have been merged into `stepup wait`, as `stepup wait -u <path>` / `--update <path>`
+  and `stepup wait -d <path>` / `--delete <path>` respectively.
+  Bare `stepup wait` still waits for the builder to become idle.
 - The end-of-build pending report no longer prints one `PENDING Step` page per pending step.
   Instead, it summarizes the **root causes** as a fixed-size ranked report: the unavailable
   input files and blocked resources that account for the most pending steps, plus a

@@ -11,15 +11,15 @@ stepup graph current_graph1
 
 # Remove input and rerun the plan.
 rm input.txt
-stepup watch-delete input.txt
-stepup run
+stepup wait -d input.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 
 # Replace input and rerun the plan.
 cp second.txt input.txt
-stepup watch-update input.txt
-stepup run
+stepup wait -u input.txt
+stepup rebuild
 stepup wait
 stepup graph current_graph3
 stepup join

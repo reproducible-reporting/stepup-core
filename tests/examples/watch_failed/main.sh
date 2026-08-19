@@ -15,7 +15,7 @@ stepup graph current_graph1
 [[ $(wc -l log.txt | cut -d' ' -f 1) -eq 1 ]] || exit 1
 
 # Restart StepUp.
-stepup run
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

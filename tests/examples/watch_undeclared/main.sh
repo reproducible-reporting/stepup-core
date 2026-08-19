@@ -10,7 +10,7 @@ stepup graph current_graph1
 
 # Create the input file.
 touch inp.txt; sleep 0.5
-stepup run
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join

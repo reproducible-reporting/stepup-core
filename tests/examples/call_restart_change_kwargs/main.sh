@@ -11,8 +11,8 @@ stepup graph current_graph1
 
 # Change config to factor=3 and re-run.
 echo '{"factor": 3}' > config.json
-stepup watch-update config.json
-stepup run
+stepup wait -u config.json
+stepup rebuild
 stepup wait
 stepup graph current_graph2
 stepup join
