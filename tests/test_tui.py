@@ -18,13 +18,13 @@ import attrs
 import pytest
 from path import Path
 
-from stepup.core.asyncio import stoppable_iterator, wait_for_path
+from stepup.core.asyncio import iter_until_stopped, wait_for_path
 from stepup.core.config_loader import ConfigLoader
 from stepup.core.constants import PERF_DATA
 from stepup.core.director import DirectorHandler, interpret_jobs
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import PathError, ToolError
-from stepup.core.rpc import allow_rpc, serve_socket_rpc
+from stepup.core.rpc import SocketRPCServer, allow_rpc, is_rpc_allowed
 from stepup.core.tui import (
     _KEY_ACTIONS,
     _KEY_STROKE_HELP,
@@ -1088,7 +1088,7 @@ def test_key_actions_methods_are_allowed_rpc() -> None:
     for action in _KEY_ACTIONS.values():
         method = getattr(DirectorHandler, action.method, None)
         assert method is not None, f"DirectorHandler has no method {action.method!r}"
-        assert getattr(method, "_allow_rpc", False), f"{action.method!r} is not @allow_rpc"
+        assert is_rpc_allowed(method), f"{action.method!r} is not @allow_rpc"
 
 
 def _fixed_keystrokes(keys: list[str]) -> Callable[[asyncio.Event], AsyncGenerator[str, None]]:
@@ -1134,9 +1134,9 @@ def test_keyboard_reports_unreachable_director(
 ) -> None:
     """A keystroke sent while the director's socket does not exist is reported, not raised.
 
-    Regression test: `AsyncRPCClient.socket` raises `FileNotFoundError` (or
+    Regression test: connecting to the director's socket raises `FileNotFoundError` (or
     `ConnectionRefusedError`) in the ordinary shutdown window. Catching it at the
-    per-keystroke connect keeps it from escaping `keyboard`, `asyncio.gather`, and
+    per-keystroke call keeps it from escaping `keyboard`, `asyncio.gather`, and
     `_build_tool`'s `except ToolError` as a traceback instead of the exit code.
     """
     monkeypatch.setattr("stepup.core.tui._iter_keystrokes", _fixed_keystrokes(["r"]))
@@ -1209,7 +1209,7 @@ async def _drive_keyboard(
     """Serve *handler* over a real RPC socket and run `keyboard` against it with fixed keys."""
     server_stop_event = asyncio.Event()
     server_task = asyncio.create_task(
-        serve_socket_rpc(handler, str(socket_path), server_stop_event)
+        SocketRPCServer(handler, str(socket_path)).serve(server_stop_event)
     )
     try:
         await wait_for_path(socket_path, server_stop_event)
@@ -1345,7 +1345,7 @@ def test_keyboard_stops_on_stop_event(path_tmp: Path, monkeypatch: pytest.Monkey
 
     async def _never_ending_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, None]:
         queue = asyncio.Queue()
-        async for ch in stoppable_iterator(queue.get, stop_event):
+        async for ch in iter_until_stopped(queue.get, stop_event):
             yield ch
 
     monkeypatch.setattr("stepup.core.tui._iter_keystrokes", _never_ending_keystrokes)

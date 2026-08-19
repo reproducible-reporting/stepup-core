@@ -15,6 +15,7 @@ __all__ = (
     "HashFailedError",
     "InputNotFoundError",
     "PathError",
+    "RPCClientUnusableError",
     "RPCError",
     "RunError",
     "StepUpError",
@@ -120,6 +121,16 @@ class ConsistencyError(RuntimeError):
 
 class RPCError(Exception):
     """A remote procedure call could not be interpreted correctly."""
+
+
+class RPCClientUnusableError(ConnectionResetError):
+    """An RPC client was used after it stopped being able to talk to the server.
+
+    The client was closed, or an interrupted exchange left it out of step with the server.
+    Neither is a reset by the peer, which is what makes this worth telling apart,
+    but `ConnectionResetError` is kept in the bases
+    so that code catching a lost connection keeps catching this too.
+    """
 
 
 class InputNotFoundError(Exception):

@@ -31,7 +31,7 @@ import attrs
 from path import Path
 
 from .api import amend
-from .asyncio import await_fd_readable
+from .asyncio import wait_for_readable_fd
 from .exceptions import RunError
 from .extapi import get_local_import_paths
 from .outcome import ChildOutcome, ResourceUsage
@@ -641,13 +641,13 @@ async def _run_subprocess(
 
 async def _recv_conn(conn):
     """Asynchronously receive one object from a multiprocessing connection."""
-    await await_fd_readable(conn.fileno())
+    await wait_for_readable_fd(conn.fileno())
     return conn.recv()
 
 
 async def _wait_proc(proc):
     """Asynchronously wait for a multiprocessing process to exit, then reap it."""
-    await await_fd_readable(proc.sentinel)
+    await wait_for_readable_fd(proc.sentinel)
     proc.join()
 
 

@@ -3,178 +3,146 @@
 """Asyncio utilities used in StepUp."""
 
 import asyncio
-import contextlib
-import os
 import sys
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncIterator, Callable, Coroutine
+from typing import Any, TypeVar
 
 from path import Path
 
 __all__ = (
-    "await_fd_readable",
-    "pipe",
-    "stdio",
-    "stoppable_iterator",
-    "wait_for_events",
+    "_wait_closed_compat",
+    "iter_until_stopped",
+    "wait_for_any_event",
     "wait_for_path",
+    "wait_for_readable_fd",
 )
 
+MessageType = TypeVar("MessageType")
+
 
 #
-# Await a file descriptor becoming readable
+# Waiting for a condition
 #
 
 
-async def await_fd_readable(fd: int) -> None:
+async def wait_for_readable_fd(fd: int) -> None:
     """Wait until file descriptor `fd` becomes readable."""
     loop = asyncio.get_running_loop()
-    fut = loop.create_future()
+    future = loop.create_future()
 
     def _on_readable():
-        if not fut.done():
-            fut.set_result(None)
+        if not future.done():
+            future.set_result(None)
 
     loop.add_reader(fd, _on_readable)
     try:
-        await fut
+        await future
     finally:
         loop.remove_reader(fd)
 
 
-#
-# Wait for (one of) multiple events to be set
-#
+async def wait_for_any_event(*events: asyncio.Event) -> None:
+    """Wait until at least one of the events is set."""
+    tasks = [asyncio.create_task(event.wait(), name="wait_for_event") for event in events]
+    try:
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        for task in tasks:
+            task.cancel()
 
 
-async def wait_for_events(*events: asyncio.Event, return_when):
-    """Wait for the events to be set.
+MAX_POLL_DELAY = 0.5
+"""The upper limit of the polling interval of `wait_for_path`, in seconds."""
+
+
+async def wait_for_path(path: Path, stop_event: asyncio.Event) -> bool:
+    """Wait until the path exists or `stop_event` is set.
 
     Parameters
     ----------
-    events
-        Events to be awaited.
-    return_when
-        See `return_when` argument of `asyncio.wait`.
+    path
+        The path to wait for.
+    stop_event
+        Give up waiting when this event is set.
+
+    Returns
+    -------
+    exists
+        `True` when the path exists,
+        `False` when `stop_event` was set before the path appeared.
     """
-    tasks = [asyncio.create_task(event.wait()) for event in events]
-    done, pending = await asyncio.wait(tasks, return_when=return_when)
-    for task in done:
-        await task
-    for task in pending:
-        task.cancel()
+    delay = 0.0
+    while not path.exists():
+        if stop_event.is_set():
+            return False
+        if delay > 0:
+            await asyncio.sleep(delay)
+        # The delay is capped because it also bounds how long it takes to notice `stop_event`.
+        delay = min(delay + 0.1, MAX_POLL_DELAY)
+    return True
+
+
+async def _wait_closed_compat(server: asyncio.Server):
+    """Wait for the connections of a closed server, on the versions where `wait_closed` does not.
+
+    `asyncio.Server.wait_closed` returned without waiting for the connections still being served,
+    which was fixed in Python 3.12.1, see https://github.com/python/cpython/issues/120866.
+    This helper can go when StepUp requires Python 3.12.1 or later.
+    """
+    if sys.version_info >= (3, 12, 1) or server._waiters is None:
+        return
+    waiter = server.get_loop().create_future()
+    server._waiters.append(waiter)
+    await waiter
 
 
 #
-# Stoppable async loops
+# Stoppable iteration
 #
 
 
-async def stoppable_iterator(get_next, stop_event: asyncio.Event, args=()):
+async def iter_until_stopped(
+    get_next: Callable[[], Coroutine[Any, Any, MessageType]], stop_event: asyncio.Event
+) -> AsyncIterator[MessageType]:
     """Iterate over the messages returned by `get_next`, until `stop_event` is set.
 
     Parameters
     ----------
     get_next
-        A callable returning an awaitable that produces the next message.
+        A coroutine function producing the next message.
+        Use `functools.partial` when it takes arguments.
     stop_event
         When this event is set, the loop is interrupted.
-    args
-        Arguments to pass into `get_next`.
+
+    Notes
+    -----
+    The stop event competes with the next message,
+    so messages that are already available when `stop_event` is set are still yielded.
+    The iteration ends at the first message that does not arrive
+    before the stop event is noticed.
+    This race is not a way to drain the remaining messages:
+    a consumer that may not lose messages must keep reading until the source is exhausted.
+
+    A consumer that may break out of the iteration should wrap it in `contextlib.aclosing`.
+    The tasks waiting for the stop event and the next message are then cleaned up right away,
+    instead of when the garbage collector finalizes the iterator,
+    which may never happen when the event loop is already shutting down.
     """
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_task")
-    while True:
-        future = asyncio.ensure_future(get_next(*args))
-        done, pending = await asyncio.wait([future, stop_task], return_when=asyncio.FIRST_COMPLETED)
-        if stop_task in done and future in pending:
-            await stop_task
-            stop_task.result()
-            future.cancel()
-            break
-        yield await future
-
-
-async def wait_for_path(path: Path, stop_event: asyncio.Event):
-    """Wait until the path exists or `stop_event` is set."""
-    delay = 0.0
-    while not path.exists():
-        if stop_event.is_set():
-            break
-        if delay > 0:
-            await asyncio.sleep(delay)
-        delay += 0.1
-
-
-#
-# Setting up reader and writer pairs, other than those provided by asyncio.
-#
-
-
-async def stdio(
-    limit=asyncio.streams._DEFAULT_LIMIT, loop=None
-) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
-    """Create a reader and writer connected to stdin and stdout.
-
-    Adapted from: https://stackoverflow.com/questions/52089869/
-
-    Parameters
-    ----------
-    limit
-        The maximum buffer size.
-    loop
-        The event loop.
-        When not given, `asyncio.get_event_loop()` is called, which is usually just fine.
-
-    Returns
-    -------
-    reader
-        The StreamReader connected to standard input.
-    writer
-        The StreamWriter connected to standard output.
-    """
-    if loop is None:
-        loop = asyncio.get_event_loop()
-    reader = asyncio.StreamReader(limit=limit, loop=loop)
-    await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader, loop=loop), sys.stdin)
-    writer_transport, writer_protocol = await loop.connect_write_pipe(
-        lambda: asyncio.streams.FlowControlMixin(loop=loop), os.fdopen(sys.stdout.fileno(), "wb")
-    )
-    writer = asyncio.streams.StreamWriter(writer_transport, writer_protocol, None, loop)
-    return reader, writer
-
-
-@contextlib.asynccontextmanager
-async def pipe(
-    limit=asyncio.streams._DEFAULT_LIMIT, loop=None
-) -> AsyncGenerator[tuple[asyncio.StreamReader, asyncio.StreamWriter]]:
-    """Create a connected reader and writer through `os.pipe`.
-
-    This is mainly useful for testing, to set up an RPC client and server within one test function.
-
-    Parameters
-    ----------
-    limit
-        The maximum buffer size.
-    loop
-        The event loop.
-        When not given, `asyncio.get_event_loop()` is called, which is usually just fine.
-
-    Returns
-    -------
-    reader
-        The StreamReader taking data out of the pipe.
-    writer
-        The StreamWriter putting data into the pipe.
-    """
-    if loop is None:
-        loop = asyncio.get_event_loop()
-    fd_in, fd_out = os.pipe()
-    with open(fd_in) as pipe_in, open(fd_out) as pipe_out:
-        reader = asyncio.StreamReader(limit=limit, loop=loop)
-        await loop.connect_read_pipe(
-            lambda: asyncio.StreamReaderProtocol(reader, loop=loop), pipe_in
-        )
-        writer_transport, writer_protocol = await loop.connect_write_pipe(
-            lambda: asyncio.streams.FlowControlMixin(loop=loop), pipe_out
-        )
-        writer = asyncio.streams.StreamWriter(writer_transport, writer_protocol, None, loop)
-        yield reader, writer
+    next_task = None
+    try:
+        while True:
+            next_task = asyncio.create_task(get_next(), name="next_task")
+            done, _ = await asyncio.wait(
+                [next_task, stop_task], return_when=asyncio.FIRST_COMPLETED
+            )
+            if next_task not in done:
+                break
+            yield await next_task
+    finally:
+        # Also needed when the consumer stops iterating early or is cancelled:
+        # `asyncio.wait` leaves both tasks pending, and an abandoned pending task
+        # ends up in the director log as a symptom of a bug.
+        stop_task.cancel()
+        if next_task is not None:
+            next_task.cancel()

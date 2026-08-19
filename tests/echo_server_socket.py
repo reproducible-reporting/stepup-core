@@ -1,18 +1,18 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""A single echo RPC server over stdio pipes, used by test_rpc.py"""
+"""A single echo RPC server on a Unix domain socket, used by test_rpc.py"""
 
 import asyncio
 import sys
 
 from core_common import EchoHandler
 
-from stepup.core.rpc import serve_socket_rpc
+from stepup.core.rpc import SocketRPCServer
 
 
 async def main():
     handler = EchoHandler("socket")
-    await serve_socket_rpc(handler, sys.argv[1], handler.stop_event)
+    await SocketRPCServer(handler, sys.argv[1]).serve(handler.stop_event)
 
 
 if __name__ == "__main__":

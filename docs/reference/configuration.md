@@ -176,9 +176,13 @@ and cannot be configured through config files or command-line options.
 
 `STEPUP_SYNC_RPC_TIMEOUT`
 
-:   The timeout in seconds for the synchronous RPC server.
-    The default is 300 seconds.
+:   The number of seconds a synchronous RPC client waits for a response from the director,
+    which also bounds the connection setup that the first call triggers.
+    The default is 600 seconds.
     Set this to a smaller value if you want to detect deadlocks more quickly.
+    A negative or zero value disables the timeout,
+    which some calls use because the director answers them
+    only when the workflow is ready for it.
 
 ## Settings for All Subcommands
 

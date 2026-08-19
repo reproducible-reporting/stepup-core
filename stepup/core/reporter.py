@@ -19,7 +19,7 @@ from rich.text import Text
 from rich.theme import Theme
 
 from .constants import FAIL_LOG, SUCCESS_LOG, WARNING_LOG
-from .rpc import AsyncRPCClient, BaseAsyncRPCClient, DummyAsyncRPCClient, allow_rpc
+from .rpc import BaseAsyncRPCClient, DummyAsyncRPCClient, SocketAsyncRPCClient, allow_rpc
 from .utils import escape_command_display
 
 logger = logging.getLogger(__name__)
@@ -80,8 +80,11 @@ class ReporterClient:
     """Handle for the scheduled `_flush_jobs` call, or `None` when none is pending."""
 
     _flush_tasks: set[asyncio.Task] = attrs.field(init=False, factory=set)
-    """In-flight `_flush_jobs` tasks, kept alive here so they cannot be garbage-collected mid-send
-    (same rationale as the `tasks` set in `rpc.py::_serve_rpc_recv_loop`)."""
+    """In-flight `_flush_jobs` tasks.
+
+    Only a task that something still refers to is kept alive by the event loop,
+    so a task that is not stored here may be garbage-collected before it has sent its batch.
+    """
 
     @classmethod
     @contextlib.asynccontextmanager
@@ -89,7 +92,10 @@ class ReporterClient:
         if path is None:
             yield cls(DummyAsyncRPCClient())
         else:
-            async with await AsyncRPCClient.socket(path) as client:
+            # The reporter server is hosted in the `stepup build` process, which has no log file.
+            async with SocketAsyncRPCClient(
+                path, server_log_description="the output of `stepup build`"
+            ) as client:
                 yield cls(client)
 
     async def __call__(
@@ -155,10 +161,7 @@ class ReporterClient:
         await self._flush_jobs()
         if len(self._flush_tasks) > 0:
             await asyncio.gather(*self._flush_tasks)
-        try:
-            await self.client.close()
-        except ConnectionError as exc:
-            logger.warning("Ignoring exception when closing reporter client: %r", exc)
+        await self.client.close()
 
     async def __aenter__(self):
         return self

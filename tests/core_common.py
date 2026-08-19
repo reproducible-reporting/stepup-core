@@ -10,6 +10,18 @@ from stepup.core.exceptions import CyclicError
 from stepup.core.rpc import allow_rpc
 
 
+async def settled_task_names() -> list[str]:
+    """The names of the tasks that are still pending, after letting the event loop settle.
+
+    A few no-op sleeps are needed because a cancelled task only completes
+    when the event loop gets to deliver the cancellation.
+    """
+    for _ in range(5):
+        await asyncio.sleep(0)
+    current = asyncio.current_task()
+    return sorted(task.get_name() for task in asyncio.all_tasks() if task is not current)
+
+
 @attrs.define
 class EchoHandler:
     """A simple handler for unit testing the RPC module in StepUp."""
@@ -30,6 +42,11 @@ class EchoHandler:
         See https://en.wikipedia.org/wiki/Linear_congruential_generator
         """
         return (multiplier * seed + increment) % modulus
+
+    @allow_rpc
+    def greet(self, name: str) -> str:
+        """Say hello to `name`, a parameter that the client's `__call__` also has."""
+        return f"{self.name}: hello {name}"
 
     @allow_rpc
     def raise_usage(self):

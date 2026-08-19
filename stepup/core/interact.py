@@ -19,7 +19,7 @@ from .config_loader import ConfigLoader
 from .constants import DIRECTOR_LOG
 from .exceptions import RPCError, ToolError
 from .path import get_stepup_root
-from .rpc import SocketSyncRPCClient
+from .rpc import NO_RPC_TIMEOUT, SocketSyncRPCClient
 from .tool import SubParsers, ToolFunc
 from .utils import is_process_running, query_director_log
 
@@ -50,13 +50,6 @@ whose duration is proportional to the size of the workflow and has no useful upp
 
 WAIT_FOR_SOCKET_INTERVAL = 0.5
 """Seconds between two attempts to read the socket path from `DIRECTOR_LOG`."""
-
-NO_RPC_TIMEOUT = -1.0
-"""The `_rpc_timeout` of a call that the director answers only when the workflow is ready for it.
-
-How long that takes is a property of the workflow, not of the connection,
-so the default timeout of the RPC client would only cut off a healthy wait.
-"""
 
 
 def wait_for_director_socket() -> Path:
@@ -127,12 +120,10 @@ def _connect_director() -> Generator[SocketSyncRPCClient]:
         raise ToolError(f"Could not connect to the StepUp director: {exc}") from exc
     except TimeoutError as exc:
         raise ToolError(f"Timeout while connecting to the StepUp director: {exc}") from exc
-    # Closing tells the director's side of the connection to wind down,
-    # which is a courtesy and not a requirement.
-    # A director that has just accepted a shutdown may be gone before the message arrives,
-    # so a broken connection at this point is not worth reporting.
-    with contextlib.suppress(OSError):
-        client.close()
+    # Closing tells the director's side of the connection to wind down.
+    # A director that has just accepted a shutdown may be gone by now,
+    # which `close()` deals with on its own.
+    client.close()
 
 
 #

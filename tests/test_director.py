@@ -9,6 +9,7 @@ from decimal import Decimal
 
 import attrs
 import pytest
+from path import Path
 
 from stepup.core import director
 from stepup.core.director import SCHEDULER_CPU_ENV_VARS, DirectorHandler, interpret_jobs
@@ -115,7 +116,23 @@ async def await_interrupt(handler: DirectorHandler) -> None:
     await handler._interrupt_task
 
 
-def make_director_handler(nrunning: int = 0) -> DirectorHandler:
+@attrs.define
+class FakeWatcher:
+    """Stands in for the watcher, with the events and sets that a waiting RPC call consults."""
+
+    active: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    files_changed_events: set[asyncio.Event] = attrs.field(init=False, factory=set)
+    updated: set[Path] = attrs.field(init=False, factory=set)
+    deleted: set[Path] = attrs.field(init=False, factory=set)
+
+    def notify_update(self, path: Path) -> None:
+        """Record an observed update and wake up the waiters, as the watcher does."""
+        self.updated.add(path)
+        for event in self.files_changed_events:
+            event.set()
+
+
+def make_director_handler(nrunning: int = 0, watcher: FakeWatcher | None = None) -> DirectorHandler:
     """Create a `DirectorHandler` with just enough collaborators for shutdown tests."""
     return DirectorHandler(
         scheduler=FakeScheduler(),
@@ -124,7 +141,7 @@ def make_director_handler(nrunning: int = 0) -> DirectorHandler:
         reporter=ReporterClient(),
         executor=FakeExecutor(),
         builder=FakeBuilder(list(range(nrunning))),
-        watcher=None,
+        watcher=watcher,
         stop_event=asyncio.Event(),
     )
 
@@ -235,3 +252,35 @@ async def test_drain_does_not_wait_for_running_steps():
     assert handler.scheduler.draining
     # Unlike shutdown, draining leaves the build phase to end on its own.
     assert not handler.stop_event.is_set()
+
+
+async def start_wait_for_update(handler: DirectorHandler, path: str) -> asyncio.Task:
+    """Start a `wait_for_update` call and return once it waits for a file change."""
+    task = asyncio.create_task(handler.wait_for_update(path))
+
+    async def registered():
+        while len(handler.watcher.files_changed_events) == 0:
+            await asyncio.sleep(0)
+
+    await asyncio.wait_for(registered(), timeout=5.0)
+    return task
+
+
+async def test_wait_for_update_returns_when_the_file_changes():
+    """The plain case: `stepup wait --update` returns as soon as the watcher sees the change."""
+    handler = make_director_handler(watcher=FakeWatcher())
+    handler.watcher.active.set()
+    task = await start_wait_for_update(handler, "foo.txt")
+    handler.watcher.notify_update(Path("foo.txt"))
+    await asyncio.wait_for(task, timeout=5.0)
+    assert len(handler.watcher.files_changed_events) == 0
+
+
+async def test_wait_for_update_gives_up_when_stopping():
+    """A file that never changes must not hold the call after the director has stopped."""
+    handler = make_director_handler(watcher=FakeWatcher())
+    handler.watcher.active.set()
+    task = await start_wait_for_update(handler, "foo.txt")
+    handler.stop_event.set()
+    await asyncio.wait_for(task, timeout=5.0)
+    assert len(handler.watcher.files_changed_events) == 0

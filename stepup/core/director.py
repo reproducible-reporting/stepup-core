@@ -25,7 +25,7 @@ try:
 except ImportError:
     yappi = None
 
-from .asyncio import wait_for_events
+from .asyncio import wait_for_any_event
 from .builder import Builder
 from .cgroups import get_ncore_from_cgroup
 from .constants import (
@@ -44,7 +44,7 @@ from .file import File
 from .hash import FileHash
 from .nglob import NamedGlob
 from .reporter import ReporterClient
-from .rpc import allow_rpc, serve_socket_rpc
+from .rpc import SocketRPCServer, allow_rpc
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .startup import startup_from_db
@@ -653,7 +653,9 @@ async def _run_tasks(
 ) -> None:
     """Run the director's async tasks until shutdown, then tear them down in order."""
     exit_event = asyncio.Event()
-    rpc_server = asyncio.create_task(serve_socket_rpc(handler, director_socket_path, exit_event))
+    rpc_server = asyncio.create_task(
+        SocketRPCServer(handler, director_socket_path).serve(exit_event)
+    )
     coroutines = [
         build_loop(handler.builder, handler.watcher, handler.stop_event),
         handler.db.database_maintenance_loop(handler.stop_event),
@@ -723,7 +725,7 @@ async def watch_first_loop(watcher: Watcher, handler: "DirectorHandler", stop_ev
     watcher.files_changed_events.add(changed_event)
     while True:
         await watcher.active.wait()
-        await wait_for_events(changed_event, stop_event, return_when=asyncio.FIRST_COMPLETED)
+        await wait_for_any_event(changed_event, stop_event)
         if stop_event.is_set():
             break
         await asyncio.sleep(0.5)
@@ -1058,19 +1060,26 @@ class DirectorHandler:
         events = [self.stop_event]
         if self.watcher is not None:
             events.append(self.watcher.active)
-        await wait_for_events(*events, return_when=asyncio.FIRST_COMPLETED)
+        await wait_for_any_event(*events)
 
     async def _wait_for_change(self, path: str, observed: set[Path]) -> None:
-        """Block until `path` shows up in `observed`, a live set owned by the watcher."""
+        """Block until `path` shows up in `observed`, a live set owned by the watcher.
+
+        This also returns when the director is stopping,
+        because a path that never changes would otherwise hold the call, and the connection
+        serving it, until the process is killed.
+        """
         path = Path(path).normpath()
         await self._wait_for_end_build_phase()
         event = asyncio.Event()
         self.watcher.files_changed_events.add(event)
         try:
             while True:
-                if path in observed:
+                # The observation is checked before the stop event,
+                # so a change that arrives together with the shutdown still counts.
+                if path in observed or self.stop_event.is_set():
                     return
-                await event.wait()
+                await wait_for_any_event(event, self.stop_event)
                 event.clear()
         finally:
             self.watcher.files_changed_events.discard(event)
@@ -1118,9 +1127,7 @@ class DirectorHandler:
             for step in self.workflow.steps(StepState.FAILED):
                 self.workflow.mark_step_pending(step)
         self.watcher.interrupt.set()
-        await wait_for_events(
-            self.watcher.processed, self.stop_event, return_when=asyncio.FIRST_COMPLETED
-        )
+        await wait_for_any_event(self.watcher.processed, self.stop_event)
         self.scheduler.draining = False
         self.builder.resume.set()
 

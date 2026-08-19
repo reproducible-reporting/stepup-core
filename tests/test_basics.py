@@ -10,24 +10,24 @@ from path import Path
 
 from stepup.core.enums import Need
 from stepup.core.exceptions import GraphError, RPCError
-from stepup.core.rpc import AsyncRPCClient
+from stepup.core.rpc import SocketAsyncRPCClient
 
 
-async def test_unknown_instruction(client: AsyncRPCClient):
+async def test_unknown_instruction(client: SocketAsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
         await client("instruction_that_does_not_exist")
 
 
-async def test_missing_argument(client: AsyncRPCClient):
+async def test_missing_argument(client: SocketAsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
         await client("declare_static")
 
 
-async def test_wrong_type(client: AsyncRPCClient):
+async def test_wrong_type(client: SocketAsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
@@ -61,7 +61,7 @@ def _check_graph(path, expected):
         assert cur == expected
 
 
-async def test_from_scratch(client: AsyncRPCClient, path_tmp: Path):
+async def test_from_scratch(client: SocketAsyncRPCClient, path_tmp: Path):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     await client("wait_for_idle")
@@ -101,7 +101,7 @@ def _get_job_i() -> int:
         return int(fh.read())
 
 
-async def test_static(client: AsyncRPCClient, path_tmp: Path):
+async def test_static(client: SocketAsyncRPCClient, path_tmp: Path):
     try:
         with open("foo", "w") as fh:
             fh.write("bar")
@@ -156,7 +156,7 @@ file:copy.txt
 """
 
 
-async def test_copy(client: AsyncRPCClient, path_tmp: Path):
+async def test_copy(client: SocketAsyncRPCClient, path_tmp: Path):
     try:
         with open("original.txt", "w") as fh:
             fh.write("Hello world!")
@@ -185,7 +185,7 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
     _check_graph(prefix_graph + ".txt", COPY_GRAPH)
 
 
-async def test_static_registers_tree_before_file(client: AsyncRPCClient, path_tmp: Path):
+async def test_static_registers_tree_before_file(client: SocketAsyncRPCClient, path_tmp: Path):
     """One `declare_static` RPC must register a tree before a file it contains.
 
     This is the canonical same-creator case: `DirectorHandler.declare_static` groups directories
@@ -230,7 +230,7 @@ async def test_static_registers_tree_before_file(client: AsyncRPCClient, path_tm
     assert "             creator   st:sub/\n" in graph
 
 
-async def test_amend_blocks_until_static_tree_match_confirmed(client: AsyncRPCClient):
+async def test_amend_blocks_until_static_tree_match_confirmed(client: SocketAsyncRPCClient):
     """`amend()` naming a fresh static-tree match must block until it is hashed and
     confirmed, then report the step as runnable with the file CONFIRMED."""
     try:
@@ -247,7 +247,7 @@ async def test_amend_blocks_until_static_tree_match_confirmed(client: AsyncRPCCl
     await client("wait_for_idle")
 
 
-async def test_amend_reports_missing_static_tree_match(client: AsyncRPCClient):
+async def test_amend_reports_missing_static_tree_match(client: SocketAsyncRPCClient):
     """`amend()` naming a static-tree match that does not exist on disk must not block
     forever, and must report the step as not runnable (carry_on=False)."""
     try:
@@ -262,7 +262,7 @@ async def test_amend_reports_missing_static_tree_match(client: AsyncRPCClient):
     await client("wait_for_idle")
 
 
-async def test_hold_release_rpc_smoke(client: AsyncRPCClient):
+async def test_hold_release_rpc_smoke(client: SocketAsyncRPCClient):
     """`hold_dispatch`/`release_dispatch` round-trip: steps declared while holding still run."""
     try:
         job_i = _get_job_i()
@@ -302,7 +302,7 @@ async def test_hold_release_rpc_smoke(client: AsyncRPCClient):
     assert Path("b.txt").is_file()
 
 
-async def test_hold_nested_rpc_smoke(client: AsyncRPCClient):
+async def test_hold_nested_rpc_smoke(client: SocketAsyncRPCClient):
     """A second `hold()` without an intervening `release()` is a re-entrant nested hold, not
     an error: it takes two matching `release()` calls to round-trip cleanly. See
     `test_hold_release_rpc_smoke` for the non-nested case, and the `hold_nested` example for
@@ -320,7 +320,7 @@ async def test_hold_nested_rpc_smoke(client: AsyncRPCClient):
     await client("wait_for_idle")
 
 
-async def test_release_without_hold_raises_graph_error(client: AsyncRPCClient):
+async def test_release_without_hold_raises_graph_error(client: SocketAsyncRPCClient):
     """`release()` with no matching `hold()` raises rather than corrupting scheduler state.
 
     The director's `GraphError` is a `UsageError`, so the client re-raises that same class

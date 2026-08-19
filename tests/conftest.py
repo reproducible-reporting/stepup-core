@@ -20,7 +20,7 @@ from stepup.core.enums import HashUpdateCause, Need
 from stepup.core.file import File
 from stepup.core.hash import FileHash
 from stepup.core.reporter import ReporterClient
-from stepup.core.rpc import AsyncRPCClient
+from stepup.core.rpc import SocketAsyncRPCClient
 from stepup.core.sqlite3 import DBSession
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
@@ -43,7 +43,7 @@ def _unset_stepup_debug(monkeypatch: pytest.MonkeyPatch):
     """Pin `STEPUP_DEBUG` off, because unit tests inherit the developer's environment.
 
     Several code paths read the variable at call time
-    (`_handle_error` in `rpc.py`, `_shorten` in `tracebacks.py`),
+    (`_raise_remote_error` in `rpc.py`, `_shorten` in `tracebacks.py`),
     and `docs/development.md` recommends exporting it while working on StepUp,
     so without this fixture those tests would assert different things for different people.
     Tests that exercise the debug path set the variable themselves.
@@ -67,7 +67,7 @@ print("Found DONE.txt. Stopping.")
 
 
 @pytest_asyncio.fixture()
-async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
+async def client(tmpdir) -> AsyncGenerator[SocketAsyncRPCClient, None]:
     # Launch stepup in background
     with contextlib.chdir(tmpdir):
         dir_stepup = Path(".stepup").absolute()
@@ -96,7 +96,7 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
                 await asyncio.sleep(0.1)
             while not Path("STARTED.txt").is_file():
                 await asyncio.sleep(0.1)
-            async with await AsyncRPCClient.socket(director_socket_path) as result:
+            async with SocketAsyncRPCClient(director_socket_path) as result:
                 try:
                     yield result
                 finally:

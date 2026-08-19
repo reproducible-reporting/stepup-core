@@ -31,11 +31,12 @@ from typing import Self
 import attrs
 from path import Path
 
-from .asyncio import stoppable_iterator, wait_for_path
+from .asyncio import iter_until_stopped, wait_for_path
 from .cgroups import cgroup_scope_prefix
 from .config_loader import ConfigLoader
 from .constants import (
     DIRECTOR_LOG,
+    DIRECTOR_LOG_DESCRIPTION,
     JOBLOG_CSV,
     PERF_DATA,
     PLAN_PY,
@@ -47,7 +48,7 @@ from .enums import ReturnCode
 from .exceptions import RPCError, ToolError, UsageError
 from .path import get_stepup_root
 from .reporter import ReporterHandler
-from .rpc import AsyncRPCClient, serve_socket_rpc
+from .rpc import SocketAsyncRPCClient, SocketRPCServer
 from .tool import SubParsers, ToolFunc
 from .utils import (
     is_debug,
@@ -428,7 +429,7 @@ async def _async_build(args: argparse.Namespace) -> int:
         stop_event = asyncio.Event()
         reporter_handler = ReporterHandler(args.progress, stop_event)
         task_reporter = asyncio.create_task(
-            serve_socket_rpc(reporter_handler, reporter_socket_path, stop_event),
+            SocketRPCServer(reporter_handler, reporter_socket_path).serve(stop_event),
             name="reporter-rpc",
         )
         try:
@@ -779,12 +780,12 @@ async def _wait_for_director_socket(
         wait_for_path(director_socket_path, stop_event), name="wait-socket"
     )
     await asyncio.wait([task_socket, task_director], return_when=asyncio.FIRST_COMPLETED)
-    if not task_socket.done():
-        task_socket.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await task_socket
-    # Not task_socket.done(): wait_for_path also returns when stop_event is set,
-    # without the socket having appeared.
+    if task_socket.done():
+        return task_socket.result()
+    # The director exited first, which does not rule out that it created its socket before.
+    task_socket.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task_socket
     return director_socket_path.exists()
 
 
@@ -1179,7 +1180,7 @@ async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, Non
             loop.call_soon_threadsafe(queue.put_nowait, ch)
 
     threading.Thread(target=_stdin_loop, daemon=True).start()
-    async for ch in stoppable_iterator(queue.get, stop_event):
+    async for ch in iter_until_stopped(queue.get, stop_event):
         yield ch
 
 
@@ -1214,7 +1215,9 @@ async def keyboard(
             reporter_handler.report("KEYBOARD", f"Unsupported key {ch}", pages)
             continue
         try:
-            async with await AsyncRPCClient.socket(director_socket_path) as client:
+            async with SocketAsyncRPCClient(
+                director_socket_path, server_log_description=DIRECTOR_LOG_DESCRIPTION
+            ) as client:
                 method = getattr(client.call, action.method)
                 if action.message is not None:
                     reporter_handler.report("KEYBOARD", action.message, [])

@@ -24,7 +24,7 @@ from collections.abc import Mapping
 
 import attrs
 
-from .asyncio import wait_for_events
+from .asyncio import wait_for_any_event
 from .enums import HashUpdateCause, ReturnCode
 from .executor import Executor
 from .finalize import remove_outdated_outputs, report_completion, revert_optional
@@ -137,7 +137,7 @@ class Builder:
             `True` otherwise, meaning a phase was run and the caller may call `run_phase`
             again to run another one.
         """
-        await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
+        await wait_for_any_event(self.resume, stop_event)
         if stop_event.is_set():
             return False
         self.resume.clear()

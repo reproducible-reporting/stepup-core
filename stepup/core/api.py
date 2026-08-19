@@ -31,7 +31,7 @@ import yaml
 from path import Path
 
 from .cattrs import json_converter, yaml_converter
-from .constants import DIRECTOR_SOCKET_SENTINEL
+from .constants import DIRECTOR_LOG_DESCRIPTION, DIRECTOR_SOCKET_SENTINEL
 from .enums import Need
 from .exceptions import (
     AmendWhileHoldingError,
@@ -52,7 +52,7 @@ from .path import (
     translate,
     translate_back,
 )
-from .rpc import DummySyncRPCClient, SocketSyncRPCClient
+from .rpc import NO_RPC_TIMEOUT, BaseSyncRPCClient, DummySyncRPCClient, SocketSyncRPCClient
 from .step import RESERVED_ENV_VARS
 from .stepinfo import StepInfo
 from .tracebacks import install_excepthook
@@ -933,7 +933,7 @@ def amend(
         sorted(env_deps),
         tr_out_paths,
         tr_vol_paths,
-        _rpc_timeout=0,
+        _rpc_timeout=NO_RPC_TIMEOUT,
     )
     if carry_on is False:
         raise InputNotFoundError("Dynamic inputs are not available yet.")
@@ -1991,23 +1991,25 @@ def _is_step_under_director() -> bool:
     return socket is not None and socket != DIRECTOR_SOCKET_SENTINEL
 
 
-def _make_rpc_client(socket: str | None) -> DummySyncRPCClient | SocketSyncRPCClient:
+def _make_rpc_client(socket: str | None) -> BaseSyncRPCClient:
     """Create a synchronous RPC client, or a dummy client when no director socket is known."""
     stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET", socket)
     if stepup_director_socket == DIRECTOR_SOCKET_SENTINEL:
         raise RuntimeError("The RPC client is being used within the director process.")
     if stepup_director_socket is None:
         return DummySyncRPCClient()
-    return SocketSyncRPCClient(stepup_director_socket)
+    return SocketSyncRPCClient(
+        stepup_director_socket, server_log_description=DIRECTOR_LOG_DESCRIPTION
+    )
 
 
 @functools.cache
-def _get_cached_rpc_client() -> DummySyncRPCClient | SocketSyncRPCClient:
+def _get_cached_rpc_client() -> BaseSyncRPCClient:
     """Create the RPC client of the current process, once."""
     return _make_rpc_client(None)
 
 
-def get_rpc_client(socket: str | None = None) -> DummySyncRPCClient | SocketSyncRPCClient:
+def get_rpc_client(socket: str | None = None) -> BaseSyncRPCClient:
     """Return a synchronous RPC client.
 
     Without arguments, the client of the current process is returned.

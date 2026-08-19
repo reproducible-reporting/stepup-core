@@ -9,7 +9,7 @@ import sys
 import attrs
 from path import Path
 
-from .asyncio import stoppable_iterator, wait_for_events
+from .asyncio import iter_until_stopped, wait_for_any_event
 from .enums import Change, HashUpdateCause
 from .executor import Executor
 from .hash_queue import HashQueue, gather_hashes
@@ -130,12 +130,7 @@ class Watcher:
         """
         async with AsyncInotifyWrapper(self.dir_queue) as wrapper:
             while not stop_event.is_set():
-                await wait_for_events(
-                    self.resume,
-                    stop_event,
-                    wrapper.stop_event,
-                    return_when=asyncio.FIRST_COMPLETED,
-                )
+                await wait_for_any_event(self.resume, stop_event, wrapper.stop_event)
                 if stop_event.is_set() or wrapper.stop_event.is_set():
                     break
                 await self.watch_changes(wrapper.change_queue)
@@ -163,7 +158,7 @@ class Watcher:
         # Wait for new changes to show up.
         # The lock is acquired inside the loop because the loop itself is long-running.
         self.active.set()
-        async for change, path in stoppable_iterator(change_queue.get, self.interrupt):
+        async for change, path in iter_until_stopped(change_queue.get, self.interrupt):
             async with self.db:
                 await self.record_change(change, path)
 
@@ -306,7 +301,7 @@ class AsyncInotifyWrapper:
         Its nearest existing ancestor is watched instead,
         so `change_loop` sees it appear and installs the pending watch at that moment.
         """
-        async for path in stoppable_iterator(self.dir_queue.get, self.stop_event):
+        async for path in iter_until_stopped(self.dir_queue.get, self.stop_event):
             path = Path(path).normpath()
             while not (path.is_dir() or path.name == ".." or path in ("", ".")):
                 self.watches.setdefault(path, None)
@@ -323,7 +318,7 @@ class AsyncInotifyWrapper:
 
     async def change_loop(self):
         """Collect events from inotify and translate them into items for the change_queue."""
-        async for event in stoppable_iterator(self.inotify.get, self.stop_event):
+        async for event in iter_until_stopped(self.inotify.get, self.stop_event):
             # Mark watches that inotify reports as removed
             path = Path(event.path)
             if event.mask & Mask.IGNORED:

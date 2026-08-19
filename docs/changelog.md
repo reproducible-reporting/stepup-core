@@ -471,6 +471,10 @@ and will be updated with any further changes before the final release.
   Previously it was recycled in its succeeded state and silently kept its stale output.
   This could be observed after an incomplete build (or one run with `--no-clean`),
   which leaves detached steps in the graph for the next build to pick up.
+- The RPC receive loops no longer leave a pending task behind
+  when the connection to the other end is closed.
+  Such a task ended up in the director log as `Task was destroyed but it is pending!`,
+  which is reported as an internal problem at the end of a build.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 

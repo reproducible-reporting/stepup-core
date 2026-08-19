@@ -87,9 +87,11 @@ Two caveats:
   is stopped again by the operating system.
   If you want to run StepUp in the background,
   do so from the beginning as explained in the next section.
-- A step that calls back into StepUp (with `amend()`, for instance) at the moment of
+- A step that calls back into StepUp (with `step()`, for instance) at the moment of
   the suspension gives up after `STEPUP_SYNC_RPC_TIMEOUT` seconds (600 by default),
   so a build left suspended for longer than that may report a failed step.
+  A few calls waive that timeout because the director answers them only when the workflow
+  is ready for it, `amend()` most notably, and those wait for as long as the suspension lasts.
 
 ## Interacting With a Background StepUp Process
 

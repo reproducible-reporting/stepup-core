@@ -35,14 +35,11 @@ def _wait_tool(argv: list[str]) -> tuple[ToolFunc, argparse.Namespace]:
 class FakeClient:
     """Stand-in for the RPC client, which records whether it was closed."""
 
-    def __init__(self, close_exc: Exception | None = None) -> None:
-        self.close_exc = close_exc
+    def __init__(self) -> None:
         self.closed = False
 
     def close(self) -> None:
         self.closed = True
-        if self.close_exc is not None:
-            raise self.close_exc
 
 
 def _fake_director(monkeypatch: pytest.MonkeyPatch, client: FakeClient) -> None:
@@ -170,13 +167,4 @@ def test_connect_director_closes_client(monkeypatch: pytest.MonkeyPatch) -> None
     _fake_director(monkeypatch, client)
     with interact._connect_director() as connected:
         assert connected is client
-    assert client.closed
-
-
-def test_connect_director_ignores_failing_close(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A director that is already gone after a shutdown must not turn into an error."""
-    client = FakeClient(BrokenPipeError("gone"))
-    _fake_director(monkeypatch, client)
-    with interact._connect_director():
-        pass
     assert client.closed
