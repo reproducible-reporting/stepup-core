@@ -5727,6 +5727,9 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h2 id="v4.0.0rc10"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc10">4.0.0rc10</a> - 2026-07-27<a class="headerlink" href="#v4.0.0rc10" title="Permanent link">&para;</a></h2>
 <p>This is release candidate 10 of the upcoming StepUp Core 4.0 release.</p>
+<p>Note that all changes of the release candidates are included below.
+This section is treated as a draft of the changelog for the final 4.0.0 release,
+and will be updated with any further changes before the final release.</p>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
 <li>StepUp can now also be configured through configuration files,
@@ -5781,7 +5784,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   that builds the command from the step&rsquo;s own paths,
   so a path list no longer has to be named twice:</li>
 </ul>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">run</span><span class="p">(</span><span class="k">lambda</span> <span class="n">out</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;./gen.py </span><span class="si">{</span><span class="n">shq</span><span class="p">(</span><span class="n">out</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;out1.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;out2.txt&quot;</span><span class="p">])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">run</span><span class="p">(</span><span class="k">lambda</span> <span class="n">out</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"./gen.py </span><span class="si">{</span><span class="n">shq</span><span class="p">(</span><span class="n">out</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="p">[</span><span class="s2">"out1.txt"</span><span class="p">,</span> <span class="s2">"out2.txt"</span><span class="p">])</span>
 </span></code></pre></div>
 <p>The callable may declare any subset of the parameters <code>inp</code>, <code>out</code> and <code>vol</code>,
   matched by name, and receives the paths after environment variable substitution
@@ -5861,6 +5864,18 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>Return codes have changed.
   The new return code bits are documented in <a href="../reference/returncode/">StepUp Return Codes</a>.
   The changes compared to StepUp 3 are summarized in the <a href="../migration/from_3x_to_40/#return-codes-have-been-renumbered">migration guide</a>.</li>
+<li>When a step fails because of incorrect use of <code>stepup.core.api</code>,
+  the error is now reported concisely instead of as a long traceback.
+  Errors that indicate a bug in StepUp keep their full traceback.
+  Run <code>sb</code> with the environment variable <code>STEPUP_DEBUG=1</code> to see the complete traceback.</li>
+<li>Two declarations claiming the same file are now reported in terms of the plan
+  instead of the internal graph representation.
+  The message names both declarations and how to resolve the conflict, e.g.
+  <code>File (b.txt) cannot be both declared static by step (./plan.py) and built by
+  step (cp -p a.txt b.txt).</code>
+  This covers every combination of a <code>static()</code> declaration, a step output and a
+  volatile output, and the message does not depend on which declaration came first.
+  Defining the same command twice in the same working directory is reported likewise.</li>
 <li>At the end of every build, StepUp scans <code>.stepup/director.log</code> for symptoms of internal
   problems: logged errors, unawaited coroutines, tasks destroyed while still pending,
   and exceptions that escaped a callback, a thread or a destructor.
@@ -5955,8 +5970,17 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The step state <code>QUEUED</code> has been removed, as it is no longer needed.</li>
 <li>A new step state <code>CHECKING</code> has been added
   for steps that are being hash-checked for possible skipping.</li>
-<li>The files state <code>UNCONFIRMED</code> has been added to distinguish truly missing files
+<li>File states are now classified into three roles:
+  <code>STATIC</code>, <code>OUTPUT</code> and <code>VOLATILE</code>.
+  A role does not change during a build, while a state may.
+  Related file state changes:<ul>
+<li><code>UNCONFIRMED</code> has been added to distinguish truly missing files
   from those who still need to be hash-checked.</li>
+<li><code>AWAITED</code> has been split into <code>UNDECLARED</code> (no role yet) and <code>PLANNED</code> (to be built).</li>
+<li><code>STATIC</code> has been renamed to <code>CONFIRMED</code>,
+  so that state names no longer overlap with role names.</li>
+</ul>
+</li>
 <li><code>step_outcome</code> and <code>step_subprocess</code> tables were added.</li>
 <li>The <code>step</code> table now tracks re-entrant <code>hold()</code>/<code>release()</code> calls,
   needed for the new <code>hold()</code> context manager (see above).</li>
@@ -5972,6 +5996,13 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   which is paired with a database vacuum worker to reclaim space from deleted nodes.</li>
 </ul>
 </li>
+<li><code>amend()</code> now silently ignores information that the step&rsquo;s plan already declared for it,
+  just like it ignores information from an earlier <code>amend()</code> call of the same step.
+  This lets a plan declare up front what a step also discovers while it runs,
+  which improves scheduling (the step is not dispatched before its inputs are available)
+  without the step having to know what was declared for it.
+  Each argument is matched against its own kind only:
+  amending an <code>out</code> path that was declared as <code>vol</code>, or vice versa, is still an error.</li>
 <li>Several environment variables have been renamed for consistency.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
 <li>A new returncode was added to indicate that the scheduler was put on hold
@@ -6000,9 +6031,6 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   File hashing is offloaded to dedicated threads.</li>
 <li>Strict database sessions management and transaction correctness has been implemented
   to avoid database corruption, e.g. due to race conditions.</li>
-<li>The <code>declare_unconfirmed</code> and <code>static_trees</code> RPC calls are replaced by a single
-  <code>static</code> call, so one <code>static()</code> invocation is always one round trip and the
-  director registers static trees before the files they contain within one transaction.</li>
 <li>When a step is detached while it is running (and not recreated before it ends),
   an explicit <code>DETACHED</code> warning is shown and its result is discarded.</li>
 <li>The <code>STEPUP_STEP_I</code> environment variable has been replaced by <code>STEPUP_JOB_I</code>.
@@ -6109,6 +6137,13 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   the cursor stays visible while the build is suspended,
   and keyboard interaction keeps working after the build is resumed.
   Previously every keystroke was echoed and then swallowed by the terminal.</li>
+<li>When an optional step is reverted to pending because nothing needs its output anymore,
+  its volatile outputs keep the <code>VOLATILE</code> file state.</li>
+<li>A step whose input is changed or deleted while the step is temporarily detached
+  from the workflow now runs again once it is recycled.
+  Previously it was recycled in its succeeded state and silently kept its stale output.
+  This could be observed after an incomplete build (or one run with <code>--no-clean</code>),
+  which leaves detached steps in the graph for the next build to pick up.</li>
 </ul>
 <h2 id="v3.2.3"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3">3.2.3</a> - 2026-04-16<a class="headerlink" href="#v3.2.3" title="Permanent link">&para;</a></h2>
 <p>Bugfix release: support large inodes in SQLite storage</p>

@@ -2361,13 +2361,13 @@ Such scripts can still call functions from <code>stepup.core.api</code>,
 as these are no-ops (with some debug output) when StepUp is not running.</p>
 <p>Install the relevant function as a <code>console_scripts</code> entry point in your package&rsquo;s <code>pyproject.toml</code>:</p>
 <div class="language-toml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">[project.scripts]</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">my-prog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your.package:main_function&quot;</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">my-prog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your.package:main_function"</span>
 </span></code></pre></div>
 <p>This can be paired with a <a href="../api/">custom API function</a>, e.g. in <code>your.package.api</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">run</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_prog</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">):</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">run</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;my-prog </span><span class="si">{</span><span class="n">arg1</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">arg2</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">run</span><span class="p">(</span><span class="sa">f</span><span class="s2">"my-prog </span><span class="si">{</span><span class="n">arg1</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">arg2</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span></code></pre></div>
 <p>When a user calls <code>my_prog()</code> in a workflow <code>plan.py</code>,
 StepUp creates a step whose command starts with <code>my-prog ...</code>.

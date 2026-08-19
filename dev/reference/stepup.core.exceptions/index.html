@@ -1749,6 +1749,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
+  <a href="#stepup.core.exceptions.ConsistencyError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ConsistencyError
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stepup.core.exceptions.CyclicError" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1885,6 +1896,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <span class="md-ellipsis">
       
         TUIError
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stepup.core.exceptions.UsageError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UsageError
       
     </span>
   </a>
@@ -2576,6 +2598,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
+  <a href="#stepup.core.exceptions.ConsistencyError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ConsistencyError
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stepup.core.exceptions.CyclicError" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2718,6 +2751,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#stepup.core.exceptions.UsageError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UsageError
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2811,23 +2855,23 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
-<span class="normal"><a href="#__codelineno-0-34">34</a></span>
-<span class="normal"><a href="#__codelineno-0-35">35</a></span>
-<span class="normal"><a href="#__codelineno-0-36">36</a></span>
-<span class="normal"><a href="#__codelineno-0-37">37</a></span>
-<span class="normal"><a href="#__codelineno-0-38">38</a></span>
-<span class="normal"><a href="#__codelineno-0-39">39</a></span>
-<span class="normal"><a href="#__codelineno-0-40">40</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="k">class</span><span class="w"> </span><span class="nc">AmendWhileHoldingError</span><span class="p">(</span><span class="n">GraphError</span><span class="p">):</span>
-</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;`amend(inp=...)` was called while the calling step has an open `hold()` block.</span>
-</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a>
-</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">    An `amend(inp=...)` inside a `hold()` block can deadlock:</span>
-</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">    the step cannot release the hold without the dynamic input,</span>
-</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">    and the input&#39;s producer cannot run until the hold is released.</span>
-</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">    Call the amend-triggering code before entering the `with hold():` block.</span>
-</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">    `amend(env=..., out=..., vol=...)` cannot deadlock this way and does not raise this error.</span>
-</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">    &quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-44">44</a></span>
+<span class="normal"><a href="#__codelineno-0-45">45</a></span>
+<span class="normal"><a href="#__codelineno-0-46">46</a></span>
+<span class="normal"><a href="#__codelineno-0-47">47</a></span>
+<span class="normal"><a href="#__codelineno-0-48">48</a></span>
+<span class="normal"><a href="#__codelineno-0-49">49</a></span>
+<span class="normal"><a href="#__codelineno-0-50">50</a></span>
+<span class="normal"><a href="#__codelineno-0-51">51</a></span>
+<span class="normal"><a href="#__codelineno-0-52">52</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="k">class</span><span class="w"> </span><span class="nc">AmendWhileHoldingError</span><span class="p">(</span><span class="n">GraphError</span><span class="p">):</span>
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="w">    </span><span class="sd">"""`amend(inp=...)` was called while the calling step has an open `hold()` block.</span>
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46"></a>
+</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">    An `amend(inp=...)` inside a `hold()` block can deadlock:</span>
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="sd">    the step cannot release the hold without the dynamic input,</span>
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="sd">    and the input's producer cannot run until the hold is released.</span>
+</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="sd">    Call the amend-triggering code before entering the `with hold():` block.</span>
+</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">    `amend(env=..., out=..., vol=...)` cannot deadlock this way and does not raise this error.</span>
+</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="sd">    """</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -2863,9 +2907,60 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-68">68</a></span>
-<span class="normal"><a href="#__codelineno-0-69">69</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-68"><a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="k">class</span><span class="w"> </span><span class="nc">CgroupError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
-</span><span id="__span-0-69"><a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Cgroup v2 accounting is unavailable or unusable for this process.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-93">93</a></span>
+<span class="normal"><a href="#__codelineno-0-94">94</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-93"><a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="k">class</span><span class="w"> </span><span class="nc">CgroupError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+</span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="w">    </span><span class="sd">"""Cgroup v2 accounting is unavailable or unusable for this process."""</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="stepup.core.exceptions.ConsistencyError" class="doc doc-heading">
+            <code>ConsistencyError</code>
+
+
+<a href="#stepup.core.exceptions.ConsistencyError" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="RuntimeError">RuntimeError</span></code></p>
+
+
+
+        <p>An invariant of the workflow graph is violated.</p>
+<p>Deliberately not a <code>UsageError</code>: no plan can put the graph in such a state through the
+public API, so this always points at a bug in StepUp (or at a database corrupted by
+something outside it), and the full traceback is what a bug report needs.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-55">55</a></span>
+<span class="normal"><a href="#__codelineno-0-56">56</a></span>
+<span class="normal"><a href="#__codelineno-0-57">57</a></span>
+<span class="normal"><a href="#__codelineno-0-58">58</a></span>
+<span class="normal"><a href="#__codelineno-0-59">59</a></span>
+<span class="normal"><a href="#__codelineno-0-60">60</a></span>
+<span class="normal"><a href="#__codelineno-0-61">61</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="k">class</span><span class="w"> </span><span class="nc">ConsistencyError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+</span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="w">    </span><span class="sd">"""An invariant of the workflow graph is violated.</span>
+</span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57"></a>
+</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">    Deliberately not a `UsageError`: no plan can put the graph in such a state through the</span>
+</span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    public API, so this always points at a bug in StepUp (or at a database corrupted by</span>
+</span><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">    something outside it), and the full traceback is what a bug report needs.</span>
+</span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">    """</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -2901,9 +2996,9 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-28">28</a></span>
-<span class="normal"><a href="#__codelineno-0-29">29</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="k">class</span><span class="w"> </span><span class="nc">CyclicError</span><span class="p">(</span><span class="n">GraphError</span><span class="p">):</span>
-</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Adding a new relation would introduce a cyclic dependency.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-40">40</a></span>
+<span class="normal"><a href="#__codelineno-0-41">41</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="k">class</span><span class="w"> </span><span class="nc">CyclicError</span><span class="p">(</span><span class="n">GraphError</span><span class="p">):</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="w">    </span><span class="sd">"""Adding a new relation would introduce a cyclic dependency."""</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -2939,9 +3034,9 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-60">60</a></span>
-<span class="normal"><a href="#__codelineno-0-61">61</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="k">class</span><span class="w"> </span><span class="nc">EnvVarError</span><span class="p">(</span><span class="n">StepUpError</span><span class="p">):</span>
-</span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;An environment variable referenced in a path or string could not be resolved.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-85">85</a></span>
+<span class="normal"><a href="#__codelineno-0-86">86</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="k">class</span><span class="w"> </span><span class="nc">EnvVarError</span><span class="p">(</span><span class="n">StepUpError</span><span class="p">):</span>
+</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="w">    </span><span class="sd">"""An environment variable referenced in a path or string could not be resolved."""</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -2962,7 +3057,7 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="Exception">Exception</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="UsageError (stepup.core.exceptions.UsageError)" href="#stepup.core.exceptions.UsageError">UsageError</a></code></p>
 
 
 
@@ -2977,9 +3072,9 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-24">24</a></span>
-<span class="normal"><a href="#__codelineno-0-25">25</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="k">class</span><span class="w"> </span><span class="nc">GraphError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A change to the graph could not be made as it would introduce an inconsistency.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-36">36</a></span>
+<span class="normal"><a href="#__codelineno-0-37">37</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="k">class</span><span class="w"> </span><span class="nc">GraphError</span><span class="p">(</span><span class="n">UsageError</span><span class="p">):</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="w">    </span><span class="sd">"""A change to the graph could not be made as it would introduce an inconsistency."""</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3015,9 +3110,9 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-99"> 99</a></span>
-<span class="normal"><a href="#__codelineno-0-100">100</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-99"><a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="k">class</span><span class="w"> </span><span class="nc">HashCancelledError</span><span class="p">(</span><span class="n">HashError</span><span class="p">):</span>
-</span><span id="__span-0-100"><a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised from `FileHash.regen` when `cancel_event` was set.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-124">124</a></span>
+<span class="normal"><a href="#__codelineno-0-125">125</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-124"><a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="k">class</span><span class="w"> </span><span class="nc">HashCancelledError</span><span class="p">(</span><span class="n">HashError</span><span class="p">):</span>
+</span><span id="__span-0-125"><a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="w">    </span><span class="sd">"""Raised from `FileHash.regen` when `cancel_event` was set."""</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3053,9 +3148,9 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-95">95</a></span>
-<span class="normal"><a href="#__codelineno-0-96">96</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-95"><a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="k">class</span><span class="w"> </span><span class="nc">HashError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-</span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for errors raised while computing a file hash.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-120">120</a></span>
+<span class="normal"><a href="#__codelineno-0-121">121</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-120"><a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="k">class</span><span class="w"> </span><span class="nc">HashError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+</span><span id="__span-0-121"><a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="w">    </span><span class="sd">"""Base class for errors raised while computing a file hash."""</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3092,15 +3187,15 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-103">103</a></span>
-<span class="normal"><a href="#__codelineno-0-104">104</a></span>
-<span class="normal"><a href="#__codelineno-0-105">105</a></span>
-<span class="normal"><a href="#__codelineno-0-106">106</a></span>
-<span class="normal"><a href="#__codelineno-0-107">107</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-103"><a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="k">class</span><span class="w"> </span><span class="nc">HashFailedError</span><span class="p">(</span><span class="n">HashError</span><span class="p">):</span>
-</span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when a file cannot be hashed because it is not a regular file.</span>
-</span><span id="__span-0-105"><a id="__codelineno-0-105" name="__codelineno-0-105"></a>
-</span><span id="__span-0-106"><a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">    E.g. the path turned out to be a directory.</span>
-</span><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">    &quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-128">128</a></span>
+<span class="normal"><a href="#__codelineno-0-129">129</a></span>
+<span class="normal"><a href="#__codelineno-0-130">130</a></span>
+<span class="normal"><a href="#__codelineno-0-131">131</a></span>
+<span class="normal"><a href="#__codelineno-0-132">132</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-128"><a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="k">class</span><span class="w"> </span><span class="nc">HashFailedError</span><span class="p">(</span><span class="n">HashError</span><span class="p">):</span>
+</span><span id="__span-0-129"><a id="__codelineno-0-129" name="__codelineno-0-129"></a><span class="w">    </span><span class="sd">"""Raised when a file cannot be hashed because it is not a regular file.</span>
+</span><span id="__span-0-130"><a id="__codelineno-0-130" name="__codelineno-0-130"></a>
+</span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">    E.g. the path turned out to be a directory.</span>
+</span><span id="__span-0-132"><a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">    """</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3136,9 +3231,9 @@ Call the amend-triggering code before entering the <code>with hold():</code> blo
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-64">64</a></span>
-<span class="normal"><a href="#__codelineno-0-65">65</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="k">class</span><span class="w"> </span><span class="nc">InputNotFoundError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-</span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when dynamic inputs are not available yet.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-89">89</a></span>
+<span class="normal"><a href="#__codelineno-0-90">90</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-89"><a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="k">class</span><span class="w"> </span><span class="nc">InputNotFoundError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+</span><span id="__span-0-90"><a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="w">    </span><span class="sd">"""Raised when dynamic inputs are not available yet."""</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3177,19 +3272,19 @@ then exit with <code>ReturnCode.INTERNAL</code>.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-82">82</a></span>
-<span class="normal"><a href="#__codelineno-0-83">83</a></span>
-<span class="normal"><a href="#__codelineno-0-84">84</a></span>
-<span class="normal"><a href="#__codelineno-0-85">85</a></span>
-<span class="normal"><a href="#__codelineno-0-86">86</a></span>
-<span class="normal"><a href="#__codelineno-0-87">87</a></span>
-<span class="normal"><a href="#__codelineno-0-88">88</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="k">class</span><span class="w"> </span><span class="nc">InteractError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
-</span><span id="__span-0-83"><a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;An error raised by an interactive tool (`interact.py`) that talks to the director.</span>
-</span><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84"></a>
-</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">    Distinguished from a plain `RuntimeError` so that the tools can catch it and print a</span>
-</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">    short, user-facing message (`ERROR: ...` on stderr) instead of a full traceback,</span>
-</span><span id="__span-0-87"><a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">    then exit with `ReturnCode.INTERNAL`.</span>
-</span><span id="__span-0-88"><a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">    &quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-107">107</a></span>
+<span class="normal"><a href="#__codelineno-0-108">108</a></span>
+<span class="normal"><a href="#__codelineno-0-109">109</a></span>
+<span class="normal"><a href="#__codelineno-0-110">110</a></span>
+<span class="normal"><a href="#__codelineno-0-111">111</a></span>
+<span class="normal"><a href="#__codelineno-0-112">112</a></span>
+<span class="normal"><a href="#__codelineno-0-113">113</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="k">class</span><span class="w"> </span><span class="nc">InteractError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+</span><span id="__span-0-108"><a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="w">    </span><span class="sd">"""An error raised by an interactive tool (`interact.py`) that talks to the director.</span>
+</span><span id="__span-0-109"><a id="__codelineno-0-109" name="__codelineno-0-109"></a>
+</span><span id="__span-0-110"><a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">    Distinguished from a plain `RuntimeError` so that the tools can catch it and print a</span>
+</span><span id="__span-0-111"><a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">    short, user-facing message (`ERROR: ...` on stderr) instead of a full traceback,</span>
+</span><span id="__span-0-112"><a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">    then exit with `ReturnCode.INTERNAL`.</span>
+</span><span id="__span-0-113"><a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">    """</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3228,19 +3323,19 @@ or violates the leading <code>./</code> / trailing <code>/</code> affix contract
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span>
-<span class="normal"><a href="#__codelineno-0-53">53</a></span>
-<span class="normal"><a href="#__codelineno-0-54">54</a></span>
-<span class="normal"><a href="#__codelineno-0-55">55</a></span>
-<span class="normal"><a href="#__codelineno-0-56">56</a></span>
-<span class="normal"><a href="#__codelineno-0-57">57</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="k">class</span><span class="w"> </span><span class="nc">PathError</span><span class="p">(</span><span class="n">StepUpError</span><span class="p">):</span>
-</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A path argument is invalid.</span>
-</span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53"></a>
-</span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">    Raised when a path does not exist, has the wrong type</span>
-</span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">    (e.g. a directory where a file is required),</span>
-</span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="sd">    or violates the leading `./` / trailing `/` affix contract.</span>
-</span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    &quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-76">76</a></span>
+<span class="normal"><a href="#__codelineno-0-77">77</a></span>
+<span class="normal"><a href="#__codelineno-0-78">78</a></span>
+<span class="normal"><a href="#__codelineno-0-79">79</a></span>
+<span class="normal"><a href="#__codelineno-0-80">80</a></span>
+<span class="normal"><a href="#__codelineno-0-81">81</a></span>
+<span class="normal"><a href="#__codelineno-0-82">82</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-76"><a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="k">class</span><span class="w"> </span><span class="nc">PathError</span><span class="p">(</span><span class="n">StepUpError</span><span class="p">):</span>
+</span><span id="__span-0-77"><a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="w">    </span><span class="sd">"""A path argument is invalid.</span>
+</span><span id="__span-0-78"><a id="__codelineno-0-78" name="__codelineno-0-78"></a>
+</span><span id="__span-0-79"><a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">    Raised when a path does not exist, has the wrong type</span>
+</span><span id="__span-0-80"><a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">    (e.g. a directory where a file is required),</span>
+</span><span id="__span-0-81"><a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">    or violates the leading `./` / trailing `/` affix contract.</span>
+</span><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">    """</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3276,9 +3371,9 @@ or violates the leading <code>./</code> / trailing <code>/</code> affix contract
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-43">43</a></span>
-<span class="normal"><a href="#__codelineno-0-44">44</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="k">class</span><span class="w"> </span><span class="nc">RPCError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A remote procedure call could not be interpreted correctly.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-64">64</a></span>
+<span class="normal"><a href="#__codelineno-0-65">65</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="k">class</span><span class="w"> </span><span class="nc">RPCError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+</span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="w">    </span><span class="sd">"""A remote procedure call could not be interpreted correctly."""</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3314,9 +3409,9 @@ or violates the leading <code>./</code> / trailing <code>/</code> affix contract
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-91">91</a></span>
-<span class="normal"><a href="#__codelineno-0-92">92</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-91"><a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="k">class</span><span class="w"> </span><span class="nc">RunError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
-</span><span id="__span-0-92"><a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;An error raised by the `run` module while executing a command.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-116">116</a></span>
+<span class="normal"><a href="#__codelineno-0-117">117</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-116"><a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="k">class</span><span class="w"> </span><span class="nc">RunError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+</span><span id="__span-0-117"><a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="w">    </span><span class="sd">"""An error raised by the `run` module while executing a command."""</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3337,11 +3432,13 @@ or violates the leading <code>./</code> / trailing <code>/</code> affix contract
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="ValueError">ValueError</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="UsageError (stepup.core.exceptions.UsageError)" href="#stepup.core.exceptions.UsageError">UsageError</a></code>, <code><span title="ValueError">ValueError</span></code></p>
 
 
 
         <p>Invalid argument passed to a StepUp user- or extension-facing API function.</p>
+<p><code>ValueError</code> is kept in the bases so that existing <code>except ValueError</code> code
+keeps catching these errors.</p>
 
 
 
@@ -3352,9 +3449,17 @@ or violates the leading <code>./</code> / trailing <code>/</code> affix contract
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-47">47</a></span>
-<span class="normal"><a href="#__codelineno-0-48">48</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="k">class</span><span class="w"> </span><span class="nc">StepUpError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Invalid argument passed to a StepUp user- or extension-facing API function.&quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-68">68</a></span>
+<span class="normal"><a href="#__codelineno-0-69">69</a></span>
+<span class="normal"><a href="#__codelineno-0-70">70</a></span>
+<span class="normal"><a href="#__codelineno-0-71">71</a></span>
+<span class="normal"><a href="#__codelineno-0-72">72</a></span>
+<span class="normal"><a href="#__codelineno-0-73">73</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-68"><a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="k">class</span><span class="w"> </span><span class="nc">StepUpError</span><span class="p">(</span><span class="n">UsageError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="__span-0-69"><a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="w">    </span><span class="sd">"""Invalid argument passed to a StepUp user- or extension-facing API function.</span>
+</span><span id="__span-0-70"><a id="__codelineno-0-70" name="__codelineno-0-70"></a>
+</span><span id="__span-0-71"><a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">    `ValueError` is kept in the bases so that existing `except ValueError` code</span>
+</span><span id="__span-0-72"><a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">    keeps catching these errors.</span>
+</span><span id="__span-0-73"><a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">    """</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3394,21 +3499,75 @@ or violates the leading <code>./</code> / trailing <code>/</code> affix contract
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-72">72</a></span>
-<span class="normal"><a href="#__codelineno-0-73">73</a></span>
-<span class="normal"><a href="#__codelineno-0-74">74</a></span>
-<span class="normal"><a href="#__codelineno-0-75">75</a></span>
-<span class="normal"><a href="#__codelineno-0-76">76</a></span>
-<span class="normal"><a href="#__codelineno-0-77">77</a></span>
-<span class="normal"><a href="#__codelineno-0-78">78</a></span>
-<span class="normal"><a href="#__codelineno-0-79">79</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-72"><a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="k">class</span><span class="w"> </span><span class="nc">TUIError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
-</span><span id="__span-0-73"><a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;An error raised by the terminal user interface (`tui.py`) before the director starts.</span>
-</span><span id="__span-0-74"><a id="__codelineno-0-74" name="__codelineno-0-74"></a>
-</span><span id="__span-0-75"><a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">    Distinguished from a plain `RuntimeError` so that the top-level handler in</span>
-</span><span id="__span-0-76"><a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">    `_build_tool` (`tui.py`) can catch it and print a short, user-facing message</span>
-</span><span id="__span-0-77"><a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">    (`ERROR: ...` on stderr) instead of a full traceback, then exit with</span>
-</span><span id="__span-0-78"><a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">    `ReturnCode.INTERNAL`.</span>
-</span><span id="__span-0-79"><a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">    &quot;&quot;&quot;</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-97"> 97</a></span>
+<span class="normal"><a href="#__codelineno-0-98"> 98</a></span>
+<span class="normal"><a href="#__codelineno-0-99"> 99</a></span>
+<span class="normal"><a href="#__codelineno-0-100">100</a></span>
+<span class="normal"><a href="#__codelineno-0-101">101</a></span>
+<span class="normal"><a href="#__codelineno-0-102">102</a></span>
+<span class="normal"><a href="#__codelineno-0-103">103</a></span>
+<span class="normal"><a href="#__codelineno-0-104">104</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-97"><a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="k">class</span><span class="w"> </span><span class="nc">TUIError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+</span><span id="__span-0-98"><a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="w">    </span><span class="sd">"""An error raised by the terminal user interface (`tui.py`) before the director starts.</span>
+</span><span id="__span-0-99"><a id="__codelineno-0-99" name="__codelineno-0-99"></a>
+</span><span id="__span-0-100"><a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">    Distinguished from a plain `RuntimeError` so that the top-level handler in</span>
+</span><span id="__span-0-101"><a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">    `_build_tool` (`tui.py`) can catch it and print a short, user-facing message</span>
+</span><span id="__span-0-102"><a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">    (`ERROR: ...` on stderr) instead of a full traceback, then exit with</span>
+</span><span id="__span-0-103"><a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">    `ReturnCode.INTERNAL`.</span>
+</span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="sd">    """</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="stepup.core.exceptions.UsageError" class="doc doc-heading">
+            <code>UsageError</code>
+
+
+<a href="#stepup.core.exceptions.UsageError" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="Exception">Exception</span></code></p>
+
+
+
+        <p>Base class for errors that the user can fix by changing their own code.</p>
+<p>These reach the client as a short message without a director-side traceback,
+unless <code>STEPUP_DEBUG</code> is set.
+Any other exception keeps the full traceback,
+because it indicates a bug in StepUp rather than in the user&rsquo;s plan.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>stepup/core/exceptions.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-26">26</a></span>
+<span class="normal"><a href="#__codelineno-0-27">27</a></span>
+<span class="normal"><a href="#__codelineno-0-28">28</a></span>
+<span class="normal"><a href="#__codelineno-0-29">29</a></span>
+<span class="normal"><a href="#__codelineno-0-30">30</a></span>
+<span class="normal"><a href="#__codelineno-0-31">31</a></span>
+<span class="normal"><a href="#__codelineno-0-32">32</a></span>
+<span class="normal"><a href="#__codelineno-0-33">33</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26"></a><span class="k">class</span><span class="w"> </span><span class="nc">UsageError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="w">    </span><span class="sd">"""Base class for errors that the user can fix by changing their own code.</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="sd">    These reach the client as a short message without a director-side traceback,</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">    unless `STEPUP_DEBUG` is set.</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="sd">    Any other exception keeps the full traceback,</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">    because it indicates a bug in StepUp rather than in the user's plan.</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">    """</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 

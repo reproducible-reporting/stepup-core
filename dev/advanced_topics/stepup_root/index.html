@@ -2365,7 +2365,7 @@ Also, <code>stepup clean</code> arguments will be interpreted correctly in subdi
 project lives, whereas <code>${ROOT}</code> is a <strong>relative</strong> path that StepUp defines for a running step.
 See <a href="../here_and_root/">HERE and ROOT Variables</a> for the latter.</p>
 <p>You can manually set <code>STEPUP_ROOT</code> in the top-level directory as follows:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">STEPUP_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span><span class="s2">&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">STEPUP_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span><span class="s2">"</span>
 </span></code></pre></div>
 <p>However, this can be tedious, as it has to be set each time you open a new terminal window.
 It is much easier to set such variables using <a href="https://direnv.net/">direnv</a>,

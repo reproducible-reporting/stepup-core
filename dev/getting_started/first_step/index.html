@@ -2572,7 +2572,7 @@ For the sake of simplicity, a minimal workflow will be defined that does very li
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">run</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo Hello World&quot;</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">run</span><span class="p">(</span><span class="s2">"echo Hello World"</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Make this file executable with <code>chmod +x plan.py</code>.</p>
 <ol>
@@ -2585,7 +2585,7 @@ For the sake of simplicity, a minimal workflow will be defined that does very li
 </ol>
 <p>If you want to use shell features in the command, such as pipes or IO redirection
 (<code>echo Hello World &gt; hello.txt</code>), you need to set the keyword argument <code>shell=True</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo Hello World &gt; hello.txt&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">"echo Hello World &gt; hello.txt"</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </span></code></pre></div>
 <p>This comes at the extra cost of running a shell process, so it is disabled by default.</p>
 <p>Note that StepUp does not provide any standard input.
@@ -2654,8 +2654,8 @@ When you manually remove <code>.stepup/graph.db</code>,
 StepUp will not know anymore that it already executed some steps and runs all of them again.</p>
 <h3 id="run-versus-step"><code>run()</code> versus <code>step()</code><a class="headerlink" href="#run-versus-step" title="Permanent link">&para;</a></h3>
 <p>In this first example, either of the following two lines would result in the same output:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo Hello World&quot;</span><span class="p">)</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">step</span><span class="p">(</span><span class="s2">&quot;echo Hello World&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">"echo Hello World"</span><span class="p">)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">step</span><span class="p">(</span><span class="s2">"echo Hello World"</span><span class="p">)</span>
 </span></code></pre></div>
 <p>The second form is a more low-level function with more detailed control and fewer sanity checks.
 It is primarily intended for developers of StepUp extensions.
@@ -2665,11 +2665,11 @@ StepUp will automatically track it as a dependency of the step and rerun it when
 <h2 id="filenames-with-spaces">Filenames with Spaces<a class="headerlink" href="#filenames-with-spaces" title="Permanent link">&para;</a></h2>
 <p>A filename that contains spaces must therefore be quoted,
 so that it is treated as a single argument instead of several:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;cat &#39;my notes.txt&#39;&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;my notes.txt&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">"cat 'my notes.txt'"</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">"my notes.txt"</span><span class="p">)</span>
 </span></code></pre></div>
 <p>The <code>inp</code>, <code>out</code>, <code>vol</code> and <code>env</code> keyword arguments are plain lists of strings,
 not command lines, so the filenames in them never need quoting:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;convert &#39;in file.png&#39; &#39;out file.pdf&#39;&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;in file.png&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;out file.pdf&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">"convert 'in file.png' 'out file.pdf'"</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">"in file.png"</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">"out file.pdf"</span><span class="p">)</span>
 </span></code></pre></div>
 <p>That said, spaces in filenames are best avoided altogether.
 They add no value and create avoidable friction:
@@ -2690,7 +2690,7 @@ and reserve spaces for the contents of files rather than their names.</p>
   The terminal output shows the commands that would normally be sent to the StepUp director
   process when <code>plan.py</code> is executed by <code>stepup</code>.
   You should get the following screen output.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>step(-1, &#39;echo Hello World&#39;, [], [], [], [], Path(&#39;.&#39;), 32, {}, False, None, None)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>step(-1, 'echo Hello World', [], [], [], [], Path('.'), 32, {}, False, None, None)
 </span></code></pre></div>
 <p>This output contains internal details of StepUp,
 which can be useful for debugging purposes.</p>

@@ -2384,12 +2384,12 @@ passed to the tool.</p>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">fancy_subcommand</span><span class="p">(</span><span class="n">subparsers</span><span class="p">,</span> <span class="n">loader</span><span class="p">:</span> <span class="n">ConfigLoader</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">parser</span> <span class="o">=</span> <span class="n">subparsers</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="s2">&quot;fancy&quot;</span><span class="p">,</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Description of the tool&quot;</span><span class="p">,</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="s2">"fancy"</span><span class="p">,</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="n">help</span><span class="o">=</span><span class="s2">"Description of the tool"</span><span class="p">,</span>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="p">)</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="o">...</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">loader</span><span class="o">.</span><span class="n">patch_parser</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="s2">&quot;fancy&quot;</span><span class="p">)</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">loader</span><span class="o">.</span><span class="n">patch_parser</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="s2">"fancy"</span><span class="p">)</span>
 </span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="k">return</span> <span class="n">fancy_tool</span>
 </span></code></pre></div>
 <p>The <code>subparsers</code> argument is the sub-parsers object from the main <code>stepup</code> argument parser.
@@ -2398,8 +2398,8 @@ with configuration file values (see existing tools in <code>stepup.core</code> f
 </li>
 <li>
 <p>Create an entry point in <code>pyproject.toml</code> pointing to this function:</p>
-<div class="language-toml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;stepup.tools&quot;</span><span class="k">]</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">fancy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your.package:fancy_subcommand&quot;</span>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[project.entry-points.</span><span class="s2">"stepup.tools"</span><span class="k">]</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">fancy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your.package:fancy_subcommand"</span>
 </span></code></pre></div>
 <p>where you replace <code>your.package</code> with the name of the module that contains
 <code>fancy_subcommand</code>.</p>

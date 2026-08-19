@@ -6,53 +6,10 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
 ──────────────────────────────── Failed command ────────────────────────────────
 ./plan.py  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
-Traceback (most recent call last):
-  File "stepup/core/run.py", line 780, in _forkserver_entry
-    runpy.run_path(cmd, run_name="__main__")
-    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen runpy>", line 294, in run_path
-  File "<frozen runpy>", line 98, in _run_module_code
-  File "<frozen runpy>", line 88, in _run_code
+Shortened traceback (most recent call last). Set STEPUP_DEBUG=1 for details:
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 1214, in copy
-    return step(
-        f"cp -p {shq(src)} {shq(dst)}",
-    ...<5 lines>...
-        duration=duration,
-    )
-  File "stepup/core/api.py", line 531, in step
-    RPC_CLIENT.call.step(
-    ~~~~~~~~~~~~~~~~~~~~^
-        get_job_i(),
-        ^^^^^^^^^^^^
-    ...<10 lines>...
-        duration,
-        ^^^^^^^^^
-    )
-    ^
-  File "stepup/core/rpc.py", line 560, in __call__
-    _handle_error(body, name, args, kwargs)
-    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "stepup/core/rpc.py", line 58, in _handle_error
-    raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
-stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(1, 'cp -p b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('.'), 32, {}, False, None, None):
-Traceback (most recent call last):
-  File "stepup/core/rpc.py", line 197, in _handle_request
-    result = await result
-             ^^^^^^^^^^^^
-  File "stepup/core/director.py", line 887, in step
-    to_check = self.workflow.define_step(
-        creator,
-    ...<10 lines>...
-        duration=duration,
-    )
-  File "stepup/core/workflow.py", line 1535, in define_step
-    file.add_source(step)
-    ~~~~~~~~~~~~~~~^^^^^^
-  File "stepup/core/trellis.py", line 491, in add_source
-    raise CyclicError("New relation introduces a cyclic dependency")
 stepup.core.exceptions.CyclicError: New relation introduces a cyclic dependency
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 1 job(s).

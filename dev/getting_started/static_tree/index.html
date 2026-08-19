@@ -2476,8 +2476,8 @@ Also, create a <code>plan.py</code> file with the following contents:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">static</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;data/&quot;</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">copy</span><span class="p">(</span><span class="s2">&quot;data/somefile.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;out/&quot;</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">"data/"</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">copy</span><span class="p">(</span><span class="s2">"data/somefile.txt"</span><span class="p">,</span> <span class="s2">"out/"</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Make the plan executable and run it non-interactively:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
@@ -2518,14 +2518,14 @@ to list the files inside another step&rsquo;s static tree without claiming them.
 <a href="../static_patterns/">glob pattern</a> matches a directory:
 the directory is registered as a static tree, exactly as if it had been listed by name.
 Spell such a pattern with a trailing slash so the intent is visible at the call site:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;data/*/&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">static</span><span class="p">(</span><span class="s2">"data/*/"</span><span class="p">)</span>
 </span></code></pre></div>
 <p>This also explains why <code>static()</code> rejects a <em>trailing</em> recursive <code>**</code> wildcard,
 e.g. <code>data/**</code> or bare <code>**</code>.
 Such a pattern would try to enumerate an entire subtree eagerly merely to declare it
 as static, which is precisely what a static tree does lazily and much more efficiently.
 Declare the tree instead:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;data/&quot;</span><span class="p">)</span>             <span class="c1"># instead of static(&quot;data/**&quot;)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">static</span><span class="p">(</span><span class="s2">"data/"</span><span class="p">)</span>             <span class="c1"># instead of static("data/**")</span>
 </span></code></pre></div>
 <p>A <code>**</code> earlier in the pattern, e.g. <code>static("data/**/*.txt")</code>, is still accepted:
 it isn&rsquo;t a stand-in for a whole-tree declaration,

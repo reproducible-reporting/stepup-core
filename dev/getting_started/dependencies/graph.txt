@@ -3,7 +3,7 @@ root:
              product   step:./plan.py
 
 file:plan.py
-               state = STATIC
+               state = CONFIRMED
               digest = 52f76e6e 44aa9a2f 2495d98a bc23e312 ac826bda eeaec4cf 28d9fe49 ec7603c9
              creator   root:
                 sink   step:./plan.py
@@ -24,7 +24,7 @@ step:printf "Monday frown\nCoffee smile\n" > story.txt
                 sink   file:story.txt
 
 file:story.txt
-               state = AWAITED
+               state = PLANNED
              creator   step:printf "Monday frown\nCoffee smile\n" > story.txt
               source   step:printf "Monday frown\nCoffee smile\n" > story.txt
                 sink   step:grep Coffee story.txt
