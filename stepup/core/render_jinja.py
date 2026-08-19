@@ -2,29 +2,44 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Rendering of template files with Jinja2.
 
-Parameters for the template can be defined in multiple ways:
-
-- Python files with a .py extension
-- JSON files with a .json extension
-- TOML files with a .toml extension
-- YAML files with a .yaml or .yml extension
-- As a JSON string on the command line
+Variables for the template are loaded from files with [`loadns()`][stepup.core.api.loadns],
+and may be complemented with a JSON string on the command line.
 """
 
 import argparse
 import json
+from typing import Any
 
 import jinja2
 from path import Path
 
 from .api import amend, loadns
+from .constants import RENDER_JINJA_MODES
 from .extapi import get_local_import_paths
+from .path import StrPath, coerce_str
 
-__all__ = ("render_jinja",)
+__all__ = ("main", "render_jinja_file", "render_jinja_str")
 
 
 def main() -> None:
     """Command-line entry point for the `render-jinja` console script."""
+    args = _parse_args()
+    latex = _resolve_latex(args.mode, args.path_out)
+    dir_out = args.path_out.parent.absolute()
+    variables = vars(loadns(*args.paths_variables, dir_out=dir_out, do_amend=False))
+    # The local imports are only known after the Python variable files have been executed.
+    amend(inp=get_local_import_paths())
+    if args.json is not None:
+        variables.update(json.loads(args.json))
+    result = render_jinja_file(args.path_in, variables, latex=latex)
+    with open(args.path_out, "w") as fh:
+        fh.write(result)
+    # A rendered script must remain executable, so the template's mode is copied over.
+    args.path_out.chmod(args.path_in.stat().st_mode)
+
+
+def _parse_args() -> argparse.Namespace:
+    """Parse the command line arguments of the `render-jinja` console script."""
     parser = argparse.ArgumentParser(
         prog="sc-render-jinja",
         description="Render a file with Jinja2.",
@@ -43,7 +58,7 @@ def main() -> None:
     parser.add_argument("path_out", type=Path, help="The output file")
     parser.add_argument(
         "--mode",
-        choices=["auto", "plain", "latex"],
+        choices=RENDER_JINJA_MODES,
         help="The delimiter style to use",
         default="auto",
     )
@@ -51,51 +66,61 @@ def main() -> None:
         "--json",
         help="Variables are given as a JSON string (overrules the variables defined in files)",
     )
-    args = parser.parse_args()
-    if args.mode == "plain":
-        latex = False
-    elif args.mode == "latex":
-        latex = True
-    elif args.mode == "auto":
-        latex = args.path_out.endswith(".tex")
-    else:
-        raise ValueError(f"mode not supported: {args.mode}")
-    dir_out = Path(args.path_out).parent.absolute()
-    variables = vars(loadns(*args.paths_variables, dir_out=dir_out, do_amend=False))
-    amend(inp=get_local_import_paths())
-    if args.json is not None:
-        variables.update(json.loads(args.json))
-    result = render_jinja(args.path_in, variables, latex)
-    with open(args.path_out, "w") as fh:
-        fh.write(result)
-    # Clone the permissions from the input file to the output file
-    args.path_out.chmod(args.path_in.stat().st_mode)
+    return parser.parse_args()
 
 
-def render_jinja(
-    path_template: str,
-    variables: dict[str],
-    latex: bool = False,
-    *,
-    str_in: str | None = None,
-) -> str:
-    """Render a template with Jinja2 and return the result.
+def _resolve_latex(mode: str, path_out: StrPath) -> bool:
+    """Decide whether angle-style delimiters are used, given the mode and the output path."""
+    if mode == "auto":
+        return Path(path_out).suffix == ".tex"
+    return mode == "latex"
+
+
+def render_jinja_file(path: StrPath, variables: dict[str, Any], *, latex: bool = False) -> str:
+    """Render a template file with Jinja2 and return the result.
 
     Parameters
     ----------
-    path_template
+    path
         The filename of the template to load.
     variables
         A dictionary of variables to substitute into the template.
     latex
         When `True`, angle-style delimiters are used, e.g. `<%` instead of `{%`.
-    str_in
-        The template string.
-        When given, `path_template` is not loaded and is only used in error messages.
 
     Returns
     -------
-    str_out
+    rendered
+        A string with the result.
+    """
+    with open(path) as fh:
+        source = fh.read()
+    return render_jinja_str(source, variables, latex=latex, name=coerce_str(path))
+
+
+def render_jinja_str(
+    source: str,
+    variables: dict[str, Any],
+    *,
+    latex: bool = False,
+    name: str = "<template>",
+) -> str:
+    """Render a template string with Jinja2 and return the result.
+
+    Parameters
+    ----------
+    source
+        The template as a string.
+    variables
+        A dictionary of variables to substitute into the template.
+    latex
+        When `True`, angle-style delimiters are used, e.g. `<%` instead of `{%`.
+    name
+        How the template is identified in error messages and tracebacks.
+
+    Returns
+    -------
+    rendered
         A string with the result.
     """
     # Customize the Jinja2 environment
@@ -120,12 +145,11 @@ def render_jinja(
     env = jinja2.Environment(**env_kwargs)
 
     # Load template, assign filename (for tracebacks) and render.
-    if str_in is None:
-        with open(path_template) as f:
-            str_in = f.read()
-    template = env.from_string(str_in)
-    template.filename = path_template
-    return template.render(**variables)
+    template = env.from_string(source)
+    template.filename = name
+    # The variables are passed as a dictionary, not as keyword arguments,
+    # because a variable named `self` would collide with the first argument of `render`.
+    return template.render(variables)
 
 
 if __name__ == "__main__":

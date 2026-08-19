@@ -330,6 +330,14 @@ and will be updated with any further changes before the final release.
     - When a graphical browser is the default, it opens a browser tab automatically.
     - When a terminal browser is the default, it runs it cleanly in the terminal and exits
       when the terminal browser is closed by the user.
+- The helper function `stepup.core.render_jinja.render_jinja()` is replaced by two functions:
+  `render_jinja_file()` renders a template file
+  and `render_jinja_str()` renders a template string.
+  The `latex` argument became keyword-only,
+  and the `str_in` argument is no longer needed
+  because `render_jinja_str()` takes the template as its first argument,
+  with an optional `name` for error messages.
+  (The `render_jinja()` function in `stepup.core.api` is unaffected.)
 - Updates of many internals, including:
     - Renamed "orphan" and related names to "detached", which is more intuitive.
       The new terminology is applied more consistently with consistent distinction between

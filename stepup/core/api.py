@@ -42,7 +42,7 @@ import yaml
 from path import Path
 
 from .cattrs import json_converter, yaml_converter
-from .constants import DIRECTOR_LOG_DESCRIPTION, DIRECTOR_SOCKET_SENTINEL
+from .constants import DIRECTOR_LOG_DESCRIPTION, DIRECTOR_SOCKET_SENTINEL, RENDER_JINJA_MODES
 from .enums import Need
 from .exceptions import (
     AmendWhileHoldingError,
@@ -1728,8 +1728,9 @@ def render_jinja(
             raise TypeError("The variables arguments must be paths or dictionaries.")
 
     # Parse other arguments.
-    if mode not in ["auto", "plain", "latex"]:
-        raise StepUpError(f"Unsupported mode {mode!r}. Must be one of 'auto', 'plain', 'latex'")
+    if mode not in RENDER_JINJA_MODES:
+        modes = ", ".join(repr(known) for known in RENDER_JINJA_MODES)
+        raise StepUpError(f"Unsupported mode {mode!r}. Must be one of {modes}")
     if len(paths_variables) == 0 and len(variables) == 0:
         raise StepUpError("At least one file with variable definitions needed.")
     path_out = make_path_out(path_template, dest, None)

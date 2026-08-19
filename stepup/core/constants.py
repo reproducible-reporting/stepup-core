@@ -16,6 +16,7 @@ __all__ = (
     "JOBLOG_CSV",
     "PERF_DATA",
     "PLAN_PY",
+    "RENDER_JINJA_MODES",
     "SQLLOG_CSV",
     "SQLLOG_JSON",
     "STEPUP_DIR",
@@ -46,6 +47,10 @@ PLAN_PY = Path("plan.py")
 # so it makes the variable name a socket that cannot be connected to
 # instead of leaving it unset, which would silently yield a dummy client.
 DIRECTOR_SOCKET_SENTINEL = "_invalid_socket_for_director_process_"
+
+# The delimiter styles supported by the `render-jinja` console script,
+# in the order in which they are shown to the user.
+RENDER_JINJA_MODES = ("auto", "plain", "latex")
 
 CORE_ENV_VARS = frozenset(
     {
