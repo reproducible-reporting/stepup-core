@@ -460,8 +460,10 @@ def _executable_compatible_with_current_python(which_path: str) -> bool:
     return path_ok or _executable_uses_same_python(which_path)
 
 
-@functools.cache
-def _detect_python_entrypoint(cmd: str) -> str | None:
+_PYTHON_ENTRYPOINT_CACHE: dict[str, tuple[str | None, str]] = {}
+
+
+def _detect_python_entrypoint(cmd: str) -> tuple[str | None, str]:
     """Detect if `cmd` is a console_script compatible with the current Python environment.
 
     Parameters
@@ -474,6 +476,12 @@ def _detect_python_entrypoint(cmd: str) -> str | None:
     ep_value
         The entry point value string (e.g. `"pytest:main"`) when `cmd` is a console_script
         importable in and compatible with the current Python environment, or `None` otherwise.
+    warning
+        A message explaining why a console_script was rejected,
+        or an empty string when there is nothing to report.
+        The message is repeated for every detection of the same `cmd`,
+        so that each affected step reports it,
+        independently of the order in which steps are scheduled.
 
     Raises
     ------
@@ -481,25 +489,29 @@ def _detect_python_entrypoint(cmd: str) -> str | None:
         When `cmd` is registered as a console_script but cannot be found on `PATH`,
         which indicates a broken installation.
     """
+    if cmd in _PYTHON_ENTRYPOINT_CACHE:
+        return _PYTHON_ENTRYPOINT_CACHE[cmd]
+    ep_value = None
+    warning = ""
     eps = list(_get_console_script_entry_points().select(name=cmd))
-    if not eps:
-        return None
-    ep_value = eps[0].value
-    which_path = shutil.which(cmd)
-    if which_path is None:
-        raise RunError(
-            f"Command '{cmd}' is registered as a Python console_script entry point "
-            "but was not found on PATH. The installation may be broken."
-        )
-    if not _executable_compatible_with_current_python(which_path):
-        print(
-            f"WARNING: Command '{cmd}' is a Python entry point but its executable"
-            f" ('{which_path}') is not in the current Python environment ({sys.prefix})."
-            " Falling back to direct subprocess execution.",
-            file=sys.stderr,
-        )
-        return None
-    return ep_value
+    if len(eps) > 0:
+        which_path = shutil.which(cmd)
+        if which_path is None:
+            # Deliberately not cached,
+            # so a repaired installation is picked up without restarting the director.
+            raise RunError(
+                f"Command '{cmd}' is registered as a Python console_script entry point "
+                "but was not found on PATH. The installation may be broken."
+            )
+        if _executable_compatible_with_current_python(which_path):
+            ep_value = eps[0].value
+        else:
+            warning = (
+                f"WARNING: Entry point '{cmd}' ('{which_path}') is outside the current"
+                f" Python environment ({sys.prefix}). Running it as a subprocess.\n"
+            )
+    _PYTHON_ENTRYPOINT_CACHE[cmd] = (ep_value, warning)
+    return ep_value, warning
 
 
 #
@@ -957,9 +969,13 @@ async def launch_command(
     if parts[0].endswith(".py"):
         return await _run_python_script(parts[0], parts[1:], env, cwd, mp_ctx, run)
     try:
-        ep_value = _detect_python_entrypoint(parts[0])
+        ep_value, warning = _detect_python_entrypoint(parts[0])
     except RunError as exc:
         return ChildOutcome(1, "", str(exc) + "\n")
-    if ep_value is not None:
-        return await _run_python_entrypoint(parts[0], parts[1:], ep_value, env, cwd, mp_ctx, run)
-    return await _run_subprocess(parts, shell=False, env=env, cwd=cwd, run=run)
+    if ep_value is None:
+        outcome = await _run_subprocess(parts, shell=False, env=env, cwd=cwd, run=run)
+    else:
+        outcome = await _run_python_entrypoint(parts[0], parts[1:], ep_value, env, cwd, mp_ctx, run)
+    if len(warning) > 0:
+        outcome = attrs.evolve(outcome, stderr=warning + outcome.stderr)
+    return outcome

@@ -289,7 +289,7 @@ class _FakeEntryPoints:
 
 def test_detect_entrypoint_not_a_console_script(monkeypatch):
     monkeypatch.setattr(run_mod, "_get_console_script_entry_points", lambda: _FakeEntryPoints({}))
-    assert _detect_python_entrypoint("not_a_console_script_xyz") is None
+    assert _detect_python_entrypoint("not_a_console_script_xyz") == (None, "")
 
 
 def test_detect_entrypoint_compatible(monkeypatch):
@@ -297,16 +297,46 @@ def test_detect_entrypoint_compatible(monkeypatch):
     monkeypatch.setattr(run_mod, "_get_console_script_entry_points", lambda: eps)
     monkeypatch.setattr(shutil, "which", lambda cmd: "/fake/bin/compatible_cmd_xyz")
     monkeypatch.setattr(run_mod, "_executable_compatible_with_current_python", lambda path: True)
-    assert _detect_python_entrypoint("compatible_cmd_xyz") == "pkg:main"
+    assert _detect_python_entrypoint("compatible_cmd_xyz") == ("pkg:main", "")
 
 
-def test_detect_entrypoint_incompatible(monkeypatch, capsys):
+def test_detect_entrypoint_incompatible(monkeypatch):
     eps = _FakeEntryPoints({"incompatible_cmd_xyz": [_FakeEntryPoint("pkg:main")]})
     monkeypatch.setattr(run_mod, "_get_console_script_entry_points", lambda: eps)
     monkeypatch.setattr(shutil, "which", lambda cmd: "/fake/bin/incompatible_cmd_xyz")
     monkeypatch.setattr(run_mod, "_executable_compatible_with_current_python", lambda path: False)
-    assert _detect_python_entrypoint("incompatible_cmd_xyz") is None
-    assert "Falling back to direct subprocess execution" in capsys.readouterr().err
+    ep_value, warning = _detect_python_entrypoint("incompatible_cmd_xyz")
+    assert ep_value is None
+    assert "Running it as a subprocess" in warning
+
+
+def test_detect_entrypoint_incompatible_warns_every_time(monkeypatch):
+    eps = _FakeEntryPoints({"incompatible_twice_xyz": [_FakeEntryPoint("pkg:main")]})
+    monkeypatch.setattr(run_mod, "_get_console_script_entry_points", lambda: eps)
+    monkeypatch.setattr(shutil, "which", lambda cmd: "/fake/bin/incompatible_twice_xyz")
+    monkeypatch.setattr(run_mod, "_executable_compatible_with_current_python", lambda path: False)
+    first = _detect_python_entrypoint("incompatible_twice_xyz")
+    assert first[0] is None
+    assert "Running it as a subprocess" in first[1]
+    # The second detection is served from the cache and still carries the warning.
+    assert _detect_python_entrypoint("incompatible_twice_xyz") == first
+
+
+def test_detect_entrypoint_caches_lookup(monkeypatch):
+    eps = _FakeEntryPoints({"cached_cmd_xyz": [_FakeEntryPoint("pkg:main")]})
+    nlookup = 0
+
+    def _count_lookups():
+        nonlocal nlookup
+        nlookup += 1
+        return eps
+
+    monkeypatch.setattr(run_mod, "_get_console_script_entry_points", _count_lookups)
+    monkeypatch.setattr(shutil, "which", lambda cmd: "/fake/bin/cached_cmd_xyz")
+    monkeypatch.setattr(run_mod, "_executable_compatible_with_current_python", lambda path: True)
+    assert _detect_python_entrypoint("cached_cmd_xyz") == ("pkg:main", "")
+    assert _detect_python_entrypoint("cached_cmd_xyz") == ("pkg:main", "")
+    assert nlookup == 1
 
 
 def test_detect_entrypoint_broken_installation(monkeypatch):
