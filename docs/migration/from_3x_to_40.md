@@ -458,6 +458,9 @@ See [Return Codes](../reference/returncode.md) for the current meaning of each b
 ## Other Small Changes
 
 - The `getinfo()` function has been renamed to `get_info()`.
+- The Python interface to `render_jinja` has been split from a single `render_jinja()` function
+  into two functions: `render_jinja_file()` and `render_jinja_str()`.
+  See [stepup.core.render_jinja](../reference/stepup.core.render_jinja.md) for details.
 
 ## Deprecated Features
 

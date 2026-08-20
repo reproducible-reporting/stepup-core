@@ -115,6 +115,7 @@ nav:
     - reference/stepup.core.extapi.md
     - reference/stepup.core.nglob.md
     - reference/stepup.core.path.md
+    - reference/stepup.core.render_jinja.md
     - reference/stepup.core.stepinfo.md
     - reference/interactive.md
     - reference/returncode.md
