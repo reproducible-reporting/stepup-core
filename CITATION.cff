@@ -6,14 +6,13 @@ title: StepUp Core
 type: software
 url: https://reproducible-reporting.github.io/stepup-core
 abstract: >-
-  StepUp is a simple, powerful and universal build tool,
-  a modern alternative to Make.
-  Its defining feature is that it treats the generation and execution of the build workflow
-  as one and the same thing:
-  a Python script defines build steps while it is being executed,
-  so steps can be defined on the fly using the outputs of earlier steps.
-  This makes StepUp a good fit for builds where the full set of dependencies
-  cannot be known in advance.
+  StepUp is a dynamic build tool and a modern alternative to Make.
+  Its defining feature is that workflow generation and execution are unified:
+  a plan.py script defines the initial build steps.
+  While the workflow is being executed, any step can add more steps and dependencies,
+  based on the outputs built so far.
+  This makes StepUp ideal for builds
+  where the full set of dependencies cannot be determined in advance.
 authors:
   - family-names: Verstraelen
     given-names: Toon
@@ -25,3 +24,7 @@ authors:
     country: BE
 license: LGPL-3.0-or-later
 repository-code: https://github.com/reproducible-reporting/stepup-core
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.22018869
+    description: Concept DOI, which always resolves to the latest archived version.

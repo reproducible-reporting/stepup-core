@@ -10,19 +10,19 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 [![pytest](https://github.com/reproducible-reporting/stepup-core/actions/workflows/pytest.yaml/badge.svg?branch=main)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/pytest.yaml)
 [![mkdocs](https://github.com/reproducible-reporting/stepup-core/actions/workflows/mkdocs.yaml/badge.svg?branch=main)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/mkdocs.yaml)
 [![PyPI Version](https://img.shields.io/pypi/v/stepup)](https://pypi.org/project/stepup/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22018870.svg)](https://doi.org/10.5281/zenodo.22018870)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22018869.svg)](https://doi.org/10.5281/zenodo.22018869)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/stepup)
 ![LGPL-3 License](https://img.shields.io/badge/License-LGPL_v3-blue.svg)
 [![CodeFactor](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core/badge)](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core)
 
-StepUp is a simple, powerful and universal build tool,
-a modern alternative to [Make](https://en.wikipedia.org/wiki/Make_(software)).
-Its defining feature is that it treats the generation and execution of the build workflow
-as one and the same thing:
-a `plan.py` Python script issues build steps via RPC to a persistent background process,
-so steps can be defined on the fly using the outputs of earlier steps.
-This makes StepUp a good fit for builds where the full set of dependencies
-cannot be known in advance.
+StepUp is a dynamic build tool and a modern alternative to
+[Make](https://en.wikipedia.org/wiki/Make_(software)).
+Its defining feature is that workflow generation and execution are unified:
+a `plan.py` script defines the initial build steps.
+While the workflow is being executed, any step can add more steps and dependencies,
+based on the outputs built so far.
+This makes StepUp ideal for builds
+where the full set of dependencies cannot be determined in advance.
 
 StepUp Core provides the basic framework for StepUp, without any domain-specific features.
 Those live in extension packages:

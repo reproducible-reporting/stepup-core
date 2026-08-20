@@ -4,12 +4,14 @@ SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-StepUp is a simple, powerful and universal build tool, a modern alternative to
+StepUp is a dynamic build tool and a modern alternative to
 [Make](https://en.wikipedia.org/wiki/Make_(software)).
-
-StepUp, like most build tools, schedules and executes commands in parallel.
-The scheduling takes into account that input files for a command must be available.
-Build tools also keep track of which other commands can create these files.
+Its defining feature is that workflow generation and execution are unified:
+a `plan.py` script defines the initial build steps.
+While the workflow is being executed, any step can add more steps and dependencies,
+based on the outputs built so far.
+This makes StepUp ideal for builds
+where the full set of dependencies cannot be determined in advance.
 
 This is the documentation for StepUp Core, the basic framework for StepUp,
 without any domain-specific extensions.
