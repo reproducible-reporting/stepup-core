@@ -104,11 +104,20 @@ break after sentences or logical units, not at a fixed character count.
 This covers comments (including SQL comments), docstrings,
 Markdown documentation, commit messages, and so on.
 See <https://sembr.org/>.
-Sentences always start on a new line,
-but multiple clauses within one sentence can be on the same line if they fit.
-This makes diffs to prose easier to review,
-since editing one sentence doesn't reflow unrelated lines.
-The 100-character line length (see Linting below) is a hard cap, not a target to fill.
+Prose diffs then stay small, because editing one sentence never reflows its neighbours.
+
+- **Every sentence starts on a new line.**
+- **Break inside a sentence only where a break is needed, and then at a clause boundary.**
+  A sentence that fits within the 100-character line length stays on a single line.
+  A longer one is broken before a conjunction or a relative pronoun
+  ("and", "but", "because", "which", "if", ...),
+  or after a leading subordinate clause.
+- **Not every comma is a break.**
+  Enumerated items, appositions and short parentheticals stay on the line they started on.
+
+The 100-character line length is a hard cap, not a target to fill.
+An extra break inside a long sentence is fine when it clarifies the structure,
+but a sentence that already fits on one line is left alone.
 
 ### Avoid En and Em dashes
 
