@@ -1,8 +1,8 @@
 {
   "command": "./generate.py run",
   "inp": [
-    "config.json",
-    "generate.py"
+    "./generate.py",
+    "config.json"
   ],
   "env": [],
   "out": [

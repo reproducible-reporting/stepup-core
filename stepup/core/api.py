@@ -223,7 +223,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
                 # so they need neither registration nor substitution here.
                 su_match_paths.extend(arg.files())
                 continue
-            su_arg = subs_env.keep_affixes(arg)
+            su_arg = subs_env(arg)
             if _is_glob_pattern(su_arg):
                 ng = NamedGlob(su_arg)
                 ng.glob()
@@ -332,7 +332,7 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
     """
     # Substitute environment variables.
     with subs_env_vars() as subs_env:
-        su_pattern = subs_env.keep_affixes(pattern)
+        su_pattern = subs_env(pattern)
     tr_pattern = _keep_affixes(su_pattern, translate)
 
     # Collect all matches.
@@ -744,8 +744,8 @@ class _CaseSensitiveTemplate(string.Template):
 class EnvSubstitutor:
     """Substitute environment variables in paths, recording the variables used.
 
-    Calling an instance substitutes and normalizes a path.
-    Use `keep_affixes()` instead when a leading `./` or trailing `/` is significant.
+    Calling an instance substitutes and normalizes a path,
+    keeping its leading `./` and trailing `/`.
     Instances are created by [`subs_env_vars()`][stepup.core.api.subs_env_vars],
     which amends the recorded variables when its context closes.
     """
@@ -773,29 +773,9 @@ class EnvSubstitutor:
     def __call__(self, path: StrPath | None) -> Path | None:
         """Substitute the environment variables in a path and normalize the result.
 
-        Parameters
-        ----------
-        path
-            The path to substitute, or `None`.
-
-        Returns
-        -------
-        su_path
-            The substituted and normalized path, or `None` when `path` is `None`.
-            A leading `./` or trailing `/` is normalized away.
-
-        Raises
-        ------
-        EnvVarError
-            When the path contains invalid shell variable identifiers,
-            or references an environment variable that is not defined.
-        """
-        return None if path is None else self._substitute(path).normpath()
-
-    def keep_affixes(self, path: StrPath | None) -> Path | None:
-        """Substitute and normalize a path, restoring its leading `./` and trailing `/`.
-
-        The affixes are taken from the substituted path,
+        The leading `./` and trailing `/` of the substituted path are restored
+        after the normalization, because a trailing slash marks a directory in StepUp.
+        They are taken from the substituted path,
         so an affix introduced by an environment variable is preserved too,
         e.g. `${DATA_DIR}` holding `data/`.
 
@@ -1383,8 +1363,7 @@ def copy(
     """
     with subs_env_vars() as subs_env:
         su_src = subs_env(src)
-        # The trailing slash of `dst` is significant: it marks a destination directory.
-        su_dst = subs_env.keep_affixes(dst)
+        su_dst = subs_env(dst)
     su_dst = make_path_out(su_src, su_dst, None)
     return step(
         f"cp -p {shq(su_src)} {shq(su_dst)}",
@@ -1830,7 +1809,7 @@ def _translate_back_env_path(subs_env: EnvSubstitutor, path: StrPath, back: bool
     The leading `./` and trailing `/` are preserved throughout,
     since a path read from the environment may rely on them.
     """
-    su_path = subs_env.keep_affixes(path)
+    su_path = subs_env(path)
     return _keep_affixes(su_path, translate_back) if back else su_path
 
 

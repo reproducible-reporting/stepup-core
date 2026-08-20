@@ -103,9 +103,10 @@ def my_api_function(path_inp, path_out):
 ```
 
 Calling the substitutor normalizes the result,
-which removes a leading `./` and a trailing `/`.
-When such an affix is significant, e.g. because a trailing slash marks a destination
-directory, use `subs_env.keep_affixes(path)` instead.
+but a leading `./` and a trailing `/` are restored after the normalization,
+because a trailing slash marks a directory in StepUp.
+An affix introduced by the environment variable itself is preserved as well,
+e.g. when `${MYDIR}` holds `data/`.
 
 ### Dependency filtering
 

@@ -28,10 +28,12 @@ from stepup.core.api import (
     shq,
     static,
     step,
+    subs_env_vars,
 )
 from stepup.core.constants import DIRECTOR_SOCKET_SENTINEL
 from stepup.core.exceptions import AmendWhileHoldingError, PathError, StepUpError
 from stepup.core.nglob import NamedGlob
+from stepup.core.path import make_path_out
 from stepup.core.rpc import DummySyncRPCClient
 
 
@@ -912,3 +914,40 @@ def test_static_env_var_in_pattern(path_tmp, monkeypatch):
     _job_i, _tree_paths, file_paths, patterns = client.calls[0]
     assert file_paths == ["src/a.txt"]
     assert patterns == [("src/*.txt", ["src/a.txt"])]
+
+
+def test_subs_env_vars_keeps_dest_trailing_slash(monkeypatch):
+    """A destination directory's trailing slash must survive `subs_env_vars()`.
+
+    Extension API functions substitute environment variables in a `dest` argument
+    before handing it to `make_path_out()`,
+    which needs the trailing slash to tell a destination directory from a destination file.
+    """
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    monkeypatch.setenv("PUBLIC", "../../public-2025")
+    with subs_env_vars() as subs_env:
+        dest = subs_env("${PUBLIC}/hoorcolleges/")
+    assert dest == "../../public-2025/hoorcolleges/"
+    path_out = make_path_out("general/hoorcolleges/voorblad.typ", dest, ".pdf")
+    assert path_out == "../../public-2025/hoorcolleges/voorblad.pdf"
+
+
+def test_subs_env_vars_keeps_affixes_of_env_var(monkeypatch):
+    """A trailing slash introduced by the environment variable itself is preserved too."""
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    monkeypatch.setenv("DEST", "./public/sub/")
+    with subs_env_vars() as subs_env:
+        assert subs_env("${DEST}") == "./public/sub/"
+
+
+def test_subs_env_vars_normalizes_interior():
+    """The interior of a path is still normalized, only the affixes are kept."""
+    with subs_env_vars() as subs_env:
+        assert subs_env("./sub/./nested/../file.txt") == "./sub/file.txt"
+        assert subs_env(None) is None
+
+
+def test_step_rejects_dir_inp_spelled_with_trailing_slash():
+    """A directory input is rejected on its spelling, also when it does not exist yet."""
+    with pytest.raises(PathError, match="Directories are not allowed"):
+        step("cat missing/", inp="missing/")

@@ -2,7 +2,7 @@
   {
     "command": "./work.py run -- -5.0",
     "inp": [
-      "work.py"
+      "./work.py"
     ],
     "env": [],
     "out": [
@@ -14,7 +14,7 @@
   {
     "command": "./work.py run +7.0",
     "inp": [
-      "work.py"
+      "./work.py"
     ],
     "env": [],
     "out": [

@@ -607,7 +607,9 @@ and will be updated with any further changes before the final release.)
 
 - `subs_env_vars()` yields an `EnvSubstitutor` instead of a plain function.
   It is still called the same way, but it now also normalizes the substituted path.
-  Use its `keep_affixes()` method when a leading `./` or a trailing `/` is significant.
+  A leading `./` and a trailing `/` are restored after the normalization,
+  because a trailing slash marks a directory in StepUp,
+  e.g. a destination directory passed to `make_path_out()`.
 
 - The `render-jinja` feature is now a standalone Python console script, `sc-render-jinja`
   instead of a `stepup` subcommand (tool).
