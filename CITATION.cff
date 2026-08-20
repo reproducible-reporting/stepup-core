@@ -22,6 +22,19 @@ authors:
     post-code: 9052
     city: Zwijnaarde
     country: BE
+keywords:
+  - asyncio
+  - build tool
+  - build automation
+  - workflow management
+  - dynamic dependencies
+  - incremental build
+  - reproducible research
+  - reproducibility
+  - terminal application
+  - workflow
+  - POSIX
+  - Python
 license: LGPL-3.0-or-later
 repository-code: https://github.com/reproducible-reporting/stepup-core
 identifiers:
