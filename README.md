@@ -10,6 +10,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 [![pytest](https://github.com/reproducible-reporting/stepup-core/actions/workflows/pytest.yaml/badge.svg?branch=main)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/pytest.yaml)
 [![mkdocs](https://github.com/reproducible-reporting/stepup-core/actions/workflows/mkdocs.yaml/badge.svg?branch=main)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/mkdocs.yaml)
 [![PyPI Version](https://img.shields.io/pypi/v/stepup)](https://pypi.org/project/stepup/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22018870.svg)](https://doi.org/10.5281/zenodo.22018870)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/stepup)
 ![LGPL-3 License](https://img.shields.io/badge/License-LGPL_v3-blue.svg)
 [![CodeFactor](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core/badge)](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core)
