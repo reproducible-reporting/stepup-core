@@ -218,7 +218,7 @@ def test_ctrl_c_aborts_the_build(stepup_on_pty) -> None:
     assert returncode & ReturnCode.INTERRUPTED.value, (
         f"An aborted build must set the INTERRUPTED bit, got returncode {returncode}."
     )
-    assert wait_gone(leaf_pid, 5.0), "The running step outlived the build."
+    assert wait_gone(leaf_pid, TIMEOUT / 2), "The running step outlived the build."
 
 
 def test_ctrl_c_lets_the_director_finish_its_shutdown(stepup_on_pty, path_tmp: Path) -> None:
@@ -237,7 +237,7 @@ def test_sigterm_leaves_no_orphans(stepup_on_pty) -> None:
     process.send_signal(signal.SIGTERM)
     returncode = wait_exit(process, master, TIMEOUT)
     assert returncode & ReturnCode.INTERRUPTED.value
-    assert wait_gone(leaf_pid, 5.0), "The running step was orphaned instead of stopped."
+    assert wait_gone(leaf_pid, TIMEOUT / 2), "The running step was orphaned instead of stopped."
 
 
 @pytest.mark.parametrize("stepup_on_pty", [(f"{LEAF} | cat", True)], indirect=True)
@@ -250,7 +250,7 @@ def test_ctrl_c_stops_work_behind_a_shell_wrapper(stepup_on_pty) -> None:
     process, master, leaf_pid = stepup_on_pty
     os.write(master, INTERRUPT_CHAR)
     wait_exit(process, master, TIMEOUT)
-    assert wait_gone(leaf_pid, 10.0), "The process behind the shell wrapper kept running."
+    assert wait_gone(leaf_pid, TIMEOUT / 2), "The process behind the shell wrapper kept running."
 
 
 #
@@ -260,6 +260,18 @@ def test_ctrl_c_stops_work_behind_a_shell_wrapper(stepup_on_pty) -> None:
 
 SUSPEND_CHAR = b"\x1a"
 """Ctrl-Z, which the terminal line discipline turns into a SIGTSTP for the foreground group."""
+
+STATES_STOPPED = "T"
+"""The process state of a suspended process."""
+
+STATES_RUNNING = "RSD"
+"""The process states of a process that is not suspended.
+
+Uninterruptible sleep (`D`) counts as running here,
+because a process waiting for a system call to return is not stopped.
+It is a state a loaded machine makes easy to catch,
+and rejecting it would turn a busy disk into a test failure.
+"""
 
 JOB_CONTROL_BOOTSTRAP = """
 import fcntl, os, sys, termios
@@ -356,13 +368,13 @@ def test_ctrl_z_suspends_running_steps(stepup_job_on_pty) -> None:
     _, master, pids = stepup_job_on_pty
     leaf_pid = pids[-1]
     os.write(master, SUSPEND_CHAR)
-    wait_states(pids, "T", master, 10.0)
+    wait_states(pids, STATES_STOPPED, master, TIMEOUT / 2)
     # Nothing may wake up on its own while the build is suspended.
     time.sleep(1.0)
     assert proc_state(leaf_pid) == "T"
 
     os.killpg(pids[0], signal.SIGCONT)  # what `fg` does
-    wait_states(pids, "SR", master, 10.0)
+    wait_states(pids, STATES_RUNNING, master, TIMEOUT / 2)
 
 
 def test_ctrl_z_restores_the_terminal(stepup_job_on_pty) -> None:
@@ -376,13 +388,13 @@ def test_ctrl_z_restores_the_terminal(stepup_job_on_pty) -> None:
     assert not termios.tcgetattr(master)[3] & termios.ECHO
 
     os.write(master, SUSPEND_CHAR)
-    wait_states(pids, "T", master, 10.0)
+    wait_states(pids, STATES_STOPPED, master, TIMEOUT / 2)
     suspended = termios.tcgetattr(master)[3]
     assert suspended & termios.ICANON
     assert suspended & termios.ECHO
 
     os.killpg(pids[0], signal.SIGCONT)
-    wait_states(pids, "SR", master, 10.0)
+    wait_states(pids, STATES_RUNNING, master, TIMEOUT / 2)
     # The keyboard interface is dead without this, with every key echoed and then swallowed
     # by the line buffer of the terminal.
     resumed = termios.tcgetattr(master)[3]
@@ -395,7 +407,7 @@ def test_ctrl_z_shows_the_cursor(stepup_job_on_pty) -> None:
     _, master, pids = stepup_job_on_pty
     drain(master)
     os.write(master, SUSPEND_CHAR)
-    output = wait_states(pids, "T", master, 10.0)
+    output = wait_states(pids, STATES_STOPPED, master, TIMEOUT / 2)
     output += drain(master)
     assert b"\x1b[?25h" in output, "The cursor was left invisible while suspended."
 
@@ -404,11 +416,11 @@ def test_ctrl_z_then_ctrl_c_still_aborts(stepup_job_on_pty) -> None:
     """A suspension is not an interruption: the build must survive it and still abort later."""
     process, master, pids = stepup_job_on_pty
     os.write(master, SUSPEND_CHAR)
-    wait_states(pids, "T", master, 10.0)
+    wait_states(pids, STATES_STOPPED, master, TIMEOUT / 2)
     os.killpg(pids[0], signal.SIGCONT)
-    wait_states(pids, "SR", master, 10.0)
+    wait_states(pids, STATES_RUNNING, master, TIMEOUT / 2)
 
     os.write(master, INTERRUPT_CHAR)
     returncode = wait_exit(process, master, TIMEOUT)
     assert returncode & ReturnCode.INTERRUPTED.value
-    assert wait_gone(pids[-1], 5.0), "The running step outlived the build."
+    assert wait_gone(pids[-1], TIMEOUT / 2), "The running step outlived the build."
