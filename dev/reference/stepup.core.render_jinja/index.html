@@ -16,13 +16,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <meta name="author" content="Toon Verstraelen">
       
       
-        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/deprecated/script_single/">
+        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.render_jinja/">
       
       
-        <link rel="prev" href="../introduction/">
+        <link rel="prev" href="../stepup.core.path/">
       
       
-        <link rel="next" href="../script_multiple/">
+        <link rel="next" href="../stepup.core.stepinfo/">
       
       
         
@@ -33,7 +33,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
     
       
-        <title>Script (Single Case) - StepUp Core</title>
+        <title>Stepup.core.render jinja - StepUp Core</title>
       
     
     
@@ -86,7 +86,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <div data-md-component="skip">
       
         
-        <a href="#script-single-case" class="md-skip">
+        <a href="#stepupcorerender_jinja" class="md-skip">
           Skip to content
         </a>
       
@@ -137,7 +137,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Script (Single Case)
+              Stepup.core.render jinja
             
           </span>
         </div>
@@ -1548,18 +1548,20 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -1580,7 +1582,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1598,7 +1600,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.api/" class="md-nav__link">
+      <a href="../stepup.core.api/" class="md-nav__link">
         
   
   
@@ -1626,7 +1628,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.call/" class="md-nav__link">
+      <a href="../stepup.core.call/" class="md-nav__link">
         
   
   
@@ -1654,7 +1656,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.exceptions/" class="md-nav__link">
+      <a href="../stepup.core.exceptions/" class="md-nav__link">
         
   
   
@@ -1682,7 +1684,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.extapi/" class="md-nav__link">
+      <a href="../stepup.core.extapi/" class="md-nav__link">
         
   
   
@@ -1710,7 +1712,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
+      <a href="../stepup.core.nglob/" class="md-nav__link">
         
   
   
@@ -1738,7 +1740,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.path/" class="md-nav__link">
+      <a href="../stepup.core.path/" class="md-nav__link">
         
   
   
@@ -1763,10 +1765,37 @@ SPDX-License-Identifier: CC-BY-SA-4.0
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../reference/stepup.core.render_jinja/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stepup.core.render jinja
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1782,6 +1811,70 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#stepup.core.render_jinja" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        render_jinja
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stepup.core.render_jinja.main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        main
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stepup.core.render_jinja.render_jinja_file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        render_jinja_file
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stepup.core.render_jinja.render_jinja_str" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        render_jinja_str
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1794,7 +1887,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../stepup.core.stepinfo/" class="md-nav__link">
         
   
   
@@ -1822,7 +1915,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/interactive/" class="md-nav__link">
+      <a href="../interactive/" class="md-nav__link">
         
   
   
@@ -1850,7 +1943,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/returncode/" class="md-nav__link">
+      <a href="../returncode/" class="md-nav__link">
         
   
   
@@ -1878,7 +1971,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../reference/configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -2157,20 +2250,18 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
         
           
           <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
@@ -2191,7 +2282,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2209,7 +2300,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../introduction/" class="md-nav__link">
+      <a href="../../deprecated/introduction/" class="md-nav__link">
         
   
   
@@ -2234,37 +2325,10 @@ SPDX-License-Identifier: CC-BY-SA-4.0
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Script (Single Case)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../deprecated/script_single/" class="md-nav__link">
         
   
   
@@ -2280,81 +2344,6 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#script-protocol" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Script Protocol
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#script-driver" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Script driver
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#single-case-script-driver" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Single Case Script Driver
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#try-the-following" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Try the Following
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2367,7 +2356,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../script_multiple/" class="md-nav__link">
+      <a href="../../deprecated/script_multiple/" class="md-nav__link">
         
   
   
@@ -2395,7 +2384,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../stepup.core.script/" class="md-nav__link">
+      <a href="../../deprecated/stepup.core.script/" class="md-nav__link">
         
   
   
@@ -2450,10 +2439,10 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#script-protocol" class="md-nav__link">
+  <a href="#stepup.core.render_jinja" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Script Protocol
+        render_jinja
       
     </span>
   </a>
@@ -2461,10 +2450,10 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
-  <a href="#script-driver" class="md-nav__link">
+  <a href="#stepup.core.render_jinja.main" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Script driver
+        main
       
     </span>
   </a>
@@ -2472,10 +2461,10 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
-  <a href="#single-case-script-driver" class="md-nav__link">
+  <a href="#stepup.core.render_jinja.render_jinja_file" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Single Case Script Driver
+        render_jinja_file
       
     </span>
   </a>
@@ -2483,21 +2472,10 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#stepup.core.render_jinja.render_jinja_str" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#try-the-following" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Try the Following
+        render_jinja_str
       
     </span>
   </a>
@@ -2521,7 +2499,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 
   
-    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/deprecated/script_single.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/reference/stepup.core.render_jinja.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2529,202 +2507,384 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
 
 
-<h1 id="script-single-case">Script (Single Case)<a class="headerlink" href="#script-single-case" title="Permanent link">&para;</a></h1>
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
+<h1 id="stepupcorerender_jinja">stepup.core.render_jinja<a class="headerlink" href="#stepupcorerender_jinja" title="Permanent link">&para;</a></h1>
 
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>The script interface for calling user Python scripts from <code>plan.py</code> has been deprecated
-in favor of the new <a href="../../getting_started/call/">Call</a> interface.
-You are encouraged to migrate your <code>plan.py</code> files to the new API.
-See <a href="../../migration/from_3x_to_40/#optional-migration-from-script-to-call">the migration guide</a> for a step-by-step walkthrough.</p>
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="stepup.core.render_jinja"></a>
+    <div class="doc doc-contents first">
+
+        <p>Rendering of template files with Jinja2.</p>
+<p>Variables for the template are loaded from files with <a class="autorefs autorefs-internal" title="stepup.core.api.loadns(*paths_variables, dir_out=None, do_amend=True)" href="../stepup.core.api/#stepup.core.api.loadns"><code>loadns()</code></a>,
+and may be complemented with a JSON string on the command line.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="stepup.core.render_jinja.main" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">main</span><span class="p">()</span></code>
+
+<a href="#stepup.core.render_jinja.main" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Command-line entry point for the <code>render-jinja</code> console script.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>stepup/core/render_jinja.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-24">24</a></span>
+<span class="normal"><a href="#__codelineno-0-25">25</a></span>
+<span class="normal"><a href="#__codelineno-0-26">26</a></span>
+<span class="normal"><a href="#__codelineno-0-27">27</a></span>
+<span class="normal"><a href="#__codelineno-0-28">28</a></span>
+<span class="normal"><a href="#__codelineno-0-29">29</a></span>
+<span class="normal"><a href="#__codelineno-0-30">30</a></span>
+<span class="normal"><a href="#__codelineno-0-31">31</a></span>
+<span class="normal"><a href="#__codelineno-0-32">32</a></span>
+<span class="normal"><a href="#__codelineno-0-33">33</a></span>
+<span class="normal"><a href="#__codelineno-0-34">34</a></span>
+<span class="normal"><a href="#__codelineno-0-35">35</a></span>
+<span class="normal"><a href="#__codelineno-0-36">36</a></span>
+<span class="normal"><a href="#__codelineno-0-37">37</a></span>
+<span class="normal"><a href="#__codelineno-0-38">38</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25"></a><span class="w">    </span><span class="sd">"""Command-line entry point for the `render-jinja` console script."""</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26"></a>    <span class="n">args</span> <span class="o">=</span> <span class="n">_parse_args</span><span class="p">()</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27"></a>    <span class="n">latex</span> <span class="o">=</span> <span class="n">_resolve_latex</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">mode</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">path_out</span><span class="p">)</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a>    <span class="n">dir_out</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">path_out</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">absolute</span><span class="p">()</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29"></a>    <span class="n">variables</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">(</span><span class="n">loadns</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="o">.</span><span class="n">paths_variables</span><span class="p">,</span> <span class="n">dir_out</span><span class="o">=</span><span class="n">dir_out</span><span class="p">,</span> <span class="n">do_amend</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="c1"># The local imports are only known after the Python variable files have been executed.</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31"></a>    <span class="n">amend</span><span class="p">(</span><span class="n">inp</span><span class="o">=</span><span class="n">get_local_import_paths</span><span class="p">())</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">json</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a>        <span class="n">variables</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">json</span><span class="p">))</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">render_jinja_file</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">path_in</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="n">latex</span><span class="p">)</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">path_out</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a>        <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a>    <span class="c1"># A rendered script must remain executable, so the template's mode is copied over.</span>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="n">args</span><span class="o">.</span><span class="n">path_out</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">path_in</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mode</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
 </div>
-<p>StepUp Core implements a simple <em>script protocol</em>
-for defining scripts that combine planning and execution in a single source file.
-This can be more convenient than putting a lot of detail in the <code>plan.py</code> file.</p>
-<h2 id="script-protocol">Script Protocol<a class="headerlink" href="#script-protocol" title="Permanent link">&para;</a></h2>
-<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> protocol itself is rather simple.
-The following line in <code>plan.py</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">script</span><span class="p">(</span><span class="s2">"executable"</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s2">"sub"</span><span class="p">)</span>
-</span></code></pre></div>
-<p>is roughly equivalent to:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">"./executable plan"</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s2">"sub"</span><span class="p">)</span>
-</span></code></pre></div>
-<p>Note that the use of a subdirectory is not required.
-The <code>./executable plan</code> step is expected to define additional steps
-to actually do something useful with the executable.
-A common scenario is to plan a single <code>./executable run</code> step with appropriate inputs and outputs.
-If the script has the <code>.py</code> extension, the Python-aware mode is used automatically.</p>
-<p>When the <code>optional=True</code> keyword argument is given to the <code>script()</code> function,
-it executes <code>./executable plan --optional</code>.
-The script protocol requires that all <em>run</em> steps created by this planning step
-should then receive the <code>optional=True</code> keyword argument.
-Note that the <em>plan</em> step itself is never an optional step:
-It is always executed.</p>
-<p>The <code>script()</code> function also supports the <code>step_info="some_file.json</code> argument.
-This results in an extra argument <code>--step-info=some_file.json</code> for <code>./executable plan</code>.
-The planning of the run scripts is then expected to
-write all the information about the created run steps to this JSON file.
-In complex workflows, it may be useful to load this JSON file with
-<a class="autorefs autorefs-internal" title="load_step_info(filename)" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.load_step_info"><code>load_step_info()</code></a>.
-Consult the section on <a href="../../advanced_topics/step_info/">StepInfo Objects</a>
-to learn how to use these objects.</p>
-<p>In addition, the <code>script()</code> function also supports all the arguments of <code>step()</code>,
-which it simply passes on when creating the <code>./executable plan</code> step.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The <code>step_info</code> argument, and support for all <code>step()</code> arguments were added in StepUp 2.0.0.</p>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="stepup.core.render_jinja.render_jinja_file" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">render_jinja_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#stepup.core.render_jinja.render_jinja_file" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Render a template file with Jinja2 and return the result.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>path</code></b>
+              (<code><span title="stepup.core.path.StrPath">StrPath</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>The filename of the template to load.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>variables</code></b>
+              (<code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>)
+          –
+          <div class="doc-md-description">
+            <p>A dictionary of variables to substitute into the template.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>latex</code></b>
+              (<code><span title="bool">bool</span></code>, default:
+                  <code>False</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>When <code>True</code>, angle-style delimiters are used, e.g. <code>&lt;%</code> instead of <code>{%</code>.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Returns:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><span title="rendered">rendered</span></code>
+          –
+          <div class="doc-md-description">
+            <p>A string with the result.</p>
+          </div>
+        </li>
+    </ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>stepup/core/render_jinja.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-79">79</a></span>
+<span class="normal"><a href="#__codelineno-0-80">80</a></span>
+<span class="normal"><a href="#__codelineno-0-81">81</a></span>
+<span class="normal"><a href="#__codelineno-0-82">82</a></span>
+<span class="normal"><a href="#__codelineno-0-83">83</a></span>
+<span class="normal"><a href="#__codelineno-0-84">84</a></span>
+<span class="normal"><a href="#__codelineno-0-85">85</a></span>
+<span class="normal"><a href="#__codelineno-0-86">86</a></span>
+<span class="normal"><a href="#__codelineno-0-87">87</a></span>
+<span class="normal"><a href="#__codelineno-0-88">88</a></span>
+<span class="normal"><a href="#__codelineno-0-89">89</a></span>
+<span class="normal"><a href="#__codelineno-0-90">90</a></span>
+<span class="normal"><a href="#__codelineno-0-91">91</a></span>
+<span class="normal"><a href="#__codelineno-0-92">92</a></span>
+<span class="normal"><a href="#__codelineno-0-93">93</a></span>
+<span class="normal"><a href="#__codelineno-0-94">94</a></span>
+<span class="normal"><a href="#__codelineno-0-95">95</a></span>
+<span class="normal"><a href="#__codelineno-0-96">96</a></span>
+<span class="normal"><a href="#__codelineno-0-97">97</a></span>
+<span class="normal"><a href="#__codelineno-0-98">98</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-79"><a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="k">def</span><span class="w"> </span><span class="nf">render_jinja_file</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">StrPath</span><span class="p">,</span> <span class="n">variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">latex</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-0-80"><a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="w">    </span><span class="sd">"""Render a template file with Jinja2 and return the result.</span>
+</span><span id="__span-0-81"><a id="__codelineno-0-81" name="__codelineno-0-81"></a>
+</span><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-83"><a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">    path</span>
+</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">        The filename of the template to load.</span>
+</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">    variables</span>
+</span><span id="__span-0-87"><a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">        A dictionary of variables to substitute into the template.</span>
+</span><span id="__span-0-88"><a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">    latex</span>
+</span><span id="__span-0-89"><a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">        When `True`, angle-style delimiters are used, e.g. `&lt;%` instead of `{%`.</span>
+</span><span id="__span-0-90"><a id="__codelineno-0-90" name="__codelineno-0-90"></a>
+</span><span id="__span-0-91"><a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-92"><a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">    -------</span>
+</span><span id="__span-0-93"><a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">    rendered</span>
+</span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">        A string with the result.</span>
+</span><span id="__span-0-95"><a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">    """</span>
+</span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96"></a>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+</span><span id="__span-0-97"><a id="__codelineno-0-97" name="__codelineno-0-97"></a>        <span class="n">source</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-0-98"><a id="__codelineno-0-98" name="__codelineno-0-98"></a>    <span class="k">return</span> <span class="n">render_jinja_str</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="n">latex</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">coerce_str</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
 </div>
-<h2 id="script-driver">Script driver<a class="headerlink" href="#script-driver" title="Permanent link">&para;</a></h2>
-<p>StepUp implements a <a class="autorefs autorefs-internal" title="driver(obj=None)" href="../stepup.core.script/#stepup.core.script.driver"><code>driver()</code></a> function
-in the module <code>stepup.core.script</code> that greatly facilitates
-writing Python scripts that adhere to the script protocol.</p>
-<p>It can be used in two ways:</p>
-<ol>
-<li>
-<p>To run the executable for just one specific case of inputs and outputs (this tutorial).</p>
-</li>
-<li>
-<p>To run the same script with multiple combinations of inputs and outputs (<a href="../script_multiple/">next tutorial</a>).</p>
-</li>
-</ol>
-<p>In both cases, the script driver will detect local modules that are imported by the script,
-and amend the script step with the loaded modules as required inputs.
-By default, only the modules inside <code>${STEPUP_ROOT}</code>
-(but not in <code>${STEPUP_ROOT}/venv*</code>) are treated as dependencies.
-You can control the filtering of automatically detected dependencies with the
-<a href="../../reference/configuration/"><code>STEPUP_PATH_FILTER</code> environment variable</a>.</p>
-<h2 id="single-case-script-driver">Single Case Script Driver<a class="headerlink" href="#single-case-script-driver" title="Permanent link">&para;</a></h2>
-<p>A Python script using the driver for a single case has the following structure.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.script</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">info</span><span class="p">():</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="k">return</span> <span class="p">{</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="s2">"inp"</span><span class="p">:</span> <span class="o">...</span><span class="p">,</span> <span class="c1"># a single input path or a list of input paths</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="s2">"out"</span><span class="p">:</span> <span class="o">...</span><span class="p">,</span> <span class="c1"># a single output path or a list of output paths</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="s2">"static"</span><span class="p">:</span> <span class="o">...</span><span class="p">,</span> <span class="c1"># declare a static file or a list of static files</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="s2">"just_any"</span><span class="p">:</span> <span class="s2">"argument that you want to add"</span><span class="p">,</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="p">}</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">just_any</span><span class="p">):</span>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="o">...</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    <span class="n">driver</span><span class="p">()</span>
-</span></code></pre></div>
-<ul>
-<li>
-<p>The <code>info()</code> function provides the data necessary to plan the execution of the script.
-  It is executed when calling the script as <code>./script.py plan</code>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>All dictionary items are optional.
-The <code>info()</code> function can even return an empty dictionary.
-The keys <code>inp</code>, <code>out</code> and <code>static</code> affect the planning the run part,
-as explained in the comments above.</p>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="stepup.core.render_jinja.render_jinja_str" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">render_jinja_str</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'&lt;template&gt;'</span><span class="p">)</span></code>
+
+<a href="#stepup.core.render_jinja.render_jinja_str" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Render a template string with Jinja2 and return the result.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>source</code></b>
+              (<code><span title="str">str</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>The template as a string.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>variables</code></b>
+              (<code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>)
+          –
+          <div class="doc-md-description">
+            <p>A dictionary of variables to substitute into the template.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>latex</code></b>
+              (<code><span title="bool">bool</span></code>, default:
+                  <code>False</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>When <code>True</code>, angle-style delimiters are used, e.g. <code>&lt;%</code> instead of <code>{%</code>.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>name</code></b>
+              (<code><span title="str">str</span></code>, default:
+                  <code>&#39;&lt;template&gt;&#39;</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>How the template is identified in error messages and tracebacks.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Returns:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><span title="rendered">rendered</span></code>
+          –
+          <div class="doc-md-description">
+            <p>A string with the result.</p>
+          </div>
+        </li>
+    </ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>stepup/core/render_jinja.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-101">101</a></span>
+<span class="normal"><a href="#__codelineno-0-102">102</a></span>
+<span class="normal"><a href="#__codelineno-0-103">103</a></span>
+<span class="normal"><a href="#__codelineno-0-104">104</a></span>
+<span class="normal"><a href="#__codelineno-0-105">105</a></span>
+<span class="normal"><a href="#__codelineno-0-106">106</a></span>
+<span class="normal"><a href="#__codelineno-0-107">107</a></span>
+<span class="normal"><a href="#__codelineno-0-108">108</a></span>
+<span class="normal"><a href="#__codelineno-0-109">109</a></span>
+<span class="normal"><a href="#__codelineno-0-110">110</a></span>
+<span class="normal"><a href="#__codelineno-0-111">111</a></span>
+<span class="normal"><a href="#__codelineno-0-112">112</a></span>
+<span class="normal"><a href="#__codelineno-0-113">113</a></span>
+<span class="normal"><a href="#__codelineno-0-114">114</a></span>
+<span class="normal"><a href="#__codelineno-0-115">115</a></span>
+<span class="normal"><a href="#__codelineno-0-116">116</a></span>
+<span class="normal"><a href="#__codelineno-0-117">117</a></span>
+<span class="normal"><a href="#__codelineno-0-118">118</a></span>
+<span class="normal"><a href="#__codelineno-0-119">119</a></span>
+<span class="normal"><a href="#__codelineno-0-120">120</a></span>
+<span class="normal"><a href="#__codelineno-0-121">121</a></span>
+<span class="normal"><a href="#__codelineno-0-122">122</a></span>
+<span class="normal"><a href="#__codelineno-0-123">123</a></span>
+<span class="normal"><a href="#__codelineno-0-124">124</a></span>
+<span class="normal"><a href="#__codelineno-0-125">125</a></span>
+<span class="normal"><a href="#__codelineno-0-126">126</a></span>
+<span class="normal"><a href="#__codelineno-0-127">127</a></span>
+<span class="normal"><a href="#__codelineno-0-128">128</a></span>
+<span class="normal"><a href="#__codelineno-0-129">129</a></span>
+<span class="normal"><a href="#__codelineno-0-130">130</a></span>
+<span class="normal"><a href="#__codelineno-0-131">131</a></span>
+<span class="normal"><a href="#__codelineno-0-132">132</a></span>
+<span class="normal"><a href="#__codelineno-0-133">133</a></span>
+<span class="normal"><a href="#__codelineno-0-134">134</a></span>
+<span class="normal"><a href="#__codelineno-0-135">135</a></span>
+<span class="normal"><a href="#__codelineno-0-136">136</a></span>
+<span class="normal"><a href="#__codelineno-0-137">137</a></span>
+<span class="normal"><a href="#__codelineno-0-138">138</a></span>
+<span class="normal"><a href="#__codelineno-0-139">139</a></span>
+<span class="normal"><a href="#__codelineno-0-140">140</a></span>
+<span class="normal"><a href="#__codelineno-0-141">141</a></span>
+<span class="normal"><a href="#__codelineno-0-142">142</a></span>
+<span class="normal"><a href="#__codelineno-0-143">143</a></span>
+<span class="normal"><a href="#__codelineno-0-144">144</a></span>
+<span class="normal"><a href="#__codelineno-0-145">145</a></span>
+<span class="normal"><a href="#__codelineno-0-146">146</a></span>
+<span class="normal"><a href="#__codelineno-0-147">147</a></span>
+<span class="normal"><a href="#__codelineno-0-148">148</a></span>
+<span class="normal"><a href="#__codelineno-0-149">149</a></span>
+<span class="normal"><a href="#__codelineno-0-150">150</a></span>
+<span class="normal"><a href="#__codelineno-0-151">151</a></span>
+<span class="normal"><a href="#__codelineno-0-152">152</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-101"><a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="k">def</span><span class="w"> </span><span class="nf">render_jinja_str</span><span class="p">(</span>
+</span><span id="__span-0-102"><a id="__codelineno-0-102" name="__codelineno-0-102"></a>    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="__span-0-103"><a id="__codelineno-0-103" name="__codelineno-0-103"></a>    <span class="n">variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+</span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-105"><a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="n">latex</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-106"><a id="__codelineno-0-106" name="__codelineno-0-106"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"&lt;template&gt;"</span><span class="p">,</span>
+</span><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-0-108"><a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="w">    </span><span class="sd">"""Render a template string with Jinja2 and return the result.</span>
+</span><span id="__span-0-109"><a id="__codelineno-0-109" name="__codelineno-0-109"></a>
+</span><span id="__span-0-110"><a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-111"><a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-112"><a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">    source</span>
+</span><span id="__span-0-113"><a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        The template as a string.</span>
+</span><span id="__span-0-114"><a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">    variables</span>
+</span><span id="__span-0-115"><a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        A dictionary of variables to substitute into the template.</span>
+</span><span id="__span-0-116"><a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">    latex</span>
+</span><span id="__span-0-117"><a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">        When `True`, angle-style delimiters are used, e.g. `&lt;%` instead of `{%`.</span>
+</span><span id="__span-0-118"><a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">    name</span>
+</span><span id="__span-0-119"><a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">        How the template is identified in error messages and tracebacks.</span>
+</span><span id="__span-0-120"><a id="__codelineno-0-120" name="__codelineno-0-120"></a>
+</span><span id="__span-0-121"><a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-122"><a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">    -------</span>
+</span><span id="__span-0-123"><a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="sd">    rendered</span>
+</span><span id="__span-0-124"><a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="sd">        A string with the result.</span>
+</span><span id="__span-0-125"><a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="sd">    """</span>
+</span><span id="__span-0-126"><a id="__codelineno-0-126" name="__codelineno-0-126"></a>    <span class="c1"># Customize the Jinja2 environment</span>
+</span><span id="__span-0-127"><a id="__codelineno-0-127" name="__codelineno-0-127"></a>    <span class="n">env_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-128"><a id="__codelineno-0-128" name="__codelineno-0-128"></a>        <span class="s2">"keep_trailing_newline"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-129"><a id="__codelineno-0-129" name="__codelineno-0-129"></a>        <span class="s2">"trim_blocks"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-130"><a id="__codelineno-0-130" name="__codelineno-0-130"></a>        <span class="s2">"undefined"</span><span class="p">:</span> <span class="n">jinja2</span><span class="o">.</span><span class="n">StrictUndefined</span><span class="p">,</span>
+</span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131"></a>        <span class="s2">"autoescape"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-132"><a id="__codelineno-0-132" name="__codelineno-0-132"></a>    <span class="p">}</span>
+</span><span id="__span-0-133"><a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="k">if</span> <span class="n">latex</span><span class="p">:</span>
+</span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134"></a>        <span class="n">env_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+</span><span id="__span-0-135"><a id="__codelineno-0-135" name="__codelineno-0-135"></a>            <span class="p">{</span>
+</span><span id="__span-0-136"><a id="__codelineno-0-136" name="__codelineno-0-136"></a>                <span class="s2">"block_start_string"</span><span class="p">:</span> <span class="s2">"&lt;%"</span><span class="p">,</span>
+</span><span id="__span-0-137"><a id="__codelineno-0-137" name="__codelineno-0-137"></a>                <span class="s2">"block_end_string"</span><span class="p">:</span> <span class="s2">"%&gt;"</span><span class="p">,</span>
+</span><span id="__span-0-138"><a id="__codelineno-0-138" name="__codelineno-0-138"></a>                <span class="s2">"variable_start_string"</span><span class="p">:</span> <span class="s2">"&lt;&lt;"</span><span class="p">,</span>
+</span><span id="__span-0-139"><a id="__codelineno-0-139" name="__codelineno-0-139"></a>                <span class="s2">"variable_end_string"</span><span class="p">:</span> <span class="s2">"&gt;&gt;"</span><span class="p">,</span>
+</span><span id="__span-0-140"><a id="__codelineno-0-140" name="__codelineno-0-140"></a>                <span class="s2">"comment_start_string"</span><span class="p">:</span> <span class="s2">"&lt;#"</span><span class="p">,</span>
+</span><span id="__span-0-141"><a id="__codelineno-0-141" name="__codelineno-0-141"></a>                <span class="s2">"comment_end_string"</span><span class="p">:</span> <span class="s2">"#&gt;"</span><span class="p">,</span>
+</span><span id="__span-0-142"><a id="__codelineno-0-142" name="__codelineno-0-142"></a>                <span class="s2">"line_statement_prefix"</span><span class="p">:</span> <span class="s2">"%=="</span><span class="p">,</span>
+</span><span id="__span-0-143"><a id="__codelineno-0-143" name="__codelineno-0-143"></a>            <span class="p">}</span>
+</span><span id="__span-0-144"><a id="__codelineno-0-144" name="__codelineno-0-144"></a>        <span class="p">)</span>
+</span><span id="__span-0-145"><a id="__codelineno-0-145" name="__codelineno-0-145"></a>    <span class="n">env</span> <span class="o">=</span> <span class="n">jinja2</span><span class="o">.</span><span class="n">Environment</span><span class="p">(</span><span class="o">**</span><span class="n">env_kwargs</span><span class="p">)</span>
+</span><span id="__span-0-146"><a id="__codelineno-0-146" name="__codelineno-0-146"></a>
+</span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147"></a>    <span class="c1"># Load template, assign filename (for tracebacks) and render.</span>
+</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148"></a>    <span class="n">template</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+</span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149"></a>    <span class="n">template</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">name</span>
+</span><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150"></a>    <span class="c1"># The variables are passed as a dictionary, not as keyword arguments,</span>
+</span><span id="__span-0-151"><a id="__codelineno-0-151" name="__codelineno-0-151"></a>    <span class="c1"># because a variable named `self` would collide with the first argument of `render`.</span>
+</span><span id="__span-0-152"><a id="__codelineno-0-152" name="__codelineno-0-152"></a>    <span class="k">return</span> <span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">variables</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
 </div>
-</li>
-<li>
-<p>The <code>run()</code> function is called to perform the useful work and
-  is executed when the script is executed as <code>./script.py run</code>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The <code>run()</code> function can have any argument defined in the dictionary returned by <code>info()</code>,
-but it does not have to specify all of them.
-The argument list of <code>run()</code> can contain fewer arguments (or even none at all).</p>
+
+
+
+  </div>
+
+    </div>
+
 </div>
-</li>
-</ul>
-<h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/deprecated/script_single"><code>docs/deprecated/script_single/</code></a></p>
-<p>Consider a script that has parameters defined in a config file <code>config.json</code>,
-which may be used by multiple script, e.g. for reasons of consistency.
-For this example, the configuration contains a number of steps and a frequency in arbitrary units,
-serialized in a JSON file:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">"nstep"</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">"freq"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">}</span>
-</span></code></pre></div>
-<p>This file is used in a script <code>generate.py</code> as follows:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.script</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="k">def</span><span class="w"> </span><span class="nf">info</span><span class="p">():</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="k">return</span> <span class="p">{</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="s2">"inp"</span><span class="p">:</span> <span class="s2">"config.json"</span><span class="p">,</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="s2">"out"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"cos.npy"</span><span class="p">,</span> <span class="s2">"sin.npy"</span><span class="p">],</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    <span class="p">}</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
-</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
-</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"config.json"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>        <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span>
-</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="n">nstep</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"nstep"</span><span class="p">]</span>
-</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="n">freq</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"freq"</span><span class="p">]</span>
-</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nstep</span><span class="p">)))</span>
-</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nstep</span><span class="p">)))</span>
-</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>
-</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>
-</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-</span><span id="__span-4-26"><a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    <span class="n">driver</span><span class="p">()</span>
-</span></code></pre></div>
-<p>Also, add the following <code>plan.py</code> file:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">script</span><span class="p">,</span> <span class="n">static</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">"generate.py"</span><span class="p">,</span> <span class="s2">"config.json"</span><span class="p">)</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">script</span><span class="p">(</span><span class="s2">"generate.py"</span><span class="p">)</span>
-</span></code></pre></div>
-<p>Finally, make the Python scripts executable and give StepUp a spin:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>generate.py<span class="w"> </span>plan.py
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
-</span></code></pre></div>
-<p>You should see the following output on screen:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a> STARTUP │ (Re)initialized boot script
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>   PHASE │ build
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>   START │ ./plan.py
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a> SUCCESS │ ./plan.py
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>   START │ ./generate.py plan
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a> SUCCESS │ ./generate.py plan
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>   START │ ./generate.py run
-</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a> SUCCESS │ ./generate.py run
-</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>DIRECTOR │ Ran 3 job(s).
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
-</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>DIRECTOR │ See you!
-</span></code></pre></div>
-<p>As expected, this creates two files: <code>cos.npy</code> and <code>sin.npy</code>.</p>
-<h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
-<ul>
-<li>
-<p>Modify the file <code>config.json</code> and re-run StepUp.
-  The planning is skipped because the script itself did not change.
-  Only the run function is called to work with the updated <code>config.json</code>.</p>
-</li>
-<li>
-<p>Delete one of the outputs and rerun StepUp.
-  Again, the planning is skipped and the computation is repeated to recreate the missing output.</p>
-</li>
-<li>
-<p>Create a new module <code>utils.py</code> with a <code>compute()</code> function to calculate the cosine and sine arrays
-  with parameters <code>nstep</code> and <code>freq</code>.
-  Import this module into <code>generate.py</code>, use it in <code>run()</code> and re-run StepUp.
-  This will automatically make <code>utils.py</code> an input for the planning and running of <code>generate.py</code>.
-  Test this by making a small change to <code>utils.py</code> and re-running it.
-  (Note that local imports inside the <code>run()</code> function will not be identified automatically and
-  are therefore not recommended.)</p>
-</li>
-</ul>
 
 
 

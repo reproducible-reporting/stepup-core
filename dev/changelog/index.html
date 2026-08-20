@@ -1766,6 +1766,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../reference/stepup.core.render_jinja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stepup.core.render jinja
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
@@ -7000,7 +7028,9 @@ for every function it exposes.</p>
 <li>
 <p><code>subs_env_vars()</code> yields an <code>EnvSubstitutor</code> instead of a plain function.
   It is still called the same way, but it now also normalizes the substituted path.
-  Use its <code>keep_affixes()</code> method when a leading <code>./</code> or a trailing <code>/</code> is significant.</p>
+  A leading <code>./</code> and a trailing <code>/</code> are restored after the normalization,
+  because a trailing slash marks a directory in StepUp,
+  e.g. a destination directory passed to <code>make_path_out()</code>.</p>
 </li>
 <li>
 <p>The <code>render-jinja</code> feature is now a standalone Python console script, <code>sc-render-jinja</code>
@@ -7291,6 +7321,14 @@ more than four times as many unit tests and over 1.5 times as many integration e
   Previously it was recycled in its succeeded state and silently kept its stale output.
   This could be observed after an incomplete build (or one run with <code>--no-clean</code>),
   which leaves detached steps in the graph for the next build to pick up.</p>
+</li>
+<li>
+<p>Fix a bug that could permanently orphan an output file
+  and leave all the steps consuming it pending.
+  When a step declared a file as its input while the step producing that file was detached,
+  e.g. because the plan declaring the producer had not been rerun yet,
+  the file was taken away from its producer instead of being left alone.
+  Supplying a file to a step no longer changes which step declares that file.</p>
 </li>
 </ul>
 <h4 id="terminal-output-and-inspection_2">Terminal Output and Inspection<a class="headerlink" href="#terminal-output-and-inspection_2" title="Permanent link">&para;</a></h4>

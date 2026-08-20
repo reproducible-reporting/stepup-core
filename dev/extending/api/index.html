@@ -1766,6 +1766,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../../reference/stepup.core.render_jinja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stepup.core.render jinja
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
@@ -2740,9 +2768,10 @@ amending the current step&rsquo;s environment dependencies accordingly:</p>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="c1"># su_path_inp and su_path_out are now substituted and normalized Path objects</span>
 </span></code></pre></div>
 <p>Calling the substitutor normalizes the result,
-which removes a leading <code>./</code> and a trailing <code>/</code>.
-When such an affix is significant, e.g. because a trailing slash marks a destination
-directory, use <code>subs_env.keep_affixes(path)</code> instead.</p>
+but a leading <code>./</code> and a trailing <code>/</code> are restored after the normalization,
+because a trailing slash marks a directory in StepUp.
+An affix introduced by the environment variable itself is preserved as well,
+e.g. when <code>${MYDIR}</code> holds <code>data/</code>.</p>
 <h3 id="dependency-filtering">Dependency filtering<a class="headerlink" href="#dependency-filtering" title="Permanent link">&para;</a></h3>
 <p><a class="autorefs autorefs-internal" title="stepup.core.extapi.filter_dependencies(paths)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.filter_dependencies"><code>filter_dependencies()</code></a> filters a collection of
 file paths according to the <code>${STEPUP_PATH_FILTER}</code> environment variable.
