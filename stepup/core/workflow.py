@@ -723,12 +723,21 @@ class SupplyInfo:
     for it before a `SupplyInfo` is constructed.)
     """
 
+    detached: bool = attrs.field()
+    """Whether the file was detached when it was supplied.
+
+    A detached file describes a former life at best,
+    so its state alone does not decide whether it can be used as an input.
+    """
+
     new_idep: int | None = attrs.field()
     """Dependency identifier when the relation is new, None otherwise."""
 
     @property
     def availability(self) -> Availability:
         """Whether the file can serve as an input to the step; see `Availability`."""
+        if self.detached:
+            return Availability.UNAVAILABLE
         if self.state == FileState.UNCONFIRMED:
             return Availability.UNCONFIRMED
         if self.state in (FileState.BUILT, FileState.CONFIRMED):
@@ -1516,7 +1525,7 @@ class Workflow(Trellis):
         step: Step,
         path: str,
         require_new_edge: bool,
-    ) -> tuple[File, FileState, bool]:
+    ) -> tuple[File, FileState, bool, bool]:
         """Find or create the file for a path and resolve its relation to the step.
 
         This performs everything `_supply_files` needs except inserting the
@@ -1539,6 +1548,8 @@ class Workflow(Trellis):
             The existing or newly created file node.
         state
             See `SupplyInfo.state`.
+        detached
+            See `SupplyInfo.detached`.
         new_relation
             `True` when the (file, step) dependency edge does not exist yet
             and still needs to be inserted by the caller.
@@ -1550,19 +1561,33 @@ class Workflow(Trellis):
             When the edge exists while it is required to be new.
         """
         file, detached = self.find_and_detached(File, path)
-        if file is None or detached:
-            st = self._find_owning_static_tree(path)
-            if st is None:
-                # Nothing declares this path yet, so it has no role.
-                # `creator=None` makes `Trellis.create` force `detached = True`.
-                state = FileState.UNDECLARED
-                file = self.create(File, None, path, state=state)
-            else:
-                state = FileState.UNCONFIRMED
-                self._raise_if_forbidden_target(path, state)
-                file = self.create(File, st, path, state=state)
+        st = self._find_owning_static_tree(path) if file is None or detached else None
+        if st is not None:
+            # An attached static tree owns the path, so the file is adopted by that tree.
+            # A step can never declare an output inside a static tree (`_declare_file` refuses),
+            # so this cannot take a product away from a creator that might still reclaim it.
+            state = FileState.UNCONFIRMED
+            self._raise_if_forbidden_target(path, state)
+            file = self.create(File, st, path, state=state)
+            detached = False
+            self.watch_dir(Path(path).parent)
+        elif file is None or file.creator() is None:
+            # Nothing declares this path (anymore), so it has no role.
+            # `creator=None` makes `Trellis.create` force `detached = True`.
+            state = FileState.UNDECLARED
+            file = self.create(File, None, path, state=state)
+            detached = True
             self.watch_dir(Path(path).parent)
         else:
+            # Either the file is attached, or it is detached but still has a creator,
+            # which means it belongs to a subtree that may yet be recycled,
+            # such as the output of a step whose plan has not been rerun yet.
+            # Recreating it in that case would take the file away from its creator for good,
+            # because `Trellis.create` clears the creator, cuts the sources
+            # and invalidates the creating step's hash.
+            # Supplying a file must never do that: only its creator decides what it owns.
+            # A detached node is therefore reused as it is and stays detached,
+            # hence unavailable, until its creator returns or it is deleted.
             state = file.get_state()
             if state == FileState.VOLATILE:
                 raise GraphError(f"Input is volatile: {path}")
@@ -1575,7 +1600,7 @@ class Workflow(Trellis):
         )
         if not new_relation and require_new_edge:
             raise GraphError(f"Supplying file already exists: {path}")
-        return file, state, new_relation
+        return file, state, detached, new_relation
 
     def _supply_files(
         self,
@@ -1619,16 +1644,17 @@ class Workflow(Trellis):
         This is unreachable in practice because callers already dedupe `paths`.
         """
         resolved = [self._resolve_supply_file(step, path, require_new_edge) for path in paths]
-        new_file_is = [file.i for file, _, new_relation in resolved if new_relation]
+        new_file_is = [file.i for file, _, _, new_relation in resolved if new_relation]
         if len(new_file_is) > 0:
             step.check_sources_acyclic(new_file_is)
         return [
             SupplyInfo(
                 file,
                 state,
+                detached,
                 new_idep=(step.add_source(file, skip_cycle_check=True) if new_relation else None),
             )
-            for file, state, new_relation in resolved
+            for file, state, detached, new_relation in resolved
         ]
 
     def _declare_file(self, creator: Node, path: str, file_state: FileState) -> File:

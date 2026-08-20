@@ -278,6 +278,7 @@ EXAMPLES = [
     "subdir",
     "subdir_import",
     "subprocess_output",
+    "supply_detached_output",
     "translate_external",
     "undeclared_detached",
     "wait_first",

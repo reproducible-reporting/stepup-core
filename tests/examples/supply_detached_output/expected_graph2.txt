@@ -1,0 +1,57 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:subplan.py
+             product   step:./subplan.py
+             product   step:cat out.txt > used2.txt
+
+file:subplan.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./subplan.py
+
+file:out.txt
+               state = BUILT
+             creator   step:echo hello > out.txt
+              source   step:echo hello > out.txt
+                sink   step:cat out.txt > used2.txt
+
+step:./subplan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./plan.py
+              source   file:subplan.py
+             product   step:echo hello > out.txt
+
+step:echo hello > out.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./subplan.py
+             product   file:out.txt
+                sink   file:out.txt
+
+step:cat out.txt > used2.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:out.txt
+             product   file:used2.txt
+                sink   file:used2.txt
+
+file:used2.txt
+               state = BUILT
+             creator   step:cat out.txt > used2.txt
+              source   step:cat out.txt > used2.txt

@@ -1,0 +1,15 @@
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./subplan.py
+ SUCCESS │ ./subplan.py
+   START │ echo hello > out.txt
+ SUCCESS │ echo hello > out.txt
+   START │ cat out.txt > used1.txt
+ SUCCESS │ cat out.txt > used1.txt
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
+DIRECTOR │ See you!

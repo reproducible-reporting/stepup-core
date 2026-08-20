@@ -140,7 +140,9 @@ async def test_detached_input(wfp: Workflow):
     assert len(summary.inputs) == 1
     row = summary.inputs[0]
     assert row.path == "gen.txt"
-    assert row.state == FileState.UNDECLARED
+    # Supplying the file to the consumer leaves it with the detached producer,
+    # so it keeps the PLANNED state of an output that was never built.
+    assert row.state == FileState.PLANNED
     assert row.detached is True
     assert row.nblocked == 1
 

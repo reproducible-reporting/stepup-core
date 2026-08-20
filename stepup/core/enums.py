@@ -269,7 +269,8 @@ class Availability(IntEnum):
     """
 
     UNAVAILABLE = 61
-    """The file is UNDECLARED, PLANNED, OUTDATED or MISSING, so it certainly cannot be used.
+    """The file certainly cannot be used, because it is detached
+    or because it is UNDECLARED, PLANNED, OUTDATED or MISSING.
 
     A MISSING file only becomes available again at a build boundary
     (watch phase or restart), never within the current build.

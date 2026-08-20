@@ -4099,6 +4099,26 @@ async def test_supply_file_clears_stale_build_hash_on_lazy_adoption(
         assert foo.get_hash().is_unknown
 
 
+async def test_supply_file_keeps_detached_output_with_its_creator(wfp: Workflow):
+    """Supplying a detached output must leave it with the step that creates it.
+
+    Only a creator decides what it owns.
+    A detached creator may still be recycled, and it can only get its output back
+    when supplying that output as an input has not taken it away in the meantime.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        prog, foo = _build_and_leave_behind(wfp, FileState.BUILT)
+
+        wfp.define_step(plan, "other", inp_paths=["data/foo.txt"])
+
+        assert foo.is_detached()
+        assert foo.creator().i == prog.i
+        assert foo.get_state() == FileState.BUILT
+        assert [record.path for record in prog.out_paths()] == ["data/foo.txt"]
+        assert [node.i for node in prog.products()] == [foo.i]
+
+
 async def test_planned_redeclare_unaffected_by_stale_build_hash_clear(wfp: Workflow):
     """Redeclaring an already-PLANNED file as PLANNED again must not be touched by the new clause.
 

@@ -864,6 +864,13 @@ more than four times as many unit tests and over 1.5 times as many integration e
   This could be observed after an incomplete build (or one run with `--no-clean`),
   which leaves detached steps in the graph for the next build to pick up.
 
+- Fix a bug that could permanently orphan an output file
+  and leave all the steps consuming it pending.
+  When a step declared a file as its input while the step producing that file was detached,
+  e.g. because the plan declaring the producer had not been rerun yet,
+  the file was taken away from its producer instead of being left alone.
+  Supplying a file to a step no longer changes which step declares that file.
+
 #### Terminal Output and Inspection
 
 - The pages of `stepup browse` escape the labels of the nodes,
