@@ -13,7 +13,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-## [4.0.0rc12][] - 2026-08-19 {: #v4.0.0rc12 }
+## [4.0.0rc13][] - 2026-08-21 {: #v4.0.0rc13 }
 
 StepUp 4 is a major redesign to make workflows more expressive to write,
 cheaper to run and more transparent to debug and analyze:
@@ -57,7 +57,7 @@ Two architectural shifts underpin these improvements.
 
 A [migration guide](migration/from_3x_to_40.md) shows the way up from StepUp 3,
 
-(This is release candidate 12 of the upcoming StepUp Core 4.0 release.
+(This is release candidate 13 of the upcoming StepUp Core 4.0 release.
 Note that all changes of the release candidates are combined below.
 This section is treated as a draft of the changelog for the final 4.0.0 release,
 and will be updated with any further changes before the final release.)
@@ -1649,7 +1649,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
-[4.0.0rc12]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc12
+[4.0.0rc13]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc13
 [3.2.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3
 [3.2.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.2
 [3.2.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.1
