@@ -45,25 +45,21 @@ logger = logging.getLogger(__name__)
 
 
 # Enforce Workflow's creator-kind and dependency-kind rules at the database level,
-# as a backstop against a bug that writes directly to node or dependency tables
-# (bypassing Trellis.create()/Node.add_source()/Node.reattach()).
+# as a backstop against a bug that writes directly to the node or dependency tables,
+# bypassing the graph-mutation API that is normally responsible for upholding these rules.
 # These are the only Workflow-level invariants that don't belong to a single node kind's own
 # satellite schema, so they live here instead.
-#
-# Which kinds may create a node depends on the node's own kind:
-# - root: file, step, root
-# - file: (cannot create nodes)
-# - step: file, step and static_tree
-# - static_tree: file
-# A NULL creator (detached-on-creation) is always allowed and is not covered by these triggers.
-# The root node is exempt (kind = 'root' in the WHEN clause):
-# it is inserted once with creator = 1 (self) directly in SQL (Trellis.create()).
-#
-# `register_static_tree`'s file <- st hand-over (`UPDATE node SET creator = ...`)
-# is another deliberate direct-SQL write that bypasses `Trellis.create()`/`Node.reattach()`;
-# it relies on `node_check_creator_kind_upd` below
-# to keep enforcing this same invariant on that path.
 WORKFLOW_SCHEMA = f"""
+-- Which kinds may create a node depends on the node's own kind:
+-- - root: file, step, root
+-- - file: (cannot create nodes)
+-- - step: file, step and static_tree
+-- - static_tree: file
+-- A NULL creator (detached-on-creation) is always allowed and is not covered by these triggers.
+-- The root node is exempt (kind = 'root' in the WHEN clause):
+-- it is inserted once with creator = 1 (self) directly in SQL, outside the normal creation path.
+
+-- Enforce the creator-kind rules on insert
 CREATE TRIGGER IF NOT EXISTS node_check_creator_kind_ins AFTER INSERT ON node
 WHEN NEW.creator IS NOT NULL AND NEW.kind != '{Root.kind()}'
 BEGIN
@@ -80,6 +76,8 @@ BEGIN
         );
 END;
 
+-- Enforce the creator-kind rules on update,
+-- to catch a recycle that changes the kind of an existing node.
 CREATE TRIGGER IF NOT EXISTS node_check_creator_kind_upd AFTER UPDATE OF creator ON node
 WHEN NEW.creator IS NOT NULL AND NEW.kind != '{Root.kind()}'
 BEGIN
@@ -96,7 +94,10 @@ BEGIN
         );
 END;
 
--- A dependency edge's source/sink kinds must be one of file -> step, step -> file, st -> file.
+-- A dependency edge's source/sink kinds must be one of:
+-- - file -> step
+-- - step -> file
+-- - static_tree -> file
 -- This also rules out self-loops,
 -- since source and sink always have different kinds under this rule.
 -- Edges are only ever inserted or bulk-deleted, never updated in place,
@@ -296,7 +297,7 @@ def _relevant_states(during_build: bool) -> frozenset[FileState]:
 #
 # Error message formatting
 #
-# Everything from here to `SupplyInfo` is pure text formatting:
+# Everything from here to `_SupplyInfo` is pure text formatting:
 # no database access and no `self`.
 # Its job is to turn a rejected declaration into a message a plan author can act on,
 # and to do so identically whichever of the two colliding declarations arrives second.
@@ -708,20 +709,19 @@ def _raise_if_out_and_vol_overlap(
 
 
 @attrs.define
-class SupplyInfo:
-    """Result of the `_supply_files` method, for internal use only."""
+class _SupplyInfo:
+    """Result of the `_supply_files` method.
+
+    All fields are a snapshot of the database at the moment the file was supplied.
+    They are not kept in sync with later changes to the graph,
+    so a `_SupplyInfo` is meant to be consumed right away and not stored.
+    """
 
     file: File = attrs.field()
     """A new or existing file."""
 
     state: FileState = attrs.field()
-    """The state of the file when it was supplied.
-
-    This remains valid for as long as the caller holds the `SupplyInfo`,
-    because inserting a dependency edge does not affect the file state.
-    (A VOLATILE file never reaches this point: `_resolve_supply_file` raises `GraphError`
-    for it before a `SupplyInfo` is constructed.)
-    """
+    """The state of the file when it was supplied."""
 
     detached: bool = attrs.field()
     """Whether the file was detached when it was supplied.
@@ -815,10 +815,9 @@ class Workflow(Trellis):
     and VOLATILE file nodes carry `None`, meaning the file is removed whatever its content.
 
     Entries are keyed by path, not by node,
-    so they are only meaningful for as long as the graph does not change underneath them:
-    a path may acquire a new node, whose file must not be deleted.
-    Whatever fills this dict must therefore belong to the same cleanup pass as
-    `remove_deletable_files`, which deletes the files and empties the dict again.
+    so they are only meaningful for as long as the graph does not change underneath them.
+    Filling this dict and acting upon it should therefore be done only at the end of a build,
+    not while the graph is still being modified.
     """
 
     #
@@ -1155,10 +1154,7 @@ class Workflow(Trellis):
         """Return all steps with the given state.
 
         The result is a list instead of a lazy cursor,
-        because callers routinely change `state` while working through it.
-        SQLite leaves it undefined whether a running query observes rows modified underneath it,
-        and `state` is indexed (`step_state` in `STEP_SCHEMA`),
-        so a row updated mid-scan could be skipped or visited twice.
+        so it is safe to iterate over it while mutating the graph (e.g. marking steps pending).
         """
         sql = (
             "SELECT i, label FROM node JOIN step ON node.i = step.node "
@@ -1448,8 +1444,6 @@ class Workflow(Trellis):
         """Check an intended declaration of `path` against the claim that already exists.
 
         This is the guard against two declarations claiming the same file.
-        It sits at the declaration entry points rather than in `_declare_file`,
-        so that a claim is looked up only once.
 
         Parameters
         ----------
@@ -1528,9 +1522,8 @@ class Workflow(Trellis):
     ) -> tuple[File, FileState, bool, bool]:
         """Find or create the file for a path and resolve its relation to the step.
 
-        This performs everything `_supply_files` needs except inserting the
-        dependency edge, so the cyclic-dependency check can be batched
-        across multiple paths by the caller.
+        The dependency edge is not inserted yet,
+        so that the cyclic-dependency check can be batched over multiple paths.
 
         Parameters
         ----------
@@ -1547,9 +1540,9 @@ class Workflow(Trellis):
         file
             The existing or newly created file node.
         state
-            See `SupplyInfo.state`.
+            The FileState of the file node.
         detached
-            See `SupplyInfo.detached`.
+            Whether the file node is detached.
         new_relation
             `True` when the (file, step) dependency edge does not exist yet
             and still needs to be inserted by the caller.
@@ -1607,7 +1600,7 @@ class Workflow(Trellis):
         step: Step,
         paths: Collection[str],
         require_new_edge: bool = True,
-    ) -> list[SupplyInfo]:
+    ) -> list[_SupplyInfo]:
         """Find or create files for several paths and make them sources of the step.
 
         Parameters
@@ -1616,8 +1609,9 @@ class Workflow(Trellis):
             The step to supply to.
         paths
             The paths of the files that should supply to the step.
+            Duplicates are not allowed.
         require_new_edge
-            When `True` none of the (file, step) dependency edges may exist yet.
+            When `True` none of the (file, step) dependency edges is allowed to exist already.
             If one does, a `GraphError` is raised.
 
         Returns
@@ -1638,17 +1632,13 @@ class Workflow(Trellis):
         Since `step` is the sink of every new edge in this batch,
         the cyclic-dependency check is performed once for the whole batch
         (via `Node.check_sources_acyclic`) instead of once per path.
-        A duplicate in `paths` is caught by `add_source`,
-        as a `GraphError("Relation already exists")`
-        rather than as `GraphError("Supplying file already exists")`.
-        This is unreachable in practice because callers already dedupe `paths`.
         """
         resolved = [self._resolve_supply_file(step, path, require_new_edge) for path in paths]
         new_file_is = [file.i for file, _, _, new_relation in resolved if new_relation]
         if len(new_file_is) > 0:
             step.check_sources_acyclic(new_file_is)
         return [
-            SupplyInfo(
+            _SupplyInfo(
                 file,
                 state,
                 detached,
@@ -1683,8 +1673,9 @@ class Workflow(Trellis):
 
         Notes
         -----
-        Whether another declaration already claims `path` is checked by the caller
-        (`_check_declaration`), not here.
+        This does not check whether another declaration already claims `path`.
+        That check requires the same claim lookup as deciding whether the declaration is new,
+        so it is not repeated here.
         """
         # Consistency checks before creating the file.
         if file_state not in _DECLARABLE_STATES:
@@ -2525,9 +2516,9 @@ class Workflow(Trellis):
     def relevant_paths_under(self, directory: str, *, during_build: bool = False) -> Iterator[str]:
         """Iterate over all paths under `directory` whose disappearance is relevant.
 
-        Called when a directory itself is deleted, so every path below it is gone at once.
-        Both file nodes and the recorded matches of glob patterns are considered: a
-        match has no node of its own, so the pattern is the only place it is recorded.
+        Both file nodes and the recorded matches of glob patterns are considered:
+        a match has no node of its own, so the pattern is the only place it is recorded.
+        A path that occurs in both is yielded only once.
 
         Parameters
         ----------
