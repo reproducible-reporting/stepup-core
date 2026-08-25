@@ -2,6 +2,7 @@
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
+
 # StepUp Return Codes
 
 The StepUp return code indicates the status of the (last) build phase.

@@ -38,11 +38,10 @@ repos:
     - id: ruff-format
     - id: ruff-check
       args: ["--fix", "--show-fixes"]
-- repo: https://github.com/DavidAnson/markdownlint-cli2
-  rev: v0.23.2
+- repo: https://github.com/jackdewinter/pymarkdown
+  rev: v0.9.18
   hooks:
-  - id: markdownlint-cli2
-    require_serial: true
+  - id: pymarkdown
 - repo: https://github.com/python-jsonschema/check-jsonschema
   rev: 0.38.0
   hooks:

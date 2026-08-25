@@ -2,6 +2,7 @@
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
+
 # Documentation
 
 Note that docstrings are written in Markdown, not reStructuredText!

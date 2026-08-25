@@ -128,3 +128,27 @@ packages = ["stepup.core"]
 [tool.setuptools_scm]
 version_scheme = "post-release"
 local_scheme = "no-local-version"
+
+[tool.pymarkdown]
+# Report unknown or mistyped settings instead of silently ignoring them.
+mode.strict-config = true
+# Skill and agent definitions carry YAML front matter,
+# which pymarkdown parses as a setext heading unless this extension is on.
+extensions.front-matter.enabled = true
+# Rule md007 (ul-indent) expects a list nested in an ordered list item
+# to be indented to the parent's content column, i.e. three spaces for a `1. ` item.
+# Python-Markdown, and therefore MkDocs, only nests such a list when it is indented four spaces.
+plugins.md007.enabled = false
+plugins.md013.line_length = 100
+plugins.md013.heading_line_length = 100
+plugins.md013.code_block_line_length = 100
+# The changelog repeats headings such as "Fixed" under every release,
+# which is fine as long as they do not repeat under the same release.
+plugins.md024.siblings_only = true
+# The default list does not include `script`, which the documentation uses to embed asciinema.
+plugins.md033.allowed_elements = "!--,![CDATA[,!DOCTYPE,script"
+# Rule md041 (first-line-heading) counts the SPDX header in an HTML comment
+# as content preceding the first heading.
+plugins.md041.enabled = false
+# The documentation mixes fenced and indented code blocks on purpose.
+plugins.md046.enabled = false

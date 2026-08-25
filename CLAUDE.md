@@ -2,6 +2,7 @@
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code)

@@ -1,4 +1,5 @@
 # Migration from StepUp 3.X to 4.0
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

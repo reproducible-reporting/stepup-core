@@ -1,9 +1,9 @@
 # Changelog
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-<!-- markdownlint-disable no-duplicate-heading -->
 
 All notable changes to StepUp Core will be documented on this page.
 
