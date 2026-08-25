@@ -49,6 +49,7 @@ from stepup.core.workflow import (
     _reject_impossible,
     _static_tree_file_message,
     _static_tree_product_message,
+    mark_dir_to_be_deleted,
 )
 
 
@@ -2094,6 +2095,30 @@ async def test_directory_usage(wfp: Workflow):
         assert events == []
 
 
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        ("sub", ["sub/"]),
+        ("sub/", ["sub/"]),
+        ("sub/deep/", ["sub/deep/"]),
+        ("../foo", ["../foo/"]),
+        ("../../foo/bar", ["../../foo/bar/"]),
+        # The project root and everything above it belong to nobody in the workflow.
+        ("", []),
+        (".", []),
+        ("./", []),
+        ("..", []),
+        ("../", []),
+        ("../..", []),
+        ("sub/../..", []),
+    ],
+)
+def test_mark_dir_to_be_deleted(path: str, expected: list[str]):
+    to_be_deleted = {}
+    mark_dir_to_be_deleted(to_be_deleted, path)
+    assert list(to_be_deleted) == expected
+
+
 async def test_to_be_deleted(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -2111,10 +2136,8 @@ async def test_to_be_deleted(wfp: Workflow):
         wfp.update_file_hash("sub/foo", foo_file_hash, cause=HashUpdateCause.SUCCEEDED)
         blub1.mark_completed(StepHash(b"aaa", None, b"zzz", None), False)
         plan.detach()
-        assert wfp.to_be_deleted == {}
         assert wfp.find_and_detached(Step, "./plan.py") == (plan, True)
-        wfp.delete_detached()
-        assert wfp.to_be_deleted == {
+        assert wfp.delete_detached() == {
             "built": built_file_hash,
             "gone": gone_file_hash,
             "volatile": None,

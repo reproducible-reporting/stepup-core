@@ -317,12 +317,17 @@ and rescans its contents, so nothing created in the gap is missed.
 
 ### Removal
 
-`Workflow.to_be_deleted` holds files and directories alike,
+The deletion queue holds files and directories alike,
 distinguished by a trailing separator on the key.
-`File.before_delete` marks the file's parent directory,
-`Step.before_delete` marks the step's working directory,
-and `revert_optional_steps` marks the parents of the outputs it flags,
-whose nodes stay in the graph and therefore never reach `before_delete`.
+`Workflow.delete_detached` opens one for the duration of its own call
+(reachable as `Workflow.to_be_deleted`, which raises at any other moment)
+and returns it, so no queue outlives the cleanup pass that fills it.
+`File.before_delete` marks the file's parent directory
+and `Step.before_delete` marks the step's working directory.
+`revert_optional_steps` builds a queue of its own and returns it,
+because the nodes of the outputs it flags stay in the graph
+and therefore never reach `before_delete`.
+`Builder.finalize` merges the two queues and hands them to `remove_deletable_files`.
 A directory is marked whatever the state of the file that named it,
 which is what catches an output the user removed by hand:
 the file itself is then no longer in `to_be_deleted`, but its directory still is.
@@ -332,6 +337,9 @@ the file itself is then no longer in `to_be_deleted`, but its directory still is
 and then walks up to the root doing the same.
 Emptiness is the only safeguard here,
 so marking a directory too eagerly is harmless by construction.
+The one exception is the project root and its ancestors,
+which `mark_dir_to_be_deleted` refuses to queue and the upward walk stops at:
+a step may build outside the root, but the directories above it are not StepUp's to remove.
 
 ## File Path Considerations
 

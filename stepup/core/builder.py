@@ -225,10 +225,10 @@ class Builder:
         elif not self.do_remove_outdated:
             await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean)")
         else:
-            await revert_optional_steps(self.workflow, self.reporter)
+            to_be_deleted = await revert_optional_steps(self.workflow, self.reporter)
             async with self.db:
-                self.workflow.delete_detached()
-            await remove_deletable_files(self.workflow, self.reporter)
+                to_be_deleted |= self.workflow.delete_detached()
+            await remove_deletable_files(to_be_deleted, self.reporter)
         # Step durations and tail times are derived from the settled graph,
         # so this runs after delete_detached().
         await self.scheduler.build_completed()

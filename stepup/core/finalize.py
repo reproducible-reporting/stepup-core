@@ -30,7 +30,7 @@ from .pending import PendingSummary, analyze_pending
 from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
-from .workflow import GlobViolation, Workflow
+from .workflow import GlobViolation, Workflow, mark_dir_to_be_deleted
 
 __all__ = ("remove_deletable_files", "report_unbuilt", "revert_optional_steps")
 
@@ -404,11 +404,18 @@ def _drop_optional_tables(db: DBSession):
         db.execute(f"DROP TABLE IF EXISTS {name}")
 
 
-async def revert_optional_steps(workflow: Workflow, reporter: ReporterClient):
+async def revert_optional_steps(
+    workflow: Workflow, reporter: ReporterClient
+) -> dict[str, FileHash | None]:
     """Revert optional steps that have been executed earlier back to PENDING.
 
-    Their outputs are reset in the database and their paths are queued
-    in `Workflow.to_be_deleted`, so `remove_deletable_files` takes them off disk.
+    Their outputs are reset in the database and their paths are returned,
+    so `remove_deletable_files` can take them off disk.
+
+    Returns
+    -------
+    to_be_deleted
+        The paths of the reset outputs, and their parent directories.
     """
     db = workflow.db
     async with db:
@@ -429,20 +436,21 @@ async def revert_optional_steps(workflow: Workflow, reporter: ReporterClient):
             # Mark the files for deletion and reset their state in the database.
             # Their nodes stay in the graph, so `File.before_delete` does not run for them
             # and their directories have to be marked here.
-            workflow.to_be_deleted.update(to_be_deleted)
-            for path in to_be_deleted:
-                workflow.mark_dir_to_be_deleted(Path(path).parent)
+            for path in list(to_be_deleted):
+                mark_dir_to_be_deleted(to_be_deleted, Path(path).parent)
             db.execute(UPDATE_OPTIONAL_TO_BE_DELETED)
         # Drop in the end: the temp tables are only needed for the duration of this call.
         _drop_optional_tables(db)
     # Report the reverted steps and the files that are marked for deletion.
     if nstep > 0:
         await reporter("WARNING", f"Reverted {nstep} optional step(s) to PENDING.")
-    if len(to_be_deleted) > 0:
+    nfile = sum(1 for path in to_be_deleted if not path.endswith(os.sep))
+    if nfile > 0:
         await reporter(
             "WARNING",
-            f"Marked {len(to_be_deleted)} output file(s) of reverted step(s) for deletion.",
+            f"Marked {nfile} output file(s) of reverted step(s) for deletion.",
         )
+    return to_be_deleted
 
 
 #
@@ -450,22 +458,31 @@ async def revert_optional_steps(workflow: Workflow, reporter: ReporterClient):
 #
 
 
-async def remove_deletable_files(workflow: Workflow, reporter: ReporterClient):
-    """Remove the files queued in `Workflow.to_be_deleted`, and the directories left empty.
+async def remove_deletable_files(
+    to_be_deleted: dict[str, FileHash | None], reporter: ReporterClient
+):
+    """Remove the files in `to_be_deleted`, and the directories left empty.
 
     The database needs no update here, because every queued path is settled already:
     a path queued by `File.before_delete` has lost its node in `Trellis.delete_detached`,
     taking the row in the file table with it,
     and a path queued by `revert_optional_steps` had its row reset there.
+
+    Parameters
+    ----------
+    to_be_deleted
+        The deletion queue, see `Workflow.to_be_deleted` for its layout.
+    reporter
+        Every removed path is reported to this reporter.
     """
-    file_paths = [path for path in workflow.to_be_deleted if not path.endswith(os.sep)]
+    file_paths = [path for path in to_be_deleted if not path.endswith(os.sep)]
     await reporter(
         "DIRECTOR",
         f"Trying to remove {len(file_paths)} deletable file(s) and empty director(y|ies)",
     )
     # Remove the files from the file system.
     for file_path in sorted(file_paths, reverse=True):
-        old_hash = workflow.to_be_deleted[file_path]
+        old_hash = to_be_deleted[file_path]
         path = Path(file_path)
         if old_hash is not None:
             try:
@@ -481,9 +498,8 @@ async def remove_deletable_files(workflow: Workflow, reporter: ReporterClient):
 
     # Directories come after the files, so a directory that just lost its last file is empty
     # by the time it is considered for removal.
-    dirs = {Path(path).normpath() for path in workflow.to_be_deleted if path.endswith(os.sep)}
+    dirs = {Path(path).normpath() for path in to_be_deleted if path.endswith(os.sep)}
     await _prune_empty_dirs(dirs, reporter)
-    workflow.to_be_deleted.clear()
 
 
 async def _prune_empty_dirs(dirs: set[Path], reporter: ReporterClient):

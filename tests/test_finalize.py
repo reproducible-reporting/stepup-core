@@ -34,9 +34,8 @@ async def test_remove_deletable_files_unhashable(wfp: Workflow, tmpdir):
     """
     with contextlib.chdir(tmpdir):
         Path("out.txt").mkdir()
-        wfp.to_be_deleted["out.txt"] = fake_hash("out.txt")
+        to_be_deleted = {"out.txt": fake_hash("out.txt")}
         client = RecordingClient()
-        await remove_deletable_files(wfp, ReporterClient(client))
+        await remove_deletable_files(to_be_deleted, ReporterClient(client))
         assert Path("out.txt").is_dir()
-        assert wfp.to_be_deleted == {}
         assert ("WARNING", "Not removing out.txt: it cannot be hashed.") in client.reports

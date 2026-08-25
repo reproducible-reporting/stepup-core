@@ -39,7 +39,7 @@ from .step import RESERVED_ENV_VARS, Step
 from .trellis import Node, Root, Trellis
 from .utils import is_debug
 
-__all__ = ("GlobViolation", "Workflow")
+__all__ = ("GlobViolation", "Workflow", "mark_dir_to_be_deleted")
 
 
 logger = logging.getLogger(__name__)
@@ -860,6 +860,30 @@ class _SupplyInfo:
         return Availability.UNAVAILABLE
 
 
+def mark_dir_to_be_deleted(to_be_deleted: dict[str, FileHash | None], path: str):
+    """Mark a directory as a candidate for removal in the next cleanup pass.
+
+    The directory is only removed if it is empty by then,
+    so marking one that other files still live in is harmless.
+    The project root and its ancestors are never marked:
+    StepUp may build outside the root, but it never owns the directories above it.
+
+    Parameters
+    ----------
+    to_be_deleted
+        The deletion queue to add the directory to.
+    path
+        The directory to mark.
+    """
+    path = Path(path).normpath()
+    # `normpath` collapses everything it can, so any `..` left is a leading component.
+    # A path made of nothing but `..` therefore points at an ancestor of the project root,
+    # just like `.` points at the root itself.
+    if path == "." or set(path.split(os.sep)) == {os.pardir}:
+        return
+    to_be_deleted[path + os.sep] = None
+
+
 @attrs.define(frozen=True, order=True)
 class GlobViolation:
     """A recorded glob match that no static declaration justifies."""
@@ -918,22 +942,38 @@ class Workflow(Trellis):
     An empty set (the default) means no directory targets were given.
     """
 
-    to_be_deleted: dict[str, FileHash | None] = attrs.field(init=False, factory=dict)
-    """Files and directories that can be deleted.
+    _to_be_deleted: dict[str, FileHash | None] | None = attrs.field(init=False, default=None)
+    """The deletion queue being filled by an ongoing `delete_detached` call, if any.
 
-    Maps a path to its file hash.
-    A key with a trailing separator is a directory,
-    which is only removed when it turns out to be empty, and its hash is always `None`.
-    Use `mark_dir_to_be_deleted` to add one.
-    A key without a trailing separator is a file:
-    BUILT/OUTDATED file nodes carry their file hash
-    and VOLATILE file nodes carry `None`, meaning the file is removed whatever its content.
-
-    Entries are keyed by path, not by node,
-    so they are only meaningful for as long as the graph does not change underneath them.
-    Filling this dict and acting upon it should therefore be done only at the end of a build,
-    not while the graph is still being modified.
+    This is `None` outside `delete_detached`, so a `Node.before_delete` implementation
+    that runs at any other moment fails loudly instead of queueing a path
+    that nothing will ever act upon.
+    See `to_be_deleted` for the layout of the queue.
     """
+
+    @property
+    def to_be_deleted(self) -> dict[str, FileHash | None]:
+        """The deletion queue of the ongoing `delete_detached` call.
+
+        Maps a path to its file hash.
+        A key with a trailing separator is a directory,
+        which is only removed when it turns out to be empty, and its hash is always `None`.
+        Use `mark_dir_to_be_deleted` to add one.
+        A key without a trailing separator is a file:
+        BUILT/OUTDATED file nodes carry their file hash
+        and VOLATILE file nodes carry `None`, meaning the file is removed whatever its content.
+
+        Entries are keyed by path, not by node,
+        so they are only meaningful for as long as the graph does not change underneath them.
+
+        Raises
+        ------
+        AssertionError
+            When there is no ongoing `delete_detached` call.
+        """
+        if self._to_be_deleted is None:
+            raise AssertionError("No deletion queue outside Workflow.delete_detached().")
+        return self._to_be_deleted
 
     #
     # Configuration and derived properties
@@ -1004,20 +1044,33 @@ class Workflow(Trellis):
         for step in to_mark_pending:
             self.mark_step_pending(step)
 
-    def delete_detached(self):
+    def delete_detached(self) -> dict[str, FileHash | None]:
         """Delete all detached nodes that can be removed safely.
 
         This includes a cleanup of static tree files that are no longer used,
         after which the regular `Trellis.delete_detached()` is called
         to remove any other detached nodes.
+
+        Returns
+        -------
+        to_be_deleted
+            The paths queued by the `Node.before_delete` implementations of the deleted nodes.
+            See `to_be_deleted` for the layout of this queue.
         """
-        # Get rid of static tree files that are no longer used.
-        for st in self.nodes(StaticTree):
-            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
-            for file in files:
-                if not any(file.sinks()):
-                    file.detach()
-        super().delete_detached()
+        if self._to_be_deleted is not None:
+            raise AssertionError("Workflow.delete_detached() cannot be nested.")
+        self._to_be_deleted = {}
+        try:
+            # Get rid of static tree files that are no longer used.
+            for st in self.nodes(StaticTree):
+                files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
+                for file in files:
+                    if not any(file.sinks()):
+                        file.detach()
+            super().delete_detached()
+            return self._to_be_deleted
+        finally:
+            self._to_be_deleted = None
 
     def initialize_boot(self) -> bool:
         """Initialize the (new) boot script.
@@ -2718,12 +2771,5 @@ class Workflow(Trellis):
             self.watch_dir(path)
 
     def mark_dir_to_be_deleted(self, path: str):
-        """Mark a directory as a candidate for removal in the next cleanup pass.
-
-        The directory is only removed if it is empty by then,
-        so marking one that other files still live in is harmless.
-        The root directory is never marked.
-        """
-        path = Path(path).normpath()
-        if path != ".":
-            self.to_be_deleted[path + os.sep] = None
+        """Mark a directory as a candidate for removal in the ongoing `delete_detached` call."""
+        mark_dir_to_be_deleted(self.to_be_deleted, path)

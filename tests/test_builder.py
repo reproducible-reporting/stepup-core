@@ -112,9 +112,8 @@ async def test_finalize_reverts_optional_only_when_cleaning(
     """`revert_optional_steps` must happen if and only if the outdated outputs are removed too.
 
     Reverting resets the outputs of the optional step in the database and queues their paths
-    in `to_be_deleted`. Without the removal that follows it, the database would claim the
-    outputs are gone while the files are still there, and the queued paths would survive into
-    a later build phase, which can no longer tell whether they still refer to the same nodes.
+    for deletion. Without the removal that follows it, the database would claim the
+    outputs are gone while the files are still there.
     """
     with contextlib.chdir(tmpdir):
         for path in "data.txt", "vol.log":
@@ -144,8 +143,6 @@ async def test_finalize_reverts_optional_only_when_cleaning(
         builder = _make_builder(scheduler, wfp, do_remove_outdated=do_remove_outdated)
         await builder.finalize()
 
-        # Either way, nothing may be left queued for a later build phase to delete blindly.
-        assert wfp.to_be_deleted == {}
         async with wfp.db:
             if do_remove_outdated:
                 assert foo.get_state() == StepState.PENDING
