@@ -503,8 +503,7 @@ def info():
     return {"inp": "config.json", "out": ["cos.npy", "sin.npy"]}
 
 
-def run(inp, out):
-    ...
+def run(inp, out): ...
 
 
 if __name__ == "__main__":
@@ -531,8 +530,7 @@ def plan():
     call("./generate.py", "run", inp="config.json", out=["cos.npy", "sin.npy"])
 
 
-def run(inp, out):
-    ...
+def run(inp, out): ...
 
 
 if __name__ == "__main__":

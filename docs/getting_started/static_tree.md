@@ -75,7 +75,7 @@ as static, which is precisely what a static tree does lazily and much more effic
 Declare the tree instead:
 
 ```python
-static("data/")             # instead of static("data/**")
+static("data/")  # instead of static("data/**")
 ```
 
 A `**` earlier in the pattern, e.g. `static("data/**/*.txt")`, is still accepted:

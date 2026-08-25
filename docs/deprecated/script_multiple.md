@@ -26,22 +26,26 @@ A Python script using the script protocol for multiple cases has the following s
 #!/usr/bin/env python3
 from stepup.core.script import driver
 
+
 def cases():
     yield 1
     yield 2
 
+
 CASE_FMT = "foo{}"
+
 
 def case_info(case: int):
     return {
-        "inp": ..., # a single input path or a list of input paths
-        "out": ..., # a single output path or a list of output paths
-        "static": ..., # declare a static file or a list of static files
+        "inp": ...,  # a single input path or a list of input paths
+        "out": ...,  # a single output path or a list of output paths
+        "static": ...,  # declare a static file or a list of static files
         "just_any": "argument that you want to add",
     }
 
-def run(inp, out, just_any):
-    ...
+
+def run(inp, out, just_any): ...
+
 
 if __name__ == "__main__":
     driver()
@@ -130,6 +134,7 @@ This produces the following figures:
     ```python
     def cases():
         from settings import airports
+
         yield from airports
     ```
 

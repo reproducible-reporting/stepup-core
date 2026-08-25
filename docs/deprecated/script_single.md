@@ -89,16 +89,18 @@ A Python script using the driver for a single case has the following structure.
 #!/usr/bin/env python3
 from stepup.core.script import driver
 
+
 def info():
     return {
-        "inp": ..., # a single input path or a list of input paths
-        "out": ..., # a single output path or a list of output paths
-        "static": ..., # declare a static file or a list of static files
+        "inp": ...,  # a single input path or a list of input paths
+        "out": ...,  # a single output path or a list of output paths
+        "static": ...,  # declare a static file or a list of static files
         "just_any": "argument that you want to add",
     }
 
-def run(inp, out, just_any):
-    ...
+
+def run(inp, out, just_any): ...
+
 
 if __name__ == "__main__":
     driver()

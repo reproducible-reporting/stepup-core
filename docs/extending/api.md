@@ -96,6 +96,7 @@ amending the current step's environment dependencies accordingly:
 ```python
 from stepup.core.api import subs_env_vars
 
+
 def my_api_function(path_inp, path_out):
     with subs_env_vars() as subs_env:
         su_path_inp = subs_env(path_inp)
@@ -136,6 +137,7 @@ For example, the following function wraps the `typst` command-line tool:
 ```python
 import shlex
 from stepup.core.extapi import run_subprocess
+
 
 def compile_typst(src, out, root):
     run_subprocess(shlex.join(["typst", "compile", "--root", root, src, out]))

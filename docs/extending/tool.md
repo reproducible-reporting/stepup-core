@@ -25,8 +25,8 @@ The examples below assume that you want to add a tool called `fancy` to the Step
     ```python
     import argparse
 
-    def fancy_tool(args: argparse.Namespace) -> None:
-        ...
+
+    def fancy_tool(args: argparse.Namespace) -> None: ...
     ```
 
     The `args` argument is a `Namespace` object that contains the command-line arguments
@@ -40,6 +40,7 @@ The examples below assume that you want to add a tool called `fancy` to the Step
 
     ```python
     from stepup.core.exceptions import ToolError
+
 
     def fancy_tool(args: argparse.Namespace) -> None:
         if not args.path.is_file():
@@ -61,6 +62,7 @@ The examples below assume that you want to add a tool called `fancy` to the Step
     import argparse
     from stepup.core.config_loader import ConfigLoader
     from stepup.core.tool import ToolFunc
+
 
     def fancy_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
         parser = subparsers.add_parser(

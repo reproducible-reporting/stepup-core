@@ -50,12 +50,14 @@ called via `call()`:
 #!/usr/bin/env python3
 from stepup.core.call import driver
 
+
 def main(inp, out):
     if len(out) != 1:
         raise ValueError("Exactly one output file must be specified")
     with open(out[0], "w") as f:
         for path in inp:
             f.write(open(path).read())
+
 
 if __name__ == "__main__":
     driver()
@@ -99,8 +101,7 @@ call("./work.py", "run", inp=["data.txt"], out=["result.txt"], threshold=0.5)
 from stepup.core.call import driver
 
 
-def run(inp: list[str], out: list[str], threshold: float):
-    ...
+def run(inp: list[str], out: list[str], threshold: float): ...
 
 
 if __name__ == "__main__":
@@ -118,9 +119,7 @@ they may become impractical to include inline on the command line.
 You can also use an `args_file` to keep the commands short and readable:
 
 ```python
-call("./work.py", "run",
-     inp=["data.txt"], out=["result.txt"],
-     args_file="run_args.json")
+call("./work.py", "run", inp=["data.txt"], out=["result.txt"], args_file="run_args.json")
 ```
 
 This writes the arguments to `run_args.json`

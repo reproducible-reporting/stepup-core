@@ -26,6 +26,7 @@ This can be paired with a [custom API function](api.md), e.g. in `your.package.a
 ```python
 from stepup.core.api import run
 
+
 def my_prog(arg1, arg2):
     run(f"my-prog {arg1} {arg2}")
 ```
