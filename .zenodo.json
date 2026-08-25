@@ -1,0 +1,51 @@
+{
+  "upload_type": "software",
+  "title": "StepUp Core",
+  "description": "StepUp is a dynamic build tool and a modern alternative to Make. Its defining feature is that workflow generation and execution are unified: a plan.py script defines the initial build steps. While the workflow is being executed, any step can add more steps and dependencies, based on the outputs built so far. This makes StepUp ideal for builds where the full set of dependencies cannot be determined in advance.",
+  "creators": [
+    {
+      "name": "Verstraelen, Toon",
+      "orcid": "0000-0001-9288-5608",
+      "affiliation": "Center for Molecular Modeling (CMM), Ghent University"
+    }
+  ],
+  "license": "lgpl-3.0-or-later",
+  "access_right": "open",
+  "communities": [
+    {
+      "identifier": "ugent"
+    }
+  ],
+  "language": "eng",
+  "keywords": [
+    "asyncio",
+    "build tool",
+    "build automation",
+    "workflow management",
+    "dynamic dependencies",
+    "incremental build",
+    "reproducible research",
+    "reproducibility",
+    "terminal application",
+    "workflow",
+    "POSIX",
+    "Python"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://reproducible-reporting.github.io/stepup-core",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-softwaredocumentation"
+    },
+    {
+      "identifier": "10.5281/zenodo.22024042",
+      "relation": "isRequiredBy",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "10.5281/zenodo.22024209",
+      "relation": "isRequiredBy",
+      "resource_type": "software"
+    }
+  ]
+}
