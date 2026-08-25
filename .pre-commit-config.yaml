@@ -33,13 +33,13 @@ repos:
   hooks:
     - id: remove-crlf
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.16.3
+  rev: v0.16.4
   hooks:
     - id: ruff-format
     - id: ruff-check
       args: ["--fix", "--show-fixes"]
 - repo: https://github.com/jackdewinter/pymarkdown
-  rev: v0.9.18
+  rev: v0.9.39
   hooks:
   - id: pymarkdown
 - repo: https://github.com/python-jsonschema/check-jsonschema
@@ -51,6 +51,6 @@ repos:
   hooks:
   - id: reuse
 - repo: https://github.com/reproducible-reporting/check-zenodo-json
-  rev: v1.1.0
+  rev: v1.1.1
   hooks:
   - id: check-zenodo-json
