@@ -47,5 +47,16 @@
       "relation": "isRequiredBy",
       "resource_type": "software"
     }
-  ]
+  ],
+  "custom": {
+    "code:codeRepository": "https://github.com/reproducible-reporting/stepup-core/",
+    "code:programmingLanguage": [
+      {
+        "id": "python"
+      }
+    ],
+    "code:developmentStatus": {
+      "id": "active"
+    }
+  }
 }
