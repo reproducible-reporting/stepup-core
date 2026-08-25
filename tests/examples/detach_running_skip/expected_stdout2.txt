@@ -1,6 +1,6 @@
  STARTUP │ Making failed steps pending
  STARTUP │ Watching 1 directory
- STARTUP │ Checking 2 file(s) for changes
+ STARTUP │ Checking 3 file(s) for changes
  UPDATED │ plan.py (digest 55d9fdaa ➜ 5ed5087b, size 281 ➜ 114)
    PHASE │ build
    START │ ./plan.py

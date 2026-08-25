@@ -1,5 +1,6 @@
  STARTUP │ Watching 1 directory
- STARTUP │ Checking 9 file(s) for changes
+ STARTUP │ Checking 10 file(s) for changes
+ UPDATED │ inp1.txt (digest UNKNOWN ➜ 87428fc5, size 0 ➜ 2, mode ?--------- ➜ -rw-r--r--)
  STARTUP │ Checking 2 nglob(s) for new or deleted matches
  UPDATED │ inp1.txt
    PHASE │ build

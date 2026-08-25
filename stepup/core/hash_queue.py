@@ -8,6 +8,18 @@
 since a hash job's runnability never depends on the workflow database.
 `gather_hashes()` is the direct-drain counterpart used outside a build phase
 (startup and watch phases), when `job_loop` is not running to pump the queue.
+
+A hash job computes a hash and resolves its future.
+A job carries no reason of its own, because it only reports what is on disk:
+every result is applied as a `HashUpdateCause.OBSERVED` update.
+Applying the result to the workflow is the responsibility of whoever awaits it,
+and an awaiter must apply before it reads file state.
+This lets an awaiter that has just awaited a whole batch of futures
+write them all in one transaction.
+
+When several awaiters share one job, `HashQueue.claim_apply()` picks the single one that applies.
+Only a build phase needs that arbitration: `gather_hashes()` runs when no other awaiter exists,
+so its callers apply the batch it returns without claiming anything.
 """
 
 import asyncio
@@ -17,7 +29,6 @@ from typing import TYPE_CHECKING
 
 import attrs
 
-from .enums import HashUpdateCause
 from .hash import FileHash
 from .reporter import PROGRESS_REFRESH_DELAY, ReporterClient
 from .run import ThreadWorker
@@ -44,12 +55,6 @@ class HashJob:
     old_hash: FileHash = attrs.field()
     """The previously known hash, or `FileHash.unknown()` if there was none."""
 
-    cause: HashUpdateCause = attrs.field()
-    """Why the hash is being (re)computed, which decides how the result is applied.
-
-    See `Workflow.update_file_hashes`.
-    """
-
     job_i: int = attrs.field()
     """Unique negative id of this job, from `HashQueue`'s own counter.
 
@@ -73,13 +78,21 @@ class HashJob:
     started: bool = attrs.field(init=False, default=False)
     """Set once a runner has claimed this job, through `HashQueue.claim()`."""
 
+    applied: bool = attrs.field(init=False, default=False)
+    """Set once a writer has claimed this job's result, through `HashQueue.claim_apply()`."""
+
     worker: ThreadWorker | None = attrs.field(init=False, default=None)
     """The in-flight hashing thread, if any, for `Executor.interrupt()`."""
 
 
 @attrs.define
 class HashQueue:
-    """Pending hash jobs plus a path-keyed dedup registry."""
+    """Pending hash jobs plus a path-keyed dedup registry.
+
+    Every hash job means the same thing, namely observe the file on disk,
+    so deduplicating by path is unambiguous:
+    concurrent submitters for the same path all want the same answer.
+    """
 
     wake: asyncio.Event = attrs.field()
     """Set whenever a job is submitted, so a parked `Builder.job_loop` wakes up.
@@ -101,7 +114,7 @@ class HashQueue:
     _job_counter: int = attrs.field(init=False, default=0)
     """Negative counter for `HashJob.job_i`."""
 
-    def submit(self, path: str, old_hash: FileHash, cause: HashUpdateCause) -> HashJob:
+    def submit(self, path: str, old_hash: FileHash) -> HashJob:
         """Enqueue a hash job for `path`, or return its already in-flight job.
 
         Parameters
@@ -111,10 +124,6 @@ class HashQueue:
         old_hash
             The previously known hash, used as the baseline for change detection.
             Ignored if a job for `path` is already in flight.
-        cause
-            Why the hash is being (re)computed.
-            Ignored if a job for `path` is already in flight:
-            concurrent submitters for the same path want the same answer.
 
         Returns
         -------
@@ -125,7 +134,7 @@ class HashQueue:
         if job is not None:
             return job
         self._job_counter -= 1
-        job = HashJob(path, old_hash, cause, self._job_counter)
+        job = HashJob(path, old_hash, self._job_counter)
         self.in_flight[path] = job
         job.future.add_done_callback(functools.partial(self._job_done, path))
         self.queue.put_nowait(job)
@@ -160,6 +169,33 @@ class HashQueue:
         if job.started:
             return False
         job.started = True
+        return True
+
+    def claim_apply(self, job: HashJob) -> bool:
+        """Atomically flip `job.applied` from `False` to `True`.
+
+        Several awaiters may share one job, while one observation may reach the graph only once.
+        A second application does not repeat the first,
+        because the state the first one settled on is no longer the state it started from:
+        for a static file it is dropped as unchanged,
+        while for an output it marks the creator pending all over again.
+        Neither is harmful today, so this is a guard rather than a fix,
+        which is also why nothing reports a lost claim.
+
+        Call this inside the same database transaction that writes the result.
+        A caller that loses the claim then knows the winner's write has already been committed,
+        because it could only take the lock after the winner released it.
+        Claiming outside that transaction would let a loser read file state
+        that the winner has not written yet.
+
+        Returns
+        -------
+        won
+            Whether the caller is the one that gets to apply `job`'s result.
+        """
+        if job.applied:
+            return False
+        job.applied = True
         return True
 
     def _drain_claimed(self) -> Iterator[HashJob]:
@@ -203,18 +239,14 @@ async def gather_hashes(
     hash_queue: HashQueue,
     executor: "Executor",
     reporter: ReporterClient,
-    path_hash_causes: Collection[tuple[str, FileHash, HashUpdateCause]],
+    path_hashes: Collection[tuple[str, FileHash]],
     njob: int,
 ) -> dict[str, FileHash]:
-    """Submit hash jobs for `path_hash_causes` and run them with bounded concurrency.
+    """Submit hash jobs for `path_hashes` and run them with bounded concurrency.
 
     Used by the startup scan and the watcher to drain a batch of hash jobs directly,
     independent of `Builder.job_loop`, which is not running during those phases.
     (Build, startup and watch phases are mutually exclusive.)
-    A single call may mix jobs with different causes
-    (e.g. the startup scan's `CONFIRMED` and `EXTERNAL` batches),
-    which lets them interleave under one shared `njob` budget
-    instead of running one cause's batch to completion before the next starts.
 
     Parameters
     ----------
@@ -225,19 +257,18 @@ async def gather_hashes(
     reporter
         Where `update_progress` is sent, coalesced to at most once per `PROGRESS_REFRESH_DELAY`.
         (The per-job `job_started`/`job_stopped` bracket is `Executor.run_hash_job`'s own.)
-    path_hash_causes
-        `(path, old_hash, cause)` triples to (re)hash;
-        see `HashJob.old_hash` and `HashJob.cause`.
+    path_hashes
+        `(path, old_hash)` pairs to (re)hash; see `HashJob.old_hash`.
     njob
         Maximum number of jobs this call runs concurrently.
-        Jobs already claimed by another submitter (e.g. a duplicate path within `path_hash_causes`)
+        Jobs already claimed by another submitter (e.g. a duplicate path within `path_hashes`)
         are not run here, and therefore do not count against this budget.
         Only their shared future is awaited.
 
     Returns
     -------
-    path_hashes
-        The new hash of every path in `path_hash_causes`, keyed by path, in input order.
+    new_path_hashes
+        The new hash of every path in `path_hashes`, keyed by path, in input order.
         A path whose hash could not be computed (e.g. a directory used as a file, or a `stat` error)
         is **absent** from the result:
         `Executor.run_hash_job` has already reported the error and drained the scheduler,
@@ -245,7 +276,7 @@ async def gather_hashes(
         so raising here would only take down the director over one bad file.
     """
     sem = asyncio.Semaphore(njob)
-    ntotal = len(path_hash_causes)
+    ntotal = len(path_hashes)
     nsuccess = 0
     counts_flush_handle: asyncio.TimerHandle | None = None
     counts_flush_tasks: set[asyncio.Task] = set()
@@ -286,7 +317,7 @@ async def gather_hashes(
         request_counts_flush()
         return new_hash
 
-    jobs = [hash_queue.submit(path, old_hash, cause) for path, old_hash, cause in path_hash_causes]
+    jobs = [hash_queue.submit(path, old_hash) for path, old_hash in path_hashes]
     new_hashes = await asyncio.gather(*(run_one(job) for job in jobs))
 
     if counts_flush_handle is not None:

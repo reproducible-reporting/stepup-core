@@ -291,7 +291,7 @@ class Executor:
             return
 
         # Compute the output part of the step hash.
-        new_hash, new_out_hashes = await self._compute_out_step_hash(run, new_hash)
+        new_hash, all_out_hashes = await self._compute_out_step_hash(run, new_hash)
         if new_hash is None:
             # Hash computation was cancelled because the build is shutting down.
             # Report the failure now.
@@ -309,11 +309,13 @@ class Executor:
 
         # All checks passed: no need to run the step, just simulate the products.
         await self._skip(run, step_hash)
+        out_cause = HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED
         async with self.db:
-            # If output hashes changed fortuitously,
-            # e.g. the user restored them to the expected state,
-            # we still want to record the new hash.
-            self.workflow.update_file_hashes(new_out_hashes, cause=HashUpdateCause.SUCCEEDED)
+            # A skipped step must still record its outputs:
+            # this update is what settles their state,
+            # and it also refreshes a stored hash that went stale,
+            # e.g. when the user restored an output to the content the step produces.
+            self.workflow.update_file_hashes(all_out_hashes, cause=out_cause)
             step.mark_completed(new_hash, False)
             # Do not call `scheduler.record_run_stopped`, as no start time was recorded either.
         self._report_step_counts()
@@ -342,17 +344,15 @@ class Executor:
         # Recompute the step hash (inputs and outputs).
         # Hashes are always updated, even for failed commands,
         # so outputs can be removed safely if they are no longer needed.
-        new_hash, new_inp_hashes, new_out_hashes = await self._compute_full_step_hash(run)
+        new_hash, new_inp_hashes, all_out_hashes = await self._compute_full_step_hash(run)
         unexpected_input_changes = len(new_inp_hashes) > 0
 
         async with self.db:
             new_hash, wants_defer = self._classify_execution(
                 run, new_hash, new_inp_hashes, unexpected_input_changes
             )
-            self.workflow.update_file_hashes(
-                new_out_hashes,
-                cause=HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
-            )
+            out_cause = HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED
+            self.workflow.update_file_hashes(all_out_hashes, cause=out_cause)
             run.interrupted_defer = step.mark_completed(new_hash, wants_defer)
             self.scheduler.record_run_stopped(step.i, succeeded=new_hash is not None)
             if wants_defer and not run.interrupted_defer:
@@ -422,7 +422,7 @@ class Executor:
             run.unavailable.clear()
             run.unfresh.clear()
             wants_defer = False
-            self.workflow.update_file_hashes(new_inp_hashes, cause=HashUpdateCause.FAILED)
+            self.workflow.update_file_hashes(new_inp_hashes, cause=HashUpdateCause.OBSERVED)
         elif wants_defer:
             # Rescheduling in the `mark_completed()`` method needs the new hash to be None,
             # so the step is not marked as succeeded.
@@ -516,7 +516,7 @@ class Executor:
         unexpected_input_changes = len(new_inp_hashes) > 0
         if unexpected_input_changes:
             async with self.db:
-                self.workflow.update_file_hashes(new_inp_hashes, cause=HashUpdateCause.FAILED)
+                self.workflow.update_file_hashes(new_inp_hashes, cause=HashUpdateCause.OBSERVED)
         await self._finalize_failed_run(run)
         if unexpected_input_changes:
             await self._drain_for_unexpected_input_changes()
@@ -609,7 +609,10 @@ class Executor:
             self.reporter.job_stopped(hash_job.job_i)
 
     async def _run_hash_job(self, hash_job: HashJob) -> None:
-        """Compute one file hash in a thread, apply it to the workflow, resolve the future.
+        """Compute one file hash in a thread and resolve the future with it.
+
+        Applying the result to the workflow is the awaiter's job, not this method's.
+        See the `hash_queue.py` module docstring.
 
         Does not reuse `_run_work_thread`: that helper requires a `Run` (step-bound) and
         writes a child outcome into `run.outcome`, neither of which applies to a `HashJob`.
@@ -650,18 +653,7 @@ class Executor:
                 return
             finally:
                 hash_job.worker = None
-        if new_hash != hash_job.old_hash or hash_job.cause == HashUpdateCause.CONFIRMED:
-            # The CONFIRMED cause must be applied even when unchanged:
-            # only the update flips UNCONFIRMED -> CONFIRMED/MISSING.
-            # Unchanged results under other causes are deliberately NOT applied:
-            # e.g. the transition for (EXTERNAL, CONFIRMED, known)
-            # would call `handle_updated_file`
-            # and needlessly mark all sinks pending. (They should already be pending.)
-            async with self.db:
-                self.workflow.update_file_hashes({hash_job.path: new_hash}, cause=hash_job.cause)
         if not hash_job.future.done():
-            # Resolved after the DB write, so an awaiter that re-reads file state on wake always
-            # sees the post-transition state.
             # Already done when the future was cancelled concurrently (e.g. Builder.stop());
             # set_result would then raise InvalidStateError.
             hash_job.future.set_result(new_hash)
@@ -743,8 +735,8 @@ class Executor:
         -------
         step_hash
             `None` if the hash computation was cancelled by an interrupted shutdown.
-        new_out_hashes
-            The new hashes of the outputs whose hash differs from the one in the workflow.
+        all_out_hashes
+            The freshly computed hashes of all outputs of the step.
         """
         async with self.db:
             out_hashes = {rec.path: rec.hash for rec in run.step.out_paths()}
@@ -758,7 +750,7 @@ class Executor:
             run.success = False
         step_hash = step_hash.with_out_hashes(result.all_hashes)
 
-        return step_hash, result.new_hashes
+        return step_hash, result.all_hashes
 
     async def _compute_full_step_hash(
         self, run: Run
@@ -804,7 +796,7 @@ class Executor:
             run.out_missing.extend(out_result.messages)
             run.success = False
 
-        return step_hash, inp_result.new_hashes, out_result.new_hashes
+        return step_hash, inp_result.new_hashes, out_result.all_hashes
 
     #
     # Command execution helper

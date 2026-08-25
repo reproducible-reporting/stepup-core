@@ -196,30 +196,32 @@ class Watcher:
         # Feed all updates to the workflow and clean up.
         self.busy_watching.clear()
         async with self.db:
-            old_hashes = self.workflow.get_file_hashes(self.updated | self.deleted)
+            old_hashes = self.workflow.get_observable_file_hashes(self.updated | self.deleted)
 
-        # Hashing runs outside any held transaction.
-        # Each hash job applies its own result in its own short transaction,
-        # which is safe here because no build phase is active to contend with.
+        # Hashing runs outside any held transaction,
+        # so the whole batch can be applied at once below.
         new_hashes = await gather_hashes(
             self.hash_queue,
             self.executor,
             self.reporter,
-            [(path, old_hash, HashUpdateCause.EXTERNAL) for path, old_hash in old_hashes.items()],
+            list(old_hashes.items()),
             self.njob,
         )
 
         async with self.db:
-            # An unchanged result was deliberately not applied by the hash job itself:
-            # report it instead, and prune it from self.updated before process_nglob_changes runs,
-            # so an unchanged file does not count as an nglob change.
-            for path, new_file_hash in new_hashes.items():
-                if new_file_hash == old_hashes[path]:
-                    await self.reporter("UNCHANGED", path)
-                    self.updated.discard(path)
+            # A dropped path is pruned from self.updated,
+            # so an unchanged file does not count as an nglob change below.
+            dropped = self.workflow.update_file_hashes(new_hashes, cause=HashUpdateCause.OBSERVED)
+            self.updated.difference_update(dropped)
 
             # Mark steps pending if they use nglob patterns that have different matches.
             self.workflow.process_nglob_changes(self.deleted, self.updated)
+
+        # The reporter is an RPC client to the terminal user interface,
+        # so its round trips are made after the transaction closes,
+        # instead of holding the database write lock for the duration of the network traffic.
+        for path in dropped:
+            await self.reporter("UNCHANGED", path)
 
         # Reset the watcher state.
         # The subscriber events are cleared together with the sets they refer to,

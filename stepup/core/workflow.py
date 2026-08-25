@@ -19,6 +19,7 @@ from .constants import PLAN_PY, STEPUP_DIR
 from .enums import (
     FILE_ROLE_BY_STATE,
     FILE_STATES_BY_ROLE,
+    OBSERVABLE_FILE_STATES,
     TARGET_FORBIDDEN_STATES,
     Availability,
     FileRole,
@@ -179,69 +180,181 @@ WHERE node IN (
 )
 """
 
-_HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState, str | None]] = {
-    (HashUpdateCause.EXTERNAL, FileState.MISSING, True): (FileState.CONFIRMED, "updated"),
-    (HashUpdateCause.EXTERNAL, FileState.CONFIRMED, True): (FileState.CONFIRMED, "updated"),
-    (HashUpdateCause.EXTERNAL, FileState.CONFIRMED, False): (FileState.MISSING, "deleted"),
-    (HashUpdateCause.EXTERNAL, FileState.BUILT, True): (FileState.PLANNED, "updated"),
-    (HashUpdateCause.EXTERNAL, FileState.OUTDATED, True): (FileState.PLANNED, "updated"),
-    (HashUpdateCause.EXTERNAL, FileState.BUILT, False): (FileState.PLANNED, "deleted"),
-    (HashUpdateCause.EXTERNAL, FileState.OUTDATED, False): (FileState.PLANNED, "deleted"),
-    (HashUpdateCause.SUCCEEDED, FileState.OUTDATED, True): (FileState.BUILT, "completed"),
-    (HashUpdateCause.SUCCEEDED, FileState.PLANNED, True): (FileState.BUILT, "completed"),
-    (HashUpdateCause.FAILED, FileState.CONFIRMED, True): (FileState.CONFIRMED, "updated"),
-    (HashUpdateCause.FAILED, FileState.BUILT, True): (FileState.OUTDATED, "updated"),
-    (HashUpdateCause.FAILED, FileState.OUTDATED, True): (FileState.OUTDATED, None),
-    (HashUpdateCause.FAILED, FileState.PLANNED, True): (FileState.OUTDATED, None),
-    (HashUpdateCause.FAILED, FileState.CONFIRMED, False): (FileState.MISSING, "deleted"),
-    (HashUpdateCause.FAILED, FileState.BUILT, False): (FileState.PLANNED, "deleted"),
-    (HashUpdateCause.FAILED, FileState.OUTDATED, False): (FileState.PLANNED, None),
-    (HashUpdateCause.FAILED, FileState.PLANNED, False): (FileState.PLANNED, None),
-    (HashUpdateCause.CONFIRMED, FileState.UNCONFIRMED, True): (FileState.CONFIRMED, "completed"),
-    (HashUpdateCause.CONFIRMED, FileState.UNCONFIRMED, False): (FileState.MISSING, "deleted"),
-    # Two steps can race to be the first to use the same static-tree file:
-    # both get told to check and confirm it before either confirmation is processed.
-    # The second confirmation to arrive is a harmless duplicate of the first;
-    # it re-stores the hash but takes no action.
-    (HashUpdateCause.CONFIRMED, FileState.CONFIRMED, True): (FileState.CONFIRMED, None),
-    (HashUpdateCause.CONFIRMED, FileState.MISSING, False): (FileState.MISSING, None),
-    # The corresponding cross-outcome races:
-    # the two confirmations disagree because the file's existence changed on disk between them.
-    # Trust the later report.
-    (HashUpdateCause.CONFIRMED, FileState.MISSING, True): (FileState.CONFIRMED, "completed"),
-    (HashUpdateCause.CONFIRMED, FileState.CONFIRMED, False): (FileState.MISSING, "deleted"),
-    # A stray UNCONFIRMED row is normally confirmed directly via CONFIRMED above, changed or not.
-    # These two entries are a defensive fallback:
-    # Watcher.run_once's EXTERNAL refresh loop may be reachable
-    # for an attached UNCONFIRMED file
-    # (Workflow.change_is_relevant() does not exclude UNCONFIRMED, only PLANNED/VOLATILE),
-    # even though hitting one is not expected in normal operation.
-    (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, True): (FileState.CONFIRMED, "updated"),
-    (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, False): (FileState.MISSING, "deleted"),
-}
-"""`(cause, old_state, hash_known)` -> `(new_state, action)` for `Workflow.update_file_hashes`.
+OBSERVABLE_STATE_VALUES = ", ".join(str(state.value) for state in sorted(OBSERVABLE_FILE_STATES))
+"""The values of `OBSERVABLE_FILE_STATES`, formatted for an SQL `IN` clause.
 
-`action` is one of `"updated"`, `"deleted"`, `"completed"`,
-or `None` for a state/hash change with no follow-up.
-A missing key means the combination is unexpected and raises (see `raise_unexpected` there),
-so the keys double as the whitelist of combinations that can occur.
-
-Three rules run through the table, pinned by `test_hash_transitions_invariants`:
-
-- `new_state` depends on `old_state` only through its `FileRole`.
-  Every STATIC state becomes CONFIRMED under EXTERNAL with a known hash, and so on.
-- `action` is `None` exactly when the update changes nothing a consumer could care about:
-  under FAILED when the file was not available as an input to begin with,
-  and under CONFIRMED when a racing duplicate repeats the state the file already had.
-- Every other row acts, and `hash_known` decides how:
-  `"deleted"` when the file is not on disk,
-  otherwise the action that belongs to the cause
-  (`"updated"` for EXTERNAL and FAILED, `"completed"` for SUCCEEDED and CONFIRMED).
-
-"Available as an input" (CONFIRMED or BUILT) is a set that cuts across roles and
-includes neither fully, so the table cannot be keyed on `FileRole` instead of `FileState`:
-the role fixes `new_state`, but not `action`.
+Interpolated into a query instead of bound as parameters,
+because the number of placeholders would otherwise follow the size of the set.
+The values are integers from an `IntEnum`, so there is nothing to escape.
 """
+
+
+class _HashTransitionError(Exception):
+    """A hash update that `_reject_impossible` cannot make sense of.
+
+    It carries only the reason why the combination is impossible.
+    `Workflow.update_file_hash` turns it into a `ConsistencyError`
+    that also names the file the update was about.
+    """
+
+
+@attrs.frozen
+class _HashTransition:
+    """What must happen to a file when a fresh hash arrives."""
+
+    new_state: FileState = attrs.field()
+    """The state to store for the file."""
+
+    mark_creator: bool = attrs.field(default=False)
+    """Whether the step that creates the file must be marked pending."""
+
+    mark_consumers: bool = attrs.field(default=False)
+    """Whether the steps that consume the file must be marked pending."""
+
+
+_STATIC_TRANSITIONS = {
+    True: _HashTransition(FileState.CONFIRMED, mark_consumers=True),
+    False: _HashTransition(FileState.MISSING, mark_consumers=True),
+}
+"""How a static file changes when a fresh hash arrives, keyed by whether it is on disk.
+
+A static file is an input only, so nobody has to rebuild it,
+but every consumer has to reconsider the content it just changed to.
+The key has no cause axis, because the cause does not enter into it.
+"""
+
+
+_OUTPUT_TRANSITIONS = {
+    (HashUpdateCause.OBSERVED, True): _HashTransition(FileState.PLANNED, mark_creator=True),
+    (HashUpdateCause.OBSERVED, False): _HashTransition(
+        FileState.PLANNED, mark_creator=True, mark_consumers=True
+    ),
+    (HashUpdateCause.SUCCEEDED, True): _HashTransition(FileState.BUILT, mark_consumers=True),
+    (HashUpdateCause.FAILED, True): _HashTransition(FileState.OUTDATED),
+    (HashUpdateCause.FAILED, False): _HashTransition(FileState.PLANNED),
+}
+"""How an output changes when a fresh hash arrives, keyed by cause and by presence on disk.
+
+An OBSERVED output becomes PLANNED rather than OUTDATED,
+because what is on disk is not what its step wrote,
+so there is no product hash left worth keeping.
+Only a step's own run can leave a file OUTDATED,
+which is what upholds the guarantee documented at `FileState.OUTDATED`:
+a stored hash of an OUTDATED file still tells whether the file on disk is the one the step wrote.
+
+`(SUCCEEDED, False)` has no row because `_reject_impossible` rejects it.
+"""
+
+
+def _reject_impossible(cause: HashUpdateCause, old_state: FileState, hash_known: bool) -> None:
+    """Raise `_HashTransitionError` when this combination cannot arise.
+
+    Parameters
+    ----------
+    cause
+        Why the file was hashed.
+    old_state
+        The state of the file before the update.
+    hash_known
+        Whether the hash could be computed, i.e. whether the file is present on disk.
+
+    Raises
+    ------
+    _HashTransitionError
+        When the combination cannot arise in a consistent workflow.
+
+    Notes
+    -----
+    The guards come in two kinds, which is why some rejections here look stricter than others.
+    A role guard is unconditional:
+    there is simply no role-appropriate state to move the file to,
+    whatever the submitters happen to do.
+    A cause guard only says what today's submitters can produce,
+    so it is written down only where an actual submitter backs it up.
+    OBSERVED therefore has no cause guard at all:
+    any file in the STATIC or OUTPUT role can turn up on disk in any state,
+    and reporting what is there is exactly what an observation does.
+    """
+    role = FILE_ROLE_BY_STATE.get(old_state)
+    if role is None:
+        # UNDECLARED is the one state without a role, so there is no role-appropriate
+        # state to move the file to, whatever the new hash turns out to be.
+        raise _HashTransitionError("an UNDECLARED file has no role in the workflow")
+    if role == FileRole.VOLATILE:
+        # Volatile outputs are exempt from hashing by definition, see `FileState.VOLATILE`.
+        raise _HashTransitionError("volatile outputs are never hashed")
+
+    if cause == HashUpdateCause.OBSERVED:
+        # Nothing further to check: an observation reports what is on disk,
+        # and every state left here is one a file can be in when that happens.
+        return
+    if cause not in (HashUpdateCause.SUCCEEDED, HashUpdateCause.FAILED):
+        # Reaching this means a cause was added to `HashUpdateCause` without a guard here,
+        # which no input can cause and no caller can fix, so it stops here.
+        raise _HashTransitionError(f"no transition rule for cause {cause!r}")
+
+    # What remains are the two causes that report on a step's own run,
+    # which is only ever rehashed for that step's own outputs.
+    if role != FileRole.OUTPUT:
+        raise _HashTransitionError("only outputs are hashed after a step ran")
+    if old_state == FileState.BUILT:
+        # `Step.reset_for_rerun` demotes BUILT outputs before a step runs,
+        # `Workflow.mark_step_pending` does the same for a step that is skipped,
+        # and an output amended while the step runs starts out PLANNED.
+        raise _HashTransitionError("an output of a step that ran or was skipped is not BUILT")
+    if cause == HashUpdateCause.SUCCEEDED and not hash_known:
+        # A step that did not write all of its declared outputs is not a success:
+        # `Executor._compute_out_step_hash` clears `run.success`,
+        # which turns the cause into FAILED.
+        raise _HashTransitionError("a succeeded step leaves none of its outputs behind")
+
+
+def _hash_transition(
+    cause: HashUpdateCause, old_state: FileState, hash_known: bool
+) -> _HashTransition:
+    """Look up how a file state changes when a fresh hash arrives, and what must follow.
+
+    Call `_reject_impossible` first:
+    this function only looks up the row that the combination selects,
+    and a combination that has no row raises `KeyError` instead of explaining itself.
+
+    Parameters
+    ----------
+    cause
+        Why the file was hashed.
+    old_state
+        The state of the file before the update.
+    hash_known
+        Whether the hash could be computed, i.e. whether the file is present on disk.
+
+    Returns
+    -------
+    transition
+        The new state and the follow-ups that `Workflow.update_file_hash` must take.
+
+    Notes
+    -----
+    Three rules run through the tables, and are pinned by `test_hash_transitions_invariants`.
+    Together they decide every field of every row,
+    so a row cannot be edited without contradicting one of them.
+
+    - A file that ends up available as an input (CONFIRMED or BUILT) marks its consumers,
+      because the content they last ran with is not necessarily the content that is there now.
+      An update that leaves the file unavailable has no such news:
+      a consumer cannot run at all until the file becomes available again,
+      and whatever makes it available marks the consumers itself.
+    - A file that is not on disk marks its consumers under every cause but FAILED,
+      because a consumer that ran with the file cannot have been right.
+      Under FAILED the file was not usable as an input before the update and still is not,
+      so no consumer has news.
+    - An output marks its creator only under OBSERVED,
+      the one cause that reports news from outside the creating step.
+      SUCCEEDED and FAILED report on that step's own run,
+      whose outcome already governs whether it runs again.
+    """
+    if FILE_ROLE_BY_STATE[old_state] == FileRole.STATIC:
+        return _STATIC_TRANSITIONS[hash_known]
+    return _OUTPUT_TRANSITIONS[cause, hash_known]
 
 
 _DECLARABLE_STATES = (FileState.UNCONFIRMED, FileState.PLANNED, FileState.VOLATILE)
@@ -262,11 +375,13 @@ Only covers the states that a caller could plausibly ask for by mistake.
 A state without an entry still raises, just without the extra advice.
 """
 
-_RELEVANT_STATES = frozenset(FileState) - {FileState.PLANNED, FileState.VOLATILE}
+_RELEVANT_STATES = OBSERVABLE_FILE_STATES | {FileState.UNDECLARED}
 """States in which a change to an attached file node can affect the workflow.
 
-`PLANNED` and `VOLATILE` are the states in which the build itself owns the path,
-so a change there is StepUp's own writing rather than news.
+Wider than `OBSERVABLE_FILE_STATES` by exactly `UNDECLARED`,
+which is the one state where a change is news without being worth hashing:
+the file has no role, so no hash of it can be applied,
+but the change may still affect the nglob patterns that match its path.
 """
 
 _RELEVANT_STATES_DURING_BUILD = frozenset({FileState.CONFIRMED, FileState.MISSING})
@@ -932,8 +1047,8 @@ class Workflow(Trellis):
             if node.i != self.root.i:
                 node.detach()
         to_check = self.declare_static_files(self.root, [PLAN_PY])
-        checked = {path: file_hash.refreshed(path) for path, file_hash in to_check.items()}
-        self.update_file_hashes(checked, cause=HashUpdateCause.CONFIRMED)
+        for path, file_hash in to_check.items():
+            self.update_file_hash(path, file_hash.refreshed(path), cause=HashUpdateCause.OBSERVED)
         self.define_step(self.root, command, inp_paths=[PLAN_PY], need=Need.PLAN, _safe=True)
         return True
 
@@ -1166,103 +1281,143 @@ class Workflow(Trellis):
     # State propagation
     #
 
-    def update_file_hashes(self, file_hashes: Mapping[str, FileHash], *, cause: HashUpdateCause):
-        """Update the hashes of existing files.
+    def update_file_hash(self, path: str, new_fh: FileHash, *, cause: HashUpdateCause) -> bool:
+        """Update the hash of one existing file and take the follow-up the change calls for.
 
         Parameters
         ----------
-        file_hashes
-            The new hashes of the files, keyed by path.
+        path
+            The path of the file whose hash must be updated.
+        new_fh
+            The new hash of the file.
         cause
-            The reason for the hash updates.
-        """
-        if len(file_hashes) == 0:
-            return
+            The reason for the hash update.
 
-        # Efficiently look up the node id and state of every requested path.
-        # See get_file_hashes for why this uses an IN subquery against the path_list
-        # scratch table instead of a plain JOIN.
+        Returns
+        -------
+        dropped
+            Whether the update was dropped as an unchanged observation,
+            which happens when `cause` is OBSERVED, the new hash equals the stored one
+            and the file is no longer UNCONFIRMED.
+            A dropped update leaves the file state and the rest of the graph untouched,
+            though it may still refresh the cached `stat` properties of the stored hash.
+        """
         # Detached rows are deliberately not filtered out.
         # A detached node keeps its state and hash and can be recycled back into the graph,
         # so its hash must stay current for the same reason mark_consuming_steps_pending
         # includes detached sinks.
-        # The count check below depends on this:
-        # with a NOT detached filter, a path whose only node is detached would go missing
-        # and turn a normal update into a ConsistencyError.
-        db = self.db
-        db.execute("DELETE FROM path_list")
-        db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in file_hashes))
         sql = (
-            "SELECT node.i, node.label AS path, file.state FROM node "
-            "JOIN file ON file.node = node.i "
-            "WHERE node.kind = 'file' AND node.label IN (SELECT path FROM path_list) "
-            "ORDER BY path"
+            "SELECT node.i, file.state, file.hash FROM node JOIN file ON file.node = node.i "
+            "WHERE node.kind = 'file' AND node.label = ?"
         )
-        records = [
-            (i, path, file_hashes[path], FileState(value)) for i, path, value in db.execute(sql)
-        ]
+        row = self.db.execute(sql, (path,)).fetchone()
+        if row is None:
+            raise ConsistencyError(f"Cannot update the hash of an unknown file: {path}")
+        i, old_state, old_fh = row[0], FileState(row[1]), FileHash.from_json(row[2])
 
-        if len(records) != len(file_hashes):
-            raise ConsistencyError(
-                f"Inconsistent number of records: expected={len(file_hashes)} actual={len(records)}"
-            )
-
-        # Files grouped by the follow-up action to take on them, keyed by the action tags used
-        # in `_HASH_TRANSITIONS` (`"updated"` -> `handle_updated_file`, etc.).
-        action_lists: dict[str, list[tuple[int, str]]] = {
-            "updated": [],
-            "deleted": [],
-            "completed": [],
-        }
-        # Files whose state and hash must be updated.
-        new_states_hashes = []
-
-        def raise_unexpected(path, old_state, fh):
+        # Reject a combination that cannot arise, before anything is written or skipped.
+        hash_known = not new_fh.is_unknown
+        try:
+            _reject_impossible(cause, old_state, hash_known)
+        except _HashTransitionError as exc:
             raise ConsistencyError(
                 f"Unexpected file hash update: cause={cause.name} path={path} "
                 f"state={old_state.name} "
-                f"digest={fmt_short_digest(fh.digest)} mode={stat.filemode(fh.mode)}"
-            )
+                f"digest={fmt_short_digest(new_fh.digest)} "
+                f"mode={stat.filemode(new_fh.mode)}: {exc}"
+            ) from exc
 
-        # Decide how the file state must change and which other actions to take on the files,
-        # based on the cause of the hash updates and the file's current state.
+        # An observation that changed nothing is not news, so it leaves the graph alone here.
+        # Without this, every consuming step would be marked pending
+        # on each startup scan, for files nobody touched.
+        # UNCONFIRMED is the exception: only the update flips it to CONFIRMED or MISSING,
+        # and its stored hash is deliberately kept from a previous CONFIRMED state
+        # (see the `file_clear_hash` trigger),
+        # so an equal hash is the normal case rather than a sign that nothing happened.
+        # SUCCEEDED and FAILED are never dropped either:
+        # an output whose content did not change still has to move to the state
+        # that the outcome of its step calls for.
+        if (
+            cause == HashUpdateCause.OBSERVED
+            and new_fh == old_fh
+            and old_state != FileState.UNCONFIRMED
+        ):
+            # The content is unchanged, so the state stays put and no step has to reconsider
+            # anything. Only the cached stat fields move forward, so that the next
+            # `FileHash.refreshed` can short-circuit instead of digesting the file again.
+            # The stat written back is the one taken before the file was read,
+            # so a write that raced with the digest computation still forces a re-check.
+            # An unknown hash never gets here, because `stat_differs` is false
+            # between two unknown hashes,
+            # which is what keeps `to_json`'s `None` out of a state whose CHECK forbids it.
+            if new_fh.stat_differs(old_fh):
+                self.db.execute("UPDATE file SET hash = ? WHERE node = ?", (new_fh.to_json(), i))
+            return True
+
+        # Actual update of the file state and hash.
+        transition = _hash_transition(cause, old_state, hash_known)
         # `new_fh` is stored as-is for every transition:
         # the `file_clear_hash` trigger nulls the hash whenever the new state is
         # MISSING/PLANNED/VOLATILE,
         # so there is no need to special-case the stored hash for those target states here.
-        for i, path, new_fh, old_state in records:
-            transition = _HASH_TRANSITIONS.get((cause, old_state, not new_fh.is_unknown))
-            if transition is None:
-                raise_unexpected(path, old_state, new_fh)
-            new_state, action = transition
-            new_states_hashes.append((i, new_state, new_fh))
-            if action is not None:
-                action_lists[action].append((i, path))
-
-        # Actual update of the file hashes.
-        logger.info("Update file hashes: cause=%s new=%s", cause.name, new_states_hashes)
-        self.db.executemany(
-            "UPDATE file SET state = ?, hash = ? WHERE node = ?",
-            ((state.value, fh.to_json(), i) for i, state, fh in new_states_hashes),
-        )
-
-        # Call Workflow methods to further update the workflow.
         logger.info(
-            "Update file hashes: cause=%s updated=%s deleted=%s completed=%s",
+            "Update file hash: cause=%s path=%s state=%s "
+            "on_disk=%s mark_creator=%s mark_consumers=%s",
             cause.name,
-            action_lists["updated"],
-            action_lists["deleted"],
-            action_lists["completed"],
+            path,
+            transition.new_state.name,
+            hash_known,
+            transition.mark_creator,
+            transition.mark_consumers,
         )
-        for i, path in action_lists["updated"]:
-            self.handle_updated_file(File(self, i, path))
-        for i, path in action_lists["deleted"]:
-            self.handle_deleted_file(File(self, i, path))
-        for i, path in action_lists["completed"]:
-            self.mark_consuming_steps_pending(File(self, i, path))
+        self.db.execute(
+            "UPDATE file SET state = ?, hash = ? WHERE node = ?",
+            (transition.new_state.value, new_fh.to_json(), i),
+        )
 
-    def get_file_hashes(self, paths: Collection[str]) -> dict[str, FileHash]:
-        """Get the hashes of existing files.
+        # Take the follow-ups the transition asks for.
+        file = File(self, i, path)
+        if transition.mark_creator:
+            creator = file.creator()
+            if isinstance(creator, Step):
+                self.mark_step_pending(creator)
+        if transition.mark_consumers:
+            self.mark_consuming_steps_pending(file)
+        return False
+
+    def update_file_hashes(
+        self, new_hashes: Mapping[str, FileHash], *, cause: HashUpdateCause
+    ) -> set[str]:
+        """Update the hashes of several existing files.
+
+        Parameters
+        ----------
+        new_hashes
+            The new hash of each file, keyed by path.
+        cause
+            The reason for the hash updates.
+
+        Returns
+        -------
+        dropped
+            The paths whose update was dropped as an unchanged observation,
+            see `Workflow.update_file_hash`.
+        """
+        return {
+            path
+            for path, new_fh in new_hashes.items()
+            if self.update_file_hash(path, new_fh, cause=cause)
+        }
+
+    def get_observable_file_hashes(self, paths: Collection[str]) -> dict[str, FileHash]:
+        """Get the stored hashes of the files that can be observed on disk.
+
+        Paths without a file node, and file nodes in a state outside `OBSERVABLE_FILE_STATES`,
+        are left out of the result.
+
+        Detachment is not part of the filter:
+        a detached node can be recycled back into the graph,
+        so its hash must stay current, see `Trellis.try_recycle`.
 
         Parameters
         ----------
@@ -1272,7 +1427,7 @@ class Workflow(Trellis):
         Returns
         -------
         file_hashes
-            The current hashes of the files, keyed by path, ordered by path.
+            The current hashes of the observable files, keyed by path, ordered by path.
         """
         # The `label IN (SELECT path FROM path_list)` form makes the planner drive from
         # `node`'s `node_kind_label` index
@@ -1292,43 +1447,28 @@ class Workflow(Trellis):
             "SELECT node.label, file.hash FROM node "
             "JOIN file ON file.node = node.i "
             "WHERE node.kind = 'file' AND node.label IN (SELECT path FROM path_list) "
+            f"AND file.state IN ({OBSERVABLE_STATE_VALUES}) "
             "ORDER BY node.label"
         )
         return {path: FileHash.from_json(hash_value) for path, hash_value in db.execute(sql)}
 
-    def handle_updated_file(self, file: File):
-        """Modify the graph to account for a file whose content changed.
+    def get_all_observable_file_hashes(self) -> dict[str, FileHash]:
+        """Get the stored hashes of every file in the workflow that can be observed on disk.
 
-        File states and hashes have already been updated before this method is called.
-        The change is not necessarily an external one:
-        every `"updated"` row of `_HASH_TRANSITIONS` arrives here,
-        which includes a step's own inputs rehashed after a failed run.
+        The whole-workflow counterpart of `Workflow.get_observable_file_hashes`,
+        with the same state filter and the same treatment of detached nodes.
+
+        Returns
+        -------
+        file_hashes
+            The current hashes of the observable files, keyed by path, ordered by path.
         """
-        state = file.get_state()
-        if state == FileState.CONFIRMED:
-            self.mark_consuming_steps_pending(file)
-        elif state in (FileState.PLANNED, FileState.OUTDATED):
-            # Mark the creator pending, to make sure the file is rebuilt.
-            creator = file.creator()
-            if isinstance(creator, Step):
-                self.mark_step_pending(creator)
-
-    def handle_deleted_file(self, file: File):
-        """Modify the graph to account for the fact this file is not on disk.
-
-        File states and hashes have already been updated before this method is called,
-        so the file is MISSING (static) or PLANNED (output) by the time this runs:
-        those are the only states the `"deleted"` rows of `_HASH_TRANSITIONS` lead to.
-        As with `handle_updated_file`, the disappearance is not necessarily an external one.
-        """
-        state = file.get_state()
-        logger.info("File not on disk: %s (%s)", file.path, state.name)
-        if state == FileState.PLANNED:
-            # Request rerun of creator
-            creator = file.creator()
-            if isinstance(creator, Step):
-                self.mark_step_pending(creator)
-        self.mark_consuming_steps_pending(file)
+        sql = (
+            "SELECT node.label, file.hash FROM node "
+            f"JOIN file ON file.node = node.i AND file.state IN ({OBSERVABLE_STATE_VALUES}) "
+            "ORDER BY node.label"
+        )
+        return {path: FileHash.from_json(hash_value) for path, hash_value in self.db.execute(sql)}
 
     def mark_consuming_steps_pending(self, file: File):
         """Mark all steps that use this file as an input pending, detached ones included.
@@ -1341,9 +1481,8 @@ class Workflow(Trellis):
         would be recycled as up-to-date and never run again.
         Marking it pending now is what makes the recycled step reconsider itself.
 
-        This is why all three follow-up actions of `update_file_hashes` route through here:
-        marking only attached sinks pending
-        would leave exactly this stale-recycle hole open for externally changed or deleted inputs.
+        There is deliberately no variant of this method that skips the detached sinks,
+        because every caller that marks consumers pending needs them for the reason above.
         """
         for step in file.sinks(Step, include_detached=True):
             self.mark_step_pending(step)
@@ -1741,7 +1880,7 @@ class Workflow(Trellis):
 
         A file declared here becomes CONFIRMED once confirmed present,
         or MISSING once confirmed absent,
-        through a hash job submitted for its `to_check` entry (see `Workflow.update_file_hashes`).
+        through a hash job submitted for its `to_check` entry (see `Workflow.update_file_hash`).
 
         Parameters
         ----------
@@ -2120,7 +2259,7 @@ class Workflow(Trellis):
             A set of input paths that are available but fail the amend() freshness check.
         to_check
             The known hashes, keyed by path, of the files whose validity must still be checked,
-            e.g. by submitting a hash job for each (`cause=HashUpdateCause.CONFIRMED`).
+            e.g. by submitting a hash job for each.
             A path that turns out to be MISSING belongs in `unavailable`:
             the caller must add it there after checking.
 
@@ -2389,7 +2528,7 @@ class Workflow(Trellis):
             return []
 
         # Resolve every match against the attached file nodes in one bulk query.
-        # See get_file_hashes for why this uses an IN subquery against path_list.
+        # See get_observable_file_hashes for why this uses an IN subquery against path_list.
         db = self.db
         db.execute("DELETE FROM path_list")
         db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))

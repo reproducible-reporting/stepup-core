@@ -6,6 +6,7 @@ import os
 import threading
 from hashlib import sha256
 
+import attrs
 import pytest
 from conftest import TrippingEvent
 from path import Path
@@ -142,12 +143,29 @@ def test_from_json_none():
 
 
 def test_to_json_from_json_round_trip():
-    file_hash = FileHash(sha256(b"foo").digest(), 0o644, 1234.5, 100, 0x8000000000000001)
+    file_hash = FileHash(sha256(b"foo").digest(), 0o644, 100, 1234.5, 0x8000000000000001)
     restored = FileHash.from_json(file_hash.to_json())
     assert restored == file_hash
     # `==` on FileHash ignores mtime and inode (eq=False), so check those explicitly too.
     assert restored.mtime == file_hash.mtime
     assert restored.inode == file_hash.inode
+
+
+def test_stat_differs():
+    file_hash = FileHash(sha256(b"foo").digest(), 0o644, 100, 1234.5, 42)
+    assert not file_hash.stat_differs(file_hash)
+    touched = attrs.evolve(file_hash, mtime=2345.6)
+    moved = attrs.evolve(file_hash, inode=43)
+    # These compare equal because `==` ignores mtime and inode, yet the stat differs.
+    assert touched == file_hash
+    assert moved == file_hash
+    assert file_hash.stat_differs(touched)
+    assert file_hash.stat_differs(moved)
+
+
+def test_stat_differs_unknown():
+    """Two unknown hashes never differ, which `Workflow.update_file_hash` relies on."""
+    assert not FileHash.unknown().stat_differs(FileHash.unknown())
 
 
 def test_compute_inp_hashes_cancelled_during_second_file(path_tmp: Path):
@@ -197,5 +215,4 @@ def test_compute_inp_and_out_hashes(path_tmp: Path):
         {str(path_out): FileHash.unknown()}, cancel_event=threading.Event()
     )
     assert out_result.messages == []
-    assert list(out_result.new_hashes) == [str(path_out)]
     assert list(out_result.all_hashes) == [str(path_out)]

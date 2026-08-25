@@ -13,6 +13,7 @@ from stepup.core.executor import Executor
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash
 from stepup.core.hash_queue import HashQueue
+from stepup.core.nglob import NamedGlob
 from stepup.core.reporter import ReporterClient
 from stepup.core.step import Step
 from stepup.core.watcher import Watcher
@@ -76,10 +77,8 @@ async def test_run_once_reports_unchanged_and_updates_only_the_changed_file(wfp:
             wfp.declare_static_files(plan, ["same.txt", "changed.txt"])
             same_hash = FileHash.unknown().refreshed("same.txt")
             changed_hash = FileHash.unknown().refreshed("changed.txt")
-            wfp.update_file_hashes(
-                {"same.txt": same_hash, "changed.txt": changed_hash},
-                cause=HashUpdateCause.CONFIRMED,
-            )
+            wfp.update_file_hash("same.txt", same_hash, cause=HashUpdateCause.OBSERVED)
+            wfp.update_file_hash("changed.txt", changed_hash, cause=HashUpdateCause.OBSERVED)
 
         # Simulate "changed.txt" having been rewritten while the build phase was active,
         # and both paths having been recorded as (candidate) updates by the watcher.
@@ -105,6 +104,73 @@ async def test_run_once_reports_unchanged_and_updates_only_the_changed_file(wfp:
             assert wfp.find(File, "changed.txt").get_hash() != changed_hash
 
 
+async def test_run_once_ignores_glob_relevant_undeclared_file(wfp: Workflow, tmpdir):
+    """A detached UNDECLARED file that a pattern makes relevant must not be hashed.
+
+    `change_is_relevant` says yes because the path matches a registered pattern,
+    while the transition rules reject an observation of an UNDECLARED file,
+    so `run_once` must leave such a path out of the hash update.
+    The path still reaches `process_nglob_changes`, which is what recorded it in the first place.
+    """
+    with contextlib.chdir(tmpdir):
+        with open("given.txt", "w") as fh:
+            fh.write("given")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.define_step(plan, "cat given.txt", inp_paths=["given.txt"])
+            wfp.register_nglob(plan, NamedGlob("*.txt"))
+            given = wfp.find(File, "given.txt")
+            assert given.get_state() == FileState.UNDECLARED
+            assert wfp.change_is_relevant("given.txt")
+
+        watcher = _make_watcher(wfp)
+        reporter = _FakeReporter()
+        watcher.reporter = reporter
+        watcher.end_watching.set()
+        watcher.updated.add("given.txt")
+
+        await watcher.run_once(asyncio.Queue())
+
+        # Nothing was observed about the file, so it is not reported UNCHANGED either.
+        assert ("UNCHANGED", "given.txt") not in reporter.calls
+        async with wfp.db:
+            assert given.get_state() == FileState.UNDECLARED
+
+
+async def test_run_once_reports_settled_unconfirmed_file_as_changed(wfp: Workflow, tmpdir):
+    """An UNCONFIRMED file settled by an unchanged hash is not an UNCHANGED report.
+
+    The hash did not move, but the state did, so the file stays in `self.updated`
+    and reaches `process_nglob_changes`.
+    """
+    with contextlib.chdir(tmpdir):
+        with open("stale.txt", "w") as fh:
+            fh.write("stale")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.declare_static_files(plan, ["stale.txt"])
+            stale_hash = FileHash.unknown().refreshed("stale.txt")
+            wfp.update_file_hash("stale.txt", stale_hash, cause=HashUpdateCause.OBSERVED)
+            stale = wfp.find(File, "stale.txt")
+            assert stale.get_state() == FileState.CONFIRMED
+            # A CONFIRMED file may go back to UNCONFIRMED with its hash intact,
+            # see the `file_clear_hash` trigger in `file.py`.
+            stale.set_state(FileState.UNCONFIRMED)
+            assert stale.get_hash() == stale_hash
+
+        watcher = _make_watcher(wfp)
+        reporter = _FakeReporter()
+        watcher.reporter = reporter
+        watcher.end_watching.set()
+        watcher.updated.add("stale.txt")
+
+        await watcher.run_once(asyncio.Queue())
+
+        assert ("UNCHANGED", "stale.txt") not in reporter.calls
+        async with wfp.db:
+            assert stale.get_state() == FileState.CONFIRMED
+
+
 async def test_run_once_drain_records_missing_file(wfp: Workflow, tmpdir):
     """A build-phase inotify event for a confirmed-`MISSING` file must be recorded
     by the drain loop in `run_once`, not discarded,
@@ -114,9 +180,7 @@ async def test_run_once_drain_records_missing_file(wfp: Workflow, tmpdir):
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
             wfp.declare_static_files(plan, ["ghost.txt"])
-            wfp.update_file_hashes(
-                {"ghost.txt": FileHash.unknown()}, cause=HashUpdateCause.CONFIRMED
-            )
+            wfp.update_file_hash("ghost.txt", FileHash.unknown(), cause=HashUpdateCause.OBSERVED)
             ghost = wfp.find(File, "ghost.txt")
             assert ghost.get_state() == FileState.MISSING
 
@@ -149,9 +213,10 @@ async def test_run_once_drain_records_files_under_removed_dir(wfp: Workflow, tmp
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
             wfp.declare_static_files(plan, ["sub/a.txt"])
-            wfp.update_file_hashes(
-                {"sub/a.txt": FileHash.unknown().refreshed("sub/a.txt")},
-                cause=HashUpdateCause.CONFIRMED,
+            wfp.update_file_hash(
+                "sub/a.txt",
+                FileHash.unknown().refreshed("sub/a.txt"),
+                cause=HashUpdateCause.OBSERVED,
             )
 
         # Simulate the directory being removed while the build phase was still running.
@@ -181,8 +246,9 @@ async def test_record_deleted_parent_skips_build_products_during_build(wfp: Work
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
             wfp.define_step(plan, "prog", out_paths=["sub/out.txt"])
-            wfp.update_file_hashes(
-                {"sub/out.txt": FileHash.unknown().refreshed("sub/out.txt")},
+            wfp.update_file_hash(
+                "sub/out.txt",
+                FileHash.unknown().refreshed("sub/out.txt"),
                 cause=HashUpdateCause.SUCCEEDED,
             )
             assert wfp.find(File, "sub/out.txt").get_state() == FileState.BUILT

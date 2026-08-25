@@ -39,7 +39,7 @@ from .constants import (
     SQLLOG_CSV,
     SQLLOG_JSON,
 )
-from .enums import FileState, HashUpdateCause, Need, ReturnCode, StepState
+from .enums import FileState, Need, ReturnCode, StepState
 from .exceptions import CgroupError, GraphError
 from .executor import Executor
 from .file import File
@@ -783,14 +783,15 @@ class DirectorHandler:
     #
 
     def _submit_to_check(self, to_check: Mapping[str, FileHash]) -> None:
-        """Submit a hash job with `cause=CONFIRMED` for each `path: old_hash` entry.
+        """Submit a hash job for each `path: old_hash` entry, to settle whether the file exists.
 
         Fire-and-forget: the caller does not wait for these jobs.
-        Each job's own completion flips the file from `UNCONFIRMED` to `CONFIRMED` or `MISSING`
-        and wakes `job_loop`, which is what lets a step consuming the file become runnable.
+        `Builder.handle_done_tasks` applies their results, which flips each file from
+        `UNCONFIRMED` to `CONFIRMED` or `MISSING`, and it does so before `job_loop` picks the
+        next job, which is what lets a step consuming the file become runnable.
         """
         for path, old_hash in to_check.items():
-            self.builder.hash_queue.submit(path, old_hash, HashUpdateCause.CONFIRMED)
+            self.builder.hash_queue.submit(path, old_hash)
 
     @allow_rpc
     async def declare_static(
@@ -948,7 +949,7 @@ class DirectorHandler:
         self.workflow.create_dirs(Path(path).parent for path in chain(out_paths, vol_paths))
         if to_check:
             checked_paths = set(to_check)
-            await self.builder.run_promoted_hash_jobs(to_check, HashUpdateCause.CONFIRMED)
+            await self.builder.run_promoted_hash_jobs(to_check)
             async with self.db:
                 for path in checked_paths:
                     file = self.workflow.find(File, path)

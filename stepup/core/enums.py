@@ -13,6 +13,7 @@ from enum import Flag, IntEnum, auto
 __all__ = (
     "FILE_ROLE_BY_STATE",
     "FILE_STATES_BY_ROLE",
+    "OBSERVABLE_FILE_STATES",
     "TARGET_FORBIDDEN_STATES",
     "Availability",
     "Change",
@@ -78,7 +79,7 @@ class FileState(IntEnum):
     depending on whether a background hash job finds the file on disk.
 
     The hashes of `BUILT` files are computed when the step completes.
-    `OUTDATED` files keep the last hash that was computed for them.
+    Within the `OUTPUT` role, having no hash and being `PLANNED` are the same thing.
     """
 
     #
@@ -116,16 +117,22 @@ class FileState(IntEnum):
     #
 
     PLANNED = 15
-    """A file that is declared as an output of a step, but the step has not yet been executed.
+    """An output of a step, without a trusted product on disk.
 
-    These files do not have a hash yet, and cannot be used as inputs to other steps.
+    Either the step has not run yet,
+    or the file it wrote was changed or removed afterwards,
+    so nothing on disk is known to be that step's product.
     """
 
     BUILT = 16
     """An output of a step that has completed."""
 
     OUTDATED = 17
-    """An old output of a step that is no longer up-to-date."""
+    """A stale output of a step, whose last product may still be on disk.
+
+    The retained hash of that product is what distinguishes it from a `PLANNED` file:
+    it remains possible to tell whether the file on disk is the one the step wrote.
+    """
 
     #
     # States in the VOLATILE role.
@@ -182,6 +189,21 @@ TARGET_FORBIDDEN_STATES = (
     FILE_STATES_BY_ROLE[FileRole.STATIC] | FILE_STATES_BY_ROLE[FileRole.VOLATILE]
 )
 """`FileState` values a `stepup build` target file may never be in."""
+
+
+OBSERVABLE_FILE_STATES = (
+    FILE_STATES_BY_ROLE[FileRole.STATIC] | FILE_STATES_BY_ROLE[FileRole.OUTPUT]
+) - {FileState.PLANNED}
+"""`FileState` values worth checking on disk when scanning the workflow's files.
+
+The other states are excluded for a reason of their own:
+`UNDECLARED` has no role to move the file to and `VOLATILE` is never hashed,
+so an update of a file in either state is rejected as an impossible transition
+and they must be filtered out before a hash is applied.
+`PLANNED` is excluded because a scan has nothing to learn there:
+the file is not supposed to exist yet, and its creating step is already pending.
+A `PLANNED` file may still be updated when a step reports it changed underneath a running step.
+"""
 
 
 class StepState(IntEnum):
@@ -242,21 +264,25 @@ class Change(IntEnum):
 
 
 class HashUpdateCause(IntEnum):
-    """The reason why file hashes are being updated in `Workflow.update_file_hashes`."""
+    """The reason why a file hash is being updated in `Workflow.update_file_hash`."""
 
-    EXTERNAL = 51
-    """File hashes changed externally (startup or watch phase
+    OBSERVED = 51
+    """A file was found on disk in a state that no step wrote there.
 
-    Steps that consume the file, or the step that creates it, become pending."""
+    Covers the startup scan, the watch phase, settling a declared static file,
+    and an input that changed underneath a running step.
+    Static files end up `CONFIRMED` or `MISSING`, outputs are demoted to `PLANNED`.
+    Steps that consume the file, or the step that creates it, become pending.
+    """
 
     SUCCEEDED = 52
     """A step succeeded; its outputs are marked `BUILT`."""
 
     FAILED = 53
-    """A step failed or deferred; its outputs end up `OUTDATED` or `PLANNED`."""
+    """A step failed or deferred.
 
-    CONFIRMED = 54
-    """A declared static file was hashed; it becomes `CONFIRMED` if present, `MISSING` if not."""
+    This covers only the step's own outputs, which end up `OUTDATED` or `PLANNED`.
+    """
 
 
 class Availability(IntEnum):

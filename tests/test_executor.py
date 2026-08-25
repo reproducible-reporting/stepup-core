@@ -8,6 +8,7 @@ import signal
 import threading
 from types import SimpleNamespace
 
+import attrs
 import pytest
 from path import Path
 
@@ -332,12 +333,44 @@ async def test_compute_out_step_hash_cancelled_reports_failure(wfs: Workflow, mo
     run = Run(step, job_i=1)
     step_hash = StepHash.from_inp(step.label, {}, {}, explained=False)
 
-    new_hash, new_out_hashes = await executor._compute_out_step_hash(run, step_hash)
+    new_hash, all_out_hashes = await executor._compute_out_step_hash(run, step_hash)
 
     assert new_hash is None
-    assert new_out_hashes == {}
+    assert all_out_hashes == {}
     assert run.success is False
     assert "cancelled" in run.outcome.stderr
+
+
+async def test_compute_out_step_hash_returns_unchanged_outputs(wfs: Workflow, tmpdir):
+    """An output whose content did not change is returned with its fresh stat.
+
+    The workflow can only store that stat if the hash reaches it,
+    and without it stored, `FileHash.refreshed` digests the output again on every run.
+    """
+    with contextlib.chdir(tmpdir):
+        with open("out.txt", "w") as fh:
+            fh.write("hello")
+        fresh = FileHash.unknown().refreshed("out.txt")
+        stale = attrs.evolve(fresh, mtime=fresh.mtime - 10.0, inode=fresh.inode + 1)
+        async with wfs.db:
+            wfs.define_step(wfs.root, "make out.txt", out_paths=["out.txt"])
+            step = wfs.find(Step, "make out.txt")
+            wfs.update_file_hash("out.txt", stale, cause=HashUpdateCause.SUCCEEDED)
+            step.reset_for_rerun()
+            assert wfs.find(File, "out.txt").get_state() == FileState.OUTDATED
+
+        executor = _make_executor(reporter=_FakeReporter(), workflow=wfs, db=wfs.db)
+        run = Run(step, job_i=1)
+        step_hash = StepHash.from_inp(step.label, {}, {}, explained=False)
+
+        new_hash, all_out_hashes = await executor._compute_out_step_hash(run, step_hash)
+
+        assert new_hash is not None
+        assert run.success
+        assert list(all_out_hashes) == ["out.txt"]
+        # `==` cannot see the difference, so the stat fields are compared directly.
+        assert all_out_hashes["out.txt"] == stale
+        assert all_out_hashes["out.txt"].stat_differs(stale)
 
 
 async def test_compute_full_step_hash_cancelled_returns_sentinel_without_raising(
@@ -356,11 +389,11 @@ async def test_compute_full_step_hash_cancelled_returns_sentinel_without_raising
     executor = _make_executor(reporter=reporter, db=wfs.db)
     run = Run(step, job_i=1)
 
-    new_hash, new_inp_hashes, new_out_hashes = await executor._compute_full_step_hash(run)
+    new_hash, new_inp_hashes, all_out_hashes = await executor._compute_full_step_hash(run)
 
     assert new_hash is None
     assert new_inp_hashes == {}
-    assert new_out_hashes == {}
+    assert all_out_hashes == {}
     assert run.success is False
     assert "cancelled" in run.outcome.stderr
     # _compute_full_step_hash must not finalize the step or report anything itself.
@@ -395,11 +428,11 @@ async def test_compute_full_step_hash_cancelled_keeps_command_outcome(
     usage = ResourceUsage(utime=1.0, stime=0.5, wtime=2.0)
     run.outcome = ChildOutcome(0, "hi\n", stderr_before, usage)
 
-    new_hash, new_inp_hashes, new_out_hashes = await executor._compute_full_step_hash(run)
+    new_hash, new_inp_hashes, all_out_hashes = await executor._compute_full_step_hash(run)
 
     assert new_hash is None
     assert new_inp_hashes == {}
-    assert new_out_hashes == {}
+    assert all_out_hashes == {}
     assert run.success is False
     # The command's own outcome survives, only stderr gains the cancellation note.
     assert run.outcome.returncode == 0
@@ -448,28 +481,11 @@ async def test_try_skip_job_bails_out_when_out_hash_cancelled(wfs: Workflow, mon
 #
 
 
-def _spy_update_file_hashes(monkeypatch) -> list:
-    """Patch `Workflow.update_file_hashes` to record calls while still applying them.
+async def test_run_hash_job_resolves_future_without_touching_workflow(wfs: Workflow, tmpdir):
+    """The job only computes a hash and resolves its future.
 
-    Workflow is a slotted attrs class (like Scheduler, see `test_stop_swallows_flush_failure`
-    in test_builder.py), so the replacement must be patched on the class, not the instance.
+    Applying the result is the awaiter's job, so the file is left UNCONFIRMED here.
     """
-    calls = []
-    orig = Workflow.update_file_hashes
-
-    def spy(self, file_hashes, *, cause):
-        calls.append((dict(file_hashes), cause))
-        return orig(self, file_hashes, cause=cause)
-
-    monkeypatch.setattr(Workflow, "update_file_hashes", spy)
-    return calls
-
-
-async def test_run_hash_job_confirmed_applies_even_when_unchanged(
-    wfs: Workflow, tmpdir, monkeypatch
-):
-    """CONFIRMED must be applied even when the hash didn't change: it's the only cause that
-    flips UNCONFIRMED -> CONFIRMED."""
     with contextlib.chdir(tmpdir):
         async with wfs.db:
             wfs.declare_static_files(wfs.root, ["foo.txt"])
@@ -477,40 +493,14 @@ async def test_run_hash_job_confirmed_applies_even_when_unchanged(
             fh.write("hello")
         real_hash = FileHash.unknown().refreshed("foo.txt")
 
-        calls = _spy_update_file_hashes(monkeypatch)
         executor = _make_executor(reporter=_FakeReporter(), workflow=wfs, db=wfs.db)
-        hash_job = HashJob("foo.txt", real_hash, HashUpdateCause.CONFIRMED, -1)
+        hash_job = HashJob("foo.txt", FileHash.unknown(), -1)
 
         await executor.run_hash_job(hash_job)
 
-        assert calls == [({"foo.txt": real_hash}, HashUpdateCause.CONFIRMED)]
         assert hash_job.future.result() == real_hash
         async with wfs.db:
-            assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
-
-
-async def test_run_hash_job_external_not_applied_when_unchanged(wfs: Workflow, tmpdir, monkeypatch):
-    """An unchanged hash under a non-CONFIRMED cause must not trigger update_file_hashes:
-    e.g. (EXTERNAL, CONFIRMED, known) would call handle_updated_file and needlessly mark
-    all sinks pending."""
-    with contextlib.chdir(tmpdir):
-        async with wfs.db:
-            wfs.declare_static_files(wfs.root, ["foo.txt"])
-        with open("foo.txt", "w") as fh:
-            fh.write("hello")
-        real_hash = FileHash.unknown().refreshed("foo.txt")
-        async with wfs.db:
-            wfs.update_file_hashes({"foo.txt": real_hash}, cause=HashUpdateCause.CONFIRMED)
-            assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
-
-        calls = _spy_update_file_hashes(monkeypatch)
-        executor = _make_executor(reporter=_FakeReporter(), workflow=wfs, db=wfs.db)
-        hash_job = HashJob("foo.txt", real_hash, HashUpdateCause.EXTERNAL, -1)
-
-        await executor.run_hash_job(hash_job)
-
-        assert calls == []
-        assert hash_job.future.result() == real_hash
+            assert wfs.find(File, "foo.txt").get_state() == FileState.UNCONFIRMED
 
 
 async def test_run_hash_job_brackets_progress_bar(wfs: Workflow, tmpdir):
@@ -524,7 +514,7 @@ async def test_run_hash_job_brackets_progress_bar(wfs: Workflow, tmpdir):
             wfs.declare_static_files(wfs.root, ["foo.txt"])
         reporter = _FakeReporter()
         executor = _make_executor(reporter=reporter, workflow=wfs, db=wfs.db)
-        hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.CONFIRMED, -1)
+        hash_job = HashJob("foo.txt", FileHash.unknown(), -1)
 
         await executor.run_hash_job(hash_job)
 
@@ -541,7 +531,7 @@ async def test_run_hash_job_stops_progress_bar_when_it_raises(monkeypatch):
     monkeypatch.setattr(Executor, "_run_hash_job", _boom)
     reporter = _FakeReporter()
     executor = _make_executor(reporter=reporter)
-    hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -2)
+    hash_job = HashJob("foo.txt", FileHash.unknown(), -2)
 
     with pytest.raises(ValueError, match="boom"):
         await executor.run_hash_job(hash_job)
@@ -555,7 +545,7 @@ async def test_run_hash_job_cancelled_cancels_future_without_raising(monkeypatch
 
     monkeypatch.setattr(FileHash, "refreshed", _raise_cancelled)
     executor = _make_executor(reporter=_FakeReporter())
-    hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
+    hash_job = HashJob("foo.txt", FileHash.unknown(), -1)
 
     await executor.run_hash_job(hash_job)  # must not raise
 
@@ -581,7 +571,7 @@ async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workf
     reporter = _FakeReporter()
     scheduler = SimpleNamespace(draining=False)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, workflow=wfs, db=wfs.db)
-    hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
+    hash_job = HashJob("foo.txt", FileHash.unknown(), -1)
 
     await executor.run_hash_job(hash_job)  # must not raise
 
@@ -606,7 +596,7 @@ async def test_run_hash_job_exception_without_file_node_reports_no_provenance(
     reporter = _FakeReporter()
     scheduler = SimpleNamespace(draining=False)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, workflow=wfs, db=wfs.db)
-    hash_job = HashJob("gone.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
+    hash_job = HashJob("gone.txt", FileHash.unknown(), -1)
 
     await executor.run_hash_job(hash_job)  # must not raise
 

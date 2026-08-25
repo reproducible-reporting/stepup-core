@@ -10,6 +10,7 @@ import stat
 import threading
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 
+import attrs
 import pytest
 import pytest_asyncio
 from path import Path
@@ -126,7 +127,16 @@ def fake_hash(path):
     digest = b"d" if path.endswith("/") else hashlib.sha256(path.encode("utf8")).digest()
     mtime = sum(bytearray(digest)) ** 0.5
     mode = 0o755 if path.endswith("/") else 0o644
-    return FileHash(digest, mode, mtime, len(path) ** 2, len(path))
+    return FileHash(digest, mode, len(path) ** 2, mtime, len(path))
+
+
+def chmod(file_hash: FileHash) -> FileHash:
+    """Return `file_hash` with a different mode, as a file change that leaves the content alone.
+
+    The graph printout shows only the digest,
+    so a test can use this to change a file without invalidating a literal graph it compares to.
+    """
+    return attrs.evolve(file_hash, mode=file_hash.mode ^ 0o111)
 
 
 def declare_static(workflow, creator, paths):
@@ -136,8 +146,8 @@ def declare_static(workflow, creator, paths):
     This is solely used for testing the workflow.
     """
     unconfirmed = workflow.declare_static_files(creator, paths)
-    checked = {path: fake_hash(path) for path in unconfirmed}
-    workflow.update_file_hashes(checked, cause=HashUpdateCause.CONFIRMED)
+    for path in unconfirmed:
+        workflow.update_file_hash(path, fake_hash(path), cause=HashUpdateCause.OBSERVED)
     return [workflow.find(File, path) for path in paths]
 
 

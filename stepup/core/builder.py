@@ -20,7 +20,7 @@ The work done by `finalize` is implemented in `finalize.py`, not here.
 import asyncio
 import logging
 import signal
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 
 import attrs
 
@@ -116,7 +116,11 @@ class Builder:
     """Dictionary of asyncio tasks that are currently running a job or hash job."""
 
     done_tasks: dict[asyncio.Task, AnyJob] = attrs.field(init=False, factory=dict)
-    """Dictionary of asyncio tasks that have completed a job or hash job."""
+    """Dictionary of asyncio tasks that have completed a job or hash job.
+
+    Ordered by completion, and drained in that same order by `handle_done_tasks`,
+    so two hash jobs for the same path are applied oldest first.
+    """
 
     returncode: ReturnCode = attrs.field(init=False, default=ReturnCode.PENDING)
     """Exit code for the director, based on the last build phase."""
@@ -272,9 +276,7 @@ class Builder:
         self.running_tasks[task] = hash_job
         task.add_done_callback(self._task_done)
 
-    async def run_promoted_hash_jobs(
-        self, paths_hashes: Mapping[str, FileHash], cause: HashUpdateCause
-    ) -> None:
+    async def run_promoted_hash_jobs(self, paths_hashes: Mapping[str, FileHash]) -> None:
         """Submit and run hash jobs immediately, bypassing `job_loop`'s `njob` budget.
 
         Promoted when a step blocks on still-`UNCONFIRMED` inputs:
@@ -288,21 +290,60 @@ class Builder:
         ----------
         paths_hashes
             The old hashes of the files to (re)hash, keyed by path.
-        cause
-            Passed through to every submitted job; see `HashJob.cause`.
         """
 
-        async def run_one(path: str, old_hash: FileHash) -> None:
-            job = self.hash_queue.submit(path, old_hash, cause)
+        async def run_one(job: HashJob) -> FileHash:
             if self.hash_queue.claim(job):
                 await self.executor.run_hash_job(job)
             # Await (rather than just check) the shared future even after running it here:
             # `run_hash_job` swallows per-file errors into the future instead of raising,
             # so this is what lets an exception (e.g. a stat error) propagate
             # to the `amend()` caller instead of being silently lost.
-            await asyncio.shield(job.future)
+            return await asyncio.shield(job.future)
 
-        await asyncio.gather(*(run_one(path, old_hash) for path, old_hash in paths_hashes.items()))
+        jobs = [self.hash_queue.submit(path, old_hash) for path, old_hash in paths_hashes.items()]
+
+        # Errors are collected rather than raised straight away,
+        # so one unhashable file does not discard the results of the files next to it,
+        # which nothing else in this phase would apply.
+        results = await asyncio.gather(*(run_one(job) for job in jobs), return_exceptions=True)
+
+        # Apply before returning, so `amend_step`'s re-read of the file states sees the results,
+        # whether they were written here or by the other awaiter that won the claim.
+        await self._apply_hash_results(jobs)
+
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
+
+    async def _apply_hash_results(self, hash_jobs: Iterable[HashJob]) -> None:
+        """Write the results of completed hash jobs to the workflow, in one transaction.
+
+        Every job whose result this call claims is applied together,
+        which keeps a batch of observations from taking the write lock once per file.
+
+        Parameters
+        ----------
+        hash_jobs
+            Jobs to apply, in completion order.
+            A job with nothing to apply is skipped, which covers three cases:
+            a future that never resolved because its awaiter was cancelled,
+            one that was cancelled or failed
+            (`Executor.run_hash_job` has already reported the error and drained the scheduler),
+            and one whose result another awaiter already claimed,
+            see `HashQueue.claim_apply`.
+        """
+        results = {}
+        for job in hash_jobs:
+            future = job.future
+            if not future.done() or future.cancelled() or future.exception() is not None:
+                continue
+            if self.hash_queue.claim_apply(job):
+                results[job.path] = future.result()
+        if len(results) == 0:
+            return
+        async with self.db:
+            self.workflow.update_file_hashes(results, cause=HashUpdateCause.OBSERVED)
 
     def _task_done(self, task: asyncio.Task):
         job = self.running_tasks.pop(task)
@@ -310,22 +351,36 @@ class Builder:
         self.wake_job_loop.set()
 
     async def handle_done_tasks(self):
-        """Retire done tasks: propagate their exceptions and report completions to the scheduler."""
+        """Retire done tasks: propagate their exceptions, apply hash results, report completions.
+
+        The hash results of all jobs retired by one call are applied in a single transaction.
+        This runs before `job_loop` calls `pop_next_job()`,
+        so a step waiting on one of these files is not delayed by a single iteration.
+        """
+        hash_jobs: list[HashJob] = []
         while len(self.done_tasks) > 0:
-            task, job = self.done_tasks.popitem()
+            # Drained oldest first, so `_apply_hash_results` sees the jobs in completion order
+            # and two jobs for the same path leave the later observation in place.
+            task = next(iter(self.done_tasks))
+            job = self.done_tasks.pop(task)
             exc = task.exception()
             if exc is not None:
                 self.scheduler.draining = True
 
+                # Raised before applying anything: the director is tearing down.
                 msg = f"Exception in task {task.get_name()}"
                 raise RuntimeError(msg) from exc
             # Hash jobs get no Scheduler bookkeeping:
             # they never went through scheduler.pop_next_job(),
             # so job.job_i isn't a key in scheduler.jobs,
             # and there is no Step to record a duration for.
-            if not isinstance(job, HashJob):
+            if isinstance(job, HashJob):
+                hash_jobs.append(job)
+            else:
                 self.scheduler.record_job_completed(job)
             self.wake_job_loop.set()
+
+        await self._apply_hash_results(hash_jobs)
 
     async def stop(self):
         """Cancel any still-running tasks, signal their child processes and flush step durations."""

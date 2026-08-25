@@ -1366,10 +1366,6 @@ class Step(Node):
         """
         interrupted_defer = False
         if new_hash is None:
-            # Update states, needed for files that have not changed since the previous run.
-            for file in self.products(File):
-                if file.get_state() == FileState.BUILT:
-                    file.set_state(FileState.OUTDATED)
             if wants_defer:
                 defer_count = self._increment_defer_count()
                 if defer_count <= self.graph.defer_cap:
@@ -1408,11 +1404,6 @@ class Step(Node):
         else:
             logger.info("Succeeded step: %s", self.label)
             self.set_state(StepState.SUCCEEDED)
-            # Update states, needed for files that have not changed since the previous run.
-            for file in self.products(File):
-                if file.get_state() == FileState.OUTDATED:
-                    file.set_state(FileState.BUILT)
-                    self.graph.mark_consuming_steps_pending(file)
             self.set_hash(new_hash)
         return interrupted_defer
 

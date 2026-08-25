@@ -51,17 +51,15 @@ async def _settle(workflow: Workflow, scheduler: Scheduler) -> None:
 def _declare_static(workflow: Workflow, creator: Step, paths: list[str]) -> None:
     """Declare `paths` as static and confirm them present, i.e. `FileState.CONFIRMED`."""
     workflow.declare_static_files(creator, paths)
-    workflow.update_file_hashes(
-        {path: fake_hash(path) for path in paths}, cause=HashUpdateCause.CONFIRMED
-    )
+    for path in paths:
+        workflow.update_file_hash(path, fake_hash(path), cause=HashUpdateCause.OBSERVED)
 
 
 def _declare_missing(workflow: Workflow, creator: Step, paths: list[str]) -> None:
     """Declare `paths` as static and confirm them absent, i.e. `FileState.MISSING`."""
     workflow.declare_static_files(creator, paths)
-    workflow.update_file_hashes(
-        {path: FileHash.unknown() for path in paths}, cause=HashUpdateCause.CONFIRMED
-    )
+    for path in paths:
+        workflow.update_file_hash(path, FileHash.unknown(), cause=HashUpdateCause.OBSERVED)
 
 
 #

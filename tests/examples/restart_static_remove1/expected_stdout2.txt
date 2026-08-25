@@ -1,7 +1,7 @@
  STARTUP │ Watching 1 directory
  STARTUP │ Checking 5 file(s) for changes
- UPDATED │ plan.py (digest 9b42ddbc ➜ 052600b0, size 157 ➜ 119)
  DELETED │ foo.txt
+ UPDATED │ plan.py (digest 9b42ddbc ➜ 052600b0, size 157 ➜ 119)
    PHASE │ build
   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────

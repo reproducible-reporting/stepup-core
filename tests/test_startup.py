@@ -90,9 +90,9 @@ async def test_rescan_files_does_nothing_when_nothing_to_check(wfs: Workflow):
 
 
 async def test_rescan_files_confirms_unchanged_stray_unconfirmed_row(wfs: Workflow, tmpdir):
-    """A stray UNCONFIRMED row (crash while its confirming hash job was still queued or in
-    flight) whose cached hash still matches disk must become CONFIRMED directly, via
-    `CONFIRMED`, without depending on a step rerun and without an UPDATED/DELETED report
+    """A stray UNCONFIRMED row (crash while its settling hash job was still queued or in
+    flight) whose cached hash still matches disk must become CONFIRMED directly,
+    without depending on a step rerun and without an UPDATED/DELETED report
     (the file did not actually change)."""
     with contextlib.chdir(tmpdir):
         with open("foo.txt", "w") as fh:
@@ -102,7 +102,7 @@ async def test_rescan_files_confirms_unchanged_stray_unconfirmed_row(wfs: Workfl
         real_hash = FileHash.unknown().refreshed("foo.txt")
         async with wfs.db:
             wfs.declare_static_files(wfs.root, ["foo.txt"])
-            wfs.update_file_hashes({"foo.txt": real_hash}, cause=HashUpdateCause.CONFIRMED)
+            wfs.update_file_hash("foo.txt", real_hash, cause=HashUpdateCause.OBSERVED)
             _make_stray_unconfirmed(wfs, "foo.txt")
             assert wfs.find(File, "foo.txt").get_state() == FileState.UNCONFIRMED
 
@@ -118,7 +118,7 @@ async def test_rescan_files_confirms_unchanged_stray_unconfirmed_row(wfs: Workfl
 
 async def test_rescan_files_confirms_deleted_stray_unconfirmed_row(wfs: Workflow, tmpdir):
     """A stray UNCONFIRMED row whose file is now absent must become MISSING, reported
-    as DELETED -- same reporting as a regular CONFIRMED file being externally deleted."""
+    as DELETED, the same reporting as a regular CONFIRMED file being externally deleted."""
     with contextlib.chdir(tmpdir):
         with open("foo.txt", "w") as fh:
             fh.write("hello")
@@ -143,7 +143,7 @@ async def test_rescan_files_confirms_deleted_stray_unconfirmed_row(wfs: Workflow
 
 async def test_rescan_files_reports_externally_updated_static_file(wfs: Workflow, tmpdir):
     """A regular (non-UNCONFIRMED) CONFIRMED file that changed on disk must still be picked
-    up via the EXTERNAL cause, reported as UPDATED, and get its new hash applied."""
+    up by the scan, reported as UPDATED, and get its new hash applied."""
     with contextlib.chdir(tmpdir):
         with open("foo.txt", "w") as fh:
             fh.write("hello")
@@ -168,6 +168,47 @@ async def test_rescan_files_reports_externally_updated_static_file(wfs: Workflow
         async with wfs.db:
             assert wfs.find(File, "foo.txt").get_state() == FileState.CONFIRMED
             assert wfs.find(File, "foo.txt").get_hash() != old_hash
+
+
+async def test_rescan_files_applies_whole_scan_in_one_transaction(
+    wfs: Workflow, tmpdir, monkeypatch
+):
+    """The scan applies one hash per file, but opens a single transaction to do so.
+
+    A transaction per file is what this batching exists to avoid,
+    so the count is pinned rather than merely the resulting states.
+    """
+    with contextlib.chdir(tmpdir):
+        paths = ["a.txt", "b.txt", "c.txt"]
+        for path in paths:
+            with open(path, "w") as fh:
+                fh.write(path)
+        async with wfs.db:
+            declare_static(wfs, wfs.root, paths)
+        for path in paths:
+            with open(path, "w") as fh:
+                fh.write("changed " + path)
+
+        builder = _make_builder(wfs)
+        reporter = _FakeReporter()
+        applied = []
+        orig = Workflow.update_file_hash
+
+        def spy(self, path, new_fh, *, cause):
+            applied.append((path, cause, self.db._transaction_i))
+            return orig(self, path, new_fh, cause=cause)
+
+        # Workflow is a slotted attrs class, so the spy goes on the class, not the instance.
+        monkeypatch.setattr(Workflow, "update_file_hash", spy)
+
+        await rescan_files(wfs, reporter, builder)
+
+        assert [path for path, _, _ in applied] == paths
+        assert {cause for _, cause, _ in applied} == {HashUpdateCause.OBSERVED}
+        assert len({transaction_i for _, _, transaction_i in applied}) == 1
+        async with wfs.db:
+            for path in paths:
+                assert wfs.find(File, path).get_state() == FileState.CONFIRMED
 
 
 async def test_rescan_nglobs_persists_readable_matches(wfp: Workflow, tmpdir):

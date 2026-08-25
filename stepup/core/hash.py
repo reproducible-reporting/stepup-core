@@ -24,6 +24,7 @@ __all__ = (
     "HASH_CHUNK_SIZE",
     "FileHash",
     "HashComputeResult",
+    "InpHashComputeResult",
     "InpInfo",
     "OutInfo",
     "StepHash",
@@ -226,23 +227,29 @@ class FileHash:
     """A hash of a file's content and file properties.
 
     For existing (regular) files, the `digest` attribute is a SHA-256 hash of the file content,
-    and the mode of the file is also stored as "part of the hash".
-    When the contents, the size or the mode changes, the file is considered changed.
+    while the mode and the size of the file are also stored as "part of the hash".
 
     If the file does not exist, the hash is unknown:
     the digest is set to `b"u"` and all other properties to zero.
 
-    In addition to the digest and the mode, some more properties are stored
-    to decide whether the digest must be recomputed:
+    The fields feed two comparisons that deliberately disagree.
+    The `refreshed` method asks whether the content may have changed
+    and answers from the `stat` result alone,
+    so it also consults the modification time and the inode number.
+    It errs on the eager side, because a needless digest computation only costs time,
+    while a missed change would silently build against stale content.
+    Equality asks whether the workflow must react to the file
+    and therefore ignores the modification time and the inode number (`eq=False`),
+    because these are not a function of the source files and the plan code.
+    A fresh checkout or a copy of a project reproduces the same content
+    under a new inode and a new timestamp,
+    which must not mark every consuming step pending.
 
-    - the last modification time
-    - the file size
-    - the inode number
-
-    If all three (and also the mode) remained the same, the digest is not recomputed.
+    As a result, `refreshed` may return a new instance that compares equal to the one it
+    replaces and differs from it only in the properties that are excluded from equality.
     """
 
-    # File properties whose changes are relevant.
+    # File properties whose changes are relevant to the workflow.
 
     digest: bytes = attrs.field(converter=bytes, repr=fmt_short_digest)
     """The SHA-256 hash of the file's content, or `b"u"` when the hash is unknown."""
@@ -250,17 +257,14 @@ class FileHash:
     mode: int = attrs.field(converter=int, repr=stat.filemode)
     """The file mode, in the encoding of `os.stat_result.st_mode`."""
 
-    # Properties that are only used to detect changes.
-    # If these have not changed, the digest is not recomputed.
+    size: int = attrs.field(converter=int, repr=False)
+    """The file size in bytes."""
 
-    # Note that mtime and inode are not used for sorting,
-    # to ensure deterministic order across builds when sorting by FileHash instance.
+    # Properties that are only used to decide whether the digest must be recomputed.
+    # They are excluded from equality, for the reason given in the class docstring.
 
     mtime: float = attrs.field(converter=float, repr=False, eq=False)
     """The last modification time, in seconds since the epoch."""
-
-    size: int = attrs.field(converter=int, repr=False)
-    """The file size in bytes."""
 
     inode: int = attrs.field(converter=int, repr=False, eq=False)
     """The inode number of the file on the file system."""
@@ -268,7 +272,7 @@ class FileHash:
     @classmethod
     def unknown(cls):
         """Create the hash of a file that does not exist."""
-        return cls(b"u", 0, 0.0, 0, 0)
+        return cls(b"u", 0, 0, 0.0, 0)
 
     def refreshed(self, path: str, cancel_event: threading.Event | None = None) -> Self:
         """Return the current hash of the given file on disk.
@@ -290,9 +294,8 @@ class FileHash:
         refreshed
             The new hash.
             If the file has not changed, no new hash is created and `self` is returned.
-            For a proper comparison between hashes, use the `==` operator, not the `is` operator.
-            Two hashes are considered the same if their content, size and mode are the same,
-            but timestamps and inodes may differ.
+            For a proper comparison between hashes, use the `==` operator, not the `is` operator,
+            keeping in mind that it ignores the properties listed in the class docstring.
 
         Raises
         ------
@@ -320,7 +323,17 @@ class FileHash:
             return self
         # Directories are rejected by compute_file_digest.
         digest = compute_file_digest(path, cancel_event=cancel_event)
-        return self.__class__(digest, st.st_mode, st.st_mtime, st.st_size, st.st_ino)
+        return self.__class__(digest, st.st_mode, st.st_size, st.st_mtime, st.st_ino)
+
+    def stat_differs(self, other: Self) -> bool:
+        """Whether the `stat` properties left out of `==` differ from those of `other`.
+
+        See the class docstring for why they are excluded from equality.
+        Two unknown hashes never differ here, because `unknown` zeroes both properties,
+        which is what lets a caller use this to decide whether a stored hash is worth rewriting
+        without having to exclude the unknown hash first.
+        """
+        return self.mtime != other.mtime or self.inode != other.inode
 
     @property
     def is_unknown(self):
@@ -634,10 +647,7 @@ def _compare_env_values(
 
 @attrs.define
 class HashComputeResult:
-    """The result of a hash computation.
-
-    This is the return value of the `compute_inp_hashes` and `compute_out_hashes` functions.
-    """
+    """The result of a hash computation."""
 
     messages: list[str] = attrs.field()
     """What the caller must report about the files, one line per file.
@@ -647,16 +657,21 @@ class HashComputeResult:
     while `compute_out_hashes` writes the bare path of each output that is missing.
     """
 
-    new_hashes: dict[str, FileHash] = attrs.field()
-    """The new hashes of the inputs/outputs whose hash changed, keyed by path."""
-
     all_hashes: dict[str, FileHash] = attrs.field()
-    """The new hashes of all inputs/outputs, keyed by path, regardless of changes."""
+    """The new hashes of all files that were hashed, keyed by path."""
+
+
+@attrs.define
+class InpHashComputeResult(HashComputeResult):
+    """The result of an input hash computation, which also singles out the changed inputs."""
+
+    new_hashes: dict[str, FileHash] = attrs.field()
+    """The new hashes of the inputs that changed while they should not have, keyed by path."""
 
 
 def compute_inp_hashes(
     inp_hashes: Mapping[str, FileHash], cancel_event: threading.Event
-) -> HashComputeResult:
+) -> InpHashComputeResult:
     """Compute the new hashes of the inputs.
 
     Parameters
@@ -691,7 +706,6 @@ def compute_inp_hashes(
         new_file_hash = old_file_hash.refreshed(path, cancel_event)
         all_inp_hashes[path] = new_file_hash
         if new_file_hash != old_file_hash:
-            # Collect changed hashes, so callers can process them efficiently.
             new_inp_hashes[path] = new_file_hash
             # If an input hash has changed,
             # corresponding input files have changed or disappeared unexpectedly,
@@ -706,7 +720,7 @@ def compute_inp_hashes(
         elif old_file_hash.is_unknown:
             raise ConsistencyError("A step was scheduled with a missing input file.")
 
-    return HashComputeResult(messages, new_inp_hashes, all_inp_hashes)
+    return InpHashComputeResult(messages, all_inp_hashes, new_inp_hashes)
 
 
 def compute_out_hashes(
@@ -736,27 +750,22 @@ def compute_out_hashes(
         When an output turned out to be a directory.
     """
     messages = []
-    new_out_hashes = {}
     all_out_hashes = {}
     for path in sorted(out_hashes):
-        old_file_hash = out_hashes[path]
-        new_file_hash = old_file_hash.refreshed(path, cancel_event)
+        new_file_hash = out_hashes[path].refreshed(path, cancel_event)
         all_out_hashes[path] = new_file_hash
-        # Collect changed hashes, so callers can process them efficiently.
-        if new_file_hash != old_file_hash:
-            new_out_hashes[path] = new_file_hash
         # Missing files are always reported, even if they are missing again (unchanged hash).
         if new_file_hash.is_unknown:
             messages.append(path)
 
-    return HashComputeResult(messages, new_out_hashes, all_out_hashes)
+    return HashComputeResult(messages, all_out_hashes)
 
 
 def compute_both_hashes(
     inp_hashes: Mapping[str, FileHash],
     out_hashes: Mapping[str, FileHash],
     cancel_event: threading.Event,
-) -> tuple[HashComputeResult, HashComputeResult]:
+) -> tuple[InpHashComputeResult, HashComputeResult]:
     """Call `compute_inp_hashes` and `compute_out_hashes`, in that order.
 
     A `ThreadWorker` runs a single callable,

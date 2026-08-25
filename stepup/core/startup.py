@@ -7,7 +7,7 @@ import os
 
 from .builder import Builder
 from .enums import FileState, HashUpdateCause, StepState
-from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
+from .hash import fmt_env_value, fmt_file_hash_diff
 from .hash_queue import gather_hashes
 from .nglob import NamedGlob
 from .path import parent_dir
@@ -123,43 +123,35 @@ async def rescan_env_vars(workflow: Workflow, reporter: ReporterClient):
 async def rescan_files(workflow: Workflow, reporter: ReporterClient, builder: Builder):
     """Check all relevant files in the workflow for changes.
 
-    The following are not checked:
-    - Files in the VOLATILE state: they are expected to change.
-    - Files in the PLANNED state: they are not yet built, so their content is not relevant.
-    - Detached files: they are not part of the workflow, so their content is not relevant.
+    Which files are checked, and how detached ones are treated,
+    is decided by `Workflow.get_all_observable_file_hashes`.
+
+    This also settles a stray `UNCONFIRMED` row,
+    left behind by a director killed while the hash job for that file was queued or in flight.
+    The scan moves it to `CONFIRMED` or `MISSING`,
+    so `reset_interrupted_steps()` does not have to rerun the step that declared it.
     """
-    sql = (
-        "SELECT label, state, hash "
-        "FROM node JOIN file ON node.i = file.node AND state NOT IN (?, ?) AND NOT detached"
-    )
-    data = (FileState.PLANNED.value, FileState.VOLATILE.value)
     async with workflow.db:
-        rows = workflow.db.execute(sql, data).fetchall()
-    if len(rows) == 0:
+        # The paths come out sorted, which is what puts the UPDATED and DELETED lines
+        # reported below in a fixed order.
+        old_hashes = workflow.get_all_observable_file_hashes()
+    if len(old_hashes) == 0:
         return
 
-    await reporter("STARTUP", f"Checking {len(rows)} file(s) for changes")
-    old_hashes = {}
-    path_hash_causes = []
-    for path, state, hash_value in rows:
-        old_file_hash = FileHash.from_json(hash_value)
-        old_hashes[path] = old_file_hash
-        # A stray `UNCONFIRMED` row is left behind by a director killed
-        # while the hash job confirming that file was still queued or in flight.
-        # It is resolved here through the `CONFIRMED` cause,
-        # the only one that flips `UNCONFIRMED` to `CONFIRMED` or `MISSING`,
-        # rather than through the `RUNNING` -> `FAILED` -> `PENDING` reset
-        # in `reset_interrupted_steps()` that reruns the declaring step.
-        cause = (
-            HashUpdateCause.CONFIRMED
-            if FileState(state) == FileState.UNCONFIRMED
-            else HashUpdateCause.EXTERNAL
-        )
-        path_hash_causes.append((path, old_file_hash, cause))
+    await reporter("STARTUP", f"Checking {len(old_hashes)} file(s) for changes")
     new_hashes = await gather_hashes(
-        builder.hash_queue, builder.executor, reporter, path_hash_causes, builder.njob
+        builder.hash_queue, builder.executor, reporter, list(old_hashes.items()), builder.njob
     )
 
+    # The whole scan is applied in one transaction, rather than one per file.
+    # No build phase is active here, so nothing contends for the lock while it is held.
+    async with workflow.db:
+        workflow.update_file_hashes(new_hashes, cause=HashUpdateCause.OBSERVED)
+
+    # Keyed on the hash difference rather than on the update's outcome,
+    # because what is reported here is the diff itself,
+    # which does not exist when digest, size and mode all match:
+    # `fmt_file_hash_diff` returns `None` in that case.
     for path, new_file_hash in new_hashes.items():
         old_file_hash = old_hashes[path]
         if old_file_hash != new_file_hash:

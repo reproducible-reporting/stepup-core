@@ -1,7 +1,7 @@
  STARTUP │ Watching 2 directories
  STARTUP │ Checking 3 file(s) for changes
- DELETED │ sub/inp.txt
  DELETED │ out.txt
+ DELETED │ sub/inp.txt
    PHASE │ build
 DIRECTOR │ Ran 0 job(s).
  WARNING │ 1 step(s) remained pending.

@@ -169,7 +169,7 @@ def _insert_input_file(con, node_id, creator_id, state, *, detached=False, label
     if state in (FileState.MISSING, FileState.PLANNED, FileState.VOLATILE):
         hash_value = None
     else:  # CONFIRMED, BUILT, OUTDATED
-        hash_value = FileHash(b"\x01\x02\x03", 0o100644, 1000.0, 100, 42).to_json()
+        hash_value = FileHash(b"\x01\x02\x03", 0o100644, 100, 1000.0, 42).to_json()
     con.execute(
         "INSERT INTO file (node, state, hash) VALUES (?, ?, ?)",
         (node_id, state.value, hash_value),

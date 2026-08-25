@@ -7,8 +7,9 @@ import contextlib
 import logging
 from types import SimpleNamespace
 
+import attrs
 import pytest
-from conftest import get_duration_and_tail_time
+from conftest import fake_hash, get_duration_and_tail_time
 from path import Path
 
 from stepup.core.builder import Builder
@@ -16,6 +17,7 @@ from stepup.core.enums import HashUpdateCause, Need, StepState
 from stepup.core.executor import Executor
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash, StepHash
+from stepup.core.hash_queue import HashJob
 from stepup.core.reporter import ReporterClient
 from stepup.core.scheduler import Scheduler
 from stepup.core.step import Step
@@ -130,8 +132,9 @@ async def test_finalize_reverts_optional_only_when_cleaning(
                 plan, "foo", out_paths=["data.txt"], vol_paths=["vol.log"], need=Need.OPTIONAL
             )
             foo = wfp.find(Step, "foo")
-            wfp.update_file_hashes(
-                {"data.txt": FileHash.unknown().refreshed("data.txt")},
+            wfp.update_file_hash(
+                "data.txt",
+                FileHash.unknown().refreshed("data.txt"),
                 cause=HashUpdateCause.SUCCEEDED,
             )
             foo.mark_completed(StepHash(b"aaa", None, b"zzz", None), False)
@@ -154,6 +157,23 @@ async def test_finalize_reverts_optional_only_when_cleaning(
                 assert wfp.find(File, "data.txt").get_state() == FileState.BUILT
                 assert Path("data.txt").exists()
                 assert Path("vol.log").exists()
+
+
+def _make_hash_applier_builder(workflow: Workflow) -> Builder:
+    """A `Builder` with a real workflow and database, enough for `handle_done_tasks`.
+
+    The scheduler is left out because a `HashJob` never reaches it:
+    it never went through `pop_next_job()`, so there is nothing to record.
+    """
+    return Builder(
+        njob=1,
+        scheduler=None,
+        workflow=workflow,
+        db=workflow.db,
+        reporter=ReporterClient(),
+        live_progress=False,
+        executor=None,
+    )
 
 
 class _FakeReporter:
@@ -261,7 +281,7 @@ async def test_job_loop_dispatches_hash_jobs_before_runnable_steps(wfs: Workflow
     monkeypatch.setattr(Builder, "start_task", fake_start_task)
     monkeypatch.setattr(Builder, "start_hash_task", fake_start_hash_task)
 
-    hash_job = builder.hash_queue.submit("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL)
+    hash_job = builder.hash_queue.submit("foo.txt", FileHash.unknown())
 
     await builder.job_loop()
 
@@ -305,28 +325,67 @@ async def test_run_promoted_hash_jobs_applies_result(wfs: Workflow, tmpdir):
             executor=executor,
         )
 
-        await builder.run_promoted_hash_jobs(
-            {"a.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED
-        )
+        await builder.run_promoted_hash_jobs({"a.txt": FileHash.unknown()})
 
         async with wfs.db:
             assert wfs.find(File, "a.txt").get_state() == FileState.CONFIRMED
 
 
-async def test_run_promoted_hash_jobs_awaits_already_claimed_job_without_rerunning():
+async def test_run_promoted_hash_jobs_applies_siblings_of_a_failing_job(wfs: Workflow, tmpdir):
+    """One unhashable file must not discard the results of the files awaited alongside it.
+
+    Nothing else applies these results (a promoted job never reaches
+    `Builder.handle_done_tasks`), so dropping the batch would leave its files UNCONFIRMED
+    for the rest of the build.
+    The error still reaches the `amend()` caller.
+    """
+    with contextlib.chdir(tmpdir):
+        with open("a.txt", "w") as fh:
+            fh.write("aaa")
+        async with wfs.db:
+            wfs.declare_static_files(wfs.root, ["a.txt", "b.txt"])
+
+        builder = _make_hash_applier_builder(wfs)
+
+        async def fake_run_hash_job(job):
+            if job.path == "b.txt":
+                job.future.set_exception(PermissionError("boom"))
+            else:
+                job.future.set_result(FileHash.unknown().refreshed(job.path))
+
+        builder.executor = SimpleNamespace(run_hash_job=fake_run_hash_job)
+
+        with pytest.raises(PermissionError):
+            await builder.run_promoted_hash_jobs(
+                {"a.txt": FileHash.unknown(), "b.txt": FileHash.unknown()}
+            )
+
+        async with wfs.db:
+            assert wfs.find(File, "a.txt").get_state() == FileState.CONFIRMED
+            assert wfs.find(File, "b.txt").get_state() == FileState.UNCONFIRMED
+
+
+async def test_run_promoted_hash_jobs_awaits_already_claimed_job_without_rerunning(wfs: Workflow):
     """When another runner (the regular queue consumer, or a concurrent promotion for the
     same path) already claimed the job, `run_promoted_hash_jobs` must only await the shared
-    future, not run it a second time."""
+    future, not run it a second time.
+
+    It still applies the result of that job, since it is what the awaiting step needs.
+    """
     calls = []
     reporter = _FakeReporter()
     builder = _make_progress_builder(reporter)
+    builder.workflow = wfs
+    builder.db = wfs.db
+    async with wfs.db:
+        wfs.declare_static_files(wfs.root, ["foo.txt"])
 
     async def fake_run_hash_job(job):
         calls.append(job.path)
         job.future.set_result(FileHash.unknown())
 
     builder.executor = SimpleNamespace(run_hash_job=fake_run_hash_job)
-    job = builder.hash_queue.submit("foo.txt", FileHash.unknown(), HashUpdateCause.CONFIRMED)
+    job = builder.hash_queue.submit("foo.txt", FileHash.unknown())
     assert builder.hash_queue.claim(job) is True  # simulate another runner already claimed it
 
     async def resolve_soon():
@@ -338,11 +397,199 @@ async def test_run_promoted_hash_jobs_awaits_already_claimed_job_without_rerunni
 
     resolver = asyncio.create_task(resolve_soon())
     try:
-        await builder.run_promoted_hash_jobs(
-            {"foo.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED
-        )
+        await builder.run_promoted_hash_jobs({"foo.txt": FileHash.unknown()})
     finally:
         await resolver
 
     assert calls == []
     assert reporter.events == []
+    async with wfs.db:
+        assert wfs.find(File, "foo.txt").get_state() == FileState.MISSING
+
+
+#
+# Builder.handle_done_tasks
+#
+
+
+async def _retire(builder: Builder, job: HashJob) -> None:
+    """Put `job` in `done_tasks` behind a task that has already finished."""
+
+    async def noop():
+        pass
+
+    task = asyncio.create_task(noop())
+    await task
+    builder.done_tasks[task] = job
+
+
+async def test_handle_done_tasks_applies_hash_results_in_one_transaction(
+    wfs: Workflow, tmpdir
+) -> None:
+    """The results of every hash job retired by one call are written together.
+
+    One transaction per file is what this batching exists to avoid,
+    so the count is pinned rather than merely the resulting states.
+    """
+    with contextlib.chdir(tmpdir):
+        paths = ["a.txt", "b.txt"]
+        for path in paths:
+            with open(path, "w") as fh:
+                fh.write(path)
+        async with wfs.db:
+            wfs.declare_static_files(wfs.root, paths)
+
+        builder = _make_hash_applier_builder(wfs)
+        for path in paths:
+            job = HashJob(path, FileHash.unknown(), -1)
+            job.future.set_result(FileHash.unknown().refreshed(path))
+            await _retire(builder, job)
+
+        ntransaction = wfs.db._transaction_i
+        await builder.handle_done_tasks()
+
+        assert wfs.db._transaction_i == ntransaction + 1
+        async with wfs.db:
+            for path in paths:
+                assert wfs.find(File, path).get_state() == FileState.CONFIRMED
+
+
+async def test_handle_done_tasks_skips_cancelled_and_failed_hash_futures(wfs: Workflow) -> None:
+    """A future that carries no hash has nothing to apply, and must not raise here.
+
+    `Executor.run_hash_job` has already reported the error and drained the scheduler,
+    so the file is deliberately left UNCONFIRMED.
+    """
+    async with wfs.db:
+        wfs.declare_static_files(wfs.root, ["a.txt", "b.txt"])
+
+    builder = _make_hash_applier_builder(wfs)
+    cancelled = HashJob("a.txt", FileHash.unknown(), -1)
+    cancelled.future.cancel()
+    await _retire(builder, cancelled)
+    failed = HashJob("b.txt", FileHash.unknown(), -2)
+    failed.future.set_exception(PermissionError("boom"))
+    await _retire(builder, failed)
+
+    ntransaction = wfs.db._transaction_i
+    await builder.handle_done_tasks()
+
+    assert wfs.db._transaction_i == ntransaction
+    async with wfs.db:
+        assert wfs.find(File, "a.txt").get_state() == FileState.UNCONFIRMED
+        assert wfs.find(File, "b.txt").get_state() == FileState.UNCONFIRMED
+
+
+#
+# One apply per hash job, shared between Builder.handle_done_tasks
+# and Builder.run_promoted_hash_jobs.
+#
+
+
+def _share_settled_hash_job(builder: Builder, path: str) -> HashJob:
+    """Register a finished hash job that both writers of `builder` will find.
+
+    The job is put into `HashQueue.in_flight` directly, without the done-callback that
+    `submit()` installs, because that callback evicts a job as soon as its future resolves.
+    A real shared job is found by its second awaiter while it is still unresolved,
+    which no synchronous test setup can reproduce.
+    """
+    job = HashJob(path, FileHash.unknown(), -1)
+    job.started = True
+    job.future.set_result(FileHash.unknown().refreshed(path))
+    builder.hash_queue.in_flight[path] = job
+    return job
+
+
+def _count_file_hash_updates(monkeypatch) -> list[str]:
+    """Record the path of every `Workflow.update_file_hash` call, in order."""
+    paths = []
+    original = Workflow.update_file_hash
+
+    def counting(self, path, new_fh, *, cause):
+        paths.append(path)
+        return original(self, path, new_fh, cause=cause)
+
+    monkeypatch.setattr(Workflow, "update_file_hash", counting)
+    return paths
+
+
+async def _prepare_shared_hash_job(wfs: Workflow, monkeypatch) -> tuple[Builder, list[str]]:
+    async with wfs.db:
+        wfs.declare_static_files(wfs.root, ["a.txt"])
+    builder = _make_hash_applier_builder(wfs)
+    job = _share_settled_hash_job(builder, "a.txt")
+    await _retire(builder, job)
+    return builder, _count_file_hash_updates(monkeypatch)
+
+
+async def test_shared_hash_job_applied_once_done_tasks_first(wfs: Workflow, monkeypatch) -> None:
+    """The awaiter that runs second must not apply the result a second time.
+
+    A repeated OBSERVED update is a no-op only by accident of what the paths sharing a job
+    happen to be: it is a rejection for any file whose first update settled its state.
+    """
+    builder, applied = await _prepare_shared_hash_job(wfs, monkeypatch)
+
+    await builder.handle_done_tasks()
+    await builder.run_promoted_hash_jobs({"a.txt": FileHash.unknown()})
+
+    assert applied == ["a.txt"]
+    async with wfs.db:
+        assert wfs.find(File, "a.txt").get_state() == FileState.MISSING
+
+
+async def test_shared_hash_job_applied_once_promoted_first(wfs: Workflow, monkeypatch) -> None:
+    """Same guarantee with the two writers the other way around."""
+    builder, applied = await _prepare_shared_hash_job(wfs, monkeypatch)
+
+    await builder.run_promoted_hash_jobs({"a.txt": FileHash.unknown()})
+    await builder.handle_done_tasks()
+
+    assert applied == ["a.txt"]
+    async with wfs.db:
+        assert wfs.find(File, "a.txt").get_state() == FileState.MISSING
+
+
+async def test_shared_hash_job_applied_once_when_writers_race(wfs: Workflow, monkeypatch) -> None:
+    """Both writers in flight at once, which is how the two meet in a build phase."""
+    builder, applied = await _prepare_shared_hash_job(wfs, monkeypatch)
+
+    await asyncio.gather(
+        builder.handle_done_tasks(),
+        builder.run_promoted_hash_jobs({"a.txt": FileHash.unknown()}),
+    )
+
+    assert applied == ["a.txt"]
+    async with wfs.db:
+        assert wfs.find(File, "a.txt").get_state() == FileState.MISSING
+
+
+async def test_handle_done_tasks_keeps_the_later_of_two_hashes_for_one_path(
+    wfs: Workflow,
+) -> None:
+    """Two hash jobs for one path can be retired together, and the later one must win.
+
+    `HashQueue.submit` deduplicates by path, but only while a job is in flight,
+    so a second job for the same path exists as soon as the first one's future resolves.
+    Both then land in `done_tasks`, where the last one to complete is the fresher
+    observation of the file.
+    """
+    async with wfs.db:
+        wfs.declare_static_files(wfs.root, ["a.txt"])
+
+    builder = _make_hash_applier_builder(wfs)
+    hashes = []
+    for i, job_i in enumerate([-1, -2]):
+        job = HashJob("a.txt", FileHash.unknown(), job_i)
+        new_hash = attrs.evolve(fake_hash("a.txt"), mtime=1e9 + i, inode=1234)
+        hashes.append(new_hash)
+        job.future.set_result(new_hash)
+        await _retire(builder, job)
+
+    await builder.handle_done_tasks()
+
+    async with wfs.db:
+        # `fake_hash` gives both jobs the same digest, so only the stat fields,
+        # which `==` cannot see, tell the two observations apart.
+        assert wfs.find(File, "a.txt").get_hash().mtime == hashes[-1].mtime
