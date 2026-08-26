@@ -8,6 +8,7 @@ and may be complemented with a JSON string on the command line.
 
 import argparse
 import json
+from collections.abc import Sequence
 from typing import Any
 
 import jinja2
@@ -21,9 +22,9 @@ from .path import StrPath, coerce_str
 __all__ = ("main", "render_jinja_file", "render_jinja_str")
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     """Command-line entry point for the `render-jinja` console script."""
-    args = _parse_args()
+    args = _parse_args(argv)
     latex = _resolve_latex(args.mode, args.path_out)
     dir_out = args.path_out.parent.absolute()
     variables = vars(loadns(*args.paths_variables, dir_out=dir_out, do_amend=False))
@@ -38,7 +39,7 @@ def main() -> None:
     args.path_out.chmod(args.path_in.stat().st_mode)
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse the command line arguments of the `render-jinja` console script."""
     parser = argparse.ArgumentParser(
         prog="sc-render-jinja",
@@ -66,7 +67,7 @@ def _parse_args() -> argparse.Namespace:
         "--json",
         help="Variables are given as a JSON string (overrules the variables defined in files)",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def _resolve_latex(mode: str, path_out: StrPath) -> bool:

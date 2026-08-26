@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
 [build-system]
-requires = ["setuptools>=65.0", "setuptools_scm>=8.1"]
+requires = ["setuptools>=77.0", "setuptools_scm>=8.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -43,7 +43,6 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
-    "cffconvert",
     "matplotlib",
     "mike",
     "mkdocs",
