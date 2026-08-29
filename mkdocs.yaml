@@ -23,12 +23,6 @@ validation:
     absolute_links: warn
     unrecognized_links: warn
 
-extra:
-  version:
-    provider: mike
-    alias: true
-    default: stable
-
 theme:
   logo: logo.svg
   favicon: logo.svg
@@ -140,7 +134,6 @@ exclude_docs: |
   */*/public/*.md
 
 plugins:
-- mike
 - search:
     lang:
       - en

@@ -1,0 +1,72 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+{% extends "main.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  <script>
+    // Recover links to the versioned documentation that was published before StepUp 4.0.
+    // Those URLs carried a version segment, such as /stable/, /dev/ or /3.2/,
+    // which the current flat site no longer has.
+    //
+    // GitHub Pages serves this page with an HTTP 404 status and offers no way to change that,
+    // so this rewrite fixes broken links for readers but does not transfer search ranking.
+    // The dedicated redirects under /stable/ do that for the pages that still exist.
+    (function () {
+      var siteUrl = {{ (config.site_url or "/") | tojson }};
+      var base = new URL(siteUrl, window.location.origin).pathname;
+      var version = /^(?:stable|latest|dev|[0-9]+(?:\.[0-9]+)*)$/;
+
+      // Pages that were renamed since the versioned documentation was published.
+      // Keys and values are page paths relative to the site root.
+      var renames = {
+        "advanced_topics/amending_static_inputs/": "advanced_topics/dynamic_static_inputs/",
+        "advanced_topics/amending_steps/": "advanced_topics/dynamic_dependencies/",
+        "advanced_topics/pools/": "advanced_topics/resources/",
+        "advanced_topics/static_named_glob/": "getting_started/named_glob/",
+        "getting_started/copy_mkdir/": "getting_started/copy/",
+        "getting_started/script_multiple/": "deprecated/script_multiple/",
+        "getting_started/script_single/": "deprecated/script_single/",
+        "getting_started/static_glob/": "getting_started/glob/",
+        "getting_started/static_glob_conditional/": "getting_started/glob_conditional/",
+        "reference/stepup.core.script/": "deprecated/stepup.core.script/"
+        // Four more old pages have no obvious successor and are left to the graceful message below:
+        // advanced_topics/static_deferred_glob/
+        // extending/action/
+        // reference/environment_variables/       (probably reference/configuration/)
+        // reference/stepup.core.interact/        (probably reference/interactive/)
+      };
+
+      var path = window.location.pathname;
+      if (path.slice(0, base.length) !== base) {
+        return;
+      }
+      var parts = path.slice(base.length).split("/");
+      if (!version.test(parts[0])) {
+        // No version segment, so this is a genuine 404.
+        // Returning here also stops a rewrite from bouncing further,
+        // because the rewritten path never carries a version segment.
+        return;
+      }
+      var rest = parts.slice(1).join("/").replace(/index\.html$/, "");
+      rest = renames[rest] || rest;
+      window.location.replace(base + rest + window.location.search + window.location.hash);
+    })();
+  </script>
+{% endblock %}
+
+{% block content %}
+  <h1>404 - Page not found</h1>
+  <p>
+    This page does not exist.
+    If you followed a link to the documentation of an older StepUp release,
+    note that only the current version is published from now on,
+    and that some pages were renamed along the way.
+  </p>
+  <p>
+    Use the search box at the top of this page,
+    or start again from the <a href="{{ base_url }}/">documentation home page</a>.
+  </p>
+{% endblock %}

@@ -61,7 +61,8 @@ pytest -vv
 ## Documentation
 
 The documentation is created using [MkDocs](https://www.mkdocs.org/).
-[mike](https://github.com/jimporter/mike) is used to manage documentation of different versions
+Only the current version is published:
+every commit on the main branch republishes the site with GitHub Pages.
 
 Edit the documentation Markdown files with a live preview by running:
 

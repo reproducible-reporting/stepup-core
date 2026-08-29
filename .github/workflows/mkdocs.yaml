@@ -1,32 +1,25 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-# This workflow assumes that you deploy the documentation from the gh-pages branch.
+# This workflow publishes a single, unversioned documentation site with GitHub Pages.
+# The Pages source of the repository must be set to "GitHub Actions",
+# not to a branch, for the deploy job to have any effect.
 
 name: mkdocs
 on:
   push:
     branches:
-      # Run on the main branch ...
+      # Every commit on the main branch republishes the site,
+      # so that the documentation never lags behind the code.
       - main
-    tags:
-      # ... and on release tags ...
-      - 'v*'
-    paths:
-      # ... and only if relevant files have changed.
-      - stepup/**
-      - docs/**
-      - overrides/**
-      - mkdocs.yaml
-      - pyproject.toml
-      - .github/workflows/mkdocs.yaml
   pull_request:
-  # Run tests on pull requests ...
+  # Build without publishing on pull requests ...
     paths:
       # ... only if relevant files have changed.
       - stepup/**
       - docs/**
       - overrides/**
+      - tools/make_stable_redirects.py
       - mkdocs.yaml
       - pyproject.toml
       - .github/workflows/mkdocs.yaml
@@ -61,53 +54,29 @@ jobs:
         run: uv pip install --system -e .[dev]
       - name: Build mkdocs site
         run: mkdocs build --strict
+      # The documentation used to be published per version with mike,
+      # and search engines were pointed at the stable alias.
+      # See tools/make_stable_redirects.py for when these stubs can be dropped.
+      - name: Add redirects from the retired stable URLs
+        run: python tools/make_stable_redirects.py site
+      - name: Upload the site as a Pages artifact
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: site
 
   deploy:
-    name: Publish documentation on gh-pages
+    name: Publish documentation on GitHub Pages
     timeout-minutes: 2
     needs: build
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: github.event_name == 'push'
     permissions:
-      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      # Get the source
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: 3.x
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v10.0.1
-        with:
-          enable-cache: true
-          cache-dependency-glob: pyproject.toml
-      - name: Install development version
-        run: uv pip install --system -e .[dev]
-
-      # Update the site using the gh-pages branch with mike.
-      - name: Get the docs branch
-        run: git fetch --depth=1 origin gh-pages
-      - name: Configure Git user for documentation commit
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-      - name: Build docs snapshot
-        run: mike deploy dev
-      - name: Push gh-pages branch with development version of docs
-        if: github.ref == 'refs/heads/main'
-        run: git push origin gh-pages
-      - name: Check if stable release tag
-        id: stable_tag
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          if [[ "$GITHUB_REF" == refs/tags/v* && "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "is_stable=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_stable=false" >> $GITHUB_OUTPUT
-          fi
-      - name: Deploy gh-pages branch with stable version of docs
-        if: steps.stable_tag.outputs.is_stable == 'true'
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          MACRO_MESO=$(echo "${VERSION}" | cut -d. -f1,2)
-          mike deploy ${MACRO_MESO} -u stable -p
+      - name: Deploy the Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v5.0.0
