@@ -1,10 +1,14 @@
 ---
+title: A Dynamic Build Tool for Python
 description: >-
   StepUp is a dynamic build tool whose running steps can add more steps,
   for workflows whose dependencies are not known in advance.
 ---
 
-# Welcome to StepUp Core
+<!-- The front matter sets the HTML title of the page, not a second heading. -->
+<!-- pyml disable-num-lines 3 single-title -->
+
+# StepUp Core: A Dynamic Build Tool for Python
 
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>

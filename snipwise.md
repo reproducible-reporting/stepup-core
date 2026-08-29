@@ -70,7 +70,7 @@ insert = [
 ## `tagline`
 
 ```text
-StepUp Core provides the basic framework for the StepUp build tool.
+A dynamic Python build tool for reproducible workflows
 ```
 
 ## `abstract`

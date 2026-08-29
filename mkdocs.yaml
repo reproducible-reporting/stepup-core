@@ -4,7 +4,7 @@ site_name: StepUp Core
 repo_url: https://github.com/reproducible-reporting/stepup-core
 site_url: https://reproducible-reporting.github.io/stepup-core/
 edit_uri: edit/main/docs/
-site_description: StepUp Core provides the basic framework for the StepUp build tool.
+site_description: A dynamic Python build tool for reproducible workflows
 site_author: Toon Verstraelen
 copyright: 2024-2026, Toon Verstraelen
 
