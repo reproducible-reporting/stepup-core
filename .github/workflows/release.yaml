@@ -45,7 +45,7 @@ jobs:
       with:
         python-version: '3.11'
     - name: Set up uv
-      uses: astral-sh/setup-uv@v10
+      uses: astral-sh/setup-uv@v10.0.1
     - name: Build package
       run: >-
         uv build
