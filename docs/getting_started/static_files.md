@@ -1,3 +1,9 @@
+---
+description: >-
+  Declare the files you wrote yourself with static(),
+  so StepUp can use them right away and protect them from being overwritten.
+---
+
 # Static Files
 
 <!--

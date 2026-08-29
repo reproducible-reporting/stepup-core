@@ -1,3 +1,9 @@
+---
+description: >-
+  Keep StepUp running with -w or -W so it watches your files,
+  and rebuild on a keypress or automatically while you edit.
+---
+
 # Interactive Usage
 
 <!--

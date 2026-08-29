@@ -1,3 +1,9 @@
+---
+description: >-
+  Reference for StepUp's path helpers,
+  which coerce, normalize, shorten and shell-quote the paths that steps declare.
+---
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

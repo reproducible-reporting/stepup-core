@@ -1,3 +1,9 @@
+---
+description: >-
+  Features that still work but are deprecated,
+  kept here with pointers to what replaces them.
+---
+
 # Introduction
 
 <!--

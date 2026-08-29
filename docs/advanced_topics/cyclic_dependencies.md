@@ -1,3 +1,9 @@
+---
+description: >-
+  See what a closed loop in the dependency graph looks like,
+  which error StepUp raises for it, and why the provenance graph stays acyclic.
+---
+
 # Cyclic Dependencies
 
 <!--

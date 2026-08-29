@@ -1,3 +1,9 @@
+---
+description: >-
+  Decode StepUp's exit status, a sum of bits for internal errors, interruption,
+  failed steps, warnings and steps left pending.
+---
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

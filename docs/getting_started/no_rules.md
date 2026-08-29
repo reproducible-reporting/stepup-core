@@ -1,3 +1,9 @@
+---
+description: >-
+  Replace build rules with plain Python functions and loops,
+  the way StepUp's own plan(), copy(), getenv() and call() helpers are written.
+---
+
 # No Rules
 
 <!--

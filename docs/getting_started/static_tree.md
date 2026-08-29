@@ -1,3 +1,9 @@
+---
+description: >-
+  Declare a whole directory tree as static in a single call,
+  instead of enumerating a large or unpredictable set of data files.
+---
+
 # Static Tree
 
 <!--

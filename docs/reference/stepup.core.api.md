@@ -1,3 +1,9 @@
+---
+description: >-
+  Reference for the functions you call in plan.py,
+  including static(), glob(), step(), amend(), run(), plan(), copy() and call().
+---
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

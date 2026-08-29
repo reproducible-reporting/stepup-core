@@ -1,3 +1,9 @@
+---
+description: >-
+  Release notes for every version of StepUp Core,
+  following Keep a Changelog and effort-based versioning.
+---
+
 # Changelog
 
 <!--

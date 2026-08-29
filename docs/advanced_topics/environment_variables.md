@@ -1,3 +1,9 @@
+---
+description: >-
+  Declare which environment variables a step uses,
+  so StepUp reruns it when you restart with a different value instead of skipping it.
+---
+
 # Environment Variables
 
 <!--

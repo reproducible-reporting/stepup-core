@@ -1,3 +1,9 @@
+---
+description: >-
+  StepUp is a dynamic build tool whose running steps can add more steps,
+  for workflows whose dependencies are not known in advance.
+---
+
 # Welcome to StepUp Core
 
 <!--

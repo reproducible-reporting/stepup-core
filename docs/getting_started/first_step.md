@@ -1,3 +1,9 @@
+---
+description: >-
+  Write a minimal plan.py with a single run() call,
+  make it executable, and watch StepUp turn it into an executed build step.
+---
+
 # First Step
 
 <!--

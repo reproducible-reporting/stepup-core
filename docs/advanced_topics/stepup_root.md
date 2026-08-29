@@ -1,3 +1,9 @@
+---
+description: >-
+  Set STEPUP_ROOT to the absolute path of your project's top-level directory,
+  so sb and stepup clean also work from a subdirectory.
+---
+
 # The `STEPUP_ROOT` variable
 
 <!--

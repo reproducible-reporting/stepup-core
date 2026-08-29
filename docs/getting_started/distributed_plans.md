@@ -1,3 +1,9 @@
+---
+description: >-
+  Split a growing workflow over one plan.py per subdirectory,
+  and connect them with the plan() function.
+---
+
 # Distributed Plans
 
 <!--

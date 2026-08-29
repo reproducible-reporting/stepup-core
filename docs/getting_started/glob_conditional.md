@@ -1,3 +1,9 @@
+---
+description: >-
+  Probe whether a file exists with glob(), which never raises on zero matches,
+  and branch your plan before declaring the match static.
+---
+
 # Glob Conditional
 
 <!--

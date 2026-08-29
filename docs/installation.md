@@ -1,3 +1,9 @@
+---
+description: >-
+  Install StepUp Core with pip on Linux, macOS or WSL,
+  together with the RepRep and Queue extensions, on Python 3.11 or later.
+---
+
 # Installation
 
 <!--

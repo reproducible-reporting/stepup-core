@@ -1,3 +1,9 @@
+---
+description: >-
+  Chain steps by declaring inp and out paths,
+  and build the command from those same paths with shq() or a callable.
+---
+
 # Dependencies
 
 <!--

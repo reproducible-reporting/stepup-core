@@ -1,3 +1,9 @@
+---
+description: >-
+  Remove outputs that automatic cleaning cannot reach with the stepup clean tool,
+  after an untracked tool upgrade or before renaming output directories.
+---
+
 # Manual Cleaning
 
 <!--

@@ -1,3 +1,9 @@
+---
+description: >-
+  Invoke a named function of a Python script from plan.py with call(),
+  which serializes the arguments and lets the function plan further steps.
+---
+
 # Function Calls
 
 <!--

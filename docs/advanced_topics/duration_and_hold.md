@@ -1,3 +1,9 @@
+---
+description: >-
+  Feed the critical-path scheduler with per-step duration estimates,
+  and use hold() so the long steps are dispatched first even when declared last.
+---
+
 # Duration and Hold
 
 <!--

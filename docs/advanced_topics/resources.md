@@ -1,3 +1,9 @@
+---
+description: >-
+  Limit how many steps run at once with named resources,
+  for GPUs, memory, licensed tools and programs that misbehave in parallel.
+---
+
 # Resources
 
 <!--

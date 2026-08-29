@@ -1,3 +1,9 @@
+---
+description: >-
+  Let a running step register inputs, outputs and environment variables
+  that it only discovers while executing, by calling amend().
+---
+
 # Dynamic Dependencies
 
 <!--

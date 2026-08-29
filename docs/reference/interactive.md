@@ -1,3 +1,9 @@
+---
+description: >-
+  Every key that StepUp's terminal user interface responds to,
+  and what the -w and -W options change about the build phase.
+---
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

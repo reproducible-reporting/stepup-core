@@ -1,3 +1,9 @@
+---
+description: >-
+  Keep an expensive step permanently pending by giving it an undefined resource,
+  while you iterate on the steps that come before it.
+---
+
 # Blocked Steps
 
 <!--

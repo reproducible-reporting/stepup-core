@@ -1,3 +1,9 @@
+---
+description: >-
+  Ship a program as a console_scripts entry point that runs as a step
+  and still works when StepUp is not running.
+---
+
 # Console Scripts
 
 <!--

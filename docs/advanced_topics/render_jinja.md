@@ -1,3 +1,9 @@
+---
+description: >-
+  Render a Jinja template into an output file with render_jinja(),
+  taking the variables from configuration files loaded by loadns().
+---
+
 # Rendering Files with Jinja
 
 <!--

@@ -1,3 +1,9 @@
+---
+description: >-
+  Plan file copies with copy(), which sanity-checks its arguments,
+  creates missing target directories, and generates the copy step for you.
+---
+
 # File copy
 
 <!--

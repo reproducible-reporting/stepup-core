@@ -1,3 +1,9 @@
+---
+description: >-
+  Reference for the exceptions StepUp raises,
+  from CyclicError and InputNotFoundError to the StepUpError base class.
+---
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

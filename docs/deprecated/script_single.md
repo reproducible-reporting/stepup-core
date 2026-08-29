@@ -1,3 +1,9 @@
+---
+description: >-
+  The deprecated script() protocol for a single case,
+  kept as a reference while you migrate such scripts to call().
+---
+
 # Script (Single Case)
 
 <!--

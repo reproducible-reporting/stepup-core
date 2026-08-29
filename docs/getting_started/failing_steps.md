@@ -1,3 +1,9 @@
+---
+description: >-
+  Track down failing steps with the red FAIL output, the .stepup/fail.log file,
+  and StepUp's shortened Python tracebacks.
+---
+
 # Failing Steps
 
 <!--

@@ -1,3 +1,9 @@
+---
+description: >-
+  Declare side-effect files such as LaTeX auxiliaries with the vol argument,
+  so StepUp cleans them up without hashing them.
+---
+
 # Volatile Outputs
 
 <!--

@@ -1,3 +1,9 @@
+---
+description: >-
+  Declare many static files at once by passing a glob pattern to static(),
+  which returns the sorted matches and accepts a pattern that matches nothing.
+---
+
 # Glob Patterns in `static()`
 
 <!--

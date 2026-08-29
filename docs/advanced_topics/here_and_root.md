@@ -1,3 +1,9 @@
+---
+description: >-
+  Use the HERE and ROOT variables that StepUp defines for every step
+  to set up out-of-source builds and to reference scripts in the top-level directory.
+---
+
 # `HERE` and `ROOT` Variables
 
 <!--

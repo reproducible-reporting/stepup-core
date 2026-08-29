@@ -1,3 +1,9 @@
+---
+description: >-
+  Mark a step optional=True so it runs only when another step needs its output,
+  and see why StepUp builds everything else by default.
+---
+
 # Optional Steps
 
 <!--

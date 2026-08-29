@@ -1,3 +1,9 @@
+---
+description: >-
+  See which arguments receive environment variable substitution, why the command does not,
+  and how getenv() records the dependency.
+---
+
 # Variable Substitution
 
 <!--

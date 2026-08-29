@@ -1,3 +1,9 @@
+---
+description: >-
+  Reuse the paths that an API function constructed for a step,
+  through the StepInfo object it returns, instead of rebuilding them in plan.py.
+---
+
 # `StepInfo` Objects
 
 <!--

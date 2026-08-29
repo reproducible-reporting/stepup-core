@@ -1,3 +1,9 @@
+---
+description: >-
+  Reference for the StepInfo object returned by step(),
+  with its inp, env, out and vol attributes and its filter methods.
+---
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

@@ -1,3 +1,9 @@
+---
+description: >-
+  Bundle your own step-generating functions in a package,
+  building on stepup.core.api, stepup.core.extapi and stepup.core.path.
+---
+
 # Custom API Functions
 
 <!--

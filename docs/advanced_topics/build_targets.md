@@ -1,3 +1,9 @@
+---
+description: >-
+  Give stepup build one or more output paths to run only the steps those targets need,
+  leaving the rest of the workflow pending.
+---
+
 # Build Targets
 
 <!--

@@ -1,3 +1,9 @@
+---
+description: >-
+  Run a Python script as a build step and let StepUp detect
+  the local modules it imports as dynamic input dependencies.
+---
+
 # Running Python Scripts
 
 <!--

@@ -1,3 +1,9 @@
+---
+description: >-
+  Reference for driver(), the entry point that dispatches a named function
+  when a script is started through call().
+---
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

@@ -1,3 +1,9 @@
+---
+description: >-
+  Reference for the deprecated driver() of stepup.core.script,
+  replaced by the call protocol in stepup.core.call.
+---
+
 # stepup.core.script
 
 <!--

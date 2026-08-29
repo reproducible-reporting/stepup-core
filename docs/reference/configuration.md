@@ -1,3 +1,9 @@
+---
+description: >-
+  Where StepUp reads its settings, from /etc/stepup.toml to the command line,
+  and what every configuration option and STEPUP environment variable does.
+---
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

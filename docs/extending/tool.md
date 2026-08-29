@@ -1,3 +1,9 @@
+---
+description: >-
+  Add a subcommand to the StepUp CLI by registering a tool function
+  and its argument parser as entry points.
+---
+
 # Custom Tools
 
 <!--

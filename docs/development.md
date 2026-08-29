@@ -1,3 +1,9 @@
+---
+description: >-
+  Set up a StepUp Core development environment with uv, direnv and pre-commit,
+  and find out how to run the tests and build the documentation.
+---
+
 # Developer Notes
 
 <!--

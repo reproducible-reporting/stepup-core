@@ -1,3 +1,9 @@
+---
+description: >-
+  Give a step its own working directory,
+  and learn why relative inp, out and vol paths must never be resolved with os.chdir().
+---
+
 # Working Directory
 
 <!--

@@ -1,3 +1,9 @@
+---
+description: >-
+  Query the static files matching a pattern with glob(),
+  which returns the matches without declaring or owning any of them.
+---
+
 # Glob
 
 <!--

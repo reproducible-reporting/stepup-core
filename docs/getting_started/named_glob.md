@@ -1,3 +1,9 @@
+---
+description: >-
+  Match repeated substrings across paths with named wildcards,
+  StepUp's glob extension that constrains every occurrence of a name to the same text.
+---
+
 # Named Glob
 
 <!--

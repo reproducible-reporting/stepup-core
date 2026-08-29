@@ -1,3 +1,9 @@
+---
+description: >-
+  Find out how the StepUp tutorials are organized, which skills they assume,
+  where the example files live, and how to launch a build.
+---
+
 # Introduction
 
 <!--

@@ -1,3 +1,9 @@
+---
+description: >-
+  Learn what a StepUp extension package can add, namely API functions, console scripts
+  and custom CLI tools, and how to test one with stepup.core.pytest.
+---
+
 # Introduction
 
 <!--

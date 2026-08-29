@@ -1,3 +1,9 @@
+---
+description: >-
+  Reference for the low-level helpers that extension packages build on,
+  such as run_subprocess(), record_subprocess() and filter_dependencies().
+---
+
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0

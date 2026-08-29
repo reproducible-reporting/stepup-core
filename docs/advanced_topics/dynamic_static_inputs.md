@@ -1,3 +1,9 @@
+---
+description: >-
+  Declare a file static and amend the same step with it as a dynamic input,
+  so plan.py is re-executed whenever the configuration file it reads changes.
+---
+
 # Dynamic Static Inputs
 
 <!--

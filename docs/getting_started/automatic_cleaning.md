@@ -1,3 +1,9 @@
+---
+description: >-
+  Understand why StepUp removes outputs that its steps no longer create,
+  and how to postpone that with --no-clean, STEPUP_CLEAN=0 or blocked steps.
+---
+
 # Automatic Cleaning
 
 <!--

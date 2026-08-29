@@ -1,3 +1,9 @@
+---
+description: >-
+  Update your plan.py for StepUp 4, in which run() replaces runsh() and runpy(),
+  stepup build replaces stepup boot, and the graph database format changed.
+---
+
 # Migration from StepUp 3.X to 4.0
 
 <!--

@@ -1,3 +1,9 @@
+---
+description: >-
+  Load settings from JSON, YAML, TOML or Python files into one namespace with loadns(),
+  which also amends the step with those files as inputs.
+---
+
 # Load Settings From Configuration Files
 
 <!--

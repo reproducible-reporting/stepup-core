@@ -1,3 +1,9 @@
+---
+description: >-
+  What the advanced tutorials cover once you have hands-on experience,
+  from complex workflows to domain-specific extensions.
+---
+
 # Introduction
 
 <!--

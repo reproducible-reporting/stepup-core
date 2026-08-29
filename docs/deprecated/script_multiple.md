@@ -1,3 +1,9 @@
+---
+description: >-
+  The deprecated script() protocol for scripts that run with several input combinations,
+  superseded by call().
+---
+
 # Script (Multiple Cases)
 
 <!--
