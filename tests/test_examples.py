@@ -7,7 +7,15 @@ import os
 import pytest
 from path import Path
 
-from stepup.core.pytest import run_example, run_plan
+from stepup.core.pytest import EXAMPLE_TIMEOUT, run_example, run_plan
+
+pytestmark = pytest.mark.timeout(2 * EXAMPLE_TIMEOUT)
+"""Budget for a whole example, which `run_example` already bounds with `EXAMPLE_TIMEOUT`.
+
+Setup, call and teardown share this budget,
+and it must stay above the deadline of the example itself,
+so that a stalled example is reported with its own output instead of a bare timeout.
+"""
 
 OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
 

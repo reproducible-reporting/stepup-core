@@ -47,22 +47,29 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
+        timeout-minutes: 1
         with:
           persist-credentials: false
       - name: Set up Python ${{ matrix.python-version }}
+        timeout-minutes: 1
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8.2.0
+        timeout-minutes: 1
+        uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
       - name: Install with the test dependencies
+        timeout-minutes: 1
         run: uv pip install --system --resolution ${{ matrix.resolution }} -e .[tests]
       - name: Run fast unit tests
+        timeout-minutes: 2
         run: pytest -vv -k "not test_example"
       - name: Run integration tests with forked subprocesses
+        timeout-minutes: 10
         run: STEPUP_BUILD_FORKSERVER=1 pytest -vv tests/test_examples.py
       - name: Run integration tests with plain subprocesses
+        timeout-minutes: 10
         run: STEPUP_BUILD_FORKSERVER=0 pytest -vv tests/test_examples.py

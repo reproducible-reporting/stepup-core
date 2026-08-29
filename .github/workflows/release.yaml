@@ -30,6 +30,7 @@ env:
 jobs:
   build:
     name: Build distribution
+    timeout-minutes: 2
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -44,7 +45,7 @@ jobs:
       with:
         python-version: '3.11'
     - name: Set up uv
-      uses: astral-sh/setup-uv@v8.2.0
+      uses: astral-sh/setup-uv@v10
     - name: Build package
       run: >-
         uv build
@@ -66,6 +67,7 @@ jobs:
 
   publish-to-pypi:
     name: Publish Python distribution to PyPI
+    timeout-minutes: 2
     if: startsWith(github.ref, 'refs/tags/v')  # only publish to PyPI on tag pushes
     needs:
     - build
@@ -90,6 +92,7 @@ jobs:
     name: >-
       Sign the Python distribution with Sigstore
       and upload them to GitHub Release
+    timeout-minutes: 2
     needs:
     - publish-to-pypi
     runs-on: ubuntu-latest
@@ -137,6 +140,7 @@ jobs:
 
   publish-to-testpypi:
     name: Publish Python distribution to TestPyPI
+    timeout-minutes: 2
     if: ${{ github.ref == 'refs/heads/main' &&  github.repository_owner == 'reproducible-reporting'}}
     needs:
     - build

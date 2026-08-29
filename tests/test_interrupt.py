@@ -37,6 +37,16 @@ LEAF = "sleep 300"
 TIMEOUT = 60.0
 """Hard cap for a single interrupt scenario, well above all shutdown grace periods."""
 
+pytestmark = pytest.mark.timeout(3 * TIMEOUT)
+"""Budget for a whole scenario, which polices its own deadlines with `TIMEOUT`.
+
+Setup, call and teardown share this budget,
+and it must stay above their combined worst case,
+so that a scenario that runs out of time fails on its own assertion,
+which says which process was in which state,
+rather than on the much less informative timeout of the test suite.
+"""
+
 INTERRUPT_CHAR = b"\x03"
 """Ctrl-C, which the terminal line discipline turns into a SIGINT for the foreground group."""
 
@@ -285,8 +295,13 @@ pid = os.fork()
 if pid == 0:
     os.setpgid(0, 0)
     os.execv(sys.executable, [sys.executable, "-m", "stepup.core", "build"])
-# Also set here, so neither process can race ahead of the other.
-os.setpgid(pid, pid)
+try:
+    # Also set here, so the handover below can never run before the group exists.
+    # The kernel refuses this once the child has exec'd, which is not a problem:
+    # the child put itself in the group before it got that far.
+    os.setpgid(pid, pid)
+except PermissionError:
+    pass
 os.tcsetpgrp(0, pid)
 _, status = os.waitpid(pid, 0)
 sys.exit(os.waitstatus_to_exitcode(status))
@@ -299,6 +314,53 @@ def proc_state(pid: int) -> str:
     stat = (Path("/proc") / str(pid) / "stat").read_text()
     # The command in the second field may contain spaces and parentheses.
     return stat[stat.rindex(")") + 2]
+
+
+def is_raw(master: int) -> bool:
+    """Whether the terminal is set up for single keystrokes, with echo and line buffer off."""
+    return not termios.tcgetattr(master)[3] & (termios.ICANON | termios.ECHO)
+
+
+def wait_raw(master: int, timeout: float) -> None:
+    """Wait until StepUp has taken the terminal over for single keystrokes.
+
+    Raises
+    ------
+    AssertionError
+        When the terminal is still canonical when the timeout expires.
+    """
+    deadline = time.monotonic() + timeout
+    while not is_raw(master):
+        drain(master)
+        if time.monotonic() > deadline:
+            raise AssertionError("StepUp did not take the terminal over for single keystrokes.")
+        time.sleep(0.05)
+
+
+def wait_for_terminal(process: subprocess.Popen, master: int, pgid: int) -> None:
+    """Wait until StepUp owns the terminal, as the foreground process group and in raw mode.
+
+    Neither follows from the step having started, and a scenario needs both before it may
+    write the suspend character:
+    the line discipline generates a terminal signal for the foreground process group only,
+    and the terminal user interface enters raw mode on a schedule of its own.
+    Without this condition, a scenario that ran too early failed much later
+    and much less clearly, as a suspension that simply never happened.
+    """
+    deadline = time.monotonic() + TIMEOUT / 2
+    while time.monotonic() < deadline:
+        drain(master)
+        # A pty whose session leader is gone has no foreground process group to report.
+        with contextlib.suppress(OSError):
+            if os.tcgetpgrp(master) == pgid and is_raw(master):
+                return
+        if process.poll() is not None:
+            raise AssertionError(
+                f"The shell stand-in exited with code {process.returncode} "
+                "instead of running StepUp as a job."
+            )
+        time.sleep(0.05)
+    raise AssertionError("StepUp did not take ownership of the terminal in time.")
 
 
 def wait_states(pids: list[int], states: str, master: int, timeout: float) -> bytes:
@@ -353,6 +415,7 @@ def stepup_job_on_pty(path_tmp: Path):
         leaf_pid = wait_for_leaf(director_pid, master)
         # The terminal user interface leads the process group its own children inherit.
         pids = [os.getpgid(director_pid), director_pid, leaf_pid]
+        wait_for_terminal(process, master, pids[0])
         yield process, master, pids
     finally:
         for pid in [*pids, process.pid]:
@@ -384,10 +447,11 @@ def test_ctrl_z_restores_the_terminal(stepup_job_on_pty) -> None:
     so the test can read the attributes StepUp set from its own end.
     """
     _, master, pids = stepup_job_on_pty
-    assert not termios.tcgetattr(master)[3] & termios.ICANON
-    assert not termios.tcgetattr(master)[3] & termios.ECHO
+    assert is_raw(master)
 
     os.write(master, SUSPEND_CHAR)
+    # The suspend handler hands the terminal back before it stops this process,
+    # so a stopped terminal user interface has already got there.
     wait_states(pids, STATES_STOPPED, master, TIMEOUT / 2)
     suspended = termios.tcgetattr(master)[3]
     assert suspended & termios.ICANON
@@ -397,9 +461,9 @@ def test_ctrl_z_restores_the_terminal(stepup_job_on_pty) -> None:
     wait_states(pids, STATES_RUNNING, master, TIMEOUT / 2)
     # The keyboard interface is dead without this, with every key echoed and then swallowed
     # by the line buffer of the terminal.
-    resumed = termios.tcgetattr(master)[3]
-    assert not resumed & termios.ICANON
-    assert not resumed & termios.ECHO
+    # Raw mode is taken back only after the process is continued,
+    # so a process that runs again may not have got there yet.
+    wait_raw(master, TIMEOUT / 2)
 
 
 def test_ctrl_z_shows_the_cursor(stepup_job_on_pty) -> None:

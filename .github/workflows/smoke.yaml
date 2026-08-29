@@ -13,19 +13,23 @@ on:
       - '**'
     paths:
       # ... and only if relevant files have changed.
+      - docs/**
       - stepup/**
       - pyproject.toml
-      - .github/workflows/pytest.yaml
+      - .github/workflows/smoke.yaml
   pull_request:
     # Run tests on pull requests ...
     paths:
       # ... only if relevant files have changed.
+      - docs/**
       - stepup/**
       - pyproject.toml
-      - .github/workflows/pytest.yaml
+      - .github/workflows/smoke.yaml
 
 jobs:
   tests:
+    name: Smoke tests
+    timeout-minutes: 4
     permissions:
       contents: read
     strategy:
@@ -33,7 +37,7 @@ jobs:
         include:
           - python-version: '3.11'
             resolution: lowest-direct
-          - python-version: '3.13'
+          - python-version: '3.14'
             resolution: highest
     runs-on: macos-latest
     steps:
@@ -45,12 +49,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
-      - name: Setup Graphviz
-        uses: ts-graphviz/setup-graphviz@v2
+      - name: Install Graphviz
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+        run: brew install graphviz
       - name: Install with the test dependencies
         run: uv pip install --system --resolution ${{ matrix.resolution }} -e .[tests]
       - name: Run a simple example

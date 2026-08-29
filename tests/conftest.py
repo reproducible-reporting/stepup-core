@@ -67,6 +67,15 @@ print("Found DONE.txt. Stopping.")
 """
 
 
+SHUTDOWN_TIMEOUT = 10.0
+"""Seconds the `client` fixture gives the director to stop before failing the test.
+
+The teardown must fail instead of blocking,
+because `pytest-timeout` disarms the timeout of a test as soon as it reports a failure,
+which leaves the teardown of a test whose setup failed completely unguarded.
+"""
+
+
 @pytest_asyncio.fixture()
 async def client(tmpdir) -> AsyncGenerator[SocketAsyncRPCClient, None]:
     # Launch stepup in background
@@ -79,30 +88,37 @@ async def client(tmpdir) -> AsyncGenerator[SocketAsyncRPCClient, None]:
         with open("plan.py", "w") as fh:
             fh.write(BUILD_UNTIL_DONE)
         os.chmod("plan.py", stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
-        reporter = ReporterClient()
         # The DBSession owns the SQLite connection for the lifetime of the director task,
         # mirroring `with DBSession.open(GRAPH_DB) as db` in `director.main`.
-        with DBSession.open(GRAPH_DB) as db:
-            director = asyncio.create_task(
-                serve(
-                    ServeConfig(njob=1, use_duration=False, do_watch=True),
-                    director_socket_path=director_socket_path,
-                    reporter=reporter,
-                    db=db,
-                    # Do not hijack the signal handlers of the pytest process.
-                    handle_signals=False,
+        async with ReporterClient() as reporter:
+            with DBSession.open(GRAPH_DB) as db:
+                director = asyncio.create_task(
+                    serve(
+                        ServeConfig(njob=1, use_duration=False, do_watch=True),
+                        director_socket_path=director_socket_path,
+                        reporter=reporter,
+                        db=db,
+                        # Do not hijack the signal handlers of the pytest process.
+                        handle_signals=False,
+                    )
                 )
-            )
-            while not director_socket_path.exists():
-                await asyncio.sleep(0.1)
-            while not Path("STARTED.txt").is_file():
-                await asyncio.sleep(0.1)
-            async with SocketAsyncRPCClient(director_socket_path) as result:
-                try:
-                    yield result
-                finally:
-                    await result("wait_and_shutdown")
-            await director
+                while not director_socket_path.exists():
+                    await asyncio.sleep(0.1)
+                while not Path("STARTED.txt").is_file():
+                    await asyncio.sleep(0.1)
+                async with SocketAsyncRPCClient(director_socket_path) as result:
+                    try:
+                        yield result
+                    finally:
+                        # The boot script stops as soon as this file exists.
+                        # It is also written here because a test that never reached it,
+                        # e.g. because one of its other fixtures raised,
+                        # would leave `wait_and_shutdown` waiting for a step that never ends.
+                        Path("DONE.txt").touch()
+                        async with asyncio.timeout(SHUTDOWN_TIMEOUT):
+                            await result("wait_and_shutdown")
+                async with asyncio.timeout(SHUTDOWN_TIMEOUT):
+                    await director
 
 
 @pytest.fixture

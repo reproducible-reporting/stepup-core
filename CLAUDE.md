@@ -63,16 +63,22 @@ The following test command completes quickly as it skips the integration tests:
 pytest -k "not test_example"
 ```
 
-Always wrap the quick test run in a short timeout, e.g.:
+Every test is bounded by `pytest-timeout`, configured in `pyproject.toml`.
+Setup, call and teardown of one test share a budget of 15 seconds,
+which is very generous for this selection.
+Without it, a test can hang forever instead of failing,
+because the asynchronous RPC client takes no timeout
+and the director waits for its steps without a deadline.
+`tests/test_interrupt.py` and `tests/test_examples.py` raise the budget with a
+module-level `timeout` marker, because their tests police their own deadlines.
+Keep those markers above the deadline the module enforces itself,
+so that a failure is reported by the assertion that knows what went wrong.
 
-```bash
-timeout 15 pytest -k "not test_example"
-```
-
-15 seconds is very generous for this selection.
-If a step crashes, the `client` test fixture can otherwise block indefinitely
-(it waits for the workflow to reach a state that never arrives),
-so a timeout prevents a runaway, hanging test process.
+The budget is not a complete safety net.
+`pytest-timeout` cancels the timer of a test as soon as pytest reports a failure,
+which leaves the teardown of a test whose setup failed entirely unguarded.
+A fixture that waits for a subprocess must therefore bound that wait itself,
+as the `client` fixture does with `SHUTDOWN_TIMEOUT`.
 
 It may also be useful to run a small number of integration tests,
 to get a first quick feedback on the overall system:

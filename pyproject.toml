@@ -67,6 +67,7 @@ tests = [
     "numpy>=1.26.0",
     "pytest>=8.2.0",
     "pytest-asyncio>=0.24",
+    "pytest-timeout>=2.3.1",
     "pytest-xdist>=3.5.0",
 ]
 dev = [
@@ -113,6 +114,7 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "requires_forkserver: mark test that requires STEPUP_BUILD_FORKSERVER != 0",
 ]
+timeout = 15
 
 [tool.ruff]
 line-length = 100
