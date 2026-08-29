@@ -30,7 +30,11 @@ jobs:
       contents: read
     strategy:
       matrix:
-        python-version: ['3.11', '3.13']
+        include:
+          - python-version: '3.11'
+            resolution: lowest-direct
+          - python-version: '3.13'
+            resolution: highest
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
@@ -44,16 +48,11 @@ jobs:
         uses: astral-sh/setup-uv@v8.2.0
         with:
           enable-cache: true
-          cache-dependency-glob: |
-            pyproject.toml
-            .github/requirements-old.txt
-      - name: Install oldest versions of supported dependencies
-        if: ${{ matrix.python-version == '3.11'}}
-        run: uv pip install --system -r .github/requirements-old.txt
+          cache-dependency-glob: pyproject.toml
       - name: Setup Graphviz
         uses: ts-graphviz/setup-graphviz@v2
-      - name: Install latest commit version and matplotlib
-        run: uv pip install --system -e . matplotlib
+      - name: Install with the test dependencies
+        run: uv pip install --system --resolution ${{ matrix.resolution }} -e .[tests]
       - name: Run a simple example
         run: |
           cd docs

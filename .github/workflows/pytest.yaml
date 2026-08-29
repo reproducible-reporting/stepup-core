@@ -14,7 +14,6 @@ on:
       - stepup/**
       - tests/**
       - pyproject.toml
-      - .github/requirements-old.txt
       - .github/workflows/pytest.yaml
   pull_request:
     # Run tests on pull requests ...
@@ -23,7 +22,6 @@ on:
       - stepup/**
       - tests/**
       - pyproject.toml
-      - .github/requirements-old.txt
       - .github/workflows/pytest.yaml
 
 jobs:
@@ -40,13 +38,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - python-version: '3.11'
-            ubuntu-version: '24.04'
-            dependency-path: .github/requirements-old.txt
-          - python-version: '3.14'
-            ubuntu-version: '26.04'
-            dependency-path: pyproject.toml
-    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+          - runner: ubuntu-24.04
+            python-version: '3.11'
+            resolution: lowest-direct
+          - runner: ubuntu-26.04
+            python-version: '3.14'
+            resolution: highest
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -59,12 +57,9 @@ jobs:
         uses: astral-sh/setup-uv@v8.2.0
         with:
           enable-cache: true
-          cache-dependency-glob: ${{ matrix.dependency-path }}
-      - name: Install oldest versions of supported dependencies
-        if: ${{ matrix.python-version == '3.11'}}
-        run: uv pip install --system -r .github/requirements-old.txt
-      - name: Install latest commit version with all development dependencies
-        run: uv pip install --system -e .[dev]
+          cache-dependency-glob: pyproject.toml
+      - name: Install with the test dependencies
+        run: uv pip install --system --resolution ${{ matrix.resolution }} -e .[tests]
       - name: Run fast unit tests
         run: pytest -vv -k "not test_example"
       - name: Run integration tests with forked subprocesses
