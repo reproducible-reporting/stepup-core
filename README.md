@@ -54,7 +54,7 @@ is available at <https://reproducible-reporting.github.io/stepup-core>.
 ## License
 
 StepUp Core is distributed under the terms of the
-[LGPL-3.0-or-later](LICENSE) license.
+[LGPL-3.0-or-later](https://github.com/reproducible-reporting/stepup-core/blob/main/LICENSE) license.
 Contributions are welcome;
 see the [development guide](https://reproducible-reporting.github.io/stepup-core/development/)
 to get started.

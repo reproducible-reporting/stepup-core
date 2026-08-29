@@ -137,6 +137,11 @@ plugins:
 - search:
     lang:
       - en
+    # The default tokenizer keeps `static_tree`, `stepup.core.api` and `--jobs` as single
+    # tokens, so they are only found by typing them in full.
+    # This separator also splits on underscores, on dots that are not decimal points,
+    # and before a camel-case hump, which makes the parts searchable.
+    separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|_|(?!\b)(?=[A-Z][a-z])'
 - macros:
     on_error_fail: true
     on_undefined: strict
@@ -144,7 +149,7 @@ plugins:
     default_handler: python
     handlers:
       python:
-        paths: ["stepup-core"]
+        paths: ["."]
         options:
           docstring_style: numpy
           show_root_heading: true

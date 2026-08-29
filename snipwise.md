@@ -94,6 +94,7 @@ build automation
 build tool
 dynamic dependencies
 incremental build
+parallel
 POSIX
 Python
 reproducibility
