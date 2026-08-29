@@ -32,8 +32,13 @@ repos:
   rev: v1.5.6
   hooks:
     - id: remove-crlf
+- repo: https://github.com/reproducible-reporting/snipwise
+  rev: v1.0.1
+  hooks:
+  - id: snipwise
+    args: [fix]
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.16.4
+  rev: v0.16.5
   hooks:
     - id: ruff-format
       types_or: [python, pyi, jupyter, markdown]

@@ -19,17 +19,18 @@
   "language": "eng",
   "keywords": [
     "asyncio",
-    "build tool",
     "build automation",
-    "workflow management",
+    "build tool",
     "dynamic dependencies",
     "incremental build",
-    "reproducible research",
+    "POSIX",
+    "Python",
     "reproducibility",
+    "reproducible research",
+    "StepUp",
     "terminal application",
     "workflow",
-    "POSIX",
-    "Python"
+    "workflow management"
   ],
   "related_identifiers": [
     {

@@ -14,6 +14,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 ![LGPL-3 License](https://img.shields.io/badge/License-LGPL_v3-blue.svg)
 [![CodeFactor](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core/badge)](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core)
 
+<!-- snipwise.md BEGIN abstract -->
 StepUp is a dynamic build tool and a modern alternative to
 [Make](https://en.wikipedia.org/wiki/Make_(software)).
 Its defining feature is that workflow generation and execution are unified:
@@ -22,6 +23,7 @@ While the workflow is being executed, any step can add more steps and dependenci
 based on the outputs built so far.
 This makes StepUp ideal for builds
 where the full set of dependencies cannot be determined in advance.
+<!-- snipwise.md END abstract -->
 
 StepUp Core provides the basic framework for StepUp, without any domain-specific features.
 Those live in extension packages:

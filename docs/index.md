@@ -5,6 +5,7 @@ SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
+<!-- snipwise.md BEGIN abstract -->
 StepUp is a dynamic build tool and a modern alternative to
 [Make](https://en.wikipedia.org/wiki/Make_(software)).
 Its defining feature is that workflow generation and execution are unified:
@@ -13,6 +14,7 @@ While the workflow is being executed, any step can add more steps and dependenci
 based on the outputs built so far.
 This makes StepUp ideal for builds
 where the full set of dependencies cannot be determined in advance.
+<!-- snipwise.md END abstract -->
 
 This is the documentation for StepUp Core, the basic framework for StepUp,
 without any domain-specific extensions.
