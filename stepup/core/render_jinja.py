@@ -8,6 +8,7 @@ and may be complemented with a JSON string on the command line.
 
 import argparse
 import json
+import sys
 from collections.abc import Sequence
 from typing import Any
 
@@ -154,4 +155,4 @@ def render_jinja_str(
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

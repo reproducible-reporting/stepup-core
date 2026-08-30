@@ -151,4 +151,4 @@ def _exit_on_config_problems(loader: ConfigLoader) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
