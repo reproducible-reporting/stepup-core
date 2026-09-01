@@ -6,11 +6,11 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
 DIRECTOR │ Wrote graph to graph.txt, graph_provenance.dot and graph_dependency.dot
  SUCCESS │ printf "Monday frown\nCoffee smile\n" > story.txt
    START │ grep Coffee story.txt
+ SUCCESS │ ./plan.py
  SUCCESS │ grep Coffee story.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 Coffee smile
 ────────────────────────────────────────────────────────────────────────────────
- SUCCESS │ ./plan.py
 DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

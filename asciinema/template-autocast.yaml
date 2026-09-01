@@ -12,7 +12,7 @@ settings:
 
 instructions:
   - !Interactive
-    command: stepup build -j 4 -w
+    command: sb -j 4 -w
     keys:
       - 18s
       - r

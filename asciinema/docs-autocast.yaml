@@ -13,4 +13,4 @@ settings:
 
 instructions:
   - !Command
-    command: stepup build -j 4
+    command: sb -j 4
