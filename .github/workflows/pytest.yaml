@@ -44,6 +44,9 @@ jobs:
           - runner: ubuntu-26.04
             python-version: '3.14'
             resolution: highest
+          - runner: ubuntu-26.04
+            python-version: '3.15-dev'
+            resolution: highest
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
@@ -66,10 +69,13 @@ jobs:
         run: uv pip install --system --resolution ${{ matrix.resolution }} -e .[tests]
       - name: Run fast unit tests
         timeout-minutes: 2
+        continue-on-error: ${{ matrix.python-version == '3.15-dev' }}
         run: pytest -vv -k "not test_example"
       - name: Run integration tests with forked subprocesses
         timeout-minutes: 10
+        continue-on-error: ${{ matrix.python-version == '3.15-dev' }}
         run: STEPUP_BUILD_FORKSERVER=1 pytest -vv tests/test_examples.py
       - name: Run integration tests with plain subprocesses
         timeout-minutes: 10
+        continue-on-error: ${{ matrix.python-version == '3.15-dev' }}
         run: STEPUP_BUILD_FORKSERVER=0 pytest -vv tests/test_examples.py
