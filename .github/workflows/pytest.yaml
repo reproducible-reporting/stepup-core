@@ -65,7 +65,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
       - name: Install with the test dependencies
-        timeout-minutes: 1
+        timeout-minutes: 3
         run: uv pip install --system --resolution ${{ matrix.resolution }} -e .[tests]
       - name: Run fast unit tests
         timeout-minutes: 2
