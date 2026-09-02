@@ -1,4 +1,5 @@
 ---
+title: stepup.core.extapi
 description: >-
   Reference for the low-level helpers that extension packages build on,
   such as run_subprocess(), record_subprocess() and filter_dependencies().
@@ -8,8 +9,6 @@ description: >-
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-
-# stepup.core.extapi
 
 Utilities for developers building StepUp extension packages.
 These functions are not intended for use in `plan.py` files.

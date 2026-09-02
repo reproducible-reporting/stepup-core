@@ -1,4 +1,5 @@
 ---
+title: stepup.core.stepinfo
 description: >-
   Reference for the StepInfo object returned by step(),
   with its inp, env, out and vol attributes and its filter methods.
@@ -8,8 +9,6 @@ description: >-
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-
-# stepup.core.stepinfo
 
 ::: stepup.core.stepinfo
       options:

@@ -1,4 +1,5 @@
 ---
+title: stepup.core.api
 description: >-
   Reference for the functions you call in plan.py,
   including static(), glob(), step(), amend(), run(), plan(), copy() and call().
@@ -8,8 +9,6 @@ description: >-
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-
-# stepup.core.api
 
 You can expect reasonable stability of the API documented here over the future releases of StepUp.
 (No hard promises, since StepUp is still very young.)

@@ -1,4 +1,5 @@
 ---
+title: stepup.core.path
 description: >-
   Reference for StepUp's path helpers,
   which coerce, normalize, shorten and shell-quote the paths that steps declare.
@@ -8,8 +9,6 @@ description: >-
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-
-# stepup.core.path
 
 ::: stepup.core.path
       options:

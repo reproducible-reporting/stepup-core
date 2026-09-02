@@ -1,4 +1,5 @@
 ---
+title: stepup.core.nglob
 description: >-
   Reference for NamedGlob and the named wildcard syntax
   that back-references an earlier match within the same pattern.
@@ -8,8 +9,6 @@ description: >-
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-
-# stepup.core.nglob
 
 ::: stepup.core.nglob
       options:

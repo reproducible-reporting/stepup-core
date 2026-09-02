@@ -1,4 +1,5 @@
 ---
+title: stepup.core.exceptions
 description: >-
   Reference for the exceptions StepUp raises,
   from CyclicError and InputNotFoundError to the StepUpError base class.
@@ -8,8 +9,6 @@ description: >-
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-
-# stepup.core.exceptions
 
 ::: stepup.core.exceptions
       options:
