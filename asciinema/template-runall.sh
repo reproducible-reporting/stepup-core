@@ -3,17 +3,18 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 ASCIINEMA=${PWD}
-TEMPLATE=${PWD}/../../nobackup/plain-pip/
+TEMPLATE=${PWD}/../../nobackup/plain-uv/
 
 # Go to right location and prepare
 cd $TEMPLATE
 source .envrc
+export PS1='$ '  # Needed for autocast to detect the prompt correctly
 cd latest-draft
 rm -rf .stepup
 sed -e 's/x + shift/x - shift/' -i results-example/generate.py
 
-# Change generate.py with 13 second delay
-(sleep 13; sed -e 's/x - shift/x + shift/' -i results-example/generate.py) &
+# Change generate.py with 10 second delay
+(sleep 10; sed -e 's/x - shift/x + shift/' -i results-example/generate.py) &
 
 # Start recording
 autocast ${ASCIINEMA}/template-autocast.yaml ${ASCIINEMA}/template-orig.cast --overwrite

@@ -17,6 +17,7 @@ git restore src/
 (sleep 20; echo 'This is spam!' > src/spam.txt) &
 
 # Start recording
+export PS1='$ '
 autocast ${ASCIINEMA}/interactive-autocast.yaml ${ASCIINEMA}/interactive-orig.cast --overwrite
 
 # Undo changes

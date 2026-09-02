@@ -58,6 +58,12 @@ for more details.
 (This recording was created with StepUp Core 4.0.0 and StepUp RepRep 4.0.0)
 ```
 
+Online recordings:
+
+- `v2.0.0`: <https://asciinema.org/a/665096>
+- `v3.0.0`: <https://asciinema.org/a/718835>
+- `v4.0.0`: <https://asciinema.org/a/1264479>
+
 ## Recording of the documentation examples
 
 Create the recording with the following command:

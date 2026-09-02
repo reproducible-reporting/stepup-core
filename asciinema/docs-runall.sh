@@ -10,6 +10,7 @@ cd $DOCS
 rm -rf .stepup
 
 # Start recording
+export PS1='$ '
 autocast ${ASCIINEMA}/docs-autocast.yaml ${ASCIINEMA}/docs.cast --overwrite
 
 cd ${ASCIINEMA}

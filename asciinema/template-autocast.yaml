@@ -14,7 +14,9 @@ instructions:
   - !Interactive
     command: sb -j 4 -w
     keys:
-      - 18s
+      - 16s
+      - '?'
+      - 4s
       - r
-      - 10s
+      - 8s
       - q
