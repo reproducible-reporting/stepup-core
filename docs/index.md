@@ -38,7 +38,7 @@ Currently, there are:
 
 ## Quick Visual Impression of StepUp
 
-<script src="https://asciinema.org/a/718833.js" id="asciicast-718833" async="true"></script>
+<script src="https://asciinema.org/a/pJXDBvCXT9ndHDuo.js" id="asciicast-pJXDBvCXT9ndHDuo" async="true"></script>
 
 ## StepUp in the Wild
 

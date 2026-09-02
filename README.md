@@ -44,7 +44,7 @@ for details.
 
 ## Quick Visual Impression
 
-[![asciicast](https://asciinema.org/a/718833.svg)](https://asciinema.org/a/718833)
+[![asciicast](https://asciinema.org/a/pJXDBvCXT9ndHDuo.svg)](https://asciinema.org/a/pJXDBvCXT9ndHDuo)
 
 ## Documentation
 

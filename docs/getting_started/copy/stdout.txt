@@ -5,8 +5,8 @@ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
    START │ echo hello > hello.txt
  SUCCESS │ echo hello > hello.txt
    START │ cp -p hello.txt sub/hello.txt
- SUCCESS │ cp -p hello.txt sub/hello.txt
  SUCCESS │ ./plan.py
+ SUCCESS │ cp -p hello.txt sub/hello.txt
 DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ See you!

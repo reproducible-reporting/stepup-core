@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
 settings:
-  title: StepUp RepRep 3 Demonstration on the template repository
+  title: StepUp RepRep 4 Demonstration on the template repository
   width: 80
   height: 24
   shell:

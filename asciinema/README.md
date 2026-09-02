@@ -78,6 +78,12 @@ See [StepUp Core documentation](https://reproducible-reporting.github.io/stepup-
 (This recording was created with StepUp Core 4.0.0)
 ```
 
+Online recordings:
+
+- `v2.0.0`: <https://asciinema.org/a/656610>
+- `v3.0.0`: <https://asciinema.org/a/718833>
+- `v4.0.0`: <https://asciinema.org/a/pJXDBvCXT9ndHDuo>
+
 ## Recording for the interactive tutorial
 
 Create the recording with the following command:
@@ -93,7 +99,18 @@ Description for Asciinema:
 ```markdown
 This is a simple demonstration of the interactive use of StepUp.
 
+- First StepUp is started with two workers to complete the steps from scratch.
+- Then the file `src/foo.txt` is modified and the key `r` is pressed to run the affected steps.
+- Afterward, the file `src/spam.txt` is created and the key `r` is pressed again.
+Finally, `q` is pressed to exit StepUp
+
 See StepUp Core tutorial [getting_started/interactive_usage/](https://reproducible-reporting.github.io/stepup-core/getting_started/interactive_usage/)
 
 (This recording was created with StepUp Core 4.0.0)
 ```
+
+Online recordings:
+
+- `v2.0.0`: <https://asciinema.org/a/656524>
+- `v3.0.0`: <https://asciinema.org/a/718834>
+- `v4.0.0`: <https://asciinema.org/a/1264451>
