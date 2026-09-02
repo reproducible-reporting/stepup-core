@@ -924,7 +924,7 @@ Bugfix release: support large inodes in SQLite storage
   by wrapping too large numbers around to negative values.
   This change is backward compatible.
 
-## [3.2.2][] - 2026-02-08 {: #v3.2.3 }
+## [3.2.2][] - 2026-02-08 {: #v3.2.2 }
 
 Minor bugfix and support for profiling with Yappi.
 
