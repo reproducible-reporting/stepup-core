@@ -21,6 +21,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
+## [4.0.1][] - 2026-09-02 {: #v4.0.1 }
+
+### Fixed
+
+- Restrict `asyncinotify` dependency to Linux as it is not available on other platforms.
+  (Needed for conda-forge package.)
+
 ## [4.0.0][] - 2026-09-02 {: #v4.0.0 }
 
 StepUp 4 is a major redesign to make its workflows more expressive to write,
@@ -1672,6 +1679,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.1
 [4.0.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0
 [3.2.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3
 [3.2.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.2
