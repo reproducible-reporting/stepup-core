@@ -19,7 +19,7 @@ Guidance that applies to only part of the repo lives next to the code it governs
 
 - `stepup/core/CLAUDE.md`: process model, workflow-graph invariants, database conventions.
 - `tests/CLAUDE.md`: test layout and the integration-example suite.
-- `docs/CLAUDE.md`: regenerating the tutorial output.
+- `docs/CLAUDE.md`: regenerating the tutorial output and social card.
 - `.claude/skills/release/SKILL.md`: the release procedure.
 
 ## Non-Negotiables

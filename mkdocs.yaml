@@ -129,6 +129,7 @@ nav:
     - deprecated/stepup.core.script.md
 
 exclude_docs: |
+  social-card.svg
   CLAUDE.md
   */*/ch*/*.md
   */*/public/*.md

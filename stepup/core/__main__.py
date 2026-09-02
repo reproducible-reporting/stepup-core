@@ -110,7 +110,9 @@ def _setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
     # Base argument parser
     parser = argparse.ArgumentParser(
         prog="stepup",
-        description="General purpose dynamic build tool.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="A dynamic Python build tool for reproducible workflows.\n\n"
+        "Documentation: https://reproducible-reporting.github.io/stepup-core/",
     )
     version = get_version("stepup")
     parser.add_argument("-V", "--version", action="version", version="%(prog)s " + version)

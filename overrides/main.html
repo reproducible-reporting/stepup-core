@@ -6,4 +6,40 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 {% block extrahead %}
   <meta name="google-site-verification" content="0M0cqZ7MKlDeM_E7HLlJ9dfBLXisIFyQAOwHQjlYaOE" />
+  {#
+    Open Graph and Twitter metadata for link previews.
+    The title and description follow the same fallbacks as the `htmltitle` and `site_meta`
+    blocks of the Material base template, so a preview shows what the browser tab shows.
+  #}
+  {% if page.meta and page.meta.title %}
+    {% set social_title = page.meta.title ~ " - " ~ config.site_name %}
+  {% elif page.title and not page.is_homepage %}
+    {% set social_title = (page.title | striptags) ~ " - " ~ config.site_name %}
+  {% else %}
+    {% set social_title = config.site_name %}
+  {% endif %}
+  {% set social_description = (page.meta and page.meta.description) or config.site_description %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:locale" content="en">
+  <meta property="og:title" content="{{ social_title }}">
+  {% if social_description %}
+    <meta property="og:description" content="{{ social_description }}">
+  {% endif %}
+  {% if page.canonical_url %}
+    <meta property="og:url" content="{{ page.canonical_url }}">
+  {% endif %}
+  {#
+    Scrapers do not resolve relative image URLs reliably, so the card needs an absolute one.
+    MkDocs normalizes `site_url` to end with a slash.
+  #}
+  {% if config.site_url %}
+    <meta property="og:image" content="{{ config.site_url }}social-card.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="{{ config.site_name }}: {{ config.site_description }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{{ config.site_url }}social-card.jpg">
+  {% endif %}
 {% endblock %}

@@ -34,6 +34,22 @@ patterns = ["stepup/core/__init__.py"]
 scanner = "regex"
 regex = '(?m)^"""(?P<content>[^"]*)"""$'
 snippets = ["tagline"]
+render = "{{ content | unwrap | suffix('.') }}"
+
+# The CLI description.
+[[targets]]
+patterns = ["stepup/core/__main__.py"]
+scanner = "regex"
+regex = '(?m)^\s*description="(?P<content>[^"]*)\\n\\n"$'
+snippets = ["tagline"]
+render = "{{ content | unwrap | suffix('.') }}"
+
+# The tagline in the social card, whose tspan carries the id that locates it.
+[[targets]]
+patterns = ["docs/social-card.svg"]
+scanner = "regex"
+regex = '<tspan\b[^>]*\bid="tagline"[^>]*>(?P<content>[^<]*)</tspan>'
+snippets = ["tagline"]
 render = "{{ content | unwrap }}"
 
 # The keywords array of the Python package metadata.

@@ -39,6 +39,8 @@ SPDX-License-Identifier = "LGPL-3.0-or-later"
 [[annotations]]
 path = [
     "docs/logo.svg",
+    "docs/social-card.jpg",
+    "docs/social-card.svg",
     "stepup/core/logo.svg",
 ]
 SPDX-FileCopyrightText = "2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>"

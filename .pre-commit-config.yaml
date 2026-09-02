@@ -33,7 +33,7 @@ repos:
   hooks:
     - id: remove-crlf
 - repo: https://github.com/reproducible-reporting/snipwise
-  rev: v1.0.1
+  rev: v1.1.0
   hooks:
   - id: snipwise
     args: [fix]
