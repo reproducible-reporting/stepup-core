@@ -2,5 +2,5 @@
 import sys
 
 # These modules should already be in sys.modules if preloaded into the forkserver.
-assert "numpy" in sys.modules, "numpy was not preloaded"
-assert "matplotlib" in sys.modules, "matplotlib was not preloaded"
+assert "wave" in sys.modules, "wave was not preloaded"
+assert "xml.dom.minidom" in sys.modules, "xml.dom.minidom was not preloaded"

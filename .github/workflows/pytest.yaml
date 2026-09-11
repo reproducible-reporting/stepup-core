@@ -26,8 +26,12 @@ on:
 
 jobs:
   tests:
+    name: ${{ matrix.suite.name }} (${{ matrix.platform.python-version }}, ${{ matrix.platform.resolution }})
     permissions:
       contents: read
+    # Failures on the development version of Python are tolerated,
+    # and they do not cancel the other jobs in the matrix.
+    continue-on-error: ${{ matrix.platform.python-version == '3.15-dev' }}
     env:
       # Enforce strict checks instead of trying to repair fixable issues.
       STEPUP_DEBUG: 1
@@ -37,7 +41,7 @@ jobs:
       STEPUP_SYNC_RPC_TIMEOUT: 10
     strategy:
       matrix:
-        include:
+        platform:
           - runner: ubuntu-24.04
             python-version: '3.11'
             resolution: lowest-direct
@@ -47,35 +51,63 @@ jobs:
           - runner: ubuntu-26.04
             python-version: '3.15-dev'
             resolution: highest
-    runs-on: ${{ matrix.runner }}
+        # The suites run as separate jobs, because the integration tests dominate the run time.
+        suite:
+          - name: unit
+            timeout: 2
+            run: pytest -vv -k "not test_example"
+          - name: examples-forkserver
+            timeout: 10
+            run: STEPUP_BUILD_FORKSERVER=1 pytest -vv tests/test_examples.py
+          - name: examples-subprocess
+            timeout: 10
+            run: STEPUP_BUILD_FORKSERVER=0 pytest -vv tests/test_examples.py
+    runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v6
         timeout-minutes: 1
         with:
           persist-credentials: false
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.platform.python-version }}
+        id: python
         timeout-minutes: 1
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.platform.python-version }}
       - name: Set up uv
         timeout-minutes: 1
         uses: astral-sh/setup-uv@v10.0.1
         with:
-          enable-cache: true
-          cache-dependency-glob: pyproject.toml
+          # The uv cache is handled by the steps below instead,
+          # because setup-uv saves it only at the end of a successful job.
+          # Test failures and cancelled jobs would then discard wheels that took long to build.
+          enable-cache: false
+      - name: Configure the uv cache directory
+        run: echo "UV_CACHE_DIR=${{ runner.temp }}/uv-cache" >> "$GITHUB_ENV"
+      - name: Restore the uv cache
+        id: uv-cache
+        timeout-minutes: 1
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ matrix.platform.runner }}-${{ steps.python.outputs.python-version }}-${{ matrix.platform.resolution }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: uv-${{ matrix.platform.runner }}-${{ steps.python.outputs.python-version }}-${{ matrix.platform.resolution }}-
       - name: Install with the test dependencies
         timeout-minutes: 3
-        run: uv pip install --system --resolution ${{ matrix.resolution }} -e .[tests]
-      - name: Run fast unit tests
-        timeout-minutes: 2
-        continue-on-error: ${{ matrix.python-version == '3.15-dev' }}
-        run: pytest -vv -k "not test_example"
-      - name: Run integration tests with forked subprocesses
-        timeout-minutes: 10
-        continue-on-error: ${{ matrix.python-version == '3.15-dev' }}
-        run: STEPUP_BUILD_FORKSERVER=1 pytest -vv tests/test_examples.py
-      - name: Run integration tests with plain subprocesses
-        timeout-minutes: 10
-        continue-on-error: ${{ matrix.python-version == '3.15-dev' }}
-        run: STEPUP_BUILD_FORKSERVER=0 pytest -vv tests/test_examples.py
+        run: uv pip install --system --resolution ${{ matrix.platform.resolution }} -e .[tests]
+      - name: Prune the uv cache
+        if: steps.uv-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 1
+        run: uv cache prune --ci
+      - name: Save the uv cache
+        # Jobs with the same key race to save the cache.
+        # Only the first one succeeds and the others merely log a warning.
+        if: steps.uv-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 1
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: ${{ steps.uv-cache.outputs.cache-primary-key }}
+      - name: Run the ${{ matrix.suite.name }} tests
+        timeout-minutes: ${{ matrix.suite.timeout }}
+        run: ${{ matrix.suite.run }}

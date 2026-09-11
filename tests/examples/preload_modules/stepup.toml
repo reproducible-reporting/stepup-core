@@ -2,4 +2,4 @@
 jobs = 1
 watch = true
 forkserver = true
-preload_modules = "numpy,matplotlib"
+preload_modules = "wave,xml.dom.minidom"
