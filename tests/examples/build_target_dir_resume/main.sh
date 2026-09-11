@@ -20,7 +20,7 @@ grep -q one other.txt
 
 # Run 2: startup reconciliation for a directory target (the flagship fix, mirroring
 # build_target's Run 3 but for a directory instead of an exact target). a_input.txt
-# changes on a resumed database while plan.py stays UNCHANGED, so define_step never
+# changes on a resumed database while plan.py keeps SAMEHASH, so define_step never
 # re-runs for out/a.txt's step. Target only out/: without reconcile_targets()'s bulk
 # directory-range UPDATE, this would silently do nothing, since out/a.txt's step's
 # persisted _implied_need stays DEFAULT from run 1.

@@ -63,7 +63,7 @@ class _FakeReporter:
 
 
 async def test_run_once_reports_unchanged_and_updates_only_the_changed_file(wfp: Workflow, tmpdir):
-    """A file whose content still matches its cached hash must be reported UNCHANGED and
+    """A file whose content still matches its cached hash must be reported SAMEHASH and
     pruned from `self.updated` before `process_nglob_changes` runs; a genuinely changed
     file must keep its UPDATED report and get its new hash applied. Exercises the
     `gather_hashes`-based path in `run_once` with more than one file at once."""
@@ -94,11 +94,11 @@ async def test_run_once_reports_unchanged_and_updates_only_the_changed_file(wfp:
         await watcher.run_once(asyncio.Queue())
 
         # "UPDATED" is reported by record_change() for the raw inotify event, not by the
-        # hash-confirmation loop under test here (which only ever reports "UNCHANGED");
+        # hash-confirmation loop under test here (which only ever reports "SAMEHASH");
         # what matters for a genuinely changed file is that it is *not* reported
-        # UNCHANGED and that its hash was actually applied (checked below).
-        assert ("UNCHANGED", "same.txt") in reporter.calls
-        assert ("UNCHANGED", "changed.txt") not in reporter.calls
+        # SAMEHASH and that its hash was actually applied (checked below).
+        assert ("SAMEHASH", "same.txt") in reporter.calls
+        assert ("SAMEHASH", "changed.txt") not in reporter.calls
         async with wfp.db:
             assert wfp.find(File, "same.txt").get_hash() == same_hash
             assert wfp.find(File, "changed.txt").get_hash() != changed_hash
@@ -131,14 +131,14 @@ async def test_run_once_ignores_glob_relevant_undeclared_file(wfp: Workflow, tmp
 
         await watcher.run_once(asyncio.Queue())
 
-        # Nothing was observed about the file, so it is not reported UNCHANGED either.
-        assert ("UNCHANGED", "given.txt") not in reporter.calls
+        # Nothing was observed about the file, so it is not reported SAMEHASH either.
+        assert ("SAMEHASH", "given.txt") not in reporter.calls
         async with wfp.db:
             assert given.get_state() == FileState.UNDECLARED
 
 
 async def test_run_once_reports_settled_unconfirmed_file_as_changed(wfp: Workflow, tmpdir):
-    """An UNCONFIRMED file settled by an unchanged hash is not an UNCHANGED report.
+    """An UNCONFIRMED file settled by an unchanged hash is not a SAMEHASH report.
 
     The hash did not move, but the state did, so the file stays in `self.updated`
     and reaches `process_nglob_changes`.
@@ -166,7 +166,7 @@ async def test_run_once_reports_settled_unconfirmed_file_as_changed(wfp: Workflo
 
         await watcher.run_once(asyncio.Queue())
 
-        assert ("UNCHANGED", "stale.txt") not in reporter.calls
+        assert ("SAMEHASH", "stale.txt") not in reporter.calls
         async with wfp.db:
             assert stale.get_state() == FileState.CONFIRMED
 

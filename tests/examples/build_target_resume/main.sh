@@ -19,7 +19,7 @@ grep -q one other.txt
 
 # Run 2: startup reconciliation (the flagship fix, mirroring build_target_dir_resume but for
 # an exact target instead of a directory). input.txt (shared by wanted.txt and other.txt)
-# changes while plan.py stays UNCHANGED, so define_step never re-runs for either step.
+# changes while plan.py keeps SAMEHASH, so define_step never re-runs for either step.
 # Target only wanted.txt: without the startup reconciliation pass, this would silently do
 # nothing, since wanted.txt's persisted _implied_need stays DEFAULT from run 1.
 rm .stepup/*.log
