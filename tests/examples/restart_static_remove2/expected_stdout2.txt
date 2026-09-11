@@ -3,7 +3,7 @@
  DELETED │ inp.txt
  UPDATED │ plan.py (digest 04f162d6 ➜ 7800367b, size 264 ➜ 111)
    PHASE │ build
-DROPAMEND │ ./plan.py
+ UNAMEND │ ./plan.py
 ──────────────────────── Outdated dynamic dependencies ─────────────────────────
 Modified step hash   compact ➜ explained, inp_digest 0a37b5ac ➜ dc7cd356, out_digest b19341b7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────

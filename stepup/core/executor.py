@@ -954,4 +954,4 @@ class Executor:
             pages = [("Outdated dynamic dependencies", page_change)]
             if len(page_same) > 0:
                 pages.append(("Remained the same (or missing)", page_same))
-            await self.reporter("DROPAMEND", run.description, pages)
+            await self.reporter("UNAMEND", run.description, pages)

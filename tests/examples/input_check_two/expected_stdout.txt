@@ -19,5 +19,5 @@ DIRECTOR │ Ran 3 job(s).
    PHASE │ watch
  UPDATED │ f1.txt
 DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
-UNCHANGED │ f1.txt
+SAMEHASH │ f1.txt
 DIRECTOR │ See you!

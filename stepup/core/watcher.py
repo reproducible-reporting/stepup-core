@@ -221,7 +221,7 @@ class Watcher:
         # so its round trips are made after the transaction closes,
         # instead of holding the database write lock for the duration of the network traffic.
         for path in dropped:
-            await self.reporter("UNCHANGED", path)
+            await self.reporter("SAMEHASH", path)
 
         # Reset the watcher state.
         # The subscriber events are cleared together with the sets they refer to,

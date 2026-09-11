@@ -19,7 +19,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Fixed
+
+- Shorten terminal output tags to fit in 8 characters:
+  `DROPAMEND` -> `UNAMEND` and `UNCHANGED` -> `SAMEHASH`.
 
 ## [4.0.1][] - 2026-09-02 {: #v4.0.1 }
 

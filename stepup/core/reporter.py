@@ -41,12 +41,12 @@ TAG_COLORS = {
     "SUCCESS": "green",
     # Workflow-related details
     "DELETED": "cyan",
-    "DROPAMEND": "cyan",
+    "UNAMEND": "cyan",
     "NOSKIP": "cyan",
     "DEFERRED": "cyan",
     "REMOVE": "cyan",
     "SKIP": "cyan",
-    "UNCHANGED": "cyan",
+    "SAMEHASH": "cyan",
     "UPDATED": "cyan",
     # Events outside the workflow
     "DIRECTOR": "magenta",

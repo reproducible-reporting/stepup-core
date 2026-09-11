@@ -8,7 +8,7 @@ DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
 DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
  UPDATED │ input.txt
  DELETED │ output.txt
-UNCHANGED │ input.txt
+SAMEHASH │ input.txt
    PHASE │ build
    START │ ./plan.py
  SUCCESS │ ./plan.py

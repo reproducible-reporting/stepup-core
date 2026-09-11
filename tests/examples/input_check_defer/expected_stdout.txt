@@ -20,5 +20,5 @@ DIRECTOR │ Ran 2 job(s).
    PHASE │ watch
  UPDATED │ trigger.txt
 DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
-UNCHANGED │ trigger.txt
+SAMEHASH │ trigger.txt
 DIRECTOR │ See you!
