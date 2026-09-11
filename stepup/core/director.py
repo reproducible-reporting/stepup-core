@@ -728,7 +728,13 @@ async def watch_first_loop(watcher: Watcher, handler: "DirectorHandler", stop_ev
     """Run pending steps 0.5 seconds after the watcher observes a file change."""
     with watcher.subscribe_changes() as changed_event:
         while True:
-            await watcher.busy_watching.wait()
+            # Every wait below must also watch `stop_event`,
+            # because the director shuts down only after this loop has ended.
+            # Once the shutdown has begun, the watch phase never starts again,
+            # so waiting for it alone would block the shutdown forever.
+            await wait_for_any_event(watcher.busy_watching, stop_event)
+            if stop_event.is_set():
+                break
             await wait_for_any_event(changed_event, stop_event)
             if stop_event.is_set():
                 break

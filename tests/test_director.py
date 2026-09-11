@@ -296,3 +296,56 @@ async def test_wait_for_update_gives_up_when_stopping():
     handler.stop_event.set()
     await asyncio.wait_for(task, timeout=5.0)
     assert len(handler.watcher.files_changed_events) == 0
+
+
+async def start_watch_first_loop(handler: DirectorHandler) -> asyncio.Task:
+    """Start `watch_first_loop` and return once it has subscribed to file changes."""
+    task = asyncio.create_task(
+        director.watch_first_loop(handler.watcher, handler, handler.stop_event)
+    )
+
+    async def subscribed():
+        while len(handler.watcher.files_changed_events) == 0:
+            await asyncio.sleep(0)
+
+    await asyncio.wait_for(subscribed(), timeout=5.0)
+    return task
+
+
+async def test_watch_first_loop_stops_outside_the_watch_phase():
+    """`-W` must not hold up the shutdown when `q` is pressed during a build phase.
+
+    The watcher is not watching here,
+    and it never will be again after a shutdown,
+    so a loop that waits for the watch phase alone never ends.
+    """
+    handler = make_director_handler(watcher=FakeWatcher())
+    task = await start_watch_first_loop(handler)
+    handler.stop_event.set()
+    await asyncio.wait_for(task, timeout=5.0)
+
+
+async def test_watch_first_loop_stops_during_the_watch_phase():
+    """A `q` press while nothing changes must also end the loop."""
+    handler = make_director_handler(watcher=FakeWatcher())
+    handler.watcher.busy_watching.set()
+    task = await start_watch_first_loop(handler)
+    handler.stop_event.set()
+    await asyncio.wait_for(task, timeout=5.0)
+
+
+async def test_watch_first_loop_starts_a_build_phase_after_a_change(monkeypatch):
+    """The point of `-W`: an observed change restarts the builder without a keystroke."""
+    started = asyncio.Event()
+
+    async def fake_start_build_phase(self):
+        started.set()
+
+    monkeypatch.setattr(DirectorHandler, "start_build_phase", fake_start_build_phase)
+    handler = make_director_handler(watcher=FakeWatcher())
+    handler.watcher.busy_watching.set()
+    task = await start_watch_first_loop(handler)
+    handler.watcher.notify_update(Path("foo.txt"))
+    await asyncio.wait_for(started.wait(), timeout=5.0)
+    handler.stop_event.set()
+    await asyncio.wait_for(task, timeout=5.0)

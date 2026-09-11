@@ -23,6 +23,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 - Shorten terminal output tags to fit in 8 characters:
   `DROPAMEND` -> `UNAMEND` and `UNCHANGED` -> `SAMEHASH`.
+- Fixed a hang when shutting down a build started with `-W` (`--watch-first`)
+  while it was running steps.
+  The loop that restarts the builder after a file change waited for the next watch phase,
+  which never begins once the shutdown has started,
+  so the director kept running after every step had ended.
 
 ## [4.0.1][] - 2026-09-02 {: #v4.0.1 }
 
