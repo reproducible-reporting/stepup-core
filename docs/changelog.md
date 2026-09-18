@@ -19,6 +19,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.0.2][] - 2026-09-18 {: #v4.0.2 }
+
 ### Fixed
 
 - Shorten terminal output tags to fit in 8 characters:
@@ -1687,6 +1691,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.2
 [4.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.1
 [4.0.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0
 [3.2.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3
