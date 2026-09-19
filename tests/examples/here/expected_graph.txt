@@ -24,9 +24,7 @@ file:www/plan.py
 step:./plan.py  # wd=www
                state = SUCCEEDED
                 need = PLAN
-           using_env = HERE [dynamic]
-                     = PUBLIC [dynamic]
-                     = ROOT [dynamic]
+           using_env = PUBLIC [dynamic]
                      = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:www/plan.py

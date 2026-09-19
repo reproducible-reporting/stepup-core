@@ -14,6 +14,7 @@ from stepup.core import api
 from stepup.core.api import (
     _prepare_run_command,
     amend,
+    call,
     copy,
     dumpns,
     get_rpc_client,
@@ -41,6 +42,13 @@ def noop_amend(*_args, **_kwargs):
     pass
 
 
+def _chdir_work(monkeypatch, path_tmp):
+    """Run in the subdirectory `work/` of a temporary StepUp root."""
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    (path_tmp / "work").makedirs()
+    monkeypatch.chdir(path_tmp / "work")
+
+
 def test_getenv_nonexisting(monkeypatch):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
     monkeypatch.delenv("SFDDFHT", raising=False)
@@ -57,10 +65,9 @@ def test_getenv_nonexisting(monkeypatch):
 
 
 @pytest.mark.parametrize("use_default", [True, False])
-def test_getenv_single(monkeypatch, use_default):
+def test_getenv_single(monkeypatch, path_tmp, use_default):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
-    monkeypatch.setenv("ROOT", "../")
-    monkeypatch.setenv("HERE", "work/")
+    _chdir_work(monkeypatch, path_tmp)
     if use_default:
         monkeypatch.delenv("SFDDFHT", raising=False)
         default = "sub/asdf"
@@ -80,10 +87,9 @@ def test_getenv_single(monkeypatch, use_default):
 
 
 @pytest.mark.parametrize("use_default", [True, False])
-def test_getenv_default_multi1(monkeypatch, use_default):
+def test_getenv_default_multi1(monkeypatch, path_tmp, use_default):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
-    monkeypatch.setenv("ROOT", "../")
-    monkeypatch.setenv("HERE", "work/")
+    _chdir_work(monkeypatch, path_tmp)
     monkeypatch.delenv("SFDDFHT", raising=False)
     if use_default:
         monkeypatch.delenv("SFDDFHT", raising=False)
@@ -103,10 +109,9 @@ def test_getenv_default_multi1(monkeypatch, use_default):
 
 
 @pytest.mark.parametrize("use_default", [True, False])
-def test_getenv_default_multi3(monkeypatch, use_default):
+def test_getenv_default_multi3(monkeypatch, path_tmp, use_default):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
-    monkeypatch.setenv("ROOT", "../")
-    monkeypatch.setenv("HERE", "work/")
+    _chdir_work(monkeypatch, path_tmp)
     if use_default:
         monkeypatch.delenv("SFDDFHT", raising=False)
         default = "sub/asdf:foo:"
@@ -145,6 +150,31 @@ def test_loadns_py2(path_tmp):
         print("from foo import a", file=fh)
     ns = loadns(path_bar)
     assert ns.a == 10
+
+
+def test_loadns_py_path(monkeypatch, path_tmp):
+    """A relative `Path` is relative to the directory of the variables file."""
+    (path_tmp / "sub").makedirs()
+    (path_tmp / "out").makedirs()
+    with open(path_tmp / "sub/foo.py", "w") as fh:
+        print("from path import Path", file=fh)
+        print("a = Path('data.txt')", file=fh)
+    monkeypatch.chdir(path_tmp)
+    assert loadns("sub/foo.py").a == "sub/data.txt"
+    assert loadns("sub/foo.py", dir_out="out").a == "../sub/data.txt"
+
+
+def test_loadns_py_getenv_back(monkeypatch, path_tmp):
+    """A path from `getenv(back=True)` in a variables file refers to the right location."""
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    (path_tmp / "sub").makedirs()
+    with open(path_tmp / "vars.py", "w") as fh:
+        print("from stepup.core.api import getenv", file=fh)
+        print("a = getenv('STEPUP_LOADNS_PUBLIC', back=True)", file=fh)
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.setenv("STEPUP_LOADNS_PUBLIC", "public/")
+    monkeypatch.chdir(path_tmp / "sub")
+    assert loadns("../vars.py").a == "../public"
 
 
 def test_loadns_json(path_tmp, monkeypatch):
@@ -938,6 +968,98 @@ def test_subs_env_vars_keeps_affixes_of_env_var(monkeypatch):
     monkeypatch.setenv("DEST", "./public/sub/")
     with subs_env_vars() as subs_env:
         assert subs_env("${DEST}") == "./public/sub/"
+
+
+def test_subs_env_vars_here_root(monkeypatch, path_tmp):
+    """`${HERE}` and `${ROOT}` are computed and are not environment dependencies."""
+    amended = []
+    monkeypatch.setattr("stepup.core.api.amend", lambda **kwargs: amended.append(kwargs))
+    _chdir_work(monkeypatch, path_tmp)
+    monkeypatch.setenv("HERE", "wrong")
+    monkeypatch.setenv("ROOT", "wrong")
+    monkeypatch.setenv("PUBLIC", "public/")
+    with subs_env_vars() as subs_env:
+        assert subs_env("${ROOT}/${PUBLIC}/${HERE}/") == "../public/work/"
+    assert amended == [{"env": {"PUBLIC"}}]
+    with subs_env_vars() as subs_env:
+        assert subs_env("${ROOT}/data/") == "../data/"
+    assert len(amended) == 1
+
+
+def test_subs_env_vars_here_root_unset(monkeypatch, path_tmp):
+    """`${HERE}` and `${ROOT}` can also be substituted outside a step."""
+    _chdir_work(monkeypatch, path_tmp)
+    monkeypatch.delenv("HERE", raising=False)
+    monkeypatch.delenv("ROOT", raising=False)
+    with subs_env_vars() as subs_env:
+        assert subs_env("${ROOT}/${HERE}/file.txt") == "../work/file.txt"
+
+
+def test_getenv_here_root(monkeypatch, path_tmp):
+    """`getenv()` computes `HERE` and `ROOT` instead of reading them from the environment."""
+    amended = []
+    monkeypatch.setattr("stepup.core.api.amend", lambda **kwargs: amended.append(kwargs))
+    _chdir_work(monkeypatch, path_tmp)
+    monkeypatch.setenv("HERE", "wrong")
+    monkeypatch.setenv("ROOT", "wrong")
+    assert getenv("HERE") == "work"
+    assert getenv("ROOT") == ".."
+    assert getenv("ROOT", path=True) == Path("..")
+    monkeypatch.setenv("DST", "../public/${HERE}")
+    assert getenv("DST", path=True) == Path("../public/work")
+    assert amended == [{"env": "DST"}]
+
+
+@attrs.define
+class _CaptureDefineStepClient(DummySyncRPCClient):
+    """A dummy RPC client that records the arguments of the `define_step` call."""
+
+    calls: list = attrs.field(factory=list)
+
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+        if name == "define_step":
+            self.calls.append(args)
+        return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
+
+
+def test_step_here_root_for_workdir(monkeypatch, path_tmp):
+    """`${HERE}` and `${ROOT}` in `inp`, `out` and `vol` refer to the step's `workdir`."""
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.chdir(path_tmp)
+    client = _CaptureDefineStepClient()
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
+    step_info = step(
+        "python ${ROOT}/script.py",
+        inp="${ROOT}/script.py",
+        out="${ROOT}/${HERE}/out.txt",
+        vol="${ROOT}/vol.txt",
+        workdir="${HERE}/sub/",
+        shell=True,
+    )
+    assert step_info.inp == ["../script.py"]
+    assert step_info.out == ["../sub/out.txt"]
+    assert step_info.vol == ["../vol.txt"]
+    _job_i, _command, tr_inp, _env, tr_out, tr_vol, tr_workdir, *_ = client.calls[0]
+    assert tr_inp == ["script.py"]
+    assert tr_out == ["sub/out.txt"]
+    assert tr_vol == ["vol.txt"]
+    assert tr_workdir == "sub"
+
+
+def test_run_callable_here_root_for_workdir(monkeypatch, path_tmp, captured_step_kwargs):
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.chdir(path_tmp)
+    run(lambda inp: f"cat {shq(inp)}", inp="${ROOT}/a.txt", workdir="sub")
+    assert captured_step_kwargs[-1]["command"] == "cat ../a.txt"
+
+
+def test_call_here_root_for_workdir(monkeypatch, path_tmp, captured_step_kwargs):
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.chdir(path_tmp)
+    call("./f.py", "main", inp="${ROOT}/a.txt", workdir="sub")
+    assert captured_step_kwargs[-1]["inp"] == ["./f.py", "../a.txt"]
+    assert '"inp": ["../a.txt"]' in captured_step_kwargs[-1]["command"]
 
 
 def test_subs_env_vars_normalizes_interior():

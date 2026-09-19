@@ -26,7 +26,6 @@ step:./plan.py  # wd=sub
                state = SUCCEEDED
                 need = PLAN
            using_env = DELAYED [dynamic]
-                     = HERE [dynamic]
                      = STEPUP_PATH_FILTER [dynamic]
              creator   step:./plan.py
               source   file:sub/plan.py

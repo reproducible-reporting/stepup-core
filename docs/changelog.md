@@ -19,7 +19,40 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Added
+
+- `get_here()` and `get_root()` in `stepup.core.path` compute the values of `HERE` and `ROOT`
+  for the current working directory, or for a given directory relative to it.
+  Unlike the environment variables, they remain correct after a change of working directory.
+  They are the recommended way to obtain these paths in Python code.
+- `child_env()` in `stepup.core.extapi` returns an environment
+  with `HERE` and `ROOT` updated for a child process in another directory.
+  `run_subprocess()` uses it for the environment of the subprocess.
+
+### Fixed
+
+- Relative paths passed to the StepUp API are now always interpreted
+  relative to the current working directory of the calling process, as with `open()`.
+  Previously, they were interpreted relative to `${HERE}`,
+  which is out of date when a step runs code in another directory,
+  e.g. inside `contextlib.chdir()` or in a child process started in a subdirectory.
+  This caused wrong paths to be recorded in the workflow graph.
+  See [`HERE` and `ROOT` Variables](advanced_topics/here_and_root.md) for details.
+- `${HERE}` and `${ROOT}` in paths passed to the StepUp API, and in `getenv()`,
+  are computed with `get_here()` and `get_root()`,
+  instead of being read from possibly out-of-date environment variables.
+  In the `inp`, `out` and `vol` arguments of `step()` and the functions built on top of it,
+  they refer to the working directory of the new step,
+  so they have the same meaning as in the step's command.
+  Previously, they referred to the working directory of the caller.
+  They are also no longer recorded as environment dependencies of a step.
+- The environment variables `HERE` and `ROOT` of a step are computed from physical paths,
+  consistent with the paths recorded by StepUp.
+- A relative `Path` defined in a Python file loaded with `loadns()`
+  is now interpreted relative to the directory of that file,
+  in which the file is executed.
+  Previously, it was interpreted relative to the current working directory of the caller,
+  which relied on the out-of-date `${HERE}` described above for paths from `getenv(back=True)`.
 
 ## [4.0.2][] - 2026-09-18 {: #v4.0.2 }
 

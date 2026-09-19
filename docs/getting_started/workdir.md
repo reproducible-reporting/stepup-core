@@ -63,5 +63,5 @@ This will create an output file `out/hello.txt`
   If these are relative paths, they are relative to the `step_info.workdir` attribute.
   Consult the section [StepInfo Objects](../advanced_topics/step_info.md) for more details.
 
-- In advanced workflows, the [HERE and ROOT variables](../advanced_topics/here_and_root.md)
+- In advanced workflows, [`HERE` and `ROOT`](../advanced_topics/here_and_root.md)
   can be convenient to construct relative paths based on the current working directory.

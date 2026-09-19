@@ -10,10 +10,21 @@ For arguments where these affixes are significant
 (the `dst` of `copy`, local executables, and the path variants of `getenv`),
 pass a `str` or a `path.Path` to preserve them.
 
+Relative paths passed to this API are relative to the current working directory
+of the calling process, just like paths passed to `open()`.
+The environment variables `HERE` and `ROOT` are never read by this API,
+because they are out of date in a process that changed its working directory.
+Where a path argument or `getenv()` refers to them,
+their values are computed with [`get_here()`][stepup.core.path.get_here]
+and [`get_root()`][stepup.core.path.get_root] instead,
+for the directory to which the path is relative,
+and they are not recorded as environment dependencies of the step.
+See [`HERE` and `ROOT`](../advanced_topics/here_and_root.md) for more details.
+
 Local variables holding a path use a prefix to state which form the path is in:
 
 - `su_`: after environment variable substitution and normalization,
-  still relative to the working directory of the caller.
+  still relative to the current working directory.
 - `tr_`: after translation to the working directory of the director,
   which is the only form sent over RPC.
 
@@ -62,6 +73,8 @@ from .path import (
     coerce_str,
     format_local_executable,
     get_affixes,
+    get_here,
+    get_root,
     make_path_out,
     translate,
     translate_back,
@@ -97,6 +110,11 @@ __all__ = (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# Variables whose values are computed for the current working directory,
+# instead of being read from the environment, where they may be out of date.
+_COMPUTED_ENV_VARS = {"HERE": get_here, "ROOT": get_root}
 
 # The `command` argument of `step()`, `run()` and `plan()`:
 # either a path-like object holding the command text,
@@ -161,7 +179,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     paths
         A sorted list of the files declared and the static tree roots registered by this call,
         tree roots with a trailing slash.
-        Relative to the caller's working directory.
+        Relative to the current working directory.
 
     Raises
     ------
@@ -261,7 +279,7 @@ def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     if len(tr_trees) + len(tr_files) + len(tr_patterns) > 0:
         get_rpc_client().call.declare_static(get_job_i(), tr_trees, tr_files, tr_patterns)
 
-    # Report what this call covers, relative to the caller's working directory.
+    # Report what this call covers, relative to the current working directory.
     return sorted(
         {Path(su_path) / "" for su_path in su_lit_dirs + su_match_dirs}
         | {Path(su_path) for su_path in su_lit_files + su_match_files}
@@ -403,7 +421,7 @@ def step(
     workdir
         The directory where the command must be executed.
         The path is normalized before further processing.
-        If this is a relative path, it is relative to the work directory of the caller.
+        If this is a relative path, it is relative to the current working directory.
         (The default is the current directory.)
         It does not need to exist yet: StepUp creates it right before running the command,
         and removes it again when the step leaves the workflow and the directory is empty.
@@ -467,6 +485,9 @@ def step(
     at the time this function is called, not when the step is executed.
 
     Relative paths in `inp`, `out`, and `vol` are relative to the working directory of the new step.
+    The same holds for `${HERE}` and `${ROOT}` in these paths,
+    so they have the same meaning as in the command of the step.
+    In `workdir`, they refer to the current working directory.
     """
     # Pre-process the arguments for the Director process.
     # The command is resolved after the environment variable substitution below,
@@ -505,10 +526,10 @@ def step(
             )
 
     with subs_env_vars() as subs_env:
-        su_inp_paths = [subs_env(inp_path) for inp_path in inp_paths]
-        su_out_paths = [subs_env(out_path) for out_path in out_paths]
-        su_vol_paths = [subs_env(vol_path) for vol_path in vol_paths]
         su_workdir = subs_env(workdir)
+        su_inp_paths = [subs_env(inp_path, su_workdir) for inp_path in inp_paths]
+        su_out_paths = [subs_env(out_path, su_workdir) for out_path in out_paths]
+        su_vol_paths = [subs_env(vol_path, su_workdir) for vol_path in vol_paths]
 
     # Build the command text from the substituted paths when a callable is given.
     command = _resolve_command(command, su_inp_paths, su_out_paths, su_vol_paths)
@@ -662,10 +683,10 @@ def call(
     # Perform environment variable substitutions before building the command.
     # This is somewhat redundant with the substitutions performed in `step()`.
     with subs_env_vars() as subs_env:
-        su_inp_paths = [subs_env(inp_path) for inp_path in coerce_paths(inp)]
-        su_out_paths = [subs_env(out_path) for out_path in coerce_paths(out)]
         su_workdir = subs_env(workdir)
-        su_args_file = subs_env(args_file)
+        su_inp_paths = [subs_env(inp_path, su_workdir) for inp_path in coerce_paths(inp)]
+        su_out_paths = [subs_env(out_path, su_workdir) for out_path in coerce_paths(out)]
+        su_args_file = subs_env(args_file, su_workdir)
 
     # Validate executable path format.
     if os.sep not in executable:
@@ -753,7 +774,7 @@ class EnvSubstitutor:
     used_env: set[str] = attrs.field(factory=set)
     """The names of the environment variables substituted so far."""
 
-    def _substitute(self, path: StrPath) -> Path:
+    def _substitute(self, path: StrPath, workdir: StrPath) -> Path:
         """Substitute the environment variables in a path, without normalizing it."""
         template = _CaseSensitiveTemplate(coerce_str(path))
         if not template.is_valid():
@@ -762,6 +783,8 @@ class EnvSubstitutor:
         for name in template.get_identifiers():
             if name.startswith("*"):
                 mapping[name] = f"${{{name}}}"
+            elif name in _COMPUTED_ENV_VARS:
+                mapping[name] = str(_COMPUTED_ENV_VARS[name](workdir))
             else:
                 value = os.getenv(name)
                 if value is None:
@@ -770,7 +793,7 @@ class EnvSubstitutor:
                 self.used_env.add(name)
         return Path(path if len(mapping) == 0 else template.substitute(mapping))
 
-    def __call__(self, path: StrPath | None) -> Path | None:
+    def __call__(self, path: StrPath | None, workdir: StrPath = ".") -> Path | None:
         """Substitute the environment variables in a path and normalize the result.
 
         The leading `./` and trailing `/` of the substituted path are restored
@@ -783,6 +806,12 @@ class EnvSubstitutor:
         ----------
         path
             The path to substitute, or `None`.
+        workdir
+            The directory to which `path` is relative,
+            itself relative to the current working directory.
+            `${HERE}` and `${ROOT}` are computed for this directory,
+            with [`get_here()`][stepup.core.path.get_here]
+            and [`get_root()`][stepup.core.path.get_root].
 
         Returns
         -------
@@ -796,7 +825,9 @@ class EnvSubstitutor:
             When the path contains invalid shell variable identifiers,
             or references an environment variable that is not defined.
         """
-        return None if path is None else _keep_affixes(self._substitute(path), Path.normpath)
+        if path is None:
+            return None
+        return _keep_affixes(self._substitute(path, workdir), Path.normpath)
 
 
 @contextlib.contextmanager
@@ -865,7 +896,7 @@ def amend(
     ----------
     inp
         Files required by the step.
-        Relative paths are relative to the step's working directory.
+        Relative paths are relative to the current working directory.
         Directory inputs are not supported.
     env
         Environment variables to which the step is sensitive.
@@ -873,11 +904,11 @@ def amend(
         such that the step cannot be skipped.
     out
         Files created by the step.
-        Relative paths are relative to the step's working directory.
+        Relative paths are relative to the current working directory.
         Directory outputs are not supported.
     vol
         Volatile files created by the step.
-        Relative paths are relative to the step's working directory.
+        Relative paths are relative to the current working directory.
         Directory outputs are not supported.
 
     Raises
@@ -956,10 +987,8 @@ def amend(
         su_inp_paths = {subs_env(inp_path) for inp_path in inp_paths}
         su_out_paths = {subs_env(out_path) for out_path in out_paths}
         su_vol_paths = {subs_env(vol_path) for vol_path in vol_paths}
-    # The checks use the substituted paths, not the translated ones below:
-    # they look at the file system,
-    # which this process sees relative to its own working directory,
-    # not relative to the director's.
+    # The checks use the substituted paths, not the translated ones below,
+    # because they look at the file system relative to the current working directory.
     _check_no_directories(su_inp_paths)
     _check_no_directories(su_out_paths)
     _check_no_directories(su_vol_paths)
@@ -1076,10 +1105,9 @@ def get_info() -> StepInfo:
     step_info
         Holds relevant information of the current step, useful for defining follow-up steps.
         For consistency with other functions in this module, the `inp`, `out` and `vol`
-        paths are relative to the working directory of the step.
+        paths are relative to the current working directory.
     """
     step_info = get_rpc_client().call.get_step_info(get_job_i())
-    # Update paths to make them relative to the working directory of the step.
     step_info.inp = sorted(translate_back(inp) for inp in step_info.inp)
     step_info.out = sorted(translate_back(out) for out in step_info.out)
     step_info.vol = sorted(translate_back(vol) for vol in step_info.vol)
@@ -1214,7 +1242,7 @@ def run(
         Holds relevant information of the step, useful for defining follow-up steps.
     """
     command, inp_paths, out_paths, vol_paths = _resolve_run_command(
-        command, inp=inp, out=out, vol=vol
+        command, inp=inp, out=out, vol=vol, workdir=workdir
     )
     command, exe, env_overrides = _prepare_run_command(
         command, shell=shell, need_relative_exe=False
@@ -1307,7 +1335,7 @@ def plan(
     """
     # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
     command, inp_paths, out_paths, vol_paths = _resolve_run_command(
-        command, inp=inp, out=out, vol=vol
+        command, inp=inp, out=out, vol=vol, workdir=workdir
     )
     command, exe, env_overrides = _prepare_run_command(command, shell=False, need_relative_exe=True)
     inp_paths = [coerce_path(exe), *inp_paths]
@@ -1390,6 +1418,9 @@ def getenv(
     ----------
     name
         The name of the environment variable, which is retrieved with `os.getenv`.
+        The values of `HERE` and `ROOT` are computed
+        with [`get_here()`][stepup.core.path.get_here]
+        and [`get_root()`][stepup.core.path.get_root] instead.
     default
         The value to return when the environment variable is unset.
     path
@@ -1397,9 +1428,9 @@ def getenv(
         A `Path` instance will be returned.
         Shell variables are substituted (once) in such paths.
     back
-        Set to `True` to translate the path back to the working directory of the caller.
+        Set to `True` to translate the path back to the current working directory.
         If the path is relative, it is assumed to be relative to StepUp's working directory.
-        It will be translated to become relative to the working directory of the caller.
+        It will be translated to become relative to the current working directory.
         This implies `path=True`.
     multi
         Set to `True` if the variable is a list of paths.
@@ -1426,7 +1457,8 @@ def getenv(
     path = path or back or multi
     if default is not None:
         default = coerce_str(default)
-    value = os.getenv(name, default)
+    compute = _COMPUTED_ENV_VARS.get(name)
+    value = os.getenv(name, default) if compute is None else str(compute())
     # Do not amend environment variables set for the step by the executor.
     # See `stepup.core.executor.Executor._run_command`.
     if name not in RESERVED_ENV_VARS:
@@ -1544,10 +1576,8 @@ def loadns(
         The directory that `Path` variables are made relative to.
         If not given, the current working directory is used.
         This is only relevant for variables loaded from Python files.
-        A relative `Path` in such a file is interpreted
-        relative to the current working directory,
-        not relative to the parent of the variable file,
-        even though the file itself is executed with that parent as working directory.
+        Such a file is executed with its parent directory as working directory,
+        so a relative `Path` in it is interpreted relative to that parent directory.
     do_amend
         If `True`, the current step is amended with the loaded files as input dependencies.
 
@@ -1592,7 +1622,7 @@ def loadns(
                 if name.startswith("_"):
                     continue
                 if isinstance(value, Path):
-                    value = Path(value).relpath(dir_out)
+                    value = (dir_py / value).relpath(dir_out)
                 variables[name] = value
         else:
             raise StepUpError(f"unsupported variable file format: {path_var}")
@@ -1927,6 +1957,7 @@ def _resolve_run_command(
     inp: Iterable[StrPath] | StrPath,
     out: Iterable[StrPath] | StrPath,
     vol: Iterable[StrPath] | StrPath,
+    workdir: StrPath,
 ) -> tuple[str, list[Path], list[Path], list[Path]]:
     """Resolve a `run()`/`plan()` command before the local executable is detected.
 
@@ -1940,8 +1971,8 @@ def _resolve_run_command(
     ----------
     command
         The `command` argument as given by the user.
-    inp, out, vol
-        The `inp`, `out` and `vol` arguments as given by the user.
+    inp, out, vol, workdir
+        The `inp`, `out`, `vol` and `workdir` arguments as given by the user.
 
     Returns
     -------
@@ -1960,9 +1991,10 @@ def _resolve_run_command(
         # which is idempotent.
         # The repeated `amend(env=...)` is filtered out by `_AMEND_HISTORY`.
         with subs_env_vars() as subs_env:
-            su_inp_paths = [subs_env(inp_path) for inp_path in inp_paths]
-            su_out_paths = [subs_env(out_path) for out_path in out_paths]
-            su_vol_paths = [subs_env(vol_path) for vol_path in vol_paths]
+            su_workdir = subs_env(workdir)
+            su_inp_paths = [subs_env(inp_path, su_workdir) for inp_path in inp_paths]
+            su_out_paths = [subs_env(out_path, su_workdir) for out_path in out_paths]
+            su_vol_paths = [subs_env(vol_path, su_workdir) for vol_path in vol_paths]
         command = _resolve_command(command, su_inp_paths, su_out_paths, su_vol_paths)
     else:
         command = coerce_str(command)

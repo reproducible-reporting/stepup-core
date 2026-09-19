@@ -449,7 +449,13 @@ the internal environment variables described above.
 `HERE` and `ROOT`
 
 :   These are documented in the tutorial on
-    [`HERE` and `ROOT` variables](../advanced_topics/here_and_root.md)
+    [`HERE` and `ROOT` variables](../advanced_topics/here_and_root.md).
+    They relate the step's working directory to the directory where StepUp was started.
+    They are not updated when a process changes its working directory,
+    except by tools that explicitly do so for a child process.
+    In Python, use [`get_here()`][stepup.core.path.get_here]
+    and [`get_root()`][stepup.core.path.get_root] instead,
+    which are always up to date.
 
 `STEPUP_JOB_I`
 

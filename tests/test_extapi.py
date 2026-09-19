@@ -13,6 +13,7 @@ import pytest
 from stepup.core import api, extapi
 from stepup.core.extapi import (
     _stream_for_record,
+    child_env,
     filter_dependencies,
     record_subprocess,
     run_subprocess,
@@ -92,8 +93,6 @@ def test_filter_dependencies_relative2(monkeypatch, path_tmp):
     monkeypatch.setenv("STEPUP_PATH_FILTER", "+../external")
     (path_tmp / "project/sub").makedirs()
     with contextlib.chdir(path_tmp / "project/sub"):
-        monkeypatch.setenv("ROOT", path_tmp / "project")
-        monkeypatch.setenv("HERE", "sub")
         rel_paths = ["foo", "../../external/bar", "../../egg", "../../other/spam"]
         assert filter_dependencies(rel_paths) == {"foo", "../../external/bar"}
 
@@ -163,6 +162,45 @@ def test_run_subprocess_env_overlay(monkeypatch):
     assert out.split() == ["added", "yes"]
     # Only the overlay (not the full resolved environment) is handed to record_subprocess.
     assert recorded == [{"OVERLAY": "added"}]
+
+
+def test_child_env(monkeypatch, path_tmp):
+    (path_tmp / "project/sub/deep").makedirs()
+    (path_tmp / "outside").makedirs()
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp / "project")
+    monkeypatch.chdir(path_tmp / "project/sub")
+    # An out-of-date HERE and ROOT in the parent do not affect the result.
+    env = {"HERE": "wrong", "ROOT": "wrong", "OTHER": "kept"}
+    env_child = child_env("deep", env)
+    assert env_child == {"HERE": "sub/deep", "ROOT": "../..", "OTHER": "kept"}
+    assert env == {"HERE": "wrong", "ROOT": "wrong", "OTHER": "kept"}
+    assert child_env(".", env)["HERE"] == "sub"
+    assert child_env("..", env)["ROOT"] == "."
+    env_child = child_env(path_tmp / "outside", env)
+    assert env_child["HERE"] == "../outside"
+    assert env_child["ROOT"] == "../project"
+
+
+def test_child_env_symlink_in_root(monkeypatch, path_tmp):
+    (path_tmp / "real/sub").makedirs()
+    (path_tmp / "link").symlink_to(path_tmp / "real")
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp / "link")
+    monkeypatch.chdir(path_tmp / "link")
+    env_child = child_env("sub", {})
+    assert env_child == {"HERE": "sub", "ROOT": ".."}
+
+
+def test_run_subprocess_here_root(monkeypatch, path_tmp):
+    """The subprocess gets HERE and ROOT for its own working directory."""
+    monkeypatch.setattr(extapi, "record_subprocess", lambda *a, **k: None)
+    (path_tmp / "sub/deep").makedirs()
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.chdir(path_tmp / "sub")
+    monkeypatch.setenv("HERE", "sub")
+    monkeypatch.setenv("ROOT", "..")
+    code = "import os; print(os.environ['HERE'], os.environ['ROOT'])"
+    cp = run_subprocess(shlex.join([sys.executable, "-c", code]), workdir="deep")
+    assert cp.stdout.split() == ["sub/deep", "../.."]
 
 
 def test_record_subprocess_no_director(monkeypatch):

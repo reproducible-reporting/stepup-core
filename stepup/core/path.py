@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Specialized path operations."""
 
+import functools
 import os
 import shlex
 from collections.abc import Iterable
@@ -20,6 +21,8 @@ __all__ = (
     "dir_range_upper",
     "format_local_executable",
     "get_affixes",
+    "get_here",
+    "get_root",
     "get_stepup_root",
     "make_path_out",
     "parent_dir",
@@ -233,6 +236,64 @@ def get_stepup_root() -> Path:
     return Path(os.getenv("STEPUP_ROOT", os.getcwd())).absolute()
 
 
+def get_here(workdir: StrPath = ".") -> Path:
+    """Get the relative path from the StepUp root to a working directory.
+
+    This is the Python counterpart of the environment variable `HERE`,
+    which is not consulted, so the result is also correct in a process
+    that changed its working directory without updating `HERE`.
+    See [HERE and ROOT](../advanced_topics/here_and_root.md) for more details.
+
+    Parameters
+    ----------
+    workdir
+        The working directory, relative to the current working directory.
+        The default is the current working directory itself.
+
+    Returns
+    -------
+    here
+        The relative path from the StepUp root to `workdir`.
+        Both directories are physical paths, with all symbolic links resolved.
+        The path starts with `../` when `workdir` lies outside the StepUp root.
+    """
+    return coerce_path(workdir).realpath().relpath(_get_real_root())
+
+
+def get_root(workdir: StrPath = ".") -> Path:
+    """Get the relative path from a working directory to the StepUp root.
+
+    This is the Python counterpart of the environment variable `ROOT`,
+    which is not consulted, so the result is also correct in a process
+    that changed its working directory without updating `ROOT`.
+    See [HERE and ROOT](../advanced_topics/here_and_root.md) for more details.
+
+    Parameters
+    ----------
+    workdir
+        The working directory, relative to the current working directory.
+        The default is the current working directory itself.
+
+    Returns
+    -------
+    root
+        The relative path from `workdir` to the StepUp root.
+        Both directories are physical paths, with all symbolic links resolved.
+    """
+    return _get_real_root().relpath(coerce_path(workdir).realpath())
+
+
+def _get_real_root() -> Path:
+    """Get the physical StepUp root, with all symbolic links resolved."""
+    return _realpath_cached(get_stepup_root())
+
+
+@functools.lru_cache(maxsize=16)
+def _realpath_cached(path: Path) -> Path:
+    """Resolve symbolic links, with caching because API functions may translate many paths."""
+    return path.realpath()
+
+
 def translate(path: StrPath, workdir: StrPath = ".") -> Path:
     """Normalize the path and, if relative, make it relative to `STEPUP_ROOT`.
 
@@ -243,7 +304,7 @@ def translate(path: StrPath, workdir: StrPath = ".") -> Path:
         If relative, it is assumed to be relative to `workdir`.
     workdir
         The working directory.
-        If relative, it is assumed to be relative to `HERE`.
+        If relative, it is assumed to be relative to the current working directory.
 
     Returns
     -------
@@ -255,9 +316,7 @@ def translate(path: StrPath, workdir: StrPath = ".") -> Path:
         workdir = coerce_path(workdir).normpath()
         path = workdir / path
         if not workdir.isabs():
-            root = get_stepup_root()
-            here = Path(os.getenv("HERE", Path(".").relpath(root)))
-            path = (root / here / path).normpath().relpath(root)
+            path = path.relpath(_get_real_root())
     return path
 
 
@@ -271,7 +330,7 @@ def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
         If relative, it is assumed to be relative to `STEPUP_ROOT`.
     workdir
         The working directory.
-        If relative, it is assumed to be relative to `HERE`.
+        If relative, it is assumed to be relative to the current working directory.
 
     Returns
     -------
@@ -284,9 +343,7 @@ def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
         if workdir.isabs() and path.startswith(workdir):
             path = Path(path).relpath(workdir)
     else:
-        root = get_stepup_root()
-        here = Path(os.getenv("HERE", Path(".").relpath(root)))
-        path = Path(root / path).relpath(root / here / workdir)
+        path = (_get_real_root() / path).relpath(workdir)
     return path
 
 

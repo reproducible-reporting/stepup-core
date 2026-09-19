@@ -167,6 +167,12 @@ Wrappers that need streaming output or `Popen`-style pipe interaction
 run the subprocess themselves using the built-in `subprocess` module and record it afterwards with
 [`record_subprocess()`][stepup.core.extapi.record_subprocess].
 
+When such a subprocess runs in another directory and executes user-written code,
+pass it an environment from [`child_env()`][stepup.core.extapi.child_env],
+as `run_subprocess()` does,
+so that `HERE` and `ROOT` refer to its own working directory.
+See [`HERE` and `ROOT` Variables](../advanced_topics/here_and_root.md) for more details.
+
 ## Path manipulation
 
 StepUp uses the [`path`](https://pypi.org/project/path/) library instead of the
@@ -220,7 +226,7 @@ file into a derived output.
 ### Director-relative translation
 
 Steps run in their own working directory, while the director tracks paths relative to the
-project root (`STEPUP_ROOT` / `HERE`).
+project root (`STEPUP_ROOT`).
 [`translate()`][stepup.core.path.translate] converts a path from a step's working directory
 into a director-relative path, and [`translate_back()`][stepup.core.path.translate_back]
 does the reverse.

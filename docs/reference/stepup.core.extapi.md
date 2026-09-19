@@ -13,6 +13,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 Utilities for developers building StepUp extension packages.
 These functions are not intended for use in `plan.py` files.
 
+## ::: stepup.core.extapi.child_env
+
 ## ::: stepup.core.extapi.run_subprocess
 
 ## ::: stepup.core.extapi.record_subprocess

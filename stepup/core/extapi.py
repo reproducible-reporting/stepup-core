@@ -12,22 +12,58 @@ import os
 import shlex
 import subprocess
 import sys
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 
 from path import Path
 
 from .api import get_job_i, get_rpc_client, getenv
 from .exceptions import ConsistencyError, StepUpError
-from .path import StrPath, get_stepup_root, translate
+from .path import StrPath, get_here, get_root, get_stepup_root, translate
 from .step import truncate_output
 from .utils import extract_env_overrides
 
 __all__ = (
+    "child_env",
     "filter_dependencies",
     "get_local_import_paths",
     "record_subprocess",
     "run_subprocess",
 )
+
+
+#
+# Subprocess Environment
+#
+
+
+def child_env(workdir: StrPath, env: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Return an environment for a child process with `HERE` and `ROOT` updated for its workdir.
+
+    StepUp itself never reads `HERE` and `ROOT` from the environment,
+    because it computes them with [`get_here()`][stepup.core.path.get_here]
+    and [`get_root()`][stepup.core.path.get_root].
+    Updating them is still useful when the child process runs user-written code,
+    such as a notebook, which may combine them with its own relative paths.
+    See [HERE and ROOT](../advanced_topics/here_and_root.md) for more details.
+
+    Parameters
+    ----------
+    workdir
+        The working directory of the child process, relative to the current working directory.
+    env
+        The environment to start from, `os.environ` by default.
+        It is not modified.
+
+    Returns
+    -------
+    env_child
+        A copy of `env` in which `HERE` and `ROOT` are set for the child process,
+        as computed by `get_here(workdir)` and `get_root(workdir)`.
+    """
+    env_child = dict(os.environ if env is None else env)
+    env_child["HERE"] = str(get_here(workdir))
+    env_child["ROOT"] = str(get_root(workdir))
+    return env_child
 
 
 #
@@ -192,8 +228,10 @@ def run_subprocess(
         In either case, the caller is responsible for proper quoting.
     workdir
         The working directory of the subprocess as a path or string,
-        relative to the step's own working directory.
+        relative to the current working directory.
         It is passed to `subprocess.run` as `cwd`.
+        The environment variables `HERE` and `ROOT` of the subprocess are updated accordingly,
+        see `child_env()`.
     stdin
         Standard input fed to the subprocess, or `None`.
         A `str` is passed to `subprocess.run` as-is and implies `text=True`.
@@ -236,7 +274,7 @@ def run_subprocess(
     else:
         env_overrides, cmd = extract_env_overrides(cmd)
     text = _resolve_text_mode(stdin, text)
-    run_env = dict(os.environ)
+    run_env = child_env(workdir)
     if env_overrides is not None:
         run_env.update(env_overrides)
     cp = subprocess.run(

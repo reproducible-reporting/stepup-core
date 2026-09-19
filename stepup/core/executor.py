@@ -827,8 +827,12 @@ class Executor:
         # Client code may use the following:
         env["STEPUP_STEP_INP_DIGEST"] = run.inp_digest.hex()
         env["STEPUP_STEP_NEED"] = need.name
-        env["ROOT"] = str(Path.cwd().relpath(workdir))
-        env["HERE"] = str(Path(workdir).relpath())
+        # The root is the working directory of the director, not `${STEPUP_ROOT}`,
+        # which may be set to another directory in the environment of the director.
+        # Physical paths are used, for consistency with `get_here()` and `get_root()`.
+        real_workdir = Path(workdir).realpath()
+        env["ROOT"] = str(Path.cwd().relpath(real_workdir))
+        env["HERE"] = str(real_workdir.relpath(Path.cwd()))
         # Note: the variables defined here must be listed in `RESERVED_ENV_VARS`.
 
         suspended_before = self.suspended_total

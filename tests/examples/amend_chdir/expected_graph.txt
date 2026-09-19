@@ -1,0 +1,71 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:sub/child.py
+             product   file:sub/data.txt
+             product   file:work.py
+             product   step:./work.py
+
+file:sub/child.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./work.py
+
+file:sub/data.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./work.py
+
+file:work.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./work.py
+
+step:./work.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./plan.py
+              source   file:sub/child.py
+              source   file:sub/data.txt [dynamic]
+              source   file:work.py
+             product   file:sub/copy1.txt
+             product   file:sub/copy2.txt
+             product   file:sub/copy3.txt
+             product   file:sub/copy4.txt
+                sink   file:sub/copy1.txt [dynamic]
+                sink   file:sub/copy2.txt [dynamic]
+                sink   file:sub/copy3.txt [dynamic]
+                sink   file:sub/copy4.txt [dynamic]
+
+file:sub/copy1.txt
+               state = BUILT
+             creator   step:./work.py
+              source   step:./work.py
+
+file:sub/copy3.txt
+               state = BUILT
+             creator   step:./work.py
+              source   step:./work.py
+
+file:sub/copy2.txt
+               state = BUILT
+             creator   step:./work.py
+              source   step:./work.py
+
+file:sub/copy4.txt
+               state = BUILT
+             creator   step:./work.py
+              source   step:./work.py
