@@ -38,6 +38,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   e.g. inside `contextlib.chdir()` or in a child process started in a subdirectory.
   This caused wrong paths to be recorded in the workflow graph.
   See [`HERE` and `ROOT` Variables](advanced_topics/here_and_root.md) for details.
+- `call()` with both `args_file` and `workdir` now writes the arguments file relative to `workdir`.
+  Previously, the planner wrote it relative to its own working directory,
+  while the step expected it in `workdir`, which left the step pending.
 - `${HERE}` and `${ROOT}` in paths passed to the StepUp API, and in `getenv()`,
   are computed with `get_here()` and `get_root()`,
   instead of being read from possibly out-of-date environment variables.

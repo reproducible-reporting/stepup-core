@@ -649,6 +649,7 @@ def call(
         Resource constraints for this step.
     args_file
         Full filename for the serialized arguments.
+        Relative paths are assumed to be relative to `workdir`.
         When given, arguments are written to this file (format inferred from extension)
         and passed via `--inp=<args_file>`;
         when absent, a JSON string is embedded directly in the command.
@@ -723,8 +724,9 @@ def call(
         command = f"{shlex.quote(executable)} {function} {shlex.quote(json_str)}"
         step_inp = [executable, *su_inp_paths]
     else:
-        # dumpns(do_amend=True) calls amend(out=args_file) before writing.
-        dumpns(su_args_file, forwarded)
+        # The step reads args_file relative to its workdir,
+        # whereas the planner writes it relative to its own working directory.
+        _dumpns((su_workdir / su_args_file).normpath(), forwarded)
         command = f"{shlex.quote(executable)} {function} --inp={shlex.quote(su_args_file)}"
         step_inp = [executable, *su_inp_paths, su_args_file]
 
@@ -1655,6 +1657,16 @@ def dumpns(path: StrPath, data: dict[str, Any] | SimpleNamespace, *, do_amend: b
     """
     with subs_env_vars() as subs_env:
         su_path = subs_env(path)
+    _dumpns(su_path, data, do_amend=do_amend)
+
+
+def _dumpns(
+    su_path: Path, data: dict[str, Any] | SimpleNamespace, *, do_amend: bool = True
+) -> None:
+    """Write variables to a JSON or YAML file whose path is already substituted.
+
+    See [`dumpns()`][stepup.core.api.dumpns] for the parameters.
+    """
     if do_amend:
         amend(out=su_path)
     if isinstance(data, SimpleNamespace):

@@ -52,6 +52,7 @@ EXAMPLES = [
     "build_target_static_resume",
     "call_args_file_json",
     "call_args_file_no_ext",
+    "call_args_file_workdir",
     "call_args_file_yaml",
     "call_chain",
     "call_conditional",
