@@ -19,6 +19,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.0.3][] - 2026-09-19 {: #v4.0.3 }
+
+Many bug fixes related to relative paths, working directories
+and the `HERE` and `ROOT` environment variables.
+
 ### Added
 
 - `get_here()` and `get_root()` in `stepup.core.path` compute the values of `HERE` and `ROOT`
@@ -1727,6 +1734,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.3
 [4.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.2
 [4.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.1
 [4.0.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0
