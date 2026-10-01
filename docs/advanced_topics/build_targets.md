@@ -97,6 +97,9 @@ The trailing slash is the **only** thing that distinguishes a directory target
 from a file target; classification never looks at the file system.
 A slashless target is always an exact-file target,
 even when it happens to name a directory that already exists on disk.
+This keeps the meaning of a command independent of the state of the disk,
+so that it behaves the same on a clean checkout, where the directory does not exist yet,
+as in a working directory that has already been populated.
 
 ```bash
 stepup build path/to/output/
@@ -162,6 +165,9 @@ Two limitations of the argument parser are worth knowing when combining targets 
   the directory name is interpreted as an exact-file target instead,
   which simply ends in a "not produced by any step" warning
   instead of building the subtree.
+  This also happens when the directory already exists on disk,
+  because the file system is never consulted to classify a target
+  (see [Directory Targets](#directory-targets)).
 
 ## Try the Following
 
