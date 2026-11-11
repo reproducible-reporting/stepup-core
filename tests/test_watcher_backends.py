@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Behavioral tests shared by the wrappers around the file watching libraries."""
+"""Behavioral tests shared by the backends around the file watching libraries."""
 
 import asyncio
 import os
@@ -14,7 +14,8 @@ from stepup.core import watcher
 from stepup.core.enums import Change
 from stepup.core.exceptions import ConfigError
 from stepup.core.pytest import sort_change_runs
-from stepup.core.watcher import AsyncInotifyWrapper, WatchfilesWrapper, select_watcher_backend
+from stepup.core.watcher import _import_backend_class, select_watcher_backend
+from stepup.core.watcher_watchfiles import WatchfilesBackend
 
 SETTLE_TIME = 0.2
 """How long to wait for changes that should not be reported, in seconds."""
@@ -23,41 +24,40 @@ SETTLE_TIME = 0.2
 @pytest.fixture(
     params=[
         pytest.param(
-            AsyncInotifyWrapper,
-            id="asyncinotify",
+            "asyncinotify",
             marks=pytest.mark.skipif(sys.platform != "linux", reason="Linux only"),
         ),
-        pytest.param(WatchfilesWrapper, id="watchfiles"),
+        "watchfiles",
     ]
 )
-async def wrapper(request, tmp_path, monkeypatch):
-    """Provide a running wrapper that watches directories relative to an empty directory."""
+async def backend(request, tmp_path, monkeypatch):
+    """Provide a running backend that watches directories relative to an empty directory."""
     monkeypatch.chdir(tmp_path)
-    if request.param is WatchfilesWrapper:
-        pytest.importorskip("watchfiles")
-    async with request.param(dir_queue=asyncio.Queue()) as result:
+    pytest.importorskip(request.param)
+    backend_class = _import_backend_class(request.param)
+    async with backend_class(dir_queue=asyncio.Queue()) as result:
         yield result
 
 
-async def watch(wrapper, *paths: str):
-    """Ask the wrapper to watch directories, and wait until all existing ones are watched."""
+async def watch(backend, *paths: str):
+    """Ask the backend to watch directories, and wait until all existing ones are watched."""
     for path in paths:
-        wrapper.dir_queue.put_nowait(Path(path))
+        backend.dir_queue.put_nowait(Path(path))
     async with asyncio.timeout(5):
         while not (
-            wrapper.dir_queue.empty()
-            and all(value is not None for path, value in wrapper.watches.items() if path.is_dir())
+            backend.dir_queue.empty()
+            and all(value is not None for path, value in backend.watches.items() if path.is_dir())
         ):
             await asyncio.sleep(0.01)
 
 
-async def check(wrapper, expected: set, optional: frozenset = frozenset()) -> list:
+async def check(backend, expected: set, optional: frozenset = frozenset()) -> list:
     """Collect the reported changes and compare them to the expected ones.
 
     Parameters
     ----------
-    wrapper
-        The wrapper to collect changes from.
+    backend
+        The backend to collect changes from.
     expected
         The changes that must be reported, in any order and possibly more than once.
     optional
@@ -71,10 +71,10 @@ async def check(wrapper, expected: set, optional: frozenset = frozenset()) -> li
     seen = []
     async with asyncio.timeout(5):
         while not expected <= set(seen):
-            seen.append(await wrapper.change_queue.get())
+            seen.append(await backend.change_queue.get())
     await asyncio.sleep(SETTLE_TIME)
-    while not wrapper.change_queue.empty():
-        seen.append(wrapper.change_queue.get_nowait())
+    while not backend.change_queue.empty():
+        seen.append(backend.change_queue.get_nowait())
     assert expected <= set(seen) <= expected | optional, seen
     return seen
 
@@ -84,65 +84,65 @@ def write(path: str, content: str = "x"):
         fh.write(content)
 
 
-async def test_file_changes(wrapper):
-    await watch(wrapper, ".")
+async def test_file_changes(backend):
+    await watch(backend, ".")
     write("a.txt")
-    await check(wrapper, {(Change.UPDATED, "a.txt")})
+    await check(backend, {(Change.UPDATED, "a.txt")})
     write("a.txt", "changed")
-    await check(wrapper, {(Change.UPDATED, "a.txt")})
+    await check(backend, {(Change.UPDATED, "a.txt")})
     os.remove("a.txt")
-    await check(wrapper, {(Change.DELETED, "a.txt")})
+    await check(backend, {(Change.DELETED, "a.txt")})
 
 
-async def test_flush(wrapper):
-    if isinstance(wrapper, AsyncInotifyWrapper):
+async def test_flush(backend):
+    if not isinstance(backend, WatchfilesBackend):
         pytest.skip("Flushing is a no-op for asyncinotify.")
-    await watch(wrapper, "sub")
+    await watch(backend, "sub")
     write("a.txt")
-    await wrapper.flush()
-    assert wrapper.change_queue.get_nowait() == (Change.UPDATED, "a.txt")
+    await backend.flush()
+    assert backend.change_queue.get_nowait() == (Change.UPDATED, "a.txt")
     # A new directory is only watched after its files have been reported.
     os.mkdir("sub")
     write("sub/b.txt")
-    await wrapper.flush()
-    assert wrapper.watches[Path("sub")] is not None
+    await backend.flush()
+    assert backend.watches[Path("sub")] is not None
     assert (Change.UPDATED, "sub/b.txt") in [
-        wrapper.change_queue.get_nowait() for _ in range(wrapper.change_queue.qsize())
+        backend.change_queue.get_nowait() for _ in range(backend.change_queue.qsize())
     ]
 
 
-async def test_replace_file(wrapper):
+async def test_replace_file(backend):
     write("a.txt")
-    await watch(wrapper, ".")
+    await watch(backend, ".")
     os.remove("a.txt")
     write("a.txt", "new")
-    seen = await check(wrapper, {(Change.DELETED, "a.txt"), (Change.UPDATED, "a.txt")})
+    seen = await check(backend, {(Change.DELETED, "a.txt"), (Change.UPDATED, "a.txt")})
     # FSEvents (macOS) may also report the creation of the file before the watch started.
     assert seen[-1] == (Change.UPDATED, "a.txt")
 
 
-async def test_missing_dir_appears(wrapper):
-    await watch(wrapper, "sub/deeper")
-    assert wrapper.watches[Path("sub/deeper")] is None
+async def test_missing_dir_appears(backend):
+    await watch(backend, "sub/deeper")
+    assert backend.watches[Path("sub/deeper")] is None
     # The file is written before the new directories can be watched.
     os.makedirs("sub/deeper")
     write("sub/deeper/x.txt")
-    await check(wrapper, {(Change.UPDATED, "sub/deeper/x.txt")})
-    await watch(wrapper)
+    await check(backend, {(Change.UPDATED, "sub/deeper/x.txt")})
+    await watch(backend)
     write("sub/deeper/y.txt")
-    await check(wrapper, {(Change.UPDATED, "sub/deeper/y.txt")})
+    await check(backend, {(Change.UPDATED, "sub/deeper/y.txt")})
 
 
-async def test_dir_removed_and_recreated(wrapper):
+async def test_dir_removed_and_recreated(backend):
     os.mkdir("sub")
     write("sub/a.txt")
-    await watch(wrapper, "sub")
+    await watch(backend, "sub")
     shutil.rmtree("sub")
     # asyncinotify reports the removed file and directory as deleted paths,
     # because inotify drops the watch of the directory before its parent reports the removal.
     # watchfiles reports the removed directory, and the removed file only if it came earlier.
     seen = await check(
-        wrapper,
+        backend,
         set(),
         frozenset(
             [
@@ -153,50 +153,50 @@ async def test_dir_removed_and_recreated(wrapper):
         ),
     )
     assert (Change.DELETED, "sub/a.txt") in seen or (Change.DELETED_PARENT, "sub") in seen
-    assert wrapper.watches[Path("sub")] is None
+    assert backend.watches[Path("sub")] is None
     os.mkdir("sub")
     write("sub/b.txt")
-    await check(wrapper, {(Change.UPDATED, "sub/b.txt")})
+    await check(backend, {(Change.UPDATED, "sub/b.txt")})
 
 
-async def test_dir_moved_away_and_back(wrapper):
+async def test_dir_moved_away_and_back(backend):
     os.mkdir("data")
     write("data/a.txt")
-    await watch(wrapper, "data")
+    await watch(backend, "data")
     os.rename("data", "other")
-    await check(wrapper, {(Change.DELETED_PARENT, "data")}, frozenset([(Change.DELETED, "data")]))
+    await check(backend, {(Change.DELETED_PARENT, "data")}, frozenset([(Change.DELETED, "data")]))
     # Changes in the moved directory are not reported under its old path.
     write("other/b.txt")
     write("marker.txt")
-    await check(wrapper, {(Change.UPDATED, "marker.txt")})
+    await check(backend, {(Change.UPDATED, "marker.txt")})
     os.rename("other", "data")
-    await check(wrapper, {(Change.UPDATED, "data/a.txt"), (Change.UPDATED, "data/b.txt")})
+    await check(backend, {(Change.UPDATED, "data/a.txt"), (Change.UPDATED, "data/b.txt")})
 
 
-async def test_unwatched_subdir(wrapper):
+async def test_unwatched_subdir(backend):
     os.mkdir("old")
     write("old/a.txt")
-    await watch(wrapper, ".")
+    await watch(backend, ".")
     os.mkdir("new")
     write("marker1.txt")
-    await check(wrapper, {(Change.UPDATED, "marker1.txt")})
+    await check(backend, {(Change.UPDATED, "marker1.txt")})
     # The removal of a directory is not mistaken for that of a file.
     shutil.rmtree("old")
     os.rmdir("new")
     write("marker2.txt")
-    await check(wrapper, {(Change.UPDATED, "marker2.txt")})
+    await check(backend, {(Change.UPDATED, "marker2.txt")})
 
 
-async def test_no_changes_lost_while_adding_watches(wrapper):
-    await watch(wrapper, ".")
+async def test_no_changes_lost_while_adding_watches(backend):
+    await watch(backend, ".")
     expected = set()
     for i in range(20):
         os.mkdir(f"d{i}")
-        wrapper.dir_queue.put_nowait(Path(f"d{i}"))
+        backend.dir_queue.put_nowait(Path(f"d{i}"))
         write(f"f{i}.txt")
         expected.add((Change.UPDATED, f"f{i}.txt"))
         await asyncio.sleep(0.02)
-    await check(wrapper, expected)
+    await check(backend, expected)
 
 
 @pytest.fixture

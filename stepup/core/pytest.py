@@ -88,7 +88,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     When the file watcher is `watchfiles`,
     the order of consecutive `UPDATED` and `DELETED` lines is not compared,
     because the changes observed together are reported in sorted order,
-    see `stepup.core.watcher.WatchfilesWrapper`.
+    see `stepup.core.watcher_watchfiles.WatchfilesBackend`.
 
     Parameters
     ----------

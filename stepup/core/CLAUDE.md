@@ -310,10 +310,10 @@ Creating a directory earlier than the step that fills it means creating director
 for steps that never run.
 
 The watcher takes the missing directories from there:
-`AsyncInotifyWrapper.dir_loop` records a directory that does not exist yet as an entry
-without a watch, exactly like a directory whose watch inotify has dropped,
+`WatcherBackend.dir_loop` records a directory that does not exist yet as an entry
+without a watch, exactly like a directory whose watch has been dropped,
 and watches the nearest existing ancestor instead.
-`change_loop` installs the pending watch when the directory appears
+`WatcherBackend.change_loop` installs the pending watch when the directory appears
 and rescans its contents, so nothing created in the gap is missed.
 
 ### Removal
