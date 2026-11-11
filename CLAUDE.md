@@ -102,6 +102,28 @@ system, which is a real cause of flaky failures in timing-sensitive examples
 non-dispatch).
 Run `pytest` invocations one after another instead.
 
+### Developer Tools
+
+`tools/README.md` gives an overview of the developer scripts in `tools/`, grouped by theme.
+
+To run the test suite on Windows, use the VM managed by `tools/winvm/winvm.sh`,
+which is documented in `tools/winvm/README.md`.
+When the VM exists, `tools/winvm/winvm.sh test ARGS` copies the working tree into it
+and runs `uv run pytest ARGS` there.
+The VM shares the CPUs of the host,
+so the rule above against concurrent `pytest` runs applies to it as well.
+Leave `create` and `destroy` to the user,
+because they download or delete several gigabytes.
+
+To run the test suite on macOS, use `tools/macci/macci.sh`,
+which is documented in `tools/macci/README.md`.
+`tools/macci/macci.sh test ARGS` pushes a snapshot of the working tree to the user's fork,
+runs `uv run pytest ARGS` there on a GitHub-hosted macOS runner and prints the output.
+Run it only when the user asks for it,
+because the push publishes uncommitted changes in a public repository.
+The runner does not use the CPUs of the host,
+so it may run at the same time as a local `pytest` run.
+
 ## Coding Conventions
 
 ### Semantic Line Breaks
@@ -261,7 +283,7 @@ is already a declared dependency and import it at the top of the file instead.
 it makes the default log level of `stepup build` `DEBUG` and makes internal consistency checks
 fatal instead of self-correcting.
 Profiling output (`STEPUP_BUILD_PERF`, `STEPUP_BUILD_SQLLOG`, `STEPUP_BUILD_JOBLOG`)
-can be analyzed with `tools/analyze_perf.py`.
+can be analyzed with `tools/perf/analyze_perf.py`.
 
 See `docs/reference/configuration.md` for the full list of `STEPUP_*` / `STEPUP_BUILD_*`
 variables.

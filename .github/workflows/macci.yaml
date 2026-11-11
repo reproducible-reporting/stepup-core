@@ -1,0 +1,56 @@
+# SPDX-FileCopyrightText: 2026 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+# Run a command in a snapshot of the working tree on a GitHub-hosted macOS runner.
+# See tools/macci/README.md.
+name: macci
+run-name: "macci: ${{ inputs.command }}"
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: Bash command to run in the checkout after `uv sync --extra dev`
+        required: true
+        default: uv run pytest -k "not test_example"
+        type: string
+      python:
+        description: Python version installed by uv
+        required: true
+        default: '3.14'
+        type: string
+      runner:
+        description: Label of the GitHub-hosted runner
+        required: true
+        default: macos-latest
+        type: string
+
+jobs:
+  run:
+    name: ${{ inputs.runner }}, Python ${{ inputs.python }}
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          # A run can only restore caches saved on its own branch or on the default branch,
+          # so a cache saved on a snapshot branch would never be used again.
+          enable-cache: false
+      - name: Run the command
+        shell: bash
+        env:
+          UV_PYTHON: ${{ inputs.python }}
+          MACCI_COMMAND: ${{ inputs.command }}
+        # tools/macci/macci.sh prints the log lines between these two markers,
+        # and takes its exit status from the second one.
+        run: |
+          echo "macci: output begins"
+          status=0
+          { uv sync --extra dev && bash -c "$MACCI_COMMAND"; } || status=$?
+          echo "macci: exit status $status"
+          exit "$status"

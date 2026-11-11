@@ -18,7 +18,7 @@ Usage
 -----
 ```bash
 mkdocs build --strict
-python tools/make_stable_redirects.py site
+python tools/docs/make_stable_redirects.py site
 ```
 
 When These Redirects Can Be Removed

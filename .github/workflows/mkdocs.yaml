@@ -19,7 +19,7 @@ on:
       - stepup/**
       - docs/**
       - overrides/**
-      - tools/make_stable_redirects.py
+      - tools/docs/make_stable_redirects.py
       - mkdocs.yaml
       - pyproject.toml
       - .github/workflows/mkdocs.yaml
@@ -56,9 +56,9 @@ jobs:
         run: mkdocs build --strict
       # The documentation used to be published per version with mike,
       # and search engines were pointed at the stable alias.
-      # See tools/make_stable_redirects.py for when these stubs can be dropped.
+      # See tools/docs/make_stable_redirects.py for when these stubs can be dropped.
       - name: Add redirects from the retired stable URLs
-        run: python tools/make_stable_redirects.py site
+        run: python tools/docs/make_stable_redirects.py site
       - name: Upload the site as a Pages artifact
         uses: actions/upload-pages-artifact@v5.0.0
         with:

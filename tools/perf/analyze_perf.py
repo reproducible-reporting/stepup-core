@@ -7,7 +7,7 @@ and a `--joblog` CSV file.
 Usage
 -----
 ```bash
-python tools/analyze_perf.py [suffix] [--top N] [--min-pct PCT]
+python tools/perf/analyze_perf.py [suffix] [--top N] [--min-pct PCT]
 ```
 
 `suffix` is appended to the default file names, e.g. with suffix `_v1`,
