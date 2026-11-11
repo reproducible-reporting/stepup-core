@@ -64,7 +64,8 @@ from collections.abc import Collection, Iterable, Iterator
 from typing import Self
 
 import attrs
-from path import Path
+
+from .path import Path
 
 __all__ = (
     "NamedGlob",

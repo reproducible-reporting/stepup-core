@@ -13,10 +13,10 @@ import subprocess
 import sys
 
 import pytest
-from path import Path
 
 from .constants import DIRECTOR_LOG, STEPUP_DIR
 from .enums import ReturnCode
+from .path import Path
 from .utils import scan_director_log
 from .watcher import select_watcher_backend
 
@@ -329,6 +329,17 @@ class ConventionTests:
     Set this to `None` when the test suite has no integration examples.
     """
 
+    native_path_modules: tuple[str, ...] | None = ()
+    """The file names of the modules that may handle paths in the spelling of the operating system.
+
+    All other modules must write paths with `/` as the only separator, on every platform:
+    they take `Path` from `stepup.core.path` instead of the `path` library,
+    write `"/"` instead of `os.sep`,
+    and use the methods of `Path` or the helpers of `stepup.core.path` instead of `os.path`.
+    Set this to `None` to skip the test of this convention,
+    e.g. in a package that has not been adapted to Windows.
+    """
+
     def pytest_generate_tests(self, metafunc):
         """Parametrize the per-module tests over the top-level modules of `package`."""
         if "module_path" in metafunc.fixturenames:
@@ -389,6 +400,47 @@ class ConventionTests:
                     f"{module_path.name} imports {alias.name} from {module}, "
                     f"which does not list it in __all__"
                 )
+
+    def test_slash_paths(self, module_path: Path):
+        """A module does not use the path tools that follow the separator of the platform.
+
+        StepUp writes paths with `/` on every platform (see `stepup.core.path.Path`).
+        The `path` library, `os.sep` and `os.path` produce backslashes on Windows,
+        which end up as different nodes in the workflow graph.
+        """
+        if self.native_path_modules is None:
+            pytest.skip("The path conventions are not tested for this package.")
+        if module_path.name in self.native_path_modules:
+            return
+        native_modules = {"path", "os.path", "ntpath", "posixpath"}
+        native_attrs = {"sep", "altsep", "path"}
+        found = set()
+        for node in ast.walk(_parse(module_path)):
+            if isinstance(node, ast.Import):
+                found.update(
+                    f"import {alias.name}" for alias in node.names if alias.name in native_modules
+                )
+            elif isinstance(node, ast.ImportFrom) and node.level == 0:
+                if node.module in native_modules:
+                    found.add(f"from {node.module} import ...")
+                elif node.module == "os":
+                    found.update(
+                        f"from os import {alias.name}"
+                        for alias in node.names
+                        if alias.name in native_attrs
+                    )
+            elif (
+                isinstance(node, ast.Attribute)
+                and isinstance(node.value, ast.Name)
+                and node.value.id == "os"
+                and node.attr in native_attrs
+            ):
+                found.add(f"os.{node.attr}")
+        assert not found, (
+            f"{module_path.name} uses {sorted(found)}: "
+            "import Path from stepup.core.path, write '/' as the separator "
+            "and use the methods of Path instead of os.path"
+        )
 
     @pytest.mark.skipif(
         not Path("tests/examples").is_dir(),

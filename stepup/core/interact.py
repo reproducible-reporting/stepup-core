@@ -12,13 +12,11 @@ import sys
 import time
 from collections.abc import Generator
 
-from path import Path
-
 from .api import get_rpc_client
 from .config_loader import ConfigLoader
 from .constants import DIRECTOR_LOG
 from .exceptions import RPCError, ToolError
-from .path import get_stepup_root
+from .path import Path, get_stepup_root
 from .rpc import NO_RPC_TIMEOUT, SocketSyncRPCClient
 from .tool import SubParsers, ToolFunc
 from .utils import is_process_running, query_director_log

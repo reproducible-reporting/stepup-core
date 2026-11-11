@@ -4,19 +4,32 @@
 
 import json
 
-from path import Path
+import path as path_lib
 
 from stepup.core.cattrs import json_converter
 from stepup.core.nglob import NamedGlob
+from stepup.core.path import Path
 
 
 def test_path_round_trip():
     path = Path("./sub/file.txt")
     data = json_converter.unstructure(path)
     assert data == "./sub/file.txt"
+    assert type(data) is str
     back = json_converter.structure(data, Path)
     assert back == path
-    assert isinstance(back, Path)
+    assert type(back) is Path
+
+
+def test_upstream_path_round_trip():
+    """A field annotated with `Path` of the `path` library is structured as that class."""
+    path = path_lib.Path("./sub/file.txt")
+    data = json_converter.unstructure(path)
+    assert data == "./sub/file.txt"
+    assert type(data) is str
+    back = json_converter.structure(data, path_lib.Path)
+    assert back == path
+    assert type(back) is path_lib.Path
 
 
 def test_named_glob_round_trip_results():

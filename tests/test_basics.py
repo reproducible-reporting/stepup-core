@@ -6,10 +6,10 @@ import os
 import re
 
 import pytest
-from path import Path
 
 from stepup.core.enums import Need
 from stepup.core.exceptions import GraphError, RPCError
+from stepup.core.path import Path
 from stepup.core.rpc import SocketAsyncRPCClient
 
 

@@ -13,7 +13,6 @@ import tomllib
 from decimal import Decimal
 
 import pytest
-from path import Path
 
 import stepup.core
 from stepup.core.__main__ import _setup_cli, main
@@ -21,6 +20,7 @@ from stepup.core.config_tool import _toml_value
 from stepup.core.constants import CORE_ENV_VARS, INTERNAL_ENV_VARS
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import ConfigError
+from stepup.core.path import Path
 
 
 def _run_main(monkeypatch, path_tmp: Path, argv: list[str]) -> int:

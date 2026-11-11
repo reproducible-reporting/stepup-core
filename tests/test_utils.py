@@ -7,8 +7,8 @@ import subprocess
 import sys
 
 import pytest
-from path import Path
 
+from stepup.core.path import Path
 from stepup.core.utils import (
     escape_control_chars,
     extract_env_overrides,

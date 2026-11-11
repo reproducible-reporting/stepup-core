@@ -9,7 +9,6 @@ from functools import partial
 
 import pytest
 from core_common import settled_task_names
-from path import Path
 
 from stepup.core.asyncio import (
     MAX_POLL_DELAY,
@@ -18,6 +17,7 @@ from stepup.core.asyncio import (
     wait_for_path,
     wait_for_readable_fd,
 )
+from stepup.core.path import Path
 
 #
 # Waiting for a condition

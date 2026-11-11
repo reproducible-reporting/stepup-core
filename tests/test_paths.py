@@ -2,12 +2,18 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Tests for stepup.core.path."""
 
+import ntpath
+import os
 import pathlib
+import pickle
+import sys
 
+import path as path_lib
 import pytest
-from path import Path
 
 from stepup.core.path import (
+    Path,
+    _NtPath,
     apply_affixes,
     coerce_path,
     coerce_paths,
@@ -17,10 +23,257 @@ from stepup.core.path import (
     get_affixes,
     get_here,
     get_root,
+    is_path_type,
     make_path_out,
+    to_slash,
     translate,
     translate_back,
 )
+
+
+def test_path_class():
+    path = Path("sub/dir") / "file.txt"
+    assert path == "sub/dir/file.txt"
+    assert type(path) is Path
+    assert isinstance(path, path_lib.Path)
+    assert isinstance(path, str)
+    assert repr(path) == "Path('sub/dir/file.txt')"
+    assert {type(p) for p in (path.parent, path.normpath(), path.with_suffix(".md"))} == {Path}
+    assert Path("./sub/") == "./sub/"
+
+
+def test_path_pickle():
+    path = Path("./sub/dir/")
+    back = pickle.loads(pickle.dumps(path))
+    assert back == path
+    assert type(back) is Path
+
+
+def test_is_path_type():
+    assert is_path_type(Path)
+    assert is_path_type(path_lib.Path)
+    assert is_path_type(_NtPath)
+    assert not is_path_type(str)
+    assert not is_path_type(pathlib.Path)
+    assert not is_path_type(Path("foo"))
+
+
+def test_to_slash():
+    assert to_slash("sub/dir/") == "sub/dir/"
+    if sys.platform == "win32":
+        assert to_slash("c:\\Users\\me\\") == "C:/Users/me/"
+    else:
+        assert to_slash("sub\\name") == "sub\\name"
+
+
+@pytest.mark.parametrize(
+    ("arg", "expected"),
+    [
+        ("sub\\dir\\file.txt", "sub/dir/file.txt"),
+        ("sub/dir\\file.txt", "sub/dir/file.txt"),
+        (".\\sub\\", "./sub/"),
+        ("out\\", "out/"),
+        ("c:\\Users\\me", "C:/Users/me"),
+        ("c:/Users/me", "C:/Users/me"),
+        ("C:rel", "C:rel"),
+        ("\\\\server\\share\\dir", "//server/share/dir"),
+        (pathlib.PureWindowsPath("sub/dir/file.txt"), "sub/dir/file.txt"),
+        (path_lib.Path("sub\\file.txt"), "sub/file.txt"),
+        ("a", "a"),
+        ("", ""),
+    ],
+)
+def test_nt_path_constructor(arg, expected):
+    path = _NtPath(arg)
+    assert path == expected
+    assert type(path) is _NtPath
+    assert type(str(path)) is str
+
+
+def test_nt_path_constructor_invalid():
+    with pytest.raises(TypeError):
+        _NtPath(None)
+
+
+def test_nt_path_join():
+    path = _NtPath("sub/dir")
+    for result in path / "file.txt", path / _NtPath("file.txt"), path.joinpath("file.txt"):
+        assert result == "sub/dir/file.txt"
+        assert type(result) is _NtPath
+    assert "top" / path == "top/sub/dir"
+    assert path / "nested\\file.txt" == "sub/dir/nested/file.txt"
+    assert path / pathlib.PureWindowsPath("a/b") == "sub/dir/a/b"
+    assert path / "" == "sub/dir/"
+    assert path + "\\file.txt" == "sub/dir/file.txt"
+    assert "top\\" + path == "top/sub/dir"
+    assert path / "C:/abs" == "C:/abs"
+
+
+def test_nt_path_parts():
+    path = _NtPath("C:/Users/me/proj/x.tar.gz")
+    assert path.parent == "C:/Users/me/proj"
+    assert path.name == "x.tar.gz"
+    assert path.stem == "x.tar"
+    assert path.suffix == ".gz"
+    assert path.drive == "C:"
+    assert path.with_suffix(".md") == "C:/Users/me/proj/x.tar.md"
+    assert path.with_name("y") == "C:/Users/me/proj/y"
+    assert path.splitall() == ["C:/", "Users", "me", "proj", "x.tar.gz"]
+    assert path.splitpath() == ("C:/Users/me/proj", "x.tar.gz")
+    assert path.splitdrive() == ("C:", "/Users/me/proj/x.tar.gz")
+    assert path.splitext() == ("C:/Users/me/proj/x.tar", ".gz")
+    # The parent of a directory directly under the root is the root, not the drive alone,
+    # which would be a relative path.
+    assert _NtPath("C:/Users").parent == "C:/"
+    assert _NtPath("sub/file.txt").parent == "sub"
+    assert _NtPath("file.txt").parent == ""
+
+
+def test_nt_path_unc():
+    path = _NtPath("//server/share/dir/file.txt")
+    assert path.splitdrive() == ("//server/share", "/dir/file.txt")
+    assert path.parent.parent == "//server/share/"
+    assert path.isabs()
+
+
+def test_nt_path_isabs():
+    assert _NtPath("C:/Users").isabs()
+    assert _NtPath("C:/").isabs()
+    assert _NtPath("//server/share").isabs()
+    # A root without a drive counts as absolute, in every Python version.
+    assert _NtPath("/dir/file.txt").isabs()
+    assert not _NtPath("sub/file.txt").isabs()
+    assert not _NtPath("C:rel").isabs()
+    assert not _NtPath("C:").isabs()
+    assert not _NtPath("").isabs()
+
+
+@pytest.mark.parametrize(
+    ("arg", "expected"),
+    [
+        ("./a/../b/", "b"),
+        ("a//b/./c", "a/b/c"),
+        ("../x", "../x"),
+        ("C:/a/../b", "C:/b"),
+        (".", "."),
+        ("a/..", "."),
+    ],
+)
+def test_nt_path_normpath(arg, expected):
+    result = _NtPath(arg).normpath()
+    assert result == expected
+    assert type(result) is _NtPath
+
+
+@pytest.mark.parametrize(
+    ("path", "start", "expected"),
+    [
+        ("C:/Users/me/proj/x.txt", "C:/Users/me", "proj/x.txt"),
+        ("C:/Users/me", "C:/Users/me/proj/sub", "../.."),
+        ("C:/Users/me", "C:/Users/me", "."),
+        # Drive letters and path components are compared without regard to case.
+        ("C:/Users/me/proj/x.txt", "c:/users/ME", "proj/x.txt"),
+        # There is no relative path between two drives.
+        ("C:/Users/me/x.txt", "D:/data", "C:/Users/me/x.txt"),
+    ],
+)
+def test_nt_path_relpath(path, start, expected):
+    result = _NtPath(path).relpath(start)
+    assert result == expected
+    assert type(result) is _NtPath
+
+
+def test_nt_path_replace():
+    """A substitution has the result of `str.replace`, without normalization."""
+    path = _NtPath("C:/Users/me/x.txt")
+    native = path.replace("/", "\\")
+    assert native == "C:\\Users\\me\\x.txt"
+    assert type(native) is _NtPath
+    assert path.replace(".txt", ".md") == "C:/Users/me/x.md"
+    assert path.replace("/", "\\", 1) == "C:\\Users/me/x.txt"
+    # Passing the result to StepUp again restores its spelling.
+    assert _NtPath(native) == path
+
+
+def test_nt_path_module_plain_arguments():
+    """The functions of the path module also work on instances of the class."""
+    module = _NtPath.module
+    paths = [_NtPath("C:/a/b/c"), _NtPath("C:/a/b/d")]
+    assert module.commonpath(paths) == "C:/a/b"
+    assert module.commonprefix(paths) == "C:/a/b/"
+    assert module.relpath(paths[0], start=paths[1]) == "../c"
+    assert module.split(paths[0]) == ("C:/a/b", "c")
+    assert module.isabs(paths[0])
+    assert module.sep == "/"
+
+
+def test_nt_path_pathlib():
+    """`pathlib` parses a path into the same components as it does for a plain string."""
+    path = _NtPath("C:/Users/me/proj/x.tar.gz")
+    pure = pathlib.PureWindowsPath(path)
+    assert pure == pathlib.PureWindowsPath("C:/Users/me/proj/x.tar.gz")
+    assert pure.name == "x.tar.gz"
+    assert pure.stem == "x.tar"
+    assert pure.parent == pathlib.PureWindowsPath("C:/Users/me/proj")
+    assert pure.parts == ("C:\\", "Users", "me", "proj", "x.tar.gz")
+    assert str(pure.relative_to("C:/Users/me")) == "proj\\x.tar.gz"
+    assert (pathlib.PureWindowsPath("a") / _NtPath("b/c")).parts == ("a", "b", "c")
+    assert pure.as_posix() == path
+
+
+def test_nt_path_ntpath():
+    """The functions of `ntpath` treat a path like a plain string."""
+    paths = [_NtPath("C:/a/b/c"), _NtPath("C:/a/b/d")]
+    assert ntpath.commonpath(paths) == "C:\\a\\b"
+    assert ntpath.normpath(paths[0]) == "C:\\a\\b\\c"
+    assert ntpath.basename(paths[0]) == "c"
+    assert ntpath.dirname(paths[0]) == "C:/a/b"
+    assert ntpath.splitdrive(_NtPath("//server/share/dir")) == ("//server/share", "/dir")
+    assert _NtPath(ntpath.join(paths[0], "e")) == "C:/a/b/c/e"
+
+
+def test_nt_path_upstream():
+    """A path of the `path` library is normalized when it is given to StepUp."""
+    upstream = path_lib.Path.using_module(ntpath)("sub") / "file.txt"
+    assert upstream == "sub\\file.txt"
+    assert _NtPath(upstream) == "sub/file.txt"
+    assert _NtPath("top") / upstream == "top/sub/file.txt"
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Tests the paths of Windows.")
+def test_path_windows(path_tmp):
+    assert issubclass(Path, _NtPath)
+    assert "\\" not in Path.cwd()
+    assert Path.cwd() == Path(os.getcwd())
+    assert Path("sub\\dir") / "file.txt" == "sub/dir/file.txt"
+    assert "\\" not in path_tmp
+    path = path_tmp / "sub" / "file.txt"
+    path.parent.makedirs_p()
+    path.write_text("hello", encoding="utf-8")
+    assert "\\" not in path.realpath()
+    assert path.absolute() == path
+    assert path_tmp.glob("*/*.txt") == [path]
+    assert list(path_tmp.walkfiles()) == [path]
+    assert path.relpath(path_tmp) == "sub/file.txt"
+    assert Path(str(path).lower()).relpath(path_tmp) == "sub/file.txt"
+    assert Path("~/x").expanduser() == Path(os.path.expanduser("~")) / "x"
+    # Other libraries see the same file.
+    assert pathlib.Path(path).name == "file.txt"
+    assert pathlib.Path(path).read_text(encoding="utf-8") == "hello"
+    assert os.path.normpath(path) == str(path).replace("/", "\\")
+    assert coerce_str(pathlib.Path("sub/dir")) == "sub/dir"
+    assert coerce_path("sub\\dir\\") == "sub/dir/"
+    assert get_affixes(".\\sub\\") == ("./", "/")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Tests the paths of POSIX systems.")
+def test_path_posix():
+    """A backslash is an ordinary character in a file name."""
+    assert not issubclass(Path, _NtPath)
+    assert Path("sub\\name") == "sub\\name"
+    assert Path("sub\\name").parent == ""
+    assert coerce_str("sub\\name") == "sub\\name"
+    assert Path("a/b").replace("/", "\\") == "a\\b"
 
 
 def test_coerce_path():

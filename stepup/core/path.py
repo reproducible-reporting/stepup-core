@@ -3,15 +3,20 @@
 """Specialized path operations."""
 
 import functools
+import ntpath
 import os
 import shlex
-from collections.abc import Iterable
+import sys
+import types
+from collections.abc import Callable, Iterable
+from typing import Any, Self
 
-from path import Path
+from path import Path as BasePath
 
 from .exceptions import PathError
 
 __all__ = (
+    "Path",
     "StrPath",
     "apply_affixes",
     "coerce_path",
@@ -24,9 +29,11 @@ __all__ = (
     "get_here",
     "get_root",
     "get_stepup_root",
+    "is_path_type",
     "make_path_out",
     "parent_dir",
     "short_path",
+    "to_slash",
     "translate",
     "translate_back",
 )
@@ -36,21 +43,194 @@ __all__ = (
 # either a `str` or any `os.PathLike` (such as a `pathlib.Path`).
 StrPath = str | os.PathLike[str]
 
-# All coercion functions wrap `os.fspath` to facilitate future refactorings of the code.
+
+def _nt_to_slash(path: str) -> str:
+    """Write a Windows path with `/` separators and an upper-case drive letter.
+
+    The drive letter is only changed when it is followed by a separator or by nothing,
+    because a colon after a one-letter file name may also start the name of a data stream.
+    """
+    # The unbound `str.replace` returns an exact `str`, also for an instance of a subclass.
+    path = str.replace(path, "\\", "/")
+    if path[1:2] == ":" and path[2:3] in ("/", "") and "a" <= path[0] <= "z":
+        path = path[0].upper() + path[1:]
+    return path
+
+
+def to_slash(path: str) -> str:
+    """Convert a path string received from the operating system to StepUp's spelling.
+
+    Inside StepUp, `/` is the only path separator on every platform.
+    On Windows, backslashes are replaced by `/` and the drive letter is written in upper case,
+    because the operating system does not distinguish these spellings,
+    while StepUp compares paths as strings.
+    On other platforms, a backslash is an ordinary file name character
+    and the path is returned unchanged.
+
+    Use this function for plain strings.
+    The constructor of [`Path`][stepup.core.path.Path] performs the same conversion.
+    """
+    if sys.platform == "win32":
+        return _nt_to_slash(path)
+    return path
+
+
+def _plain(arg: Any) -> Any:
+    """Convert a path argument to an exact `str`, and return any other argument unchanged.
+
+    `os.fspath()` returns an instance of a `str` subclass as it is.
+    Pure-Python functions of `ntpath` call `str` methods on their arguments,
+    such as `replace`, which path classes may override.
+    """
+    if isinstance(arg, (str, os.PathLike)):
+        arg = os.fspath(arg)
+        return str(arg) if isinstance(arg, str) else arg
+    if isinstance(arg, (list, tuple)):
+        return [_plain(item) for item in arg]
+    return arg
+
+
+def _nt_to_slash_all(results: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(_nt_to_slash(result) for result in results)
+
+
+def _wrap_nt(func: Callable, convert: Callable | None) -> Callable:
+    """Wrap a function of `ntpath` to take plain strings and, optionally, convert its result."""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        result = func(
+            *[_plain(arg) for arg in args],
+            **{key: _plain(value) for key, value in kwargs.items()},
+        )
+        return result if convert is None else convert(result)
+
+    return wrapper
+
+
+def _nt_isabs(path: StrPath) -> bool:
+    """Test whether a Windows path has a root, with or without a drive.
+
+    `ntpath.isabs("/dir")` is true up to Python 3.12 and false in later versions,
+    because such a path is relative to the current drive.
+    StepUp treats it as absolute in all versions:
+    the path does not depend on the current directory,
+    which is what the callers of this function need to know.
+    """
+    path = _nt_to_slash(os.fspath(path))
+    return path.startswith("/") or path[1:3] == ":/"
+
+
+# Functions of `ntpath` that return a path, or a tuple of parts of a path.
+_NT_STR_FUNCS = frozenset(
+    {
+        "abspath",
+        "basename",
+        "commonpath",
+        "commonprefix",
+        "dirname",
+        "expanduser",
+        "expandvars",
+        "join",
+        "normcase",
+        "normpath",
+        "realpath",
+        "relpath",
+    }
+)
+_NT_TUPLE_FUNCS = frozenset({"split", "splitdrive", "splitext", "splitroot"})
+
+
+def _make_nt_slash_module() -> types.ModuleType:
+    """Create a stand-in for `ntpath` whose functions return paths in StepUp's spelling.
+
+    The results get the same conversion as the argument of the `_NtPath` constructor.
+    Methods of `path.Path` compare results of these functions to parts of instances,
+    which only works when both are spelled the same way.
+
+    The set of functions follows `ntpath.__all__`,
+    because some of them only exist in recent Python versions.
+    """
+    module = types.ModuleType("ntslashpath", "A variant of ntpath that returns forward slashes.")
+    for name in ntpath.__all__:
+        obj = getattr(ntpath, name)
+        if callable(obj):
+            if name in _NT_STR_FUNCS:
+                obj = _wrap_nt(obj, _nt_to_slash)
+            elif name in _NT_TUPLE_FUNCS:
+                obj = _wrap_nt(obj, _nt_to_slash_all)
+            else:
+                obj = _wrap_nt(obj, None)
+        setattr(module, name, obj)
+    module.isabs = _nt_isabs
+    module.sep = "/"
+    module.altsep = "\\"
+    return module
+
+
+class _NtPath(BasePath):
+    """The Windows flavor of `Path`.
+
+    It only uses string operations of `ntpath`, which is importable on every platform,
+    so that this class can be instantiated and tested everywhere.
+    """
+
+    module = _make_nt_slash_module()
+
+    def __new__(cls, other: Any = ".") -> Self:
+        return str.__new__(cls, _nt_to_slash(os.fspath(other)))
+
+    def replace(self, target_or_old: str, *args) -> Self:
+        """Rename the file (one argument) or substitute substrings (more arguments).
+
+        The result of a substitution is not normalized,
+        so that it is the same string as `str.replace` would return.
+        """
+        if args:
+            return str.__new__(type(self), str.replace(self, target_or_old, *args))
+        return super().replace(target_or_old)
+
+
+class Path(_NtPath if sys.platform == "win32" else BasePath):
+    """A file system path with `/` as its only separator, on every platform.
+
+    This is a subclass of `path.Path` from the [path](https://pypi.org/project/path/) library,
+    and therefore also of `str`.
+    It preserves a leading `./` and a trailing `/`, which carry meaning in StepUp.
+
+    On POSIX systems, it behaves exactly like `path.Path`.
+    On Windows, the constructor replaces backslashes by `/`
+    and writes the drive letter in upper case,
+    and all methods return paths with `/` separators, e.g. `C:/Users/me/project/plan.py`.
+    Windows accepts such paths in all its file system functions.
+    Use `os.path.normpath()` to obtain the native spelling when another program requires it.
+    """
+
+
+def is_path_type(cls: Any) -> bool:
+    """Test whether `cls` is the `Path` class of StepUp or of the `path` library, or a subclass.
+
+    Use this function to recognize path objects created by a user,
+    who may have imported either class.
+    """
+    return isinstance(cls, type) and issubclass(cls, BasePath)
 
 
 def coerce_str(arg: StrPath) -> str:
-    """Convert a path-like argument via `os.fspath`."""
-    return os.fspath(arg)
+    """Convert a path-like argument to a string in StepUp's spelling.
+
+    See [`to_slash()`][stepup.core.path.to_slash] for the conversion on Windows.
+    """
+    return to_slash(os.fspath(arg))
 
 
 def coerce_path(arg: StrPath) -> Path:
-    """Convert a path-like argument to a `path.Path` instance."""
+    """Convert a path-like argument to a `Path` instance."""
     return Path(os.fspath(arg))
 
 
 def coerce_paths(args: StrPath | Iterable[StrPath]) -> list[Path]:
-    """Convert a path-like argument or flat iterable to `path.Path` instances."""
+    """Convert a path-like argument or flat iterable to `Path` instances."""
     if isinstance(args, (str, os.PathLike)):
         args = [args]
     return [Path(os.fspath(arg)) for arg in args]
@@ -217,7 +397,7 @@ def short_path(path: str | Path) -> Path:
     and a path like `~/.config/stepup.toml` already says where it is.
     """
     path = Path(path)
-    if not path.startswith(os.getcwd() + os.sep):
+    if not path.startswith(Path.cwd() + "/"):
         return path
     short = path.relpath()
     return short if short.startswith(".") else "./" / short
@@ -294,6 +474,18 @@ def _realpath_cached(path: Path) -> Path:
     return path.realpath()
 
 
+def _anchor(path: Path) -> Path:
+    """Prepare a path for the computation of a relative path to or from the real root.
+
+    A relative path is interpreted in the current directory, which POSIX reports as a physical path.
+    Windows reports the path through which the directory was entered, symbolic links included,
+    so there a relative path is joined to the resolved current directory first.
+    """
+    if sys.platform == "win32" and not path.isabs():
+        return _realpath_cached(Path.cwd()) / path
+    return path
+
+
 def translate(path: StrPath, workdir: StrPath = ".") -> Path:
     """Normalize the path and, if relative, make it relative to `STEPUP_ROOT`.
 
@@ -316,7 +508,7 @@ def translate(path: StrPath, workdir: StrPath = ".") -> Path:
         workdir = coerce_path(workdir).normpath()
         path = workdir / path
         if not workdir.isabs():
-            path = path.relpath(_get_real_root())
+            path = _anchor(path).relpath(_get_real_root())
     return path
 
 
@@ -343,7 +535,7 @@ def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
         if workdir.isabs() and path.startswith(workdir):
             path = Path(path).relpath(workdir)
     else:
-        path = (_get_real_root() / path).relpath(workdir)
+        path = (_get_real_root() / path).relpath(_anchor(workdir))
     return path
 
 

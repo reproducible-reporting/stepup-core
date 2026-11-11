@@ -21,10 +21,9 @@ from typing import Any
 
 import attrs
 from parse import parse
-from path import Path
 
 from .api import run, static
-from .path import format_local_executable
+from .path import Path, format_local_executable
 from .stepinfo import dump_step_info
 
 __all__ = ("driver",)

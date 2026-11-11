@@ -5,9 +5,9 @@
 import contextlib
 
 from conftest import fake_hash
-from path import Path
 
 from stepup.core.finalize import remove_deletable_files
+from stepup.core.path import Path
 from stepup.core.reporter import ReporterClient
 from stepup.core.workflow import Workflow
 

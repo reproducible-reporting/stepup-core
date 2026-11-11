@@ -5,8 +5,8 @@
 import os
 
 import pytest
-from path import Path
 
+from stepup.core.path import Path
 from stepup.core.pytest import EXAMPLE_TIMEOUT, run_example, run_plan
 
 pytestmark = pytest.mark.timeout(2 * EXAMPLE_TIMEOUT)

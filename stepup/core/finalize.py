@@ -17,15 +17,13 @@ they work with the database, the workflow, the scheduler and the reporter only,
 which is why they live here instead of in `builder.py`.
 """
 
-import os
 from collections.abc import Callable, Iterable
 from itertools import groupby
-
-from path import Path
 
 from .enums import FileState, Need, ReturnCode, StepState
 from .exceptions import HashError
 from .hash import FileHash
+from .path import Path
 from .pending import PendingSummary, analyze_pending
 from .reporter import ReporterClient
 from .scheduler import Scheduler
@@ -444,7 +442,7 @@ async def revert_optional_steps(
     # Report the reverted steps and the files that are marked for deletion.
     if nstep > 0:
         await reporter("WARNING", f"Reverted {nstep} optional step(s) to PENDING.")
-    nfile = sum(1 for path in to_be_deleted if not path.endswith(os.sep))
+    nfile = sum(1 for path in to_be_deleted if not path.endswith("/"))
     if nfile > 0:
         await reporter(
             "WARNING",
@@ -475,7 +473,7 @@ async def remove_deletable_files(
     reporter
         Every removed path is reported to this reporter.
     """
-    file_paths = [path for path in to_be_deleted if not path.endswith(os.sep)]
+    file_paths = [path for path in to_be_deleted if not path.endswith("/")]
     await reporter(
         "DIRECTOR",
         f"Trying to remove {len(file_paths)} deletable file(s) and empty director(y|ies)",
@@ -498,7 +496,7 @@ async def remove_deletable_files(
 
     # Directories come after the files, so a directory that just lost its last file is empty
     # by the time it is considered for removal.
-    dirs = {Path(path).normpath() for path in to_be_deleted if path.endswith(os.sep)}
+    dirs = {Path(path).normpath() for path in to_be_deleted if path.endswith("/")}
     await _prune_empty_dirs(dirs, reporter)
 
 

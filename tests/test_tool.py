@@ -5,10 +5,10 @@
 import sqlite3
 
 import pytest
-from path import Path
 
 from stepup.core.constants import GRAPH_DB
 from stepup.core.exceptions import ToolError
+from stepup.core.path import Path
 from stepup.core.sqlite3 import connect
 from stepup.core.tool import connect_graph_db, get_graph_db_path, print_error
 

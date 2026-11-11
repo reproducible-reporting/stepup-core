@@ -15,10 +15,10 @@ from collections.abc import Iterator, Mapping
 from typing import Self
 
 import attrs
-from path import Path
 
 from .cattrs import json_converter
 from .exceptions import ConsistencyError, HashCancelledError, HashFailedError
+from .path import Path
 
 __all__ = (
     "HASH_CHUNK_SIZE",

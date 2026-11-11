@@ -14,7 +14,6 @@ from types import SimpleNamespace
 
 import attrs
 import pytest
-from path import Path
 
 from stepup.core.asyncio import iter_until_stopped, wait_for_path
 from stepup.core.config_loader import ConfigLoader
@@ -23,6 +22,7 @@ from stepup.core.director import DirectorHandler, interpret_jobs
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import ConfigError, PathError, ToolError
 from stepup.core.oscompat import raw_terminal_available
+from stepup.core.path import Path
 from stepup.core.rpc import SocketRPCServer, allow_rpc, is_rpc_allowed
 from stepup.core.tui import (
     _KEY_ACTIONS,

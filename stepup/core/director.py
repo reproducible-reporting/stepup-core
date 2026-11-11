@@ -18,7 +18,8 @@ from importlib.metadata import version as get_version
 from itertools import chain
 
 import attrs
-from path import Path
+
+from .path import Path
 
 try:
     import yappi

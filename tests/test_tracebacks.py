@@ -8,9 +8,9 @@ import sys
 from collections.abc import Callable
 
 import pytest
-from path import Path
 
 from stepup.core.exceptions import CyclicError
+from stepup.core.path import Path
 from stepup.core.tracebacks import (
     HINT,
     SHORT_HEADER,

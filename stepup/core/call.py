@@ -8,16 +8,15 @@ The `driver()` function is the explicit entry point.
 import argparse
 import inspect
 import json
-import os
 import shlex
 import sys
 from typing import Any, get_type_hints
 
-from path import Path
 from rich.console import Console
 
 from .api import loadns
 from .cattrs import json_converter
+from .path import Path
 
 __all__ = ("driver",)
 
@@ -154,4 +153,4 @@ def _print_list(script_path: str, ns: dict[str, Any]) -> None:
 def _short_path(script_path: str) -> str:
     """Return a short relative path to the script."""
     rel = Path(script_path).relpath()
-    return rel if os.sep in rel else "." / rel
+    return rel if "/" in rel else "." / rel

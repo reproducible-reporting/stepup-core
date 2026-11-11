@@ -19,10 +19,10 @@ import sys
 import time
 
 import pytest
-from path import Path
 
 from stepup.core.enums import ReturnCode
 from stepup.core.oscompat import raw_terminal_available
+from stepup.core.path import Path
 
 if raw_terminal_available():
     import pty

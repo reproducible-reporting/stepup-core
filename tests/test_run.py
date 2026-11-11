@@ -13,11 +13,11 @@ import time
 from types import SimpleNamespace
 
 import pytest
-from path import Path
 
 import stepup.core.run as run_mod
 from stepup.core.exceptions import RunError
 from stepup.core.outcome import ResourceUsage
+from stepup.core.path import Path
 from stepup.core.run import (
     ChildOutcome,
     Run,

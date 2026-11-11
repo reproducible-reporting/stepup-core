@@ -6,14 +6,13 @@ import asyncio
 import contextlib
 import os
 
-from path import Path
-
 from stepup.core.enums import Change, HashUpdateCause
 from stepup.core.executor import Executor
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash
 from stepup.core.hash_queue import HashQueue
 from stepup.core.nglob import NamedGlob
+from stepup.core.path import Path
 from stepup.core.reporter import ReporterClient
 from stepup.core.step import Step
 from stepup.core.watcher import Watcher

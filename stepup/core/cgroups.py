@@ -9,9 +9,8 @@ import shutil
 import subprocess
 import sys
 
-from path import Path
-
 from .exceptions import CgroupError
+from .path import Path
 
 __all__ = ("cgroup_scope_prefix", "find_own_memory_cgroup", "get_ncore_from_cgroup")
 

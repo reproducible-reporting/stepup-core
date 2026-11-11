@@ -5,14 +5,12 @@
 import asyncio
 import json
 import logging
-import os
 import re
 import stat
 import textwrap
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 
 import attrs
-from path import Path
 
 from .cattrs import json_converter
 from .constants import PLAN_PY, STEPUP_DIR
@@ -32,7 +30,7 @@ from .exceptions import ConsistencyError, GraphError
 from .file import REGULAR_OUTPUT_WHERE, File
 from .hash import FileHash, fmt_short_digest
 from .nglob import NamedGlob, glob_base_dir, has_any_wildcards
-from .path import dir_range_upper, parent_dir
+from .path import Path, dir_range_upper, parent_dir
 from .sqlite3 import prefix_clause
 from .static_tree import StaticTree
 from .step import RESERVED_ENV_VARS, Step
@@ -790,7 +788,7 @@ def _raise_if_dir_inputs(inp_paths: Collection[str]) -> None:
         When a path ends in a separator.
     """
     for inp_path in inp_paths:
-        if inp_path.endswith(os.sep):
+        if inp_path.endswith("/"):
             raise GraphError(f"Directory inputs are not supported: {inp_path}")
 
 
@@ -879,9 +877,9 @@ def mark_dir_to_be_deleted(to_be_deleted: dict[str, FileHash | None], path: str)
     # `normpath` collapses everything it can, so any `..` left is a leading component.
     # A path made of nothing but `..` therefore points at an ancestor of the project root,
     # just like `.` points at the root itself.
-    if path == "." or set(path.split(os.sep)) == {os.pardir}:
+    if path == "." or set(path.split("/")) == {".."}:
         return
-    to_be_deleted[path + os.sep] = None
+    to_be_deleted[path + "/"] = None
 
 
 @attrs.define(frozen=True, order=True)
@@ -1873,7 +1871,7 @@ class Workflow(Trellis):
         if file_state not in _DECLARABLE_STATES:
             hint = _UNDECLARABLE_STATE_HINTS.get(file_state, "")
             raise ConsistencyError(f"Cannot create a {file_state.name} file. {hint}".rstrip())
-        if file_state == FileState.VOLATILE and path.endswith(os.sep):
+        if file_state == FileState.VOLATILE and path.endswith("/"):
             raise GraphError("A volatile output cannot be a directory.")
         if not isinstance(creator, StaticTree):
             static_tree = self._find_owning_static_tree(path)
@@ -1882,7 +1880,7 @@ class Workflow(Trellis):
                     raise GraphError(_static_tree_file_message(static_tree.label, path))
                 raise GraphError(_static_tree_product_message(static_tree.label, path))
         self._raise_if_forbidden_target(path, file_state)
-        if path.startswith(STEPUP_DIR + os.sep):
+        if path.startswith(STEPUP_DIR + "/"):
             raise GraphError(f"Cannot declare a file under {STEPUP_DIR}: {path}")
 
         file = self.create(File, creator, path, state=file_state)
@@ -2015,7 +2013,7 @@ class Workflow(Trellis):
             # `api.static()` expands patterns client-side,
             # so a wildcard can only get here through a bug or a hand-written RPC call.
             raise ConsistencyError(f"Static tree does not support wildcards: {path}")
-        if path == STEPUP_DIR or path.startswith(STEPUP_DIR + os.sep):
+        if path == STEPUP_DIR or path.startswith(STEPUP_DIR + "/"):
             raise GraphError(f"Cannot declare a static tree under {STEPUP_DIR}: {path}")
         path = Path(path) / ""
         if path in ("./", ""):
@@ -2481,7 +2479,7 @@ class Workflow(Trellis):
         # This is load-bearing, not defensive:
         # NamedGlob does not skip dot entries the way the standard library's glob does.
         for path in paths:
-            if path.startswith(STEPUP_DIR + os.sep):
+            if path.startswith(STEPUP_DIR + "/"):
                 raise GraphError(
                     f"Glob pattern ({ng.pattern}) matches a path under {STEPUP_DIR}: {path}"
                 )
@@ -2504,7 +2502,7 @@ class Workflow(Trellis):
         """
         # A directory match is watched one level up, unlike a declared directory node,
         # because the pattern selects the directory itself and not what it contains.
-        dirs = {parent_dir(path.rstrip(os.sep)) for path in ng.files()}
+        dirs = {parent_dir(path.rstrip("/")) for path in ng.files()}
         dirs.add(glob_base_dir(ng.pattern))
         for path in dirs:
             self.watch_dir(path)
@@ -2630,10 +2628,10 @@ class Workflow(Trellis):
         """
         # A) Inside a static tree, or a static tree root itself.
         # Appending a separator reproduces _find_owning_static_tree's `Path(path) / ""` exactly.
-        probe = path if path.endswith(os.sep) else path + os.sep
+        probe = path if path.endswith("/") else path + "/"
         if any(probe.startswith(label) for label in tree_labels):
             return True
-        if not path.endswith(os.sep):
+        if not path.endswith("/"):
             return False
         # B) Directory-only arms: the match contains a static tree, or a static file.
         # A root match ("./") contains every label, which the prefix range cannot express:
@@ -2722,8 +2720,8 @@ class Workflow(Trellis):
             The recorded glob matches are yielded in either case,
             because a pattern may not match a build product.
         """
-        if not directory.endswith(os.sep):
-            directory += os.sep
+        if not directory.endswith("/"):
+            directory += "/"
         states = ", ".join(str(state.value) for state in sorted(_relevant_states(during_build)))
         seen = set()
         clause, pattern = prefix_clause("node.label", directory)

@@ -5,8 +5,8 @@
 import json
 
 import attrs
-from path import Path
 
+from stepup.core.path import Path
 from stepup.core.stepinfo import StepInfo, dump_step_info, load_step_info
 
 

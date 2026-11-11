@@ -10,11 +10,9 @@ import shlex
 import sys
 from collections.abc import Iterable
 
-from path import Path
-
 from .constants import DIRECTOR_LOG_PID_PREFIX, DIRECTOR_LOG_SOCKET_PREFIX
 from .exceptions import StepUpError
-from .path import StrPath, coerce_str
+from .path import Path, StrPath, coerce_str
 
 if sys.platform == "win32":
     from .winapi import is_process_alive

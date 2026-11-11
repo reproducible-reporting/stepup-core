@@ -23,7 +23,6 @@ from contextlib import contextmanager
 from typing import Any
 
 import attrs
-from path import Path
 
 from .enums import FileState, HashUpdateCause, StepState
 from .exceptions import HashCancelledError
@@ -38,6 +37,7 @@ from .hash import (
 )
 from .hash_queue import HashJob
 from .outcome import ChildOutcome, ResourceUsage
+from .path import Path
 from .reporter import PROGRESS_REFRESH_DELAY, ReporterClient
 from .run import Run, ThreadWorker, launch_command
 from .scheduler import Scheduler

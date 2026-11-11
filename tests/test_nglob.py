@@ -7,7 +7,6 @@ import re
 from collections.abc import Collection
 
 import pytest
-from path import Path
 
 from stepup.core.nglob import (
     RE_ANY_WILD,
@@ -21,6 +20,7 @@ from stepup.core.nglob import (
     has_trailing_recursive_wildcard,
     iter_wildcard_names,
 )
+from stepup.core.path import Path
 
 
 @pytest.mark.parametrize(

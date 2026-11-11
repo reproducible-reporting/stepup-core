@@ -15,7 +15,6 @@ import attrs
 import pytest
 import pytest_asyncio
 from conftest import amend_step, chmod, declare_static, fake_hash
-from path import Path
 
 from stepup.core.constants import STEPUP_DIR
 from stepup.core.enums import (
@@ -32,7 +31,7 @@ from stepup.core.file import File
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NamedGlob
 from stepup.core.outcome import ChildOutcome
-from stepup.core.path import dir_range_upper
+from stepup.core.path import Path, dir_range_upper
 from stepup.core.sqlite3 import DBSession
 from stepup.core.static_tree import StaticTree
 from stepup.core.step import Step

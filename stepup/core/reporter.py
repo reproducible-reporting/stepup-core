@@ -9,7 +9,6 @@ from collections.abc import AsyncGenerator, Iterable
 from time import perf_counter
 
 import attrs
-from path import Path
 from rich.console import Console, RenderableType
 from rich.markup import escape as escape_markup
 from rich.progress import BarColumn, MofNCompleteColumn, TaskID, TextColumn
@@ -19,6 +18,7 @@ from rich.text import Text
 from rich.theme import Theme
 
 from .constants import FAIL_LOG, SUCCESS_LOG, WARNING_LOG
+from .path import Path
 from .rpc import BaseAsyncRPCClient, DummyAsyncRPCClient, SocketAsyncRPCClient, allow_rpc
 from .utils import escape_control_chars
 

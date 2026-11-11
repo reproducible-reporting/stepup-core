@@ -7,11 +7,11 @@ import os
 from decimal import Decimal
 
 import pytest
-from path import Path
 
 from stepup.core.__main__ import _setup_cli
 from stepup.core.config_loader import ConfigFile, ConfigLoader, ConfigLocation, _SectionView
 from stepup.core.exceptions import ConfigError, ConsistencyError
+from stepup.core.path import Path
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -112,7 +112,9 @@ def test_load_file_pyproject_section_not_a_table(path_tmp: Path, loader: ConfigL
 
 
 def test_load_file_tilde_expansion(path_tmp: Path, loader: ConfigLoader, monkeypatch):
+    # The home directory is taken from `HOME` on POSIX systems and from `USERPROFILE` on Windows.
     monkeypatch.setenv("HOME", str(path_tmp))
+    monkeypatch.setenv("USERPROFILE", str(path_tmp))
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b"jobs = 7\n")
     assert loader._load_file("~/stepup.toml") == {"jobs": 7}

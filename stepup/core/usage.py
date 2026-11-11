@@ -14,10 +14,10 @@ import sys
 import time
 
 import attrs
-from path import Path
 
 from .cgroups import find_own_memory_cgroup
 from .outcome import ResourceUsage
+from .path import Path
 
 if sys.platform == "win32":
     from .winapi import get_peak_working_set

@@ -29,13 +29,13 @@ import sys
 from collections.abc import Generator
 
 import attrs
-from path import Path
 
 from .asyncio import iter_until_stopped, wait_for_any_event
 from .enums import Change, HashUpdateCause
 from .exceptions import ConfigError
 from .executor import Executor
 from .hash_queue import HashQueue, gather_hashes
+from .path import Path
 from .reporter import ReporterClient
 from .sqlite3 import DBSession
 from .watcher_backend import WatcherBackend

@@ -8,6 +8,7 @@ import inspect
 import json
 import logging
 import sqlite3
+import sys
 
 import pytest
 
@@ -102,7 +103,11 @@ def test_connect_read_only_uri_special_characters(tmp_path):
     Without escaping, the `?` and `#` start the query and fragment part of the URI,
     so `mode=ro` is never parsed and a different, empty database is created read-write.
     """
-    for name in "plain.db", "we#ird.db", "qu?ery.db":
+    names = ["plain.db", "we#ird.db"]
+    if sys.platform != "win32":
+        # Windows does not allow a question mark in a file name.
+        names.append("qu?ery.db")
+    for name in names:
         path_db = tmp_path / name
         con = connect(path_db)
         con.execute("CREATE TABLE t (a INTEGER)")
@@ -117,11 +122,7 @@ def test_connect_read_only_uri_special_characters(tmp_path):
         finally:
             con.close()
     # No database was created under a truncated name.
-    assert sorted(path.name for path in tmp_path.glob("*.db")) == [
-        "plain.db",
-        "qu?ery.db",
-        "we#ird.db",
-    ]
+    assert sorted(path.name for path in tmp_path.glob("*.db")) == sorted(names)
 
 
 async def test_spawned_task_waits_for_lock():

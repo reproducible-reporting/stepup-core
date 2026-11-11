@@ -10,3 +10,6 @@ from stepup.core.pytest import ConventionTests
 
 class TestConventions(ConventionTests):
     package = "stepup.core"
+    # `path.py` defines the `Path` class on top of the `path` library,
+    # and the watchfiles backend exchanges paths with the operating system.
+    native_path_modules = ("path.py", "watcher_watchfiles.py")

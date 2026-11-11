@@ -182,20 +182,34 @@ for working with such paths in custom API functions.
 Refer to the [reference page](../reference/stepup.core.path.md) for the full signatures.
 The sections below explain when they can be used.
 
+### The `Path` Class
+
+Inside StepUp, the only path separator is `/`, on every platform.
+[`Path`][stepup.core.path.Path] in `stepup.core.path` is a subclass of `path.Path`
+that guarantees this:
+on Windows, it converts backslashes to `/` and its methods return paths with `/`.
+On other platforms, it behaves exactly like `path.Path`.
+
+An extension package should import `Path` from `stepup.core.path`, not from `path`,
+and should not use `os.sep` or the functions of `os.path` to manipulate paths,
+because these produce backslashes on Windows.
+`ConventionTests` in `stepup.core.pytest` contains a test of these rules,
+which a package can skip by setting `native_path_modules = None`.
+
 ### Path coercion
 
-While `path.Path` is used internally, all end-user API functions in `stepup.core.api`
+While `Path` is used internally, all end-user API functions in `stepup.core.api`
 also accept `os.PathLike` objects (i.e. `pathlib.Path`) as path arguments.
 To facilitate the conversion, the module `stepup.core.path` provides the following:
 
 - `StrPath`: a type alias for `Union[str, os.PathLike]` that can be used in type hints.
 - `coerce_path()`:
-    converts a single path argument to `path.Path`.
+    converts a single path argument to `Path`.
 - `coerce_paths()`:
     converts a single path argument or a collection of path arguments
-    to a list of `path.Path` objects.
+    to a list of `Path` objects.
 - `coerce_paths2()`:
-    converts a list of path arguments or lists thereof to a list of `path.Path` objects.
+    converts a list of path arguments or lists thereof to a list of `Path` objects.
 - `coerce_str()`:
     converts a single path argument to `str`, preserving any trailing slash.
 

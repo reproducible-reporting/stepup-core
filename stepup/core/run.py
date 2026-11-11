@@ -27,13 +27,13 @@ from importlib.metadata import entry_points
 from typing import Any
 
 import attrs
-from path import Path
 
 from .api import amend
 from .asyncio import wait_for_readable_fd
 from .exceptions import RunError
 from .extapi import get_local_import_paths
 from .outcome import ChildOutcome, ResourceUsage
+from .path import Path
 from .step import Step
 from .tracebacks import print_step_traceback
 from .utils import escape_control_chars
@@ -874,7 +874,7 @@ PYCODE_WRAPPER = """\
 import os
 import sys
 import runpy
-from path import Path
+from stepup.core.path import Path
 from stepup.core.api import amend
 from stepup.core.extapi import get_local_import_paths
 sys.argv = {argv}

@@ -3,12 +3,12 @@
 """Tests for stepup.core.api."""
 
 import logging
+import os
 import pathlib
 import re
 
 import attrs
 import pytest
-from path import Path
 
 from stepup.core import api
 from stepup.core.api import (
@@ -34,7 +34,7 @@ from stepup.core.api import (
 from stepup.core.constants import DIRECTOR_SOCKET_SENTINEL
 from stepup.core.exceptions import AmendWhileHoldingError, PathError, StepUpError
 from stepup.core.nglob import NamedGlob
-from stepup.core.path import make_path_out
+from stepup.core.path import Path, make_path_out
 from stepup.core.rpc import DummySyncRPCClient
 
 
@@ -114,9 +114,9 @@ def test_getenv_default_multi3(monkeypatch, path_tmp, use_default):
     _chdir_work(monkeypatch, path_tmp)
     if use_default:
         monkeypatch.delenv("SFDDFHT", raising=False)
-        default = "sub/asdf:foo:"
+        default = f"sub/asdf{os.pathsep}foo{os.pathsep}"
     else:
-        monkeypatch.setenv("SFDDFHT", "sub/asdf:foo:")
+        monkeypatch.setenv("SFDDFHT", f"sub/asdf{os.pathsep}foo{os.pathsep}")
         default = None
     for path in True, False:
         ps = getenv("SFDDFHT", default=default, path=path, multi=True)

@@ -52,7 +52,6 @@ from typing import Any
 
 import attrs
 import yaml
-from path import Path
 
 from .cattrs import json_converter, yaml_converter
 from .constants import DIRECTOR_LOG_DESCRIPTION, DIRECTOR_SOCKET_SENTINEL, RENDER_JINJA_MODES
@@ -66,6 +65,7 @@ from .exceptions import (
 )
 from .nglob import NamedGlob, has_any_wildcards, has_trailing_recursive_wildcard
 from .path import (
+    Path,
     StrPath,
     apply_affixes,
     coerce_path,
@@ -75,6 +75,7 @@ from .path import (
     get_affixes,
     get_here,
     get_root,
+    is_path_type,
     make_path_out,
     translate,
     translate_back,
@@ -690,7 +691,7 @@ def call(
         su_args_file = subs_env(args_file, su_workdir)
 
     # Validate executable path format.
-    if os.sep not in executable:
+    if "/" not in executable:
         raise PathError(
             f"executable must contain a path separator (e.g. './script.py'), got: {executable!r}"
         )
@@ -1436,7 +1437,8 @@ def getenv(
         This implies `path=True`.
     multi
         Set to `True` if the variable is a list of paths.
-        The paths are split on the colon character and returned as a list of `Path` instances.
+        The paths are split on `os.pathsep`, which is `:` on POSIX systems and `;` on Windows,
+        and returned as a list of `Path` instances.
         This implies `path=True`.
 
     Returns
@@ -1471,7 +1473,7 @@ def getenv(
             return []
         su_items = []
         with subs_env_vars() as subs_env:
-            for item in value.split(":"):
+            for item in value.split(os.pathsep):
                 item = item.strip()
                 if len(item) > 0:
                     su_items.append(_translate_back_env_path(subs_env, item, back))
@@ -1623,7 +1625,7 @@ def loadns(
             for name, value in current.items():
                 if name.startswith("_"):
                     continue
-                if isinstance(value, Path):
+                if is_path_type(type(value)):
                     value = (dir_py / value).relpath(dir_out)
                 variables[name] = value
         else:
@@ -1898,7 +1900,7 @@ def _check_no_directories(paths: Iterable[Path], workdir: StrPath = "."):
     """
     workdir = coerce_path(workdir)
     for path in paths:
-        if path.endswith(os.sep) or (workdir / path).is_dir():
+        if path.endswith("/") or (workdir / path).is_dir():
             raise PathError(f"Directories are not allowed: {path}")
 
 
@@ -2067,7 +2069,7 @@ def _prepare_run_command(
         ) from exc
     exe = None
     first = parts[0] if len(parts) > 0 else ""
-    if os.sep in first and not first.startswith(os.sep):
+    if "/" in first and not (first.startswith("/") or Path(first).isabs()):
         exe = first
     elif need_relative_exe:
         raise PathError(

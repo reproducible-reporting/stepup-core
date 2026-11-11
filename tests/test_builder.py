@@ -10,7 +10,6 @@ from types import SimpleNamespace
 import attrs
 import pytest
 from conftest import fake_hash, get_duration_and_tail_time
-from path import Path
 
 from stepup.core.builder import Builder
 from stepup.core.enums import HashUpdateCause, Need, StepState
@@ -18,6 +17,7 @@ from stepup.core.executor import Executor
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.hash_queue import HashJob
+from stepup.core.path import Path
 from stepup.core.reporter import ReporterClient
 from stepup.core.scheduler import Scheduler
 from stepup.core.step import Step

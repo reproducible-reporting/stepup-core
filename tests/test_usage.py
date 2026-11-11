@@ -6,9 +6,9 @@ import asyncio
 import time
 
 import pytest
-from path import Path
 
 from stepup.core.outcome import ResourceUsage
+from stepup.core.path import Path
 from stepup.core.usage import (
     CGROUP_NOT_ENABLED_LINE,
     CGROUP_PEAK_MEM_TEMPLATE,

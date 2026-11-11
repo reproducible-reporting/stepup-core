@@ -8,11 +8,11 @@ import shutil
 import sys
 
 import pytest
-from path import Path
 
 from stepup.core import watcher
 from stepup.core.enums import Change
 from stepup.core.exceptions import ConfigError
+from stepup.core.path import Path
 from stepup.core.pytest import sort_change_runs
 from stepup.core.watcher import _import_backend_class, select_watcher_backend
 from stepup.core.watcher_watchfiles import WatchfilesBackend

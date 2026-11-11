@@ -14,10 +14,10 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import attrs
-from path import Path
 
 from .asyncio import iter_until_stopped, wait_for_any_event
 from .enums import Change
+from .path import Path
 from .watcher_backend import WatcherBackend
 
 if TYPE_CHECKING:
@@ -644,8 +644,8 @@ def _is_under(path: Path, directory: Path) -> bool:
     if path == directory:
         return False
     if directory == ".":
-        return not (path.isabs() or path == ".." or path.startswith(".." + os.sep))
-    return path.startswith(directory.rstrip(os.sep) + os.sep)
+        return not (path.isabs() or path == ".." or path.startswith("../"))
+    return path.startswith(directory.rstrip("/") + "/")
 
 
 def _parent_dir(path: Path) -> Path:

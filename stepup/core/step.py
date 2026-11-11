@@ -9,7 +9,6 @@ from collections.abc import Collection, Iterator
 from typing import Literal
 
 import attrs
-from path import Path
 
 from .cattrs import json_converter
 from .enums import FILE_STATES_BY_ROLE, FileRole, FileState, Need, StepState
@@ -18,6 +17,7 @@ from .file import File
 from .hash import FileHash, StepHash, fmt_full_digest
 from .nglob import NamedGlob, convert_nglob_to_regex
 from .outcome import ChildOutcome, ResourceUsage
+from .path import Path
 from .static_tree import StaticTree
 from .stepinfo import StepInfo
 from .trellis import Node, NodeType

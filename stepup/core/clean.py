@@ -3,17 +3,15 @@
 """Command-line interface to clean up output files and/or directories."""
 
 import argparse
-import os
 import sqlite3
 from collections.abc import Iterable
 
-from path import Path
 from rich.console import Console
 
 from .config_loader import ConfigLoader
 from .enums import FileState
 from .hash import FileHash
-from .path import translate, translate_back
+from .path import Path, translate, translate_back
 from .sqlite3 import prefix_clause
 from .tool import SubParsers, ToolFunc, connect_graph_db
 
@@ -162,7 +160,7 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
     # Remove empty parent directories
     for parent in sorted(parents):
         while True:
-            if parent.is_dir() and str(parent) not in (".", os.sep) and not any(parent.iterdir()):
+            if parent.is_dir() and str(parent) not in (".", "/") and not any(parent.iterdir()):
                 console.print(f"[cyan]rmdir[/] {parent}  [grey]# Empty parent directory[/]")
                 if args.commit:
                     parent.rmdir()

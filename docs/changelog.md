@@ -30,8 +30,23 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   Developers of StepUp can select the library with the environment variable `STEPUP_WATCHER`,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
 
+- [`stepup.core.path.Path`][stepup.core.path.Path],
+  a subclass of `path.Path` whose only path separator is `/` on every platform.
+  All functions of StepUp that return a path now return an instance of this class.
+  On Linux and macOS, it behaves exactly like `path.Path`.
+  This is a preparation for Windows support, which is not complete yet.
+  Extension packages should import `Path` from `stepup.core.path` instead of from `path`,
+  see [Path manipulation](extending/api.md#path-manipulation).
+- `ConventionTests.test_slash_paths` in `stepup.core.pytest`,
+  which tests that a package does not use `path.Path`, `os.sep` or `os.path`.
+  An extension package that subclasses `ConventionTests` gets this test too,
+  and can skip it with `native_path_modules = None`.
+
 ### Changed
 
+- The items of `STEPUP_PATH_FILTER` and of a variable read with `getenv(multi=True)`
+  are separated by `os.pathsep`.
+  This is still a colon on Linux and macOS.
 - StepUp reads and writes its own text files in UTF-8 on every platform,
   instead of in the locale encoding,
   and writes them with `\n` line endings.

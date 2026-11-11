@@ -10,7 +10,6 @@ from types import SimpleNamespace
 
 import attrs
 import pytest
-from path import Path
 
 from stepup.core.enums import HashUpdateCause, Need, StepState
 from stepup.core.exceptions import HashCancelledError
@@ -19,6 +18,7 @@ from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash, StepHash, compute_inp_hashes
 from stepup.core.hash_queue import HashJob
 from stepup.core.outcome import ChildOutcome, ResourceUsage
+from stepup.core.path import Path
 from stepup.core.run import ThreadWorker, Worker
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow

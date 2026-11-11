@@ -148,8 +148,10 @@ and cannot be configured through config files or command-line options.
 
 `STEPUP_PATH_FILTER`
 
-:   A colon-separated list of filters
+:   A list of filters
     for determining whether to retain or ignore an automatically detected dependency.
+    The items are separated by a colon on POSIX systems and by a semicolon on Windows,
+    as in `PATH`.
     Each item starts with a `+` or `-` sign, followed by a path prefix to be used for matching.
     The items in the filter are processed in order, and the first match determines the action.
     If the matching path prefix is preceded by a `-`, the dependency is ignored.

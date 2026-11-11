@@ -344,10 +344,64 @@ a step may build outside the root, but the directories above it are not StepUp's
 
 ## File Path Considerations
 
-StepUp uses the `path` module instead of the built-in `pathlib` to handle file paths.
-In some cases, path affixes must be preserved (leading `./` or trailing `/`),
-which `pathlib` normalizes away. The `path` module preserves these affixes.
+### One Spelling on Every Platform
 
+**Inside StepUp, a path is a string whose only separator is `/`, on every platform.**
+On Windows, an absolute path looks like `C:/Users/me/project`, with an upper-case drive letter.
+The workflow database, `nglob`, the affixes below, `dir_range_upper()`, `shq()`
+and the expected outputs of the examples all rely on this.
+Paths are compared as strings and are graph nodes,
+so a path that differs from another one only by its separators would be a different node.
+
+`Path` in `stepup/core/path.py` implements this.
+It is a subclass of `Path` from the `path` library,
+which StepUp uses instead of the built-in `pathlib`,
+because `pathlib` normalizes away the affixes described below.
+On POSIX, the subclass adds nothing.
+On Windows, its constructor converts backslashes
+and its methods use a variant of `ntpath` that returns `/`.
+
+A string from the operating system is converted where it enters StepUp,
+by the constructor of `Path`, by the `coerce_*()` functions or, for a plain string, by `to_slash()`.
+Such strings come from `os.getcwd()`, globbing and directory listings, `sys` and module attributes,
+environment variables, command-line arguments, `tempfile` and file watchers.
+Windows accepts `/` in its file system functions, so nothing is converted back.
+
+Consequences for code in `stepup/`, enforced by `ConventionTests.test_slash_paths`:
+
+- Import `Path` from `stepup.core.path`, never from `path`.
+- Write `"/"`, never `os.sep`.
+- Use the methods of `Path` instead of `os.path`,
+  whose functions return backslashes on Windows.
+- Use `is_path_type()` to recognize a path object created by a user,
+  who may have imported `Path` from the `path` library.
+- Split a list of paths on `os.pathsep`, because `:` is part of `C:/` on Windows.
+
+The Windows flavor is the class `_NtPath`, which is defined on every platform,
+so that most of its behavior can be tested on Linux.
+Such tests are necessary but not sufficient:
+Windows runs C implementations of several `ntpath` functions,
+for which other platforms use pure-Python fallbacks,
+and the pure-Python functions differ between Python versions.
+Run `tests/test_paths.py` in the Windows VM with the oldest and newest supported Python
+after changing this class.
+
+Two properties of `_NtPath` are easy to break:
+
+- `os.fspath()` returns an instance of a `str` subclass unchanged,
+  so `pathlib` and `ntpath` call `str` methods on the instance itself.
+  `path.Path` overrides `replace`, `__add__` and `__radd__` to return a new path,
+  which passes through the normalizing constructor.
+  `_NtPath.replace` therefore builds its result without normalization,
+  or `p.replace("/", "\\")` would return `p`, and `pathlib.Path(p)` would be parsed incorrectly.
+  For the same reason, the `ntpath` variant converts its arguments to plain strings.
+- Methods of `path.Path` compare results of the path module with parts of instances
+  (e.g. `relpathto` with `normcase`),
+  so the module and the constructor must produce the same spelling.
+
+### Path Affixes
+
+In some cases, path affixes must be preserved (leading `./` or trailing `/`).
 The affixes are currently used in the places in StepUp:
 
 - The `dst` argument of the `copy()` function in `stepup.core.api`, with

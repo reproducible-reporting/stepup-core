@@ -14,7 +14,6 @@ from collections.abc import Callable
 import pytest
 import pytest_asyncio
 from core_common import EchoHandler, settled_task_names
-from path import Path
 
 from stepup.core.exceptions import (
     ConfigError,
@@ -23,6 +22,7 @@ from stepup.core.exceptions import (
     RPCError,
     UsageError,
 )
+from stepup.core.path import Path
 from stepup.core.rpc import (
     CLOSE_TIMEOUT,
     FIELD_SIZE,

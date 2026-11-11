@@ -14,7 +14,6 @@ from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, 
 import attrs
 import pytest
 import pytest_asyncio
-from path import Path
 
 from stepup.core.constants import GRAPH_DB
 from stepup.core.director import ServeConfig, serve
@@ -22,6 +21,7 @@ from stepup.core.enums import HashUpdateCause, Need
 from stepup.core.file import File
 from stepup.core.hash import FileHash
 from stepup.core.oscompat import forkserver_available, raw_terminal_available, suspend_available
+from stepup.core.path import Path
 from stepup.core.reporter import ReporterClient
 from stepup.core.rpc import SocketAsyncRPCClient
 from stepup.core.sqlite3 import DBSession
@@ -78,7 +78,7 @@ def _unset_stepup_debug(monkeypatch: pytest.MonkeyPatch):
 BUILD_UNTIL_DONE = """\
 #!/usr/bin/env python3
 import os
-from path import Path
+from stepup.core.path import Path
 from time import sleep
 with open("STARTED.txt", "w") as fh:
     fh.write(os.environ["STEPUP_JOB_I"])

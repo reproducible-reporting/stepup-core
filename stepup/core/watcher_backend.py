@@ -7,9 +7,9 @@ import asyncio
 from typing import Any
 
 import attrs
-from path import Path
 
 from .enums import Change
+from .path import Path
 
 __all__ = ("WatcherBackend",)
 

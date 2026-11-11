@@ -9,11 +9,11 @@ import sys
 import threading
 
 import pytest
-from path import Path
 
 from stepup.core import interact
 from stepup.core.constants import DIRECTOR_LOG
 from stepup.core.exceptions import GraphError, RPCError, ToolError
+from stepup.core.path import Path
 from stepup.core.tool import ToolFunc
 
 

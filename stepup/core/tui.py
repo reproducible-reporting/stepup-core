@@ -27,7 +27,6 @@ from decimal import Decimal
 from typing import Self
 
 import attrs
-from path import Path
 
 from .asyncio import iter_until_stopped, wait_for_path
 from .cgroups import cgroup_scope_prefix
@@ -45,7 +44,7 @@ from .constants import (
 from .enums import ReturnCode
 from .exceptions import ConfigError, RPCError, ToolError, UsageError
 from .oscompat import forkserver_available, perf_available, raw_terminal_available
-from .path import get_stepup_root
+from .path import Path, get_stepup_root, to_slash
 from .reporter import ReporterHandler
 from .rpc import SocketAsyncRPCClient, SocketRPCServer
 from .tool import SubParsers, ToolFunc, positive_decimal, positive_int
@@ -472,7 +471,7 @@ def _check_platform_support(args: argparse.Namespace) -> None:
 def _normalize_targets(raw_targets: list[str], stepup_root: Path) -> tuple[list[Path], list[Path]]:
     """Resolve and validate `stepup build` target arguments against the project root.
 
-    A raw target ending in `os.sep` is a directory target:
+    A raw target ending in a path separator is a directory target:
     every step under that subtree whose declared `need` is `DEFAULT` is elevated, best-effort
     (see `docs/advanced_topics/build_targets.md`).
     Everything else is an exact-file target, regardless of what exists on disk.
@@ -502,7 +501,8 @@ def _normalize_targets(raw_targets: list[str], stepup_root: Path) -> tuple[list[
     for raw_target in raw_targets:
         if raw_target == "":
             raise ToolError("A target cannot be an empty string.")
-        is_dir_target = raw_target.endswith(os.sep)
+        raw_target = to_slash(raw_target)
+        is_dir_target = raw_target.endswith("/")
         target_abs = Path(raw_target).absolute()
         target_rel = target_abs.relpath(stepup_root).normpath()
         if is_dir_target:

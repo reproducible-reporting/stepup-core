@@ -11,11 +11,11 @@ from decimal import Decimal
 
 import attrs
 import pytest
-from path import Path
 
 from stepup.core import director
 from stepup.core.director import SCHEDULER_CPU_ENV_VARS, DirectorHandler, interpret_jobs
 from stepup.core.exceptions import CgroupError
+from stepup.core.path import Path
 from stepup.core.reporter import ReporterClient
 
 

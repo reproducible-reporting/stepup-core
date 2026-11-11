@@ -4,21 +4,24 @@
 
 import cattrs.preconf.json
 import cattrs.preconf.pyyaml
-from path import Path
 
 from .nglob import NamedGlob
+from .path import Path, is_path_type
 
 __all__ = ("json_converter", "yaml_converter")
 
 
 def _register_path_hooks(converter):
-    """Register structure and unstructure hooks for `path.Path` on a converter.
+    """Register structure and unstructure hooks for path classes on a converter.
 
-    `path.Path` is a `str` subclass, so it is (un)structured as a plain string,
+    A path is a `str` subclass, so it is (un)structured as a plain string,
     preserving any leading `./` or trailing `/` affixes.
+    The hooks apply to `Path` of StepUp and of the `path` library,
+    and structuring creates an instance of the requested class.
     """
-    converter.register_unstructure_hook(Path, str)
-    converter.register_structure_hook(Path, lambda value, _: Path(value))
+    # The hook is registered for `str`, because it then also applies to every subclass.
+    converter.register_unstructure_hook(str, str)
+    converter.register_structure_hook_func(is_path_type, lambda value, cls: cls(value))
 
 
 def _unstructure_named_glob(ng: NamedGlob) -> dict:

@@ -13,12 +13,11 @@ from collections.abc import Sequence
 from typing import Any
 
 import jinja2
-from path import Path
 
 from .api import amend, loadns
 from .constants import RENDER_JINJA_MODES
 from .extapi import get_local_import_paths
-from .path import StrPath, coerce_str
+from .path import Path, StrPath, coerce_str
 
 __all__ = ("main", "render_jinja_file", "render_jinja_str")
 

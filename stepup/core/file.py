@@ -2,15 +2,14 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """A `File` is StepUp's node for an input or output file of a step."""
 
-import os
 from collections.abc import Iterator
 
 import attrs
-from path import Path
 
 from .enums import FileState
 from .exceptions import PathError
 from .hash import FileHash, fmt_full_digest
+from .path import Path
 from .trellis import Node
 
 __all__ = ("REGULAR_OUTPUT_WHERE", "File")
@@ -130,7 +129,7 @@ class File(Node):
         # i.e. they are user errors.
         if label in (".", "..", ""):
             raise PathError(f"Invalid file name: {label}")
-        if label.endswith(os.sep):
+        if label.endswith("/"):
             raise PathError(f"Invalid file name (directory): {label}")
         if label.endswith(("/.", "/..")):
             raise PathError(f"Invalid file name: {label}")

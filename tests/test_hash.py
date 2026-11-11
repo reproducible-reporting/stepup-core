@@ -9,7 +9,6 @@ from hashlib import sha256
 import attrs
 import pytest
 from conftest import TrippingEvent
-from path import Path
 
 from stepup.core.exceptions import HashCancelledError, HashFailedError
 from stepup.core.hash import (
@@ -19,6 +18,7 @@ from stepup.core.hash import (
     compute_inp_hashes,
     compute_out_hashes,
 )
+from stepup.core.path import Path
 
 
 def test_new():

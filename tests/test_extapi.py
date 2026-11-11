@@ -4,6 +4,7 @@
 
 import contextlib
 import hashlib
+import os
 import shlex
 import subprocess
 import sys
@@ -43,7 +44,7 @@ def test_filter_dependencies_external2(monkeypatch, path_tmp):
     (path_tmp / "pkgs").makedirs()
     (path_tmp / "templates").makedirs()
     monkeypatch.setenv("STEPUP_ROOT", path_tmp / "project")
-    path_filter = f"+{path_tmp}/pkgs/:+{path_tmp}/templates"
+    path_filter = f"+{path_tmp}/pkgs/{os.pathsep}+{path_tmp}/templates"
     monkeypatch.setenv("STEPUP_PATH_FILTER", path_filter)
     abs_paths = [
         path_tmp / "pkgs/helper.py",

@@ -6,11 +6,10 @@ import json
 from collections.abc import Iterable
 
 import attrs
-from path import Path
 
 from .cattrs import json_converter
 from .nglob import NamedGlob
-from .path import StrPath, coerce_path
+from .path import Path, StrPath, coerce_path
 
 __all__ = ("StepInfo", "dump_step_info", "load_step_info")
 

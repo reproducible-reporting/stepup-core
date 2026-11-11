@@ -18,14 +18,13 @@ import sqlite3
 from collections.abc import Callable
 from decimal import Decimal
 
-from path import Path
 from rich.console import Console
 from rich.style import Style
 from rich.text import Text
 
 from .constants import GRAPH_DB
 from .exceptions import ToolError
-from .path import get_stepup_root
+from .path import Path, get_stepup_root
 from .sqlite3 import connect
 
 __all__ = (

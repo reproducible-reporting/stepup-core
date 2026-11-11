@@ -83,11 +83,10 @@ from collections.abc import Callable
 from typing import Any
 
 import attrs
-from path import Path
 from rich.text import Text
 
 from .exceptions import ConfigError, ConsistencyError
-from .path import short_path
+from .path import Path, short_path
 from .tool import ERROR_STYLE, print_error
 from .utils import to_bool
 

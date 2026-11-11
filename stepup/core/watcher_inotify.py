@@ -7,10 +7,10 @@ import logging
 
 import attrs
 from asyncinotify import Inotify, Mask, Watch
-from path import Path
 
 from .asyncio import iter_until_stopped
 from .enums import Change
+from .path import Path
 from .watcher_backend import WatcherBackend
 
 __all__ = ("InotifyBackend",)

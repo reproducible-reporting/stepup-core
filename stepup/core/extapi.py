@@ -14,11 +14,9 @@ import subprocess
 import sys
 from collections.abc import Iterable, Iterator, Mapping
 
-from path import Path
-
 from .api import get_job_i, get_rpc_client, getenv
-from .exceptions import ConsistencyError, StepUpError
-from .path import StrPath, get_here, get_root, get_stepup_root, translate
+from .exceptions import StepUpError
+from .path import Path, StrPath, get_here, get_root, get_stepup_root, translate
 from .step import truncate_output
 from .utils import extract_env_overrides
 
@@ -316,8 +314,12 @@ def run_subprocess(
 #
 
 
-DEFAULT_PATH_FILTER = "-.venv:-venv:-.tox:-.nox:-.direnv:-.pixi:-node_modules"
+DEFAULT_PATH_FILTER = os.pathsep.join(
+    ["-.venv", "-venv", "-.tox", "-.nox", "-.direnv", "-.pixi", "-node_modules"]
+)
 """The filter used when `${STEPUP_PATH_FILTER}` is not set.
+
+Its items are separated by `os.pathsep`, like those of the variable itself.
 
 It ignores the top-level directories in which tools install dependencies,
 because these hold files that are not edited by hand
@@ -357,14 +359,13 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     # The getenv function from StepUp amends the current step to depend on the variable,
     # so that every step using it is re-executed when the variable changes.
     filter_str = getenv("STEPUP_PATH_FILTER", DEFAULT_PATH_FILTER)
-    # The two appended items are the catch-all rules:
-    # retain everything under `${STEPUP_ROOT}` and ignore everything else.
-    # The latter is why every absolute path matches a rule,
-    # which makes the `ConsistencyError` below unreachable through the public API.
-    filter_str += ":+.:-/"
+    # The appended item is the first catch-all rule: retain everything under `${STEPUP_ROOT}`.
+    # The second one, ignore everything else, is what happens to a path that matches no rule.
+    # It cannot be written as a prefix, because absolute paths have no common prefix on Windows.
+    filter_str += os.pathsep + "+."
     rules = []
     stepup_root = get_stepup_root()
-    for filter_item in filter_str.split(":"):
+    for filter_item in filter_str.split(os.pathsep):
         if filter_item == "":
             continue
         if filter_item.startswith("+"):
@@ -388,8 +389,6 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
                 if keep:
                     result.add(abspath.relpath(realpwd))
                 break
-        else:
-            raise ConsistencyError(f"No matching rule found for path: {path}")
     return result
 
 

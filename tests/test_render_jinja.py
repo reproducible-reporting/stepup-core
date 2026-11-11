@@ -4,8 +4,8 @@
 
 import jinja2
 import pytest
-from path import Path
 
+from stepup.core.path import Path
 from stepup.core.render_jinja import _resolve_latex, render_jinja_file, render_jinja_str
 
 
@@ -58,7 +58,7 @@ def test_render_file_name_shows_up_in_traceback(path_tmp: Path):
     path_template.write_text("{{ name }}\n", encoding="utf-8")
     with pytest.raises(jinja2.UndefinedError) as exc_info:
         render_jinja_file(path_template, {})
-    assert any(str(frame.path) == str(path_template) for frame in exc_info.traceback)
+    assert any(Path(frame.path) == path_template for frame in exc_info.traceback)
 
 
 @pytest.mark.parametrize(

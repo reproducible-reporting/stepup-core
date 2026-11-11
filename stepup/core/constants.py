@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Shared constants across StepUp."""
 
-from path import Path
+from .path import Path
 
 __all__ = (
     "CORE_ENV_VARS",

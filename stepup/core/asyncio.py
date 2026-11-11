@@ -7,7 +7,7 @@ import sys
 from collections.abc import AsyncIterator, Callable, Coroutine
 from typing import Any, TypeVar
 
-from path import Path
+from .path import Path
 
 __all__ = (
     "_wait_closed_compat",
