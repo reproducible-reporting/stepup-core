@@ -3,7 +3,7 @@
 """Watch for file changes and update the workflow accordingly.
 
 `Watcher` runs a single **watch phase** per `run_once()` call:
-it waits for changes reported by inotify,
+it waits for changes reported by the operating system,
 records the relevant ones,
 and ends by feeding them all to the workflow at once,
 after which the next build phase can start.
@@ -21,13 +21,14 @@ A directory that does not exist yet is watched as soon as it appears,
 see `AsyncInotifyWrapper.dir_loop`.
 
 `WatchfilesWrapper` offers the same interface on top of the `watchfiles` library.
-It is selected with `STEPUP_WATCHER=watchfiles`, see `select_watcher_backend`.
+`select_watcher_backend` decides which of the two is used.
 """
 
 import asyncio
 import concurrent.futures
 import contextlib
 import functools
+import importlib.util
 import logging
 import os
 import queue
@@ -35,46 +36,53 @@ import stat
 import sys
 import threading
 from collections.abc import Callable, Generator
+from typing import TYPE_CHECKING
 
 import attrs
 from path import Path
 
 from .asyncio import iter_until_stopped, wait_for_any_event
 from .enums import Change, HashUpdateCause
+from .exceptions import ConfigError
 from .executor import Executor
 from .hash_queue import HashQueue, gather_hashes
 from .reporter import ReporterClient
 from .sqlite3 import DBSession
 from .workflow import Workflow
 
+if TYPE_CHECKING:
+    from watchfiles._rust_notify import RustNotify
 
-def select_watcher_backend() -> str | None:
-    """Select the library that watches the file system.
 
-    The `STEPUP_WATCHER` environment variable selects either `asyncinotify` (Linux only)
-    or `watchfiles` (an optional dependency).
-    Without it, `asyncinotify` is used on Linux, and watch mode is unavailable elsewhere.
+def select_watcher_backend() -> str:
+    """Select the library that watches the file system in watch mode.
+
+    On Linux, `asyncinotify` is used by default,
+    and `STEPUP_WATCHER=watchfiles` selects the `watchfiles` library instead,
+    which is an optional dependency on this platform.
+    On other platforms, `watchfiles` is the only choice.
 
     Returns
     -------
     backend
-        The name of the library, or `None` when watch mode is unavailable.
+        The name of the library, `asyncinotify` or `watchfiles`.
+
+    Raises
+    ------
+    ConfigError
+        If `STEPUP_WATCHER` names a library that cannot be used on this platform,
+        or if the selected library is not installed.
     """
-    backend = os.environ.get("STEPUP_WATCHER", "")
-    if backend == "":
-        return "asyncinotify" if sys.platform == "linux" else None
-    if backend == "asyncinotify" and sys.platform != "linux":
-        raise ValueError("STEPUP_WATCHER=asyncinotify only works on Linux.")
-    if backend not in ("asyncinotify", "watchfiles"):
-        raise ValueError(f"STEPUP_WATCHER must be asyncinotify or watchfiles, got {backend!r}.")
+    choices = ("asyncinotify", "watchfiles") if sys.platform == "linux" else ("watchfiles",)
+    backend = os.environ.get("STEPUP_WATCHER", "") or choices[0]
+    if backend not in choices:
+        raise ConfigError(
+            f"STEPUP_WATCHER must be {' or '.join(choices)} on {sys.platform}, got {backend!r}."
+        )
+    if importlib.util.find_spec(backend) is None:
+        raise ConfigError(f"Watch mode needs the {backend} library, which is not installed.")
     return backend
 
-
-WATCHER_BACKEND = select_watcher_backend()
-"""The library that watches the file system, or `None` when watch mode is unavailable."""
-
-WATCHER_AVAILABLE = WATCHER_BACKEND is not None
-"""Whether watch mode is available."""
 
 if sys.platform == "linux":
     from asyncinotify import Inotify, Mask, Watch
@@ -90,15 +98,7 @@ else:
         pass
 
 
-# Importing watchfiles takes about 0.15 seconds (watchfiles 1.3.0, mostly spent on anyio),
-# so it is only imported when it is going to be used.
-if WATCHER_BACKEND == "watchfiles":
-    from watchfiles._rust_notify import RustNotify
-else:
-    RustNotify = None
-
-
-__all__ = ("WATCHER_AVAILABLE", "WATCHER_BACKEND", "Watcher")
+__all__ = ("Watcher", "select_watcher_backend")
 
 
 logger = logging.getLogger(__name__)
@@ -209,9 +209,8 @@ class Watcher:
         The iteration ends by informing the workflow of all the changes,
         after which StepUp starts the builder again (or exits).
         """
-        wrapper_class = (
-            WatchfilesWrapper if WATCHER_BACKEND == "watchfiles" else AsyncInotifyWrapper
-        )
+        backend = select_watcher_backend()
+        wrapper_class = WatchfilesWrapper if backend == "watchfiles" else AsyncInotifyWrapper
         async with wrapper_class(dir_queue=self.dir_queue) as wrapper:
             while not stop_event.is_set():
                 await wait_for_any_event(self.start_watching, stop_event, wrapper.stop_event)
@@ -519,6 +518,17 @@ _DELETED = 3
 """The code of a removed path in a batch from `RustNotify.watch`, see `watchfiles.Change`."""
 
 
+@functools.cache
+def _import_rust_notify() -> type["RustNotify"]:
+    """Import the class through which `WatchfilesWrapper` uses the `watchfiles` library.
+
+    The import is postponed until watch mode needs it,
+    because importing watchfiles takes about 0.15 seconds
+    (watchfiles 1.3.0, mostly spent on anyio).
+    """
+    return importlib.import_module("watchfiles._rust_notify").RustNotify
+
+
 @attrs.define
 class WatchfilesWrapper:
     """Interface between a `Watcher` instance and the `watchfiles` library.
@@ -636,10 +646,8 @@ class WatchfilesWrapper:
 
     async def __aenter__(self):
         """Start the `WatchfilesWrapper`."""
-        if RustNotify is None:
-            raise RuntimeError(
-                "The watchfiles library is only imported with STEPUP_WATCHER=watchfiles."
-            )
+        # Import here rather than in the reader thread, where a failure would surface late.
+        _import_rust_notify()
         loop = asyncio.get_running_loop()
         self.stop_event.clear()
         self._closing.clear()
@@ -1063,7 +1071,7 @@ def _create_generation(
         for path, real_path in real_paths.items():
             dirs.setdefault(real_path, []).append(path)
         try:
-            notify = RustNotify(
+            notify = _import_rust_notify()(
                 watch_paths=list(dirs),
                 debug=False,
                 force_polling=False,

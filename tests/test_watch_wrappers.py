@@ -12,6 +12,7 @@ from path import Path
 
 from stepup.core import watcher
 from stepup.core.enums import Change
+from stepup.core.exceptions import ConfigError
 from stepup.core.pytest import sort_change_runs
 from stepup.core.watcher import AsyncInotifyWrapper, WatchfilesWrapper, select_watcher_backend
 
@@ -33,8 +34,7 @@ async def wrapper(request, tmp_path, monkeypatch):
     """Provide a running wrapper that watches directories relative to an empty directory."""
     monkeypatch.chdir(tmp_path)
     if request.param is WatchfilesWrapper:
-        rust_notify = pytest.importorskip("watchfiles._rust_notify").RustNotify
-        monkeypatch.setattr(watcher, "RustNotify", rust_notify)
+        pytest.importorskip("watchfiles")
     async with request.param(dir_queue=asyncio.Queue()) as result:
         yield result
 
@@ -199,19 +199,52 @@ async def test_no_changes_lost_while_adding_watches(wrapper):
     await check(wrapper, expected)
 
 
-def test_select_watcher_backend(monkeypatch):
-    monkeypatch.delenv("STEPUP_WATCHER", raising=False)
-    monkeypatch.setattr(sys, "platform", "linux")
-    assert select_watcher_backend() == "asyncinotify"
-    monkeypatch.setattr(sys, "platform", "darwin")
-    assert select_watcher_backend() is None
-    monkeypatch.setenv("STEPUP_WATCHER", "watchfiles")
-    assert select_watcher_backend() == "watchfiles"
-    monkeypatch.setenv("STEPUP_WATCHER", "asyncinotify")
-    with pytest.raises(ValueError, match="only works on Linux"):
+@pytest.fixture
+def installed_watchers(monkeypatch):
+    """Pretend that both file watching libraries are installed, whatever the platform."""
+    monkeypatch.setattr(watcher.importlib.util, "find_spec", lambda name: object())
+
+
+@pytest.mark.parametrize(
+    ("platform", "value", "backend"),
+    [
+        ("linux", "", "asyncinotify"),
+        ("linux", "asyncinotify", "asyncinotify"),
+        ("linux", "watchfiles", "watchfiles"),
+        ("darwin", "", "watchfiles"),
+        ("darwin", "watchfiles", "watchfiles"),
+        ("win32", "", "watchfiles"),
+    ],
+)
+@pytest.mark.usefixtures("installed_watchers")
+def test_select_watcher_backend(monkeypatch, platform, value, backend):
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setenv("STEPUP_WATCHER", value)
+    assert select_watcher_backend() == backend
+
+
+@pytest.mark.parametrize(
+    ("platform", "value", "message"),
+    [
+        ("linux", "watchdog", "must be asyncinotify or watchfiles on linux, got 'watchdog'"),
+        ("darwin", "asyncinotify", "must be watchfiles on darwin, got 'asyncinotify'"),
+    ],
+)
+@pytest.mark.usefixtures("installed_watchers")
+def test_select_watcher_backend_rejects(monkeypatch, platform, value, message):
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setenv("STEPUP_WATCHER", value)
+    with pytest.raises(ConfigError, match=message):
         select_watcher_backend()
-    monkeypatch.setenv("STEPUP_WATCHER", "watchdog")
-    with pytest.raises(ValueError, match="must be asyncinotify or watchfiles"):
+
+
+def test_select_watcher_backend_not_installed(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setenv("STEPUP_WATCHER", "watchfiles")
+    monkeypatch.setattr(
+        watcher.importlib.util, "find_spec", lambda name: None if name == "watchfiles" else object()
+    )
+    with pytest.raises(ConfigError, match="needs the watchfiles library, which is not installed"):
         select_watcher_backend()
 
 

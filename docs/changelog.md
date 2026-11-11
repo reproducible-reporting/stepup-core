@@ -19,7 +19,21 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Added
+
+- Watch mode (`--watch` and `--watch-first`) is now also support on macOS, not only on Linux.
+  Outside Linux, StepUp watches the file system
+  with [watchfiles](https://pypi.org/project/watchfiles/),
+  which is now a dependency on those platforms.
+  On Linux, StepUp still uses inotify through asyncinotify,
+  because of its lower overhead and better accuracy.
+  Developers of StepUp can select the library with the environment variable `STEPUP_WATCHER`,
+  see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
+
+### Fixed
+
+- On macOS, the director no longer reports an error when the other side closes a connection
+  that the director is still using, which could happen at the end of a build.
 
 ## [4.0.3][] - 2026-09-19 {: #v4.0.3 }
 

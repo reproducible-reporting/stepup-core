@@ -11,7 +11,7 @@ set -euo pipefail
 REMOTE=$(git config --get macci.remote || true)
 RUNNER=${MACCI_RUNNER:-macos-latest}
 # Pinned, so that the Python version does not depend on what the runner image provides.
-PYTHON=${MACCI_PYTHON:-3.14}
+PYTHON=${MACCI_PYTHON:-3.15}
 
 WORKFLOW=macci.yaml
 # The workflow prints these markers around the output of the command.

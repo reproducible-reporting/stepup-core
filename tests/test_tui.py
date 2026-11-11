@@ -23,7 +23,7 @@ from stepup.core.config_loader import ConfigLoader
 from stepup.core.constants import PERF_DATA
 from stepup.core.director import DirectorHandler, interpret_jobs
 from stepup.core.enums import ReturnCode
-from stepup.core.exceptions import PathError, ToolError
+from stepup.core.exceptions import ConfigError, PathError, ToolError
 from stepup.core.rpc import SocketRPCServer, allow_rpc, is_rpc_allowed
 from stepup.core.tui import (
     _KEY_ACTIONS,
@@ -1022,6 +1022,43 @@ def test_async_build_returns_director_returncode(
     with contextlib.chdir(path_tmp):
         returncode = asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
     assert returncode == 3
+
+
+@pytest.mark.parametrize("flag", ["watch", "watch_first"])
+def test_async_build_rejects_bad_watcher_in_watch_mode(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch, flag: str
+) -> None:
+    """A bad `STEPUP_WATCHER` is a usage error in watch mode, raised before the director starts."""
+    (path_tmp / "plan.py").touch()
+    monkeypatch.setenv("STEPUP_WATCHER", "watchdog")
+
+    async def fail_create_subprocess_exec(*args, **kwargs):
+        raise AssertionError("The director must not be started.")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fail_create_subprocess_exec)
+    args = _base_build_args(progress=False, **{flag: True})
+    with contextlib.chdir(path_tmp), pytest.raises(ConfigError, match="STEPUP_WATCHER must be"):
+        asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
+
+
+def test_async_build_ignores_watcher_without_watch_mode(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without watch mode, the value of `STEPUP_WATCHER` does not matter."""
+    (path_tmp / "plan.py").touch()
+    monkeypatch.setenv("STEPUP_WATCHER", "watchdog")
+    fake_reporter_handler = FakeReporterHandler()
+    monkeypatch.setattr("stepup.core.tui.ReporterHandler", lambda *a, **kw: fake_reporter_handler)
+    fake_process = FakeProcess(returncode=0)
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        return fake_process
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+    args = _base_build_args(progress=False)
+    with contextlib.chdir(path_tmp):
+        returncode = asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
+    assert returncode == 0
 
 
 def _pre_interrupted_signal_handler(reporter_handler, process_director) -> TerminalSignalHandler:

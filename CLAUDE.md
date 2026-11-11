@@ -13,7 +13,8 @@ when working with code in this repository.
 StepUp Core is a dynamic build tool implemented in Python.
 It runs a persistent **director** process that manages a workflow graph (stored in SQLite),
 dispatches jobs to a **step executor**,
-and reacts to file system changes (via inotify) to re-run only outdated steps.
+and reacts to file system changes (via inotify on Linux, watchfiles elsewhere)
+to re-run only outdated steps.
 
 Guidance that applies to only part of the repo lives next to the code it governs:
 

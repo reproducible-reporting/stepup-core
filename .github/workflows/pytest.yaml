@@ -26,29 +26,43 @@ on:
 
 jobs:
   tests:
-    name: ${{ matrix.suite.name }} (${{ matrix.platform.python-version }}, ${{ matrix.platform.resolution }})
+    name: ${{ matrix.suite.name }} (${{ matrix.platform.runner }}, ${{ matrix.platform.python-version }}, ${{ matrix.platform.resolution }}, ${{ matrix.platform.watcher }})
     permissions:
       contents: read
-    # Failures on the development version of Python are tolerated,
-    # and they do not cancel the other jobs in the matrix.
-    continue-on-error: ${{ matrix.platform.python-version == '3.15-dev' }}
     env:
       # Enforce strict checks instead of trying to repair fixable issues.
       STEPUP_DEBUG: 1
       # RPC timeout is set shorter to speed up tests in case of failures.
       STEPUP_SYNC_RPC_TIMEOUT: 10
+      STEPUP_WATCHER: ${{ matrix.platform.watcher }}
     strategy:
       matrix:
         platform:
           - runner: ubuntu-24.04
             python-version: '3.11'
             resolution: lowest-direct
+            watcher: asyncinotify
+            extras: tests
           - runner: ubuntu-26.04
-            python-version: '3.14'
+            python-version: '3.15'
             resolution: highest
+            watcher: asyncinotify
+            extras: tests
           - runner: ubuntu-26.04
-            python-version: '3.15-dev'
+            python-version: '3.15'
             resolution: highest
+            watcher: watchfiles
+            extras: tests,watchfiles
+          - runner: macos-26
+            python-version: '3.11'
+            resolution: lowest-direct
+            watcher: watchfiles
+            extras: tests
+          - runner: macos-26
+            python-version: '3.15'
+            resolution: highest
+            watcher: watchfiles
+            extras: tests
         # The suites run as separate jobs, because the integration tests dominate the run time.
         suite:
           - name: unit
@@ -88,11 +102,11 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.UV_CACHE_DIR }}
-          key: uv-${{ matrix.platform.runner }}-${{ steps.python.outputs.python-version }}-${{ matrix.platform.resolution }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: uv-${{ matrix.platform.runner }}-${{ steps.python.outputs.python-version }}-${{ matrix.platform.resolution }}-
+          key: uv-${{ matrix.platform.runner }}-${{ steps.python.outputs.python-version }}-${{ matrix.platform.resolution }}-${{ matrix.platform.watcher }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: uv-${{ matrix.platform.runner }}-${{ steps.python.outputs.python-version }}-${{ matrix.platform.resolution }}-${{ matrix.platform.watcher }}-
       - name: Install with the test dependencies
         timeout-minutes: 3
-        run: uv pip install --system --resolution ${{ matrix.platform.resolution }} -e .[tests]
+        run: uv pip install --system --resolution ${{ matrix.platform.resolution }} -e .[${{ matrix.platform.extras }}]
       - name: Prune the uv cache
         if: steps.uv-cache.outputs.cache-hit != 'true'
         timeout-minutes: 1

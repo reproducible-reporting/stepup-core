@@ -18,7 +18,7 @@ from path import Path
 from .constants import DIRECTOR_LOG, STEPUP_DIR
 from .enums import ReturnCode
 from .utils import scan_director_log
-from .watcher import WATCHER_BACKEND
+from .watcher import select_watcher_backend
 
 __all__ = ("ConventionTests", "remove_hashes", "run_example", "run_plan")
 
@@ -85,7 +85,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
     All files in the srcdir starting with `expected_` will be compared to corresponding files
     starting with `current_` in the temporary directory after completion of the example.
-    With `STEPUP_WATCHER=watchfiles`,
+    When the file watcher is `watchfiles`,
     the order of consecutive `UPDATED` and `DELETED` lines is not compared,
     because the changes observed together are reported in sorted order,
     see `stepup.core.watcher.WatchfilesWrapper`.
@@ -200,8 +200,9 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
         print(f"########## main.sh return code: {stepup_proc.returncode} ##########")
 
     # Check late for errors, to maximize the printed output.
+    sort_changes = select_watcher_backend() == "watchfiles"
     for path_exp, cur, exp in pairs:
-        if WATCHER_BACKEND == "watchfiles":
+        if sort_changes:
             cur = sort_change_runs(cur)
             exp = sort_change_runs(exp)
         assert cur == exp, path_exp

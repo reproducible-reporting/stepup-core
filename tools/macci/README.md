@@ -114,7 +114,7 @@ the following environment variables change the defaults:
 
 - `MACCI_RUNNER` (default `macos-latest`):
   The label of the GitHub-hosted runner, e.g. `macos-15-intel` for an Intel Mac.
-- `MACCI_PYTHON` (default `3.14`):
+- `MACCI_PYTHON` (default `3.15`):
   The Python version that uv installs on the runner, e.g. `3.11` for the oldest supported one.
 
 The script also works for other StepUp packages,

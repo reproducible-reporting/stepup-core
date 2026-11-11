@@ -53,7 +53,7 @@ from .startup import resume_from_db
 from .stepinfo import StepInfo
 from .tool import positive_int
 from .usage import CgroupMemorySampler, finalize_resource_usage
-from .watcher import WATCHER_AVAILABLE, Watcher
+from .watcher import Watcher
 from .workflow import Workflow
 
 __all__ = ("DirectorHandler", "ServeConfig", "ServeResult", "interpret_jobs", "serve")
@@ -333,21 +333,20 @@ def parse_args() -> argparse.Namespace:
         "directory (trailing slash included). May be repeated. Director-internal: the "
         "TUI classifies raw CLI targets into --target/--target-dir; see tui.py.",
     )
-    if WATCHER_AVAILABLE:
-        parser.add_argument(
-            "--watch",
-            default=False,
-            action=argparse.BooleanOptionalAction,
-            help="Watch file changes after completing the build phase. "
-            "When not given, the director exits after completing the build phase.",
-        )
-        parser.add_argument(
-            "--watch-first",
-            default=False,
-            action=argparse.BooleanOptionalAction,
-            help="Exit watch phase and start the builder after the first file change. "
-            "This implies --watch.",
-        )
+    parser.add_argument(
+        "--watch",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Watch file changes after completing the build phase. "
+        "When not given, the director exits after completing the build phase.",
+    )
+    parser.add_argument(
+        "--watch-first",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Exit watch phase and start the builder after the first file change. "
+        "This implies --watch.",
+    )
     parser.add_argument(
         "--yappi",
         default=False,
@@ -355,12 +354,8 @@ def parse_args() -> argparse.Namespace:
         help="Profile the director with Yappi (must be installed).",
     )
     args = parser.parse_args()
-    if WATCHER_AVAILABLE:
-        if args.watch_first:
-            args.watch = True
-    else:
-        args.watch = False
-        args.watch_first = False
+    if args.watch_first:
+        args.watch = True
     return args
 
 

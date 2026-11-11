@@ -56,7 +56,7 @@ from .utils import (
     query_director_log,
     scan_director_log,
 )
-from .watcher import WATCHER_AVAILABLE
+from .watcher import select_watcher_backend
 
 __all__ = ("add_boot_subcommand", "add_build_subcommand")
 
@@ -187,24 +187,22 @@ def _add_build_parser(
         "Merged with (not overriding) config files, the STEPUP_BUILD_RESOURCES env var, "
         "and any earlier --resources on the command line.",
     )
-    if WATCHER_AVAILABLE:
-        group.add_argument(
-            "-w",
-            "--watch",
-            default=False,
-            action=argparse.BooleanOptionalAction,
-            help="StepUp will watch for file changes after all runnable steps have been executed. "
-            "By pressing r, it will rerun steps that have become pending due to the file changes. "
-            "(Only supported on Linux.)",
-        )
-        group.add_argument(
-            "-W",
-            "--watch-first",
-            default=False,
-            action=argparse.BooleanOptionalAction,
-            help="Start the builder after observing the first file change in watch mode. "
-            "This implies --watch. (Only supported on Linux.)",
-        )
+    group.add_argument(
+        "-w",
+        "--watch",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="StepUp will watch for file changes after all runnable steps have been executed. "
+        "By pressing r, it will rerun steps that have become pending due to the file changes.",
+    )
+    group.add_argument(
+        "-W",
+        "--watch-first",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Start the builder after observing the first file change in watch mode. "
+        "This implies --watch.",
+    )
 
     group = parser.add_argument_group("execution environment")
     group.add_argument(
@@ -377,6 +375,8 @@ async def _async_build(args: argparse.Namespace) -> int:
     ToolError
         If `plan.py` does not exist in the project root,
         or if a director is already running (see `_check_no_running_director`).
+    ConfigError
+        If watch mode is requested with an unusable file watcher (see `select_watcher_backend`).
     """
     stepup_root = get_stepup_root()
     targets, target_dirs = _normalize_targets(args.targets, stepup_root)
@@ -387,6 +387,10 @@ async def _async_build(args: argparse.Namespace) -> int:
     # Sanity check before creating a subdirectory.
     if not PLAN_PY.is_file():
         raise ToolError("File plan.py does not exist.")
+    if args.watch or args.watch_first:
+        # The director selects the file watcher itself,
+        # but a bad choice is reported here as a usage error instead of a crash of the director.
+        select_watcher_backend()
 
     _reset_stepup_dir()
 
@@ -600,11 +604,10 @@ def _build_director_argv(
         argv.append("--sqllog")
     if args.joblog:
         argv.append("--joblog")
-    if WATCHER_AVAILABLE:
-        if args.watch:
-            argv.append("--watch")
-        if args.watch_first:
-            argv.append("--watch-first")
+    if args.watch:
+        argv.append("--watch")
+    if args.watch_first:
+        argv.append("--watch-first")
     if args.yappi:
         argv.append("--yappi")
     if args.cgroup:

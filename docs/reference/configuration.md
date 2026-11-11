@@ -201,6 +201,17 @@ and cannot be configured through config files or command-line options.
     which some calls use because the director answers them
     only when the workflow is ready for it.
 
+`STEPUP_WATCHER`
+
+:   The library that watches the file system in watch mode,
+    i.e. with the `--watch` or `--watch--first` option of `stepup build`.
+    This is a setting for developers of StepUp, to test both libraries on Linux.
+    End users can leave it unset.
+    On Linux, the default is `asyncinotify`,
+    and `watchfiles` can be selected after installing it with `pip install 'stepup[watchfiles]'`.
+    On other platforms, `watchfiles` is the default and the only accepted value.
+    Without watch mode, this variable is ignored.
+
 ## Settings for All Subcommands
 
 Each entry below lists the config file key, environment variable, and command-line option
@@ -312,7 +323,6 @@ alphabetically within each group.
 :   Set to `true` to enable watch mode.
     In watch mode, StepUp will monitor the file system for changes
     and rerun affected steps after pressing the `r` key in the terminal user interface.
-    Only supported on Linux.
 
 `watch_first` / `STEPUP_BUILD_WATCH_FIRST` / `--watch-first`, `-W`, `--no-watch-first`
 
@@ -320,7 +330,6 @@ alphabetically within each group.
     when relevant file changes are observed,
     without needing to press the `r` key.
     This implies `watch = true`.
-    Only supported on Linux.
 
 ### Execution Environment
 

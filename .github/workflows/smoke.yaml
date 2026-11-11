@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-# Simply check that something works on macOS
+# Simply check that something works on macOS and Ubuntu
 name: smoke
 on:
   push:
@@ -28,18 +28,26 @@ on:
 
 jobs:
   tests:
-    name: Smoke tests
+    name: Smoke tests (${{ matrix.runner }}, ${{ matrix.python-version }}, ${{ matrix.resolution }})
     timeout-minutes: 4
     permissions:
       contents: read
     strategy:
       matrix:
         include:
-          - python-version: '3.11'
+          - runner: macos-latest
+            python-version: '3.11'
             resolution: lowest-direct
-          - python-version: '3.14'
+          - runner: macos-latest
+            python-version: '3.15'
             resolution: highest
-    runs-on: macos-latest
+          - runner: ubuntu-24.04
+            python-version: '3.11'
+            resolution: lowest-direct
+          - runner: ubuntu-26.04
+            python-version: '3.15'
+            resolution: highest
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -53,7 +61,13 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
-      - name: Install Graphviz
+      - name: Install Graphviz (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz
+      - name: Install Graphviz (macOS)
+        if: runner.os == 'macOS'
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
