@@ -22,5 +22,5 @@ grep hello out.txt
 grep -qFx "st:data/a/" current_graph.txt
 grep -qFx "st:data/b/" current_graph.txt
 # The directory match itself must not create a spurious file node in the graph.
-! grep -qFx "file:data/a/" current_graph.txt
-! grep -qFx "file:data/b/" current_graph.txt
+! grep -qFx "file:data/a/" current_graph.txt || exit 1
+! grep -qFx "file:data/b/" current_graph.txt || exit 1

@@ -25,5 +25,5 @@ wait
 
 [[ -f greeting.txt ]] || exit 1
 grep world greeting.txt
-! grep -q hello greeting.txt
+! grep -q hello greeting.txt || exit 1
 [[ ! -f .stepup/fail.log ]] || exit 1

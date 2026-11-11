@@ -32,6 +32,7 @@ which each of them implements on its own because one is asynchronous and the oth
 
 import asyncio
 import contextlib
+import errno
 import importlib
 import inspect
 import logging
@@ -39,7 +40,7 @@ import os
 import pickle
 import socket
 import traceback
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Iterator
 from functools import cache, partial
 from typing import Any, NoReturn, TypeVar
 
@@ -165,6 +166,33 @@ def _decode_header(header: bytes) -> tuple[int, int]:
 #
 
 
+def _is_peer_gone(exc: BaseException) -> bool:
+    """Return whether an exception only means that the peer has closed the connection.
+
+    Python raises a subclass of `ConnectionError` for most errors of this kind,
+    such as `EPIPE` and `ECONNRESET`, but a plain `OSError` for `ENOTCONN`.
+    The latter is what macOS reports when writing to a Unix domain socket that the peer closed,
+    in the situation where Linux reports `EPIPE`.
+    (Observed with Python 3.14 on a GitHub-hosted macOS runner.)
+    """
+    return isinstance(exc, ConnectionError) or (
+        isinstance(exc, OSError) and exc.errno == errno.ENOTCONN
+    )
+
+
+@contextlib.contextmanager
+def _suppress_peer_gone() -> Iterator[None]:
+    """Ignore an exception that only means that the peer has closed the connection.
+
+    This is `contextlib.suppress(ConnectionError)`, extended as described in `_is_peer_gone`.
+    """
+    try:
+        yield
+    except OSError as exc:
+        if not _is_peer_gone(exc):
+            raise
+
+
 async def _recv_stream_message(reader: asyncio.StreamReader) -> tuple[int, bytes | None] | None:
     """Read a single RPC message from an `asyncio` stream.
 
@@ -187,10 +215,14 @@ async def _recv_stream_message(reader: asyncio.StreamReader) -> tuple[int, bytes
     try:
         call_id, size = _decode_header(await reader.readexactly(HEADER_SIZE))
         body = None if size == 0 else await reader.readexactly(size)
-    except (asyncio.IncompleteReadError, ConnectionError):
-        # IncompleteReadError is a graceful EOF (peer closed cleanly). A reset while a read
-        # is pending instead surfaces as a raw ConnectionError (e.g. ConnectionResetError).
-        # Both mean the same thing here: the peer is gone, so the RPC loop should stop.
+    except asyncio.IncompleteReadError:
+        # A graceful EOF: the peer closed the connection cleanly.
+        return None
+    except OSError as exc:
+        # A reset while a read is pending surfaces as an `OSError` instead.
+        # It means the same thing here: the peer is gone, so the RPC loop should stop.
+        if not _is_peer_gone(exc):
+            raise
         return None
     return call_id, body
 
@@ -643,10 +675,10 @@ class RPCServerConnection:
         finally:
             # A peer that is already gone cannot be told that the connection is closing,
             # which is no reason to leave it open on this side.
-            with contextlib.suppress(ConnectionError):
+            with _suppress_peer_gone():
                 await self.writer.drain()
             self.writer.close()
-            with contextlib.suppress(ConnectionError):
+            with _suppress_peer_gone():
                 await self.writer.wait_closed()
 
     async def _recv_loop(self):
@@ -711,17 +743,16 @@ class RPCServerConnection:
                 try:
                     response = _encode_body(await task)
                     await _send_stream_message(self.writer, call_id, response)
-                except ConnectionError:
-                    # The peer is already gone: no point notifying it or serving this connection
-                    # any further.
-                    self._stop_event.set()
-                    return
-                except Exception:
+                except Exception as exc:
+                    if _is_peer_gone(exc):
+                        # No point notifying the peer or serving this connection any further.
+                        self._stop_event.set()
+                        return
                     # Some other failure, e.g. an unpicklable result.
                     # Try to tell the client that no reply is coming,
                     # with the empty body of the wire format at the top of this module.
                     # Don't let a doomed notification attempt mask the original exception.
-                    with contextlib.suppress(ConnectionError):
+                    with _suppress_peer_gone():
                         await _send_stream_message(self.writer, call_id, None)
                     raise
 
@@ -1171,7 +1202,7 @@ class SocketAsyncRPCClient(_SocketClientState, BaseAsyncRPCClient):
                 # the wait below happens while the cancellation is already unwinding,
                 # where a second cancellation cannot break it out anymore.
                 self._writer.transport.abort()
-            with contextlib.suppress(ConnectionError):
+            with _suppress_peer_gone():
                 await self._writer.wait_closed()
             await self._recv_task
 

@@ -37,7 +37,7 @@ stepup join
 grep "stepup.core.exceptions.InputNotFoundError: Dynamic inputs are not available yet." .stepup/fail.log || exit 1
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 [[ ! -f never.txt ]] || exit 1

@@ -11,7 +11,7 @@ stepup graph current_graph1
 stepup join
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 # The detached step ran to completion and recorded its output.
@@ -29,7 +29,7 @@ stepup graph current_graph2
 stepup join
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1
 
 # work.py was skipped: it neither rewrote the trigger nor bumped the counter.

@@ -14,7 +14,7 @@ stepup join
 grep -q hello out.txt
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1
 
 # With the director shut down, inspect the recorded subprocess invocation.

@@ -79,6 +79,10 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     The ` & #` in such a line is removed before the example runs,
     so that the reporter output is captured for comparison with the expected output.
 
+    The example runs with `STEPUP_BUILD_DURATION=0`, whatever the environment of the caller,
+    because measured durations make the order of the steps depend on the machine.
+    An example that needs them passes `--duration` to `stepup build`.
+
     All files in the srcdir starting with `expected_` will be compared to corresponding files
     starting with `current_` in the temporary directory after completion of the example.
     With `STEPUP_WATCHER=watchfiles`,
@@ -101,13 +105,11 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     shutil.copy(srcdir.parent / "example.rc", workdir.parent / "example.rc")
 
     # Rewrite the script to activate the commented-out redirection of the stepup output.
-    sed_proc = await asyncio.create_subprocess_shell(
-        r"sed -i -e '/^\(stepup\|sb\)/ s/ & #//' main.sh",
-        stdin=subprocess.DEVNULL,
-        cwd=workdir,
+    # This is done in Python, because the `sed` of macOS does not support GNU extensions.
+    path_main = workdir / "main.sh"
+    path_main.write_text(
+        re.sub(r"^((?:stepup|sb).*?) & #", r"\1", path_main.read_text(), flags=re.MULTILINE)
     )
-    await sed_proc.wait()
-    assert sed_proc.returncode == 0
     # The trace of `main.sh` goes to a file instead of the inherited streams,
     # so that it survives a timeout and is printed as one block, whatever happens.
     with open(workdir / MAIN_LOG, "w") as main_log:
@@ -117,7 +119,13 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             stdout=main_log,
             stderr=subprocess.STDOUT,
             cwd=workdir,
-            env=os.environ | {"PYTHONUNBUFFERED": "yes", "COLUMNS": "80", "STEPUP_DEBUG": "1"},
+            env=os.environ
+            | {
+                "PYTHONUNBUFFERED": "yes",
+                "COLUMNS": "80",
+                "STEPUP_DEBUG": "1",
+                "STEPUP_BUILD_DURATION": "0",
+            },
         )
     try:
         async with asyncio.timeout(EXAMPLE_TIMEOUT):

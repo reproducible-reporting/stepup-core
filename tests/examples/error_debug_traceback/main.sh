@@ -23,7 +23,7 @@ grep -q "frozen runpy" .stepup/fail.log || exit 1
 ! grep -q "Shortened traceback" .stepup/fail.log || exit 1
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 # With STEPUP_DEBUG=1, `stepup build` scans its own director log and adds RETURN_CODE_INTERNAL
 # for every finding. The absence of that bit shows that the reported usage error, which the
 # director logs before hiding it from the client, is not mistaken for an internal problem.

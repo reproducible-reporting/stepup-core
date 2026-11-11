@@ -32,6 +32,6 @@ stepup join
 wait
 
 [[ -f plan.py ]] || exit 1
-! grep -q AAAA current_variables.txt
+! grep -q AAAA current_variables.txt || exit 1
 grep BBBB current_variables.txt
 cp current_variables.txt current_variables2.txt

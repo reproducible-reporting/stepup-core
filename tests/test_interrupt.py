@@ -67,8 +67,14 @@ def find_descendants(pid: int) -> dict[int, str]:
     Descendants rather than children, because a step that is a shell pipeline keeps the
     shell as a wrapper around the process that does the actual work.
     """
+    # An empty header suppresses the header line, also with the `ps` of macOS,
+    # which has no `--no-headers`.
+    # The columns are separate options, because a header extends to the end of its option.
     result = subprocess.run(
-        ["ps", "-eo", "pid,ppid,args", "--no-headers"], capture_output=True, text=True, check=True
+        ["ps", "-e", "-o", "pid=", "-o", "ppid=", "-o", "args="],
+        capture_output=True,
+        text=True,
+        check=True,
     )
     commands = {}
     children = {}
@@ -274,13 +280,14 @@ SUSPEND_CHAR = b"\x1a"
 STATES_STOPPED = "T"
 """The process state of a suspended process."""
 
-STATES_RUNNING = "RSD"
+STATES_RUNNING = "RSDUI"
 """The process states of a process that is not suspended.
 
-Uninterruptible sleep (`D`) counts as running here,
+Uninterruptible sleep (`D`, or `U` on macOS) counts as running here,
 because a process waiting for a system call to return is not stopped.
 It is a state a loaded machine makes easy to catch,
 and rejecting it would turn a busy disk into a test failure.
+macOS also reports a process that has been sleeping for more than 20 seconds as idle (`I`).
 """
 
 JOB_CONTROL_BOOTSTRAP = """
@@ -311,9 +318,12 @@ sys.exit(os.waitstatus_to_exitcode(status))
 
 def proc_state(pid: int) -> str:
     """Return the single-letter process state of `pid`, e.g. `S` (sleeping) or `T` (stopped)."""
-    stat = (Path("/proc") / str(pid) / "stat").read_text()
-    # The command in the second field may contain spaces and parentheses.
-    return stat[stat.rindex(")") + 2]
+    # `ps` works on macOS, unlike `/proc`.
+    # The state may be followed by modifiers, e.g. `Ss+` on macOS.
+    result = subprocess.run(
+        ["ps", "-o", "state=", "-p", str(pid)], capture_output=True, text=True, check=True
+    )
+    return result.stdout.strip()[0]
 
 
 def is_raw(master: int) -> bool:
@@ -422,7 +432,11 @@ def stepup_job_on_pty(path_tmp: Path):
             # SIGKILL also reaches a process left stopped by a failed test.
             with contextlib.suppress(ProcessLookupError):
                 os.kill(pid, signal.SIGKILL)
-        process.wait()
+        # On macOS, a process that closes its controlling terminal while exiting
+        # waits until the output it left behind has been read.
+        while process.poll() is None:
+            drain(master)
+            time.sleep(0.01)
         os.close(master)
 
 

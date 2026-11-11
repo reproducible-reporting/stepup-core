@@ -46,7 +46,7 @@ stepup graph current_graph3
 stepup join
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_WARNING}" ]] || exit 1
 
 grep -F "target(s) are not produced by any step in the workflow: nope.txt" .stepup/warning.log

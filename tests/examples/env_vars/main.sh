@@ -21,6 +21,6 @@ wait
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 grep AAAA current_variables.txt
-# DFTHYH is set in the shell but not requested, so it must not be recorded.
-! grep -q DFTHYH current_variables.txt
+# DFTHYH is set in the shell but not requested, so the graph must not record it as used.
+! grep -q DFTHYH current_graph1.txt || exit 1
 cp current_variables.txt current_variables1.txt

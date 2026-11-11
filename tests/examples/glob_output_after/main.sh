@@ -13,8 +13,8 @@ stepup join
 wait
 
 # Eager check (b): the same message text as glob_output_before, independent of order.
-grep -F "Glob pattern (*.txt) registered by step (./plan.py) matches (out.txt), which step (touch out.txt) builds." .stepup/fail.log
+grep -F "Glob pattern (sub/*.txt) registered by step (./plan.py) matches (sub/out.txt), which step (touch sub/out.txt) builds." .stepup/fail.log
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-[[ ! -f out.txt ]] || exit 1
+[[ ! -f sub/out.txt ]] || exit 1

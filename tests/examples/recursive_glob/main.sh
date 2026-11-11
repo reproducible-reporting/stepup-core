@@ -16,5 +16,5 @@ wait
 [[ -f plan.py ]] || exit 1
 grep 'inp"' current_inp.json
 grep 'out"' current_out.json
-[[ $(wc -l current_inp.json | cut -d' ' -f1) -eq 8 ]] || exit 1
-[[ $(wc -l current_out.json | cut -d' ' -f1) -eq 8 ]] || exit 1
+[[ $(wc -l < current_inp.json) -eq 8 ]] || exit 1
+[[ $(wc -l < current_out.json) -eq 8 ]] || exit 1

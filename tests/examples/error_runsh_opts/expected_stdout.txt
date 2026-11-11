@@ -2,10 +2,10 @@
    PHASE │ build
    START │ ./plan.py
  SUCCESS │ ./plan.py
-   START │ ls --this-option-does-not-exist
-    FAIL │ ls --this-option-does-not-exist
+   START │ grep --this-option-does-not-exist
+    FAIL │ grep --this-option-does-not-exist
 ──────────────────────────────── Failed command ────────────────────────────────
-ls --this-option-does-not-exist  # exit=2
+grep --this-option-does-not-exist  # exit=2
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────

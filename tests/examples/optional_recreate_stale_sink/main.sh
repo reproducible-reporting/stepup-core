@@ -13,7 +13,7 @@ stepup wait
 stepup graph current_graph1
 stepup join
 
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1
 
 [[ -f a/hop2.txt ]] || exit 1
@@ -44,7 +44,7 @@ stepup wait
 stepup graph current_graph2
 stepup join
 
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_PENDING}" ]] || exit 1
 
 [[ -f a/hop2.txt ]] || exit 1

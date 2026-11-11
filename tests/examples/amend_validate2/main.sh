@@ -17,5 +17,5 @@ stepup join
 [[ -f pong.txt ]] || exit 1
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_PENDING}" ]] || exit 1

@@ -13,7 +13,7 @@ stepup graph current_graph
 stepup join
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_PENDING)) ]] || exit 1
 
 # Check files that are expected to be present and/or missing.

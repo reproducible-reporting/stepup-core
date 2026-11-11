@@ -4,11 +4,8 @@
  SUCCESS │ ./plan.py
    START │ echo "spam" > first.txt
  SUCCESS │ echo "spam" > first.txt
-   START │ cp -v first.txt second.txt
- SUCCESS │ cp -v first.txt second.txt
-─────────────────────────────── Standard output ────────────────────────────────
-'first.txt' -> 'second.txt'
-────────────────────────────────────────────────────────────────────────────────
+   START │ cp first.txt second.txt
+ SUCCESS │ cp first.txt second.txt
 DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch

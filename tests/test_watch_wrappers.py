@@ -117,7 +117,7 @@ async def test_replace_file(wrapper):
     os.remove("a.txt")
     write("a.txt", "new")
     seen = await check(wrapper, {(Change.DELETED, "a.txt"), (Change.UPDATED, "a.txt")})
-    assert seen[0] == (Change.DELETED, "a.txt")
+    # FSEvents (macOS) may also report the creation of the file before the watch started.
     assert seen[-1] == (Change.UPDATED, "a.txt")
 
 

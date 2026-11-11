@@ -13,7 +13,7 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [dynamic]
              creator   root:
               source   file:plan.py
-             product   step:cp -v first.txt second.txt
+             product   step:cp first.txt second.txt
              product   step:echo "spam" > first.txt
 
 step:echo "spam" > first.txt
@@ -27,9 +27,9 @@ file:first.txt
                state = BUILT
              creator   step:echo "spam" > first.txt
               source   step:echo "spam" > first.txt
-                sink   step:cp -v first.txt second.txt
+                sink   step:cp first.txt second.txt
 
-step:cp -v first.txt second.txt
+step:cp first.txt second.txt
                state = SUCCEEDED
                 need = DEFAULT
              creator   step:./plan.py
@@ -39,5 +39,5 @@ step:cp -v first.txt second.txt
 
 file:second.txt
                state = BUILT
-             creator   step:cp -v first.txt second.txt
-              source   step:cp -v first.txt second.txt
+             creator   step:cp first.txt second.txt
+              source   step:cp first.txt second.txt

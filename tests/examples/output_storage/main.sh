@@ -18,7 +18,7 @@ stepup join
 grep -F "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" .stepup/success.log
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; set -e
+set +e; wait $PID; set -e
 
 # With the director shut down, inspect the persisted output.
 ./checkdb.py

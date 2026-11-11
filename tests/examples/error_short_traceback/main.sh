@@ -32,7 +32,7 @@ grep -q "Exception in RPC call" .stepup/director.log || exit 1
 grep -q "stepup.core.exceptions.CyclicError" .stepup/director.log || exit 1
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 # Check files that are expected to be present and/or missing.

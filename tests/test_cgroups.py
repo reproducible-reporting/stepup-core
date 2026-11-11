@@ -3,12 +3,17 @@
 """Unit tests for stepup.core.cgroups"""
 
 import os
+import sys
 
 import pytest
 
 from stepup.core import cgroups
 from stepup.core.cgroups import find_own_memory_cgroup, get_ncore_from_cgroup
 from stepup.core.exceptions import CgroupError
+
+# Elsewhere, every function under test raises a `CgroupError` before reading the fake files.
+# The tests of that error replace `sys.platform` themselves, so they still run on Linux.
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="Cgroups only exist on Linux.")
 
 
 def test_own_cgroup_path_no_unified_hierarchy(monkeypatch, path_tmp):

@@ -16,5 +16,5 @@ grep -F './work.py plan '"'"'{"inp": null, "config": "default"}'"'" .stepup/succ
 grep -F './work.py run '"'"'{"inp": null, "out": null}'"'" .stepup/success.log
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1

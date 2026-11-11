@@ -12,7 +12,7 @@ stepup graph current_graph1
 stepup join
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1
 
 # Replace the static input by a directory, which StepUp cannot hash.
@@ -30,7 +30,7 @@ stepup join
 
 # Wait for background processes, if any.
 # The scheduler drains because a file could not be hashed: 32
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_DRAINED}" ]] || exit 1
 
 # Check that the error message was logged.

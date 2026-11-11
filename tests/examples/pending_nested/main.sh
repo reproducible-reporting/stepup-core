@@ -44,7 +44,7 @@ stepup join
 
 # Wait for background processes, if any.
 # There must be pending steps.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_PENDING}" ]] || exit 1
 
 # Check that all outputs have become outdated.

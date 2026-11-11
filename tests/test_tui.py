@@ -833,6 +833,18 @@ def test_signal_handler_sig_unset_without_signal(
     assert signal_handler.sig is None
 
 
+def _terminal_attrs(fd: int) -> list:
+    """Return the attributes of a terminal, leaving out the state bit `PENDIN`.
+
+    The macOS kernel sets `PENDIN` when a terminal switches to canonical mode,
+    and ignores it in the attributes passed to `tcsetattr`,
+    so restoring the original attributes does not restore this bit.
+    """
+    attrs = termios.tcgetattr(fd)
+    attrs[3] &= ~termios.PENDIN
+    return attrs
+
+
 def _run_suspend_handler(
     suspend_handler: SuspendHandler,
     monkeypatch: pytest.MonkeyPatch,
@@ -899,7 +911,7 @@ def test_suspend_handler_hands_the_terminal_over_and_back(monkeypatch: pytest.Mo
     monkeypatch.setattr("stepup.core.tui._terminal_broadcasts", lambda sig, pid: True)
     primary_fd, secondary_fd = pty.openpty()
     try:
-        before = termios.tcgetattr(secondary_fd)
+        before = _terminal_attrs(secondary_fd)
         raw_terminal = RawTerminal(secondary_fd)
         raw_terminal.enter()
         suspend_handler = SuspendHandler(FakeReporterHandler(), FakeProcess(), raw_terminal)
@@ -908,11 +920,11 @@ def test_suspend_handler_hands_the_terminal_over_and_back(monkeypatch: pytest.Mo
         _run_suspend_handler(
             suspend_handler,
             monkeypatch,
-            on_stop=lambda: while_stopped.append(termios.tcgetattr(secondary_fd)),
+            on_stop=lambda: while_stopped.append(_terminal_attrs(secondary_fd)),
         )
 
         assert while_stopped == [before]
-        after = termios.tcgetattr(secondary_fd)
+        after = _terminal_attrs(secondary_fd)
         assert not after[3] & termios.ICANON
         assert not after[3] & termios.ECHO
     finally:
@@ -1130,7 +1142,7 @@ class _FakeDirectorHandler:
 
 
 def test_keyboard_reports_unreachable_director(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+    dir_sockets: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A keystroke sent while the director's socket does not exist is reported, not raised.
 
@@ -1142,7 +1154,7 @@ def test_keyboard_reports_unreachable_director(
     monkeypatch.setattr("stepup.core.tui._iter_keystrokes", _fixed_keystrokes(["r"]))
     fake_reporter_handler = FakeReporterHandler()
     stop_event = asyncio.Event()
-    socket_path = path_tmp / "no-such-socket"
+    socket_path = dir_sockets / "no-such-socket"
     asyncio.run(
         asyncio.wait_for(keyboard(socket_path, fake_reporter_handler, stop_event), timeout=5)
     )
@@ -1153,13 +1165,13 @@ def test_keyboard_reports_unreachable_director(
 
 
 def test_keyboard_survives_director_disappearing(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+    dir_sockets: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Losing one keystroke to an unreachable director must not stop the loop."""
     monkeypatch.setattr("stepup.core.tui._iter_keystrokes", _fixed_keystrokes(["r", "d"]))
     fake_reporter_handler = FakeReporterHandler()
     stop_event = asyncio.Event()
-    socket_path = path_tmp / "no-such-socket"
+    socket_path = dir_sockets / "no-such-socket"
     asyncio.run(
         asyncio.wait_for(keyboard(socket_path, fake_reporter_handler, stop_event), timeout=5)
     )
@@ -1222,11 +1234,11 @@ async def _drive_keyboard(
 
 @pytest.mark.parametrize("key", list(_KEY_ACTIONS))
 def test_keyboard_dispatches_each_key(
-    key: str, path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+    key: str, dir_sockets: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A recognized key opens a connection and calls the matching `DirectorHandler` method."""
     handler = _FakeDirectorHandler()
-    socket_path = path_tmp / "director"
+    socket_path = dir_sockets / "director"
     action = _KEY_ACTIONS[key]
     asyncio.run(
         asyncio.wait_for(
@@ -1237,14 +1249,14 @@ def test_keyboard_dispatches_each_key(
     assert handler.calls == [(action.method, action.args)]
 
 
-def test_keyboard_reports_before_call(path_tmp: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_keyboard_reports_before_call(dir_sockets: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """For a non-`report_after` action, the report happens even when the call then fails.
 
     `drain` reports before calling, per `KeyAction.report_after`'s documented contract,
     so a failing call must not suppress the report.
     """
     handler = _RaisingDirectorHandler()
-    socket_path = path_tmp / "director"
+    socket_path = dir_sockets / "director"
     fake_reporter_handler = FakeReporterHandler()
     asyncio.run(
         asyncio.wait_for(
@@ -1256,14 +1268,14 @@ def test_keyboard_reports_before_call(path_tmp: Path, monkeypatch: pytest.Monkey
 
 
 def test_keyboard_reports_after_call_for_graph(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+    dir_sockets: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """No success report is made when the `graph` call raises.
 
     That is the entire reason `report_after` exists: the message claims `graph.txt` exists.
     """
     handler = _RaisingDirectorHandler()
-    socket_path = path_tmp / "director"
+    socket_path = dir_sockets / "director"
     fake_reporter_handler = FakeReporterHandler()
     asyncio.run(
         asyncio.wait_for(
@@ -1277,7 +1289,7 @@ def test_keyboard_reports_after_call_for_graph(
 
 
 def test_keyboard_reports_director_side_failure(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+    dir_sockets: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A call that raises inside the director is reported, not propagated.
 
@@ -1287,7 +1299,7 @@ def test_keyboard_reports_director_side_failure(
     `finally`, so the exception replaced the director's return code with a traceback.
     """
     handler = _RaisingDirectorHandler()
-    socket_path = path_tmp / "director"
+    socket_path = dir_sockets / "director"
     fake_reporter_handler = FakeReporterHandler()
     asyncio.run(
         asyncio.wait_for(
@@ -1302,14 +1314,14 @@ def test_keyboard_reports_director_side_failure(
 
 
 def test_keyboard_reports_usage_error_as_a_message(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+    dir_sockets: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A rejected call is reported under a `Message` heading, not under `Traceback`.
 
     The director raised a `UsageError`, which reaches the client as a one-line message
     without a traceback, so the `RPCError` wording below would show an empty-looking block.
     """
-    socket_path = path_tmp / "director"
+    socket_path = dir_sockets / "director"
     fake_reporter_handler = FakeReporterHandler()
     asyncio.run(
         asyncio.wait_for(
@@ -1324,11 +1336,11 @@ def test_keyboard_reports_usage_error_as_a_message(
 
 
 def test_keyboard_survives_director_side_failure(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+    dir_sockets: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """One failing keystroke must not stop the loop from dispatching the next one."""
     handler = _RaisingDirectorHandler()
-    socket_path = path_tmp / "director"
+    socket_path = dir_sockets / "director"
     fake_reporter_handler = FakeReporterHandler()
     asyncio.run(
         asyncio.wait_for(
@@ -1340,7 +1352,7 @@ def test_keyboard_survives_director_side_failure(
     assert actions.count("ERROR") == 2
 
 
-def test_keyboard_stops_on_stop_event(path_tmp: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_keyboard_stops_on_stop_event(dir_sockets: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The coroutine returns promptly once `stop_event` is set, instead of hanging."""
 
     async def _never_ending_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, None]:
@@ -1351,7 +1363,7 @@ def test_keyboard_stops_on_stop_event(path_tmp: Path, monkeypatch: pytest.Monkey
     monkeypatch.setattr("stepup.core.tui._iter_keystrokes", _never_ending_keystrokes)
     fake_reporter_handler = FakeReporterHandler()
     stop_event = asyncio.Event()
-    socket_path = path_tmp / "no-such-socket"
+    socket_path = dir_sockets / "no-such-socket"
 
     async def scenario() -> None:
         task = asyncio.create_task(keyboard(socket_path, fake_reporter_handler, stop_event))
@@ -1363,12 +1375,14 @@ def test_keyboard_stops_on_stop_event(path_tmp: Path, monkeypatch: pytest.Monkey
     asyncio.run(asyncio.wait_for(scenario(), timeout=5))
 
 
-def test_keyboard_reports_unsupported_key(path_tmp: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_keyboard_reports_unsupported_key(
+    dir_sockets: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """An unrecognized key is reported together with the key-stroke help, not dispatched."""
     monkeypatch.setattr("stepup.core.tui._iter_keystrokes", _fixed_keystrokes(["z"]))
     fake_reporter_handler = FakeReporterHandler()
     stop_event = asyncio.Event()
-    socket_path = path_tmp / "no-such-socket"
+    socket_path = dir_sockets / "no-such-socket"
     asyncio.run(
         asyncio.wait_for(keyboard(socket_path, fake_reporter_handler, stop_event), timeout=5)
     )
@@ -1586,12 +1600,12 @@ def test_raw_terminal_restores_attributes() -> None:
     """`RawTerminal` clears `ICANON`/`ECHO` inside the context and restores them after."""
     primary_fd, secondary_fd = pty.openpty()
     try:
-        before = termios.tcgetattr(secondary_fd)
+        before = _terminal_attrs(secondary_fd)
         with RawTerminal(secondary_fd):
-            inside = termios.tcgetattr(secondary_fd)
+            inside = _terminal_attrs(secondary_fd)
             assert not inside[3] & termios.ICANON
             assert not inside[3] & termios.ECHO
-        after = termios.tcgetattr(secondary_fd)
+        after = _terminal_attrs(secondary_fd)
         assert after == before
     finally:
         os.close(primary_fd)
@@ -1602,10 +1616,10 @@ def test_raw_terminal_restores_on_exception() -> None:
     """`RawTerminal` restores the original attributes even when the body raises."""
     primary_fd, secondary_fd = pty.openpty()
     try:
-        before = termios.tcgetattr(secondary_fd)
+        before = _terminal_attrs(secondary_fd)
         with pytest.raises(ValueError, match="boom"), RawTerminal(secondary_fd):
             raise ValueError("boom")
-        after = termios.tcgetattr(secondary_fd)
+        after = _terminal_attrs(secondary_fd)
         assert after == before
     finally:
         os.close(primary_fd)
@@ -1616,17 +1630,17 @@ def test_raw_terminal_suspend_resume_round_trip() -> None:
     """`suspend` hands the original attributes back, `resume` takes raw mode over again."""
     primary_fd, secondary_fd = pty.openpty()
     try:
-        before = termios.tcgetattr(secondary_fd)
+        before = _terminal_attrs(secondary_fd)
         raw_terminal = RawTerminal(secondary_fd)
         raw_terminal.enter()
         raw_terminal.suspend()
-        assert termios.tcgetattr(secondary_fd) == before
+        assert _terminal_attrs(secondary_fd) == before
         raw_terminal.resume()
-        resumed = termios.tcgetattr(secondary_fd)
+        resumed = _terminal_attrs(secondary_fd)
         assert not resumed[3] & termios.ICANON
         assert not resumed[3] & termios.ECHO
         raw_terminal.leave()
-        assert termios.tcgetattr(secondary_fd) == before
+        assert _terminal_attrs(secondary_fd) == before
     finally:
         os.close(primary_fd)
         os.close(secondary_fd)
@@ -1663,7 +1677,7 @@ def test_iter_keystrokes_yields_from_pty(monkeypatch: pytest.MonkeyPatch) -> Non
     test to attribute it to.
     """
     primary_fd, secondary_fd = pty.openpty()
-    before = termios.tcgetattr(secondary_fd)
+    before = _terminal_attrs(secondary_fd)
     monkeypatch.setattr(sys, "stdin", os.fdopen(secondary_fd, "r"))
 
     async def scenario() -> list[str]:
@@ -1684,4 +1698,4 @@ def test_iter_keystrokes_yields_from_pty(monkeypatch: pytest.MonkeyPatch) -> Non
     with RawTerminal(secondary_fd):
         chars = asyncio.run(asyncio.wait_for(run(), timeout=5))
     assert chars == ["r", "q"]
-    assert termios.tcgetattr(secondary_fd) == before
+    assert _terminal_attrs(secondary_fd) == before

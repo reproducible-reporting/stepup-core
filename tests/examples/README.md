@@ -33,6 +33,11 @@ When writing new examples, the following conventions ensure that they are proper
 
 - To facilitate debugging, the shebang line runs bash in verbose mode: `#!/usr/bin/env -S bash -x`.
 
+- Scripts must also run on macOS, which comes with bash 3.2 and the BSD versions of the
+  command-line tools.
+  For example, `wait -f` and `stat -c` do not exist there,
+  and `wc -l` pads its count with spaces.
+
 - After the shebang, each `main.sh` sources the shared boilerplate with
   `source ../example.rc`.
 
@@ -69,6 +74,20 @@ When writing new examples, the following conventions ensure that they are proper
   ```bash
   sb --log-level=INFO -j 1 -w & # > current_stdout.txt &
   ```
+
+- The test builder runs every example with `STEPUP_BUILD_DURATION=0`,
+  whatever the environment of `pytest`.
+  Measured durations affect the order in which ready steps run,
+  which would make the output depend on the speed of the machine.
+  Durations declared in `plan.py` with `step(..., duration=...)` are still used.
+  An example that needs measured durations passes `--duration` to `sb`,
+  which takes precedence over the environment variable.
+
+- Glob patterns in `plan.py` match only files of the workflow itself,
+  never the files written by `main.sh`, such as `current_stdout.txt` or `current_graph.txt`.
+  The output of the example would otherwise depend on how the file watcher reports
+  the writes to those files, which differs between platforms.
+  When a pattern would cover them, put the files it should match in a subdirectory.
 
 - The following `stepup` subcommands are used to interact with the running director
   and to verify the workflow state at well-defined points in time:
@@ -115,7 +134,7 @@ When writing new examples, the following conventions ensure that they are proper
 - After `stepup join`, wait for the background `stepup build` process and capture its exit code:
 
   ```bash
-  set +e; wait -fn $PID; RETURNCODE=$?; set -e
+  set +e; wait $PID; RETURNCODE=$?; set -e
   ```
 
   `stepup build` exits with **0** when all steps succeeded,
@@ -162,7 +181,7 @@ When writing new examples, the following conventions ensure that they are proper
   It keeps the full, un-stripped reporter output, including the standard-error page.
 
 The test builder in `tests/test_examples.py` copies each example to a temporary directory,
-applies the `sed` rewrite to `main.sh`, runs it, and compares all `current_*` files against
+activates the commented-out redirects in `main.sh`, runs it, and compares all `current_*` files against
 the corresponding `expected_*` files in the source directory.
 
 Everything `main.sh` writes to stdout and stderr is collected in `main.log`,

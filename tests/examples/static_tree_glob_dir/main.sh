@@ -17,4 +17,4 @@ wait
 [[ -f src/sub/keep.txt ]] || exit 1
 
 # The directory match itself must not create a spurious file node in the graph.
-! grep -qFx "file:src/sub/" current_graph.txt
+! grep -qFx "file:src/sub/" current_graph.txt || exit 1

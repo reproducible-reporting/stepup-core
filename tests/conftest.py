@@ -7,8 +7,9 @@ import contextlib
 import hashlib
 import os
 import stat
+import tempfile
 import threading
-from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Iterator
 
 import attrs
 import pytest
@@ -76,14 +77,24 @@ which leaves the teardown of a test whose setup failed completely unguarded.
 """
 
 
+@pytest.fixture
+def dir_sockets() -> Iterator[Path]:
+    """Provide a directory for Unix domain sockets, with a path short enough for macOS.
+
+    macOS limits the path of a socket to 104 bytes,
+    which the paths under pytest's temporary directories exceed there.
+    The directory is created in the same way as the one `stepup build` puts its sockets in.
+    """
+    with tempfile.TemporaryDirectory(prefix="stepup-") as path:
+        yield Path(path)
+
+
 @pytest_asyncio.fixture()
-async def client(tmpdir) -> AsyncGenerator[SocketAsyncRPCClient, None]:
+async def client(tmpdir, dir_sockets) -> AsyncGenerator[SocketAsyncRPCClient, None]:
     # Launch stepup in background
     with contextlib.chdir(tmpdir):
-        dir_stepup = Path(".stepup").absolute()
-        dir_sockects = dir_stepup / "sockets"
-        dir_sockects.makedirs_p()
-        director_socket_path = dir_sockects / "director"
+        Path(".stepup").makedirs_p()
+        director_socket_path = dir_sockets / "director"
 
         with open("plan.py", "w") as fh:
             fh.write(BUILD_UNTIL_DONE)

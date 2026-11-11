@@ -11,7 +11,7 @@ stepup graph current_graph
 stepup join
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 # A warning sets the WARNING bit but never the FAILED bit:
 # this is the pinned statement of that rule.
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_WARNING}" ]] || exit 1

@@ -13,7 +13,7 @@ stepup graph current_graph
 stepup join
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_PENDING}" ]] || exit 1
 
 # The UNDECLARED inp.txt is asserted verbatim by expected_stdout.txt's

@@ -35,8 +35,6 @@ jobs:
     env:
       # Enforce strict checks instead of trying to repair fixable issues.
       STEPUP_DEBUG: 1
-      # Duration measurements are disabled to make tests deterministic.
-      STEPUP_BUILD_DURATION: 0
       # RPC timeout is set shorter to speed up tests in case of failures.
       STEPUP_SYNC_RPC_TIMEOUT: 10
     strategy:

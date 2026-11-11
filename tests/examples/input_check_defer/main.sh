@@ -15,7 +15,7 @@ stepup join
 grep "FAIL │ ./work.py" .stepup/fail.log || exit 1
 grep "ERROR │ The scheduler is draining due to unexpected input changes." .stepup/fail.log || exit 1
 
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 [[ ! -f never.txt ]] || exit 1

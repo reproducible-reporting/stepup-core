@@ -34,5 +34,5 @@ wait
 [[ -f plan.py ]] || exit 1
 grep AAAA current_variables.txt
 grep CCCC current_variables.txt
-! grep -q BBBB current_variables.txt
+! grep -q BBBB current_variables.txt || exit 1
 cp current_variables.txt current_variables2.txt

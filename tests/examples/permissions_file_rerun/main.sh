@@ -13,8 +13,8 @@ stepup graph current_graph1
 [[ -f plan.py ]] || exit 1
 [[ -f input.txt ]] || exit 1
 [[ -f output.txt ]] || exit 1
-stat input.txt | grep 'Access: (0755/-rwxr-xr-x)'
-stat output.txt | grep 'Access: (0755/-rwxr-xr-x)'
+ls -l input.txt | grep -- '^-rwxr-xr-x'
+ls -l output.txt | grep -- '^-rwxr-xr-x'
 
 # Rerun the plan with different permissions for the input.
 chmod -x input.txt
@@ -33,5 +33,5 @@ wait
 [[ -f plan.py ]] || exit 1
 [[ -f input.txt ]] || exit 1
 [[ -f output.txt ]] || exit 1
-stat input.txt | grep 'Access: (0644/-rw-r--r--)'
-stat output.txt | grep 'Access: (0644/-rw-r--r--)'
+ls -l input.txt | grep -- '^-rw-r--r--'
+ls -l output.txt | grep -- '^-rw-r--r--'

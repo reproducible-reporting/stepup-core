@@ -11,7 +11,7 @@ stepup wait
 stepup graph current_graph1
 [[ -f plan.py ]] || exit 1
 grep AAAA current_variables.txt
-! grep -q DFTHYH current_variables.txt
+! grep -q DFTHYH current_graph1.txt || exit 1
 cp current_variables.txt current_variables1.txt
 
 # Add a second requested variable by changing the content of variables.json.

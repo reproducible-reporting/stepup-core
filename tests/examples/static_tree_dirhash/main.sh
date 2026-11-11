@@ -13,7 +13,7 @@ stepup join
 
 # Wait for background processes, if any.
 # The build fails and the director drains: 2 + 32 = 34
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 # The error must point at the offending call in plan.py.
@@ -37,7 +37,7 @@ stepup join
 
 # Wait for background processes, if any.
 # The build fails and the director drains: 2 + 32 = 34
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_DRAINED)) ]] || exit 1
 
 # The error must point at the offending call in plan.py.

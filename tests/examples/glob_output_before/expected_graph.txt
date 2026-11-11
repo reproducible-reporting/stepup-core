@@ -14,13 +14,13 @@ step:./plan.py
              creator   root:
               source   file:plan.py
 
-(step:touch out.txt)
+(step:touch sub/out.txt)
                state = PENDING
                 need = DEFAULT
-             product   (file:out.txt)
-                sink   (file:out.txt)
+             product   (file:sub/out.txt)
+                sink   (file:sub/out.txt)
 
-(file:out.txt)
+(file:sub/out.txt)
                state = PLANNED
-             creator   (step:touch out.txt)
-              source   (step:touch out.txt)
+             creator   (step:touch sub/out.txt)
+              source   (step:touch sub/out.txt)

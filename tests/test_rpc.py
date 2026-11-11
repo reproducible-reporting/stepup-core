@@ -5,9 +5,11 @@
 import asyncio
 import contextlib
 import copy
+import errno
 import logging
 import pickle
 import sys
+from collections.abc import Callable
 
 import pytest
 import pytest_asyncio
@@ -42,6 +44,7 @@ from stepup.core.rpc import (
     _default_sync_rpc_timeout,
     _encode_body,
     _encode_message,
+    _is_peer_gone,
     _raise_remote_error,
     _recv_stream_message,
     _resolve_socket_timeout,
@@ -53,9 +56,9 @@ from stepup.core.utils import DIRECTOR_LOG_CHECKS
 
 
 @pytest_asyncio.fixture()
-async def socket_server_path(path_tmp):
+async def socket_server_path(dir_sockets):
     async with asyncio.timeout(5):
-        path = path_tmp / "socket"
+        path = dir_sockets / "socket"
         process = await asyncio.create_subprocess_exec(
             sys.executable, Path(__file__).parent / "echo_server_socket.py", path
         )
@@ -128,7 +131,7 @@ async def test_socket_multi_clients(socket_server_path):
         assert await asyncio.gather(c2.call.echo("h"), c1.call.echo("w", 0.1)) == expected
 
 
-async def test_serve_stops_an_idle_connection(path_tmp):
+async def test_serve_stops_an_idle_connection(dir_sockets):
     """A peer that leaves a connection open may not delay the shutdown of the server.
 
     The client here stays connected on purpose and never closes,
@@ -137,7 +140,7 @@ async def test_serve_stops_an_idle_connection(path_tmp):
     `SocketRPCServer.serve` waits for the peer and never returns.
     """
     async with asyncio.timeout(5):
-        socket_path = path_tmp / "socket"
+        socket_path = dir_sockets / "socket"
         stop_event = asyncio.Event()
         server_task = asyncio.create_task(
             SocketRPCServer(EchoHandler("idle"), str(socket_path)).serve(stop_event)
@@ -223,10 +226,10 @@ async def test_client_call_after_close(socket_server_path):
 
 
 @pytest_asyncio.fixture()
-async def deaf_server_path(path_tmp):
+async def deaf_server_path(dir_sockets):
     """The path of a server that accepts connections and then never reads a single byte."""
     writers = []
-    path = path_tmp / "deaf_socket"
+    path = dir_sockets / "deaf_socket"
     server = await asyncio.start_unix_server(lambda reader, writer: writers.append(writer), path)
     try:
         yield path
@@ -804,6 +807,38 @@ def test_sync_socket_usage_error(socket_server_path):
             client.call.raise_internal(_rpc_timeout=5)
 
 
+def _connection_reset() -> OSError:
+    return ConnectionResetError("Connection reset by peer")
+
+
+def _not_connected() -> OSError:
+    return OSError(errno.ENOTCONN, "Socket is not connected")
+
+
+@pytest.fixture(params=[_connection_reset, _not_connected], ids=["reset", "enotconn"])
+def peer_gone(request) -> Callable[[], OSError]:
+    """Make the exception of a peer that is gone, in each form that Python raises it in.
+
+    See `stepup.core.rpc._is_peer_gone` for the platforms on which they occur.
+    """
+    return request.param
+
+
+@pytest.mark.parametrize(
+    ("exc", "result"),
+    [
+        (ConnectionResetError("Connection reset by peer"), True),
+        (BrokenPipeError(errno.EPIPE, "Broken pipe"), True),
+        (OSError(errno.ENOTCONN, "Socket is not connected"), True),
+        (OSError(errno.EBADF, "Bad file descriptor"), False),
+        (TimeoutError(), False),
+        (ValueError("not an OSError"), False),
+    ],
+)
+def test_is_peer_gone(exc: BaseException, result: bool):
+    assert _is_peer_gone(exc) is result
+
+
 class _ImmediateEOFReader:
     """Reader stub that reports EOF on the first read, like an already-closed connection."""
 
@@ -817,28 +852,29 @@ class _ResetOnCloseWriter:
     automatic `amend()` call) by the time the server tears the connection down.
     """
 
-    def __init__(self):
+    def __init__(self, error: Callable[[], OSError]):
+        self.error = error
         self.closed = False
 
     async def drain(self):
-        raise ConnectionError("Connection reset by peer (drain)")
+        raise self.error()
 
     def close(self):
         self.closed = True
 
     async def wait_closed(self):
-        raise ConnectionResetError("Connection reset by peer (wait_closed)")
+        raise self.error()
 
 
-async def test_serve_connection_survives_reset_during_close():
+async def test_serve_connection_survives_reset_during_close(peer_gone):
     """A connection reset can surface on `wait_closed()`, not just `drain()`.
 
-    Both must be tolerated, or an unhandled `ConnectionResetError` propagates out of the
+    Both must be tolerated, or an unhandled exception propagates out of the
     task spawned for this connection (visible as "Unhandled exception in
     client_connected_cb" in `SocketRPCServer.serve`).
     """
     async with asyncio.timeout(5):
-        writer = _ResetOnCloseWriter()
+        writer = _ResetOnCloseWriter(peer_gone)
         server = SocketRPCServer(EchoHandler("x"), "unused-socket")
         await server._serve_connection(_ImmediateEOFReader(), writer)
         assert writer.closed
@@ -865,42 +901,57 @@ class _RecordingWriter:
 
 
 class _ResetReader:
-    """Reader stub whose read raises a raw `ConnectionResetError`, like a peer that reset
+    """Reader stub whose read raises a raw `OSError`, like a peer that reset
     the connection instead of closing it cleanly (no `IncompleteReadError` involved).
     """
 
+    def __init__(self, error: Callable[[], OSError]):
+        self.error = error
+
     async def readexactly(self, n: int):
-        raise ConnectionResetError("Connection reset by peer")
+        raise self.error()
 
 
-async def test_recv_stream_message_treats_reset_like_eof():
+async def test_recv_stream_message_treats_reset_like_eof(peer_gone):
     """A reset connection must be treated the same as a clean EOF.
 
     `asyncio.StreamReader.readexactly()` raises `IncompleteReadError` on a clean EOF, but a
-    genuine reset while a read is pending surfaces as a raw `ConnectionResetError` instead
+    genuine reset while a read is pending surfaces as a raw `OSError` instead
     (the stream's stored transport exception is raised directly).
     Both mean that the peer is gone, so both must be reported as such
     instead of escaping into the RPC loop.
     """
     async with asyncio.timeout(5):
-        assert await _recv_stream_message(_ResetReader()) is None
+        assert await _recv_stream_message(_ResetReader(peer_gone)) is None
 
 
-async def test_serve_connection_survives_reset_during_recv():
+async def test_recv_stream_message_raises_other_errors():
+    """An `OSError` that does not mean that the peer is gone must not end the loop silently."""
+    async with asyncio.timeout(5):
+        with pytest.raises(OSError, match="Bad file descriptor"):
+            await _recv_stream_message(
+                _ResetReader(lambda: OSError(errno.EBADF, "Bad file descriptor"))
+            )
+
+
+async def test_serve_connection_survives_reset_during_recv(peer_gone):
     """Same failure mode as above, exercised through `SocketRPCServer._serve_connection`."""
     async with asyncio.timeout(5):
         server = SocketRPCServer(EchoHandler("x"), "unused-socket")
-        await server._serve_connection(_ResetReader(), _RecordingWriter())
+        await server._serve_connection(_ResetReader(peer_gone), _RecordingWriter())
 
 
 class _AlwaysResetWriter:
     """Writer stub that fails every send, like a peer that is already gone."""
 
+    def __init__(self, error: Callable[[], OSError] = _connection_reset):
+        self.error = error
+
     def write(self, data):
         pass
 
     async def drain(self):
-        raise ConnectionResetError("Connection reset by peer")
+        raise self.error()
 
 
 class _MarkerError(Exception):
@@ -923,29 +974,29 @@ def _send_loop_connection(writer) -> RPCServerConnection:
     return RPCServerConnection(EchoHandler("x"), _ImmediateEOFReader(), writer)
 
 
-async def test_send_loop_stops_gracefully_on_connection_reset():
+async def test_send_loop_stops_gracefully_on_connection_reset(peer_gone):
     """When the client is already gone, the send loop must not crash the connection task.
 
     A reply that cannot be sent to a peer that disappeared is no reason to raise:
-    the loop stops the connection instead, so that no `ConnectionResetError` escapes
+    the loop stops the connection instead, so that no exception escapes
     (which would show up as "Unhandled exception in client_connected_cb").
     """
     async with asyncio.timeout(5):
-        connection = _send_loop_connection(_AlwaysResetWriter())
+        connection = _send_loop_connection(_AlwaysResetWriter(peer_gone))
         await connection._completed.put((1, asyncio.ensure_future(_return("ok"))))
         await connection._send_loop()
         assert connection._stop_event.is_set()
 
 
-async def test_send_loop_does_not_mask_original_error_with_connection_error():
+async def test_send_loop_does_not_mask_original_error_with_connection_error(peer_gone):
     """A genuine handler-side failure must surface as itself, not as a `ConnectionError`.
 
     If the connection also happens to be dead, the loop's own attempt to notify the
     (already gone) client of the failure must not replace the original exception with the
-    `ConnectionError` from that doomed notification attempt.
+    error from that doomed notification attempt.
     """
     async with asyncio.timeout(5):
-        connection = _send_loop_connection(_AlwaysResetWriter())
+        connection = _send_loop_connection(_AlwaysResetWriter(peer_gone))
         await connection._completed.put((1, asyncio.ensure_future(_boom())))
         with pytest.raises(_MarkerError):
             await connection._send_loop()
@@ -1149,13 +1200,13 @@ async def test_send_loop_answers_an_unpicklable_result_with_an_empty_body():
 
 
 @pytest_asyncio.fixture()
-async def no_reply_server_path(path_tmp):
+async def no_reply_server_path(dir_sockets):
     """Path of a socket server that answers every call with an empty body.
 
     This is what a server sends when it cannot send the reply itself,
     e.g. because the result of the call cannot be pickled.
     """
-    path = path_tmp / "no_reply_socket"
+    path = dir_sockets / "no_reply_socket"
 
     async def handle(reader, writer):
         with contextlib.suppress(asyncio.IncompleteReadError, ConnectionError):
@@ -1217,9 +1268,9 @@ async def test_client_no_reply_error_names_the_log_of_its_own_server(no_reply_se
 
 
 @pytest_asyncio.fixture()
-async def vanishing_server_path(path_tmp):
+async def vanishing_server_path(dir_sockets):
     """Path of a socket server that drops the connection instead of answering the first call."""
-    path = path_tmp / "vanishing_socket"
+    path = dir_sockets / "vanishing_socket"
 
     async def handle(reader, writer):
         # Read the fixed-size header of the first request and then disappear,
@@ -1299,14 +1350,55 @@ async def test_client_call_that_cannot_be_sent_leaves_no_pending_call(sc):
             sc._writer = writer
 
 
+class _PeerGoneOnWaitClosedWriter:
+    """Writer wrapper whose `wait_closed()` raises after closing the connection for real.
+
+    A stream raises the error of a write that failed while the connection was closing there,
+    like when the server stops at the same time as the client.
+    """
+
+    def __init__(self, writer: asyncio.StreamWriter, error: Callable[[], OSError]):
+        self._writer = writer
+        self.error = error
+
+    @property
+    def transport(self) -> asyncio.WriteTransport:
+        return self._writer.transport
+
+    def write(self, data):
+        self._writer.write(data)
+
+    async def drain(self):
+        await self._writer.drain()
+
+    def close(self):
+        self._writer.close()
+
+    async def wait_closed(self):
+        await self._writer.wait_closed()
+        raise self.error()
+
+
+async def test_client_close_survives_a_peer_gone_on_wait_closed(sc, peer_gone):
+    """Regression test: a client must close without error when the server is gone.
+
+    On macOS, this happens to the director at the end of a build,
+    when `stepup build` closes the reporter socket at the same time.
+    """
+    async with asyncio.timeout(5):
+        assert await sc.call.echo("hello") == "socket: hello"
+        sc._writer = _PeerGoneOnWaitClosedWriter(sc._writer, peer_gone)
+        await sc.close()
+
+
 @pytest_asyncio.fixture()
-async def corrupt_server_path(path_tmp):
+async def corrupt_server_path(dir_sockets):
     """Path of a socket server whose response is not an RPC message.
 
     Its header announces a body that no response could ever have,
     like a peer speaking another protocol.
     """
-    path = path_tmp / "corrupt_socket"
+    path = dir_sockets / "corrupt_socket"
 
     async def handle(reader, writer):
         with contextlib.suppress(asyncio.IncompleteReadError, ConnectionError):

@@ -528,8 +528,10 @@ class WatchfilesWrapper:
 
     - The changes observed within one batch (about 10 milliseconds)
       are reported in a fixed order instead of the order in which they happened.
-    - When a file is both removed and created within one batch,
-      the order of the two is inferred from whether it exists at the end of the batch.
+    - When the changes of a path within one batch contradict each other,
+      the current state of the path decides what is reported.
+      For example, a file that was created and removed within one batch
+      is only reported as removed.
 
     watchfiles cannot add paths to a running watcher (as of watchfiles 1.3.0).
     Each time new directories must be watched,
@@ -892,6 +894,9 @@ class WatchfilesWrapper:
         """Handle the changes of a path that is not a watched directory.
 
         As with inotify, only the changes of files are reported, not those of directories.
+        The codes of one batch may contradict each other,
+        e.g. because FSEvents (macOS) reports all changes of a path over a short period,
+        so the current state of the path decides what is reported.
         """
         known_dirs = self.subdirs.setdefault(_parent_dir(path), set())
         was_dir = path.name in known_dirs
@@ -901,20 +906,21 @@ class WatchfilesWrapper:
             known_dirs.add(path.name)
         else:
             known_dirs.discard(path.name)
-        deleted = _DELETED in codes and not was_dir
-        updated = (_ADDED in codes or _MODIFIED in codes) and not is_dir
-        if deleted and updated:
-            # Whether the path exists tells which of the two came last.
-            if mode is None:
-                changes = [Change.UPDATED, Change.DELETED]
+        if is_dir:
+            # Only the file that the directory replaced is reported.
+            changes = [Change.DELETED] if _DELETED in codes and not was_dir else []
+        elif mode is None:
+            if was_dir:
+                changes = []
+            elif _DELETED in codes:
+                changes = [Change.DELETED]
             else:
-                changes = [Change.DELETED, Change.UPDATED]
-        elif deleted:
-            changes = [Change.DELETED]
-        elif updated:
-            changes = [Change.UPDATED]
+                # The removal is reported in a later batch.
+                changes = [Change.UPDATED]
+        elif _DELETED in codes and not was_dir:
+            changes = [Change.DELETED, Change.UPDATED]
         else:
-            changes = []
+            changes = [Change.UPDATED]
         for change in changes:
             self.change_queue.put_nowait((change, path))
 

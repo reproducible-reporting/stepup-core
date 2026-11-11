@@ -45,7 +45,7 @@ stepup wait
 stepup graph current_graph2
 stepup join
 
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_WARNING}" ]] || exit 1
 
 grep -F "directory target(s) matched no regular output in the workflow: empty/" .stepup/warning.log

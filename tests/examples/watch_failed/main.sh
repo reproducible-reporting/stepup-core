@@ -12,7 +12,7 @@ stepup graph current_graph1
 [[ -f plan.py ]] || exit 1
 [[ -f line.txt ]] || exit 1
 [[ -f log.txt ]] || exit 1
-[[ $(wc -l log.txt | cut -d' ' -f 1) -eq 1 ]] || exit 1
+[[ $(wc -l < log.txt) -eq 1 ]] || exit 1
 
 # Restart StepUp.
 stepup rebuild
@@ -27,4 +27,4 @@ wait
 [[ -f plan.py ]] || exit 1
 [[ -f line.txt ]] || exit 1
 [[ -f log.txt ]] || exit 1
-[[ $(wc -l log.txt | cut -d' ' -f 1) -eq 2 ]] || exit 1
+[[ $(wc -l < log.txt) -eq 2 ]] || exit 1

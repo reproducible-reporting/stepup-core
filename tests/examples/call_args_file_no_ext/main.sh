@@ -11,7 +11,7 @@ stepup graph current_graph
 stepup join
 
 # Wait for background processes, if any.
-set +e; wait -fn $PID; RETURNCODE=$?; set -e
+set +e; wait $PID; RETURNCODE=$?; set -e
 
 # result.txt must not exist because the plan step failed before registering any steps.
 [[ ! -f result.txt ]] || exit 1
