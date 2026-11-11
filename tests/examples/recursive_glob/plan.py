@@ -10,9 +10,9 @@ paths_inp = glob("data/**/*.inp")
 paths_out = glob("data/**/*.out")
 
 # Write file lists to JSON files for testing.
-with open("current_inp.json", "w") as fh:
+with open("current_inp.json", "w", encoding="utf-8", newline="\n") as fh:
     json.dump(sorted(paths_inp), fh, indent=2)
     fh.write("\n")
-with open("current_out.json", "w") as fh:
+with open("current_out.json", "w", encoding="utf-8", newline="\n") as fh:
     json.dump(sorted(paths_out), fh, indent=2)
     fh.write("\n")

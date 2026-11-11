@@ -4,6 +4,7 @@
 
 import os
 import subprocess
+import sys
 
 import pytest
 from path import Path
@@ -124,8 +125,21 @@ def test_is_process_running_self():
     assert is_process_running(os.getpid())
 
 
+def test_is_process_running_child():
+    """A child is running until it exits, also while its parent still holds on to it.
+
+    On Windows, the `Popen` object keeps a handle to the child after `wait()`,
+    so the process object of an exited child still exists there.
+    """
+    with subprocess.Popen([sys.executable, "-c", "input()"], stdin=subprocess.PIPE) as proc:
+        assert is_process_running(proc.pid)
+        proc.communicate(b"\n")
+        assert not is_process_running(proc.pid)
+
+
 def test_is_process_running_permission_error(monkeypatch: pytest.MonkeyPatch):
     """A pid owned by another user cannot be signaled, so it is assumed alive."""
+    monkeypatch.setattr("stepup.core.utils.sys.platform", "linux")
 
     def raise_permission_error(pid: int, sig: int) -> None:
         raise PermissionError
@@ -136,6 +150,7 @@ def test_is_process_running_permission_error(monkeypatch: pytest.MonkeyPatch):
 
 def test_is_process_running_no_such_process(monkeypatch: pytest.MonkeyPatch):
     """A pid that no longer exists must not keep the next build from starting."""
+    monkeypatch.setattr("stepup.core.utils.sys.platform", "linux")
 
     def raise_process_lookup_error(pid: int, sig: int) -> None:
         raise ProcessLookupError
@@ -170,13 +185,15 @@ def test_query_director_log_live_socket(path_tmp: Path):
     socket_path = path_tmp / "director"
     socket_path.touch()
     path_log = path_tmp / "director.log"
-    path_log.write_text(f"SOCKET {socket_path}\nPID 12345\nLOG_LEVEL INFO\n")
+    path_log.write_text(f"SOCKET {socket_path}\nPID 12345\nLOG_LEVEL INFO\n", encoding="utf-8")
     assert query_director_log(path_log) == (socket_path, 12345, "")
 
 
 def test_query_director_log_stale_socket(path_tmp: Path):
     path_log = path_tmp / "director.log"
-    path_log.write_text(f"SOCKET {path_tmp / 'director'}\nPID 12345\nLOG_LEVEL INFO\n")
+    path_log.write_text(
+        f"SOCKET {path_tmp / 'director'}\nPID 12345\nLOG_LEVEL INFO\n", encoding="utf-8"
+    )
     socket_path, pid, message = query_director_log(path_log)
     assert socket_path is None
     assert pid == 12345
@@ -189,7 +206,7 @@ def test_query_director_log_socket_path_with_space(path_tmp: Path):
     socket_path.parent.makedirs_p()
     socket_path.touch()
     path_log = path_tmp / "director.log"
-    path_log.write_text(f"SOCKET {socket_path}\nPID 12345\n")
+    path_log.write_text(f"SOCKET {socket_path}\nPID 12345\n", encoding="utf-8")
     assert query_director_log(path_log)[0] == socket_path
 
 
@@ -197,7 +214,7 @@ def test_query_director_log_socket_path_with_space(path_tmp: Path):
 def test_query_director_log_without_socket_line(path_tmp: Path, content: str):
     """A director that crashed before advertising its socket must not confuse the parsing."""
     path_log = path_tmp / "director.log"
-    path_log.write_text(content)
+    path_log.write_text(content, encoding="utf-8")
     socket_path, pid, message = query_director_log(path_log)
     assert socket_path is None
     assert pid is None
@@ -218,7 +235,9 @@ def test_scan_director_log_unopenable(path_tmp: Path):
 
 def test_scan_director_log_clean(path_tmp: Path):
     path_log = path_tmp / "director.log"
-    path_log.write_text("SOCKET /tmp/stepup-abcd1234/director\nPID 12345\nLOG_LEVEL DEBUG\n")
+    path_log.write_text(
+        "SOCKET /tmp/stepup-abcd1234/director\nPID 12345\nLOG_LEVEL DEBUG\n", encoding="utf-8"
+    )
     assert scan_director_log(path_log) == []
 
 
@@ -230,7 +249,8 @@ def test_scan_director_log_order_and_labels(path_tmp: Path):
         "Task exception was never retrieved\n"
         "future: <Task finished coro=<Watcher.loop() done>>\n"
         "2026-07-27 12:34:57     ERROR      stepup.core.sqlite3  ::  Database is locked\n"
-        "sys:1: RuntimeWarning: coroutine 'Watcher.loop' was never awaited\n"
+        "sys:1: RuntimeWarning: coroutine 'Watcher.loop' was never awaited\n",
+        encoding="utf-8",
     )
     assert scan_director_log(path_log) == [
         "Unretrieved exception: 2026-07-27 12:34:56     ERROR                   asyncio  ::  "

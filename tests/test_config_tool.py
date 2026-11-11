@@ -212,7 +212,9 @@ def test_env_vars_are_classified(monkeypatch, path_tmp, clean_env):
     found = set()
     for path in Path(stepup.core.__file__).parent.glob("*.py"):
         found.update(
-            name for name in _env_var_names(path.read_text()) if name.startswith("STEPUP_")
+            name
+            for name in _env_var_names(path.read_text(encoding="utf-8"))
+            if name.startswith("STEPUP_")
         )
     listed = CORE_ENV_VARS | INTERNAL_ENV_VARS
     assert found - listed - loader.recognized_env_vars() == set()

@@ -9,5 +9,5 @@ from path import Path
 path_wait, path_make = sys.argv[1:]
 while not Path(path_wait).exists():
     time.sleep(0.2)
-with open(path_make, "w") as f:
+with open(path_make, "w", encoding="utf-8", newline="\n") as f:
     f.write("done")

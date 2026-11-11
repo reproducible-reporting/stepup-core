@@ -305,7 +305,7 @@ def analyze_profile(prof_file: Path, top: int, min_pct: float | None) -> None:
 def read_sqllog_csv(sqlcsv_file: Path) -> dict[int, list[int]]:
     """Parse a `--sqllog` timing CSV file into `{query_i: [duration_ns, ...]}`."""
     durations: dict[int, list[int]] = {}
-    with open(sqlcsv_file, newline="") as fh:
+    with open(sqlcsv_file, encoding="utf-8", newline="") as fh:
         for row in csv.DictReader(fh):
             durations.setdefault(int(row["query_i"]), []).append(int(row["duration_ns"]))
     return durations
@@ -321,7 +321,7 @@ def analyze_sqllog(sqllog_file: Path, sqlcsv_file: Path, top: int, min_pct: floa
     calls -- the mean/median pair makes outlier calls (e.g. one slow `execute()`
     among many fast ones) visible even after aggregating by call site.
     """
-    index = json.loads(sqllog_file.read_text())
+    index = json.loads(sqllog_file.read_text(encoding="utf-8"))
     durations_by_query = read_sqllog_csv(sqlcsv_file)
     data = []
     for rec in index:
@@ -498,7 +498,7 @@ def analyze_perf_data(perf_data_file: Path, top: int, min_pct: float | None) -> 
 
 def read_joblog(joblog_file: Path) -> list[JoblogRow]:
     """Parse a `--joblog` CSV file into `(time_ns, job_i, event, description)` rows."""
-    with open(joblog_file, newline="") as fh:
+    with open(joblog_file, encoding="utf-8", newline="") as fh:
         return [
             (int(row["time_ns"]), int(row["job_i"]), row["event"], row["description"])
             for row in csv.DictReader(fh)

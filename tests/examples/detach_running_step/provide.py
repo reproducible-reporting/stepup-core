@@ -11,5 +11,5 @@ while not Path("trigger_work1.txt").exists():
 while not Path("trigger_sub.txt").exists():
     time.sleep(0.2)
 amend(out="provided.txt")
-with open("provided.txt", "w") as f:
+with open("provided.txt", "w", encoding="utf-8", newline="\n") as f:
     f.write("provided for work.py")

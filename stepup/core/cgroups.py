@@ -79,7 +79,7 @@ def _own_cgroup_path() -> Path:
         If the file is read but does not contain a unified-hierarchy line.
         (e.g. a cgroup v1 system, where that file has one line per legacy controller instead)
     """
-    with open("/proc/self/cgroup") as fh:
+    with open("/proc/self/cgroup", encoding="utf-8") as fh:
         for line in fh:
             if line.startswith("0::"):
                 return Path(line[3:].strip().lstrip("/"))
@@ -143,7 +143,7 @@ def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> Path:
     own_dir = _own_cgroup_dir(cgroup_root)
     # Verify that this process is alone in the cgroup.
     try:
-        with open(own_dir / "cgroup.procs") as fh:
+        with open(own_dir / "cgroup.procs", encoding="utf-8") as fh:
             pids = [int(line) for line in fh if line.strip()]
     except (OSError, ValueError) as exc:
         raise CgroupError("Cgroups unavailable: failed to read cgroup.procs.") from exc
@@ -151,7 +151,7 @@ def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> Path:
         raise CgroupError("Cgroups unavailable: director is not alone in its cgroup.")
     # Verify that memory accounting is actually active for this cgroup.
     try:
-        with open(own_dir / "memory.current") as fh:
+        with open(own_dir / "memory.current", encoding="utf-8") as fh:
             fh.read()
     except (OSError, ValueError) as exc:
         raise CgroupError("Cgroups unavailable: failed to read memory.current.") from exc
@@ -177,7 +177,7 @@ def _count_cpu_list(text: str) -> int:
 def _read_cpuset_ncore(own_dir: Path) -> int | None:
     """Read the number of cores this cgroup is pinned to, or `None` if unavailable."""
     try:
-        with open(own_dir / "cpuset.cpus.effective") as fh:
+        with open(own_dir / "cpuset.cpus.effective", encoding="utf-8") as fh:
             ncore = _count_cpu_list(fh.read())
     except (OSError, ValueError):
         return None
@@ -187,7 +187,7 @@ def _read_cpuset_ncore(own_dir: Path) -> int | None:
 def _read_cpu_max_ncore(own_dir: Path) -> float | None:
     """Read the fractional core budget implied by `cpu.max`, or `None` if unavailable."""
     try:
-        with open(own_dir / "cpu.max") as fh:
+        with open(own_dir / "cpu.max", encoding="utf-8") as fh:
             parts = fh.read().split()
     except OSError:
         return None

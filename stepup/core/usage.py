@@ -9,7 +9,7 @@ and formats a compact summary report of memory and CPU time at the end of a run.
 
 import asyncio
 import contextlib
-import resource
+import os
 import sys
 import time
 
@@ -18,6 +18,11 @@ from path import Path
 
 from .cgroups import find_own_memory_cgroup
 from .outcome import ResourceUsage
+
+if sys.platform == "win32":
+    from .winapi import get_peak_working_set
+else:
+    import resource
 
 __all__ = (
     "CgroupMemorySampler",
@@ -69,7 +74,10 @@ class CgroupMemorySampler:
 
     def _read_mib(self, name: str) -> float | None:
         """Read a memory file of the cgroup [MiB], or return `None` if it is not readable."""
-        with contextlib.suppress(OSError, ValueError), open(self.cgroup_dir / name) as fh:
+        with (
+            contextlib.suppress(OSError, ValueError),
+            open(self.cgroup_dir / name, encoding="utf-8") as fh,
+        ):
             return int(fh.read()) / MIB
         return None
 
@@ -127,6 +135,25 @@ SUMMARY_TEMPLATE = (
 )
 
 
+def _get_director_usage() -> tuple[float, float, float]:
+    """Measure the resources used so far by the current process.
+
+    Returns
+    -------
+    utime, stime
+        The user and system CPU time [s].
+    peak_mib
+        The peak resident memory, including shared libraries [MiB].
+    """
+    if sys.platform == "win32":
+        times = os.times()
+        return times.user, times.system, get_peak_working_set() / MIB
+    ru_self = resource.getrusage(resource.RUSAGE_SELF)
+    # `ru_maxrss` is reported in kibibytes on Linux, but in bytes on macOS.
+    peak_mib = ru_self.ru_maxrss / 1024 if sys.platform == "linux" else ru_self.ru_maxrss / MIB
+    return ru_self.ru_utime, ru_self.ru_stime, peak_mib
+
+
 def finalize_resource_usage(
     wtime_start: float,
     step_usage: ResourceUsage,
@@ -135,7 +162,7 @@ def finalize_resource_usage(
     """Close off the resource-usage measurements and format them as a report.
 
     This takes the final measurements itself:
-    the elapsed wall time, the director's own `getrusage` totals
+    the elapsed wall time, the director's own CPU times and peak memory
     and, when a sampler is given, one last memory sample.
 
     Parameters
@@ -155,9 +182,7 @@ def finalize_resource_usage(
     summary
         A one-line condensation of the same wall and CPU times.
     """
-    # `ru_maxrss` is reported in kibibytes on Linux, but in bytes on macOS.
-    ru_self = resource.getrusage(resource.RUSAGE_SELF)
-    director_mib = ru_self.ru_maxrss / 1024 if sys.platform == "linux" else ru_self.ru_maxrss / MIB
+    director_utime, director_stime, director_mib = _get_director_usage()
 
     if memory_sampler is None:
         cgroup_line = CGROUP_NOT_ENABLED_LINE
@@ -171,8 +196,8 @@ def finalize_resource_usage(
 
     times = {
         "wtime": time.perf_counter() - wtime_start,
-        "director_utime": ru_self.ru_utime,
-        "director_stime": ru_self.ru_stime,
+        "director_utime": director_utime,
+        "director_stime": director_stime,
         "step_utime": step_usage.utime,
         "step_stime": step_usage.stime,
     }

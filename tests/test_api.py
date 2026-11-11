@@ -135,7 +135,7 @@ def test_getenv_default_multi3(monkeypatch, path_tmp, use_default):
 
 def test_loadns_py1(path_tmp):
     path_foo = path_tmp / "foo.py"
-    with open(path_foo, "w") as fh:
+    with open(path_foo, "w", encoding="utf-8", newline="\n") as fh:
         print("a = 10", file=fh)
     ns = loadns(path_foo)
     assert ns.a == 10
@@ -143,10 +143,10 @@ def test_loadns_py1(path_tmp):
 
 def test_loadns_py2(path_tmp):
     path_foo = path_tmp / "foo.py"
-    with open(path_foo, "w") as fh:
+    with open(path_foo, "w", encoding="utf-8", newline="\n") as fh:
         print("a = 10", file=fh)
     path_bar = path_tmp / "bar.py"
-    with open(path_bar, "w") as fh:
+    with open(path_bar, "w", encoding="utf-8", newline="\n") as fh:
         print("from foo import a", file=fh)
     ns = loadns(path_bar)
     assert ns.a == 10
@@ -156,7 +156,7 @@ def test_loadns_py_path(monkeypatch, path_tmp):
     """A relative `Path` is relative to the directory of the variables file."""
     (path_tmp / "sub").makedirs()
     (path_tmp / "out").makedirs()
-    with open(path_tmp / "sub/foo.py", "w") as fh:
+    with open(path_tmp / "sub/foo.py", "w", encoding="utf-8", newline="\n") as fh:
         print("from path import Path", file=fh)
         print("a = Path('data.txt')", file=fh)
     monkeypatch.chdir(path_tmp)
@@ -168,7 +168,7 @@ def test_loadns_py_getenv_back(monkeypatch, path_tmp):
     """A path from `getenv(back=True)` in a variables file refers to the right location."""
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
     (path_tmp / "sub").makedirs()
-    with open(path_tmp / "vars.py", "w") as fh:
+    with open(path_tmp / "vars.py", "w", encoding="utf-8", newline="\n") as fh:
         print("from stepup.core.api import getenv", file=fh)
         print("a = getenv('STEPUP_LOADNS_PUBLIC', back=True)", file=fh)
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
@@ -179,7 +179,7 @@ def test_loadns_py_getenv_back(monkeypatch, path_tmp):
 
 def test_loadns_json(path_tmp, monkeypatch):
     path_foo = path_tmp / "foo.json"
-    with open(path_foo, "w") as fh:
+    with open(path_foo, "w", encoding="utf-8", newline="\n") as fh:
         print('{"a": 10}', file=fh)
     monkeypatch.setenv("STEPUP_LOADNS_JSON_FOO", "foo")
     ns = loadns(path_tmp / "${STEPUP_LOADNS_JSON_FOO}.json")
@@ -227,7 +227,7 @@ def test_getenv_pathlib_default(monkeypatch):
 
 def test_loadns_pathlib(path_tmp):
     path_foo = path_tmp / "foo.json"
-    with open(path_foo, "w") as fh:
+    with open(path_foo, "w", encoding="utf-8", newline="\n") as fh:
         print('{"a": 10}', file=fh)
     ns = loadns(pathlib.Path(path_foo))
     assert ns.a == 10
@@ -599,7 +599,7 @@ def test_hold_genuine_exception_not_masked_by_release_failure(monkeypatch, caplo
 
 def test_check_inp_paths_splits_files_and_dirs(path_tmp):
     path_foo = path_tmp / "foo.txt"
-    path_foo.write_text("content")
+    path_foo.write_text("content", encoding="utf-8")
     path_sub = path_tmp / "sub"
     path_sub.mkdir()
     file_paths, dir_paths = api._check_inp_paths([path_foo, path_sub])
@@ -655,7 +655,7 @@ def test_glob_sends_no_dir_paths(path_tmp, monkeypatch):
     """`glob()`'s RPC payload is a pure query: job_i, pattern, subs, matches -- no dir_paths."""
     monkeypatch.chdir(path_tmp)
     (path_tmp / "src").makedirs()
-    (path_tmp / "src" / "a.txt").write_text("content")
+    (path_tmp / "src" / "a.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureNglobClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
@@ -687,7 +687,7 @@ def test_static_tree_before_file_regardless_of_argument_order(path_tmp, monkeypa
     """
     monkeypatch.chdir(path_tmp)
     (path_tmp / "src").mkdir()
-    (path_tmp / "src" / "foo.txt").write_text("content")
+    (path_tmp / "src" / "foo.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureCallOrderClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
@@ -720,7 +720,7 @@ def test_static_pattern_splits_files_and_dirs(path_tmp, monkeypatch):
     """
     monkeypatch.chdir(path_tmp)
     (path_tmp / "src" / "sub").makedirs()
-    (path_tmp / "src" / "foo.txt").write_text("content")
+    (path_tmp / "src" / "foo.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
@@ -735,8 +735,8 @@ def test_static_pattern_registers_pattern_with_matches(path_tmp, monkeypatch):
     """`static()` registers a pattern together with its matches, not just the matches."""
     monkeypatch.chdir(path_tmp)
     path_tmp.joinpath("src").mkdir()
-    (path_tmp / "src" / "a.txt").write_text("content")
-    (path_tmp / "src" / "b.txt").write_text("content")
+    (path_tmp / "src" / "a.txt").write_text("content", encoding="utf-8")
+    (path_tmp / "src" / "b.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
@@ -794,8 +794,8 @@ def test_static_no_arguments_makes_no_call(path_tmp, monkeypatch):
 def test_static_named_wildcard_pattern(path_tmp, monkeypatch):
     """A named wildcard in a `static()` pattern is registered verbatim, with no `subs`."""
     monkeypatch.chdir(path_tmp)
-    (path_tmp / "f1.txt").write_text("content")
-    (path_tmp / "f2.txt").write_text("content")
+    (path_tmp / "f1.txt").write_text("content", encoding="utf-8")
+    (path_tmp / "f2.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
@@ -811,8 +811,8 @@ def test_static_named_wildcard_consistency(path_tmp, monkeypatch):
     monkeypatch.chdir(path_tmp)
     path_tmp.joinpath("a").mkdir()
     path_tmp.joinpath("b").mkdir()
-    (path_tmp / "a" / "a.txt").write_text("content")
-    (path_tmp / "b" / "c.txt").write_text("content")
+    (path_tmp / "a" / "a.txt").write_text("content", encoding="utf-8")
+    (path_tmp / "b" / "c.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
@@ -841,9 +841,9 @@ def test_static_accepts_middle_recursive_wildcard(path_tmp, monkeypatch):
     """A `**` that is not the final path component is accepted and expanded eagerly."""
     monkeypatch.chdir(path_tmp)
     (path_tmp / "src" / "sub").makedirs()
-    (path_tmp / "src" / "a.c").write_text("content")
-    (path_tmp / "src" / "sub" / "b.c").write_text("content")
-    (path_tmp / "src" / "sub" / "c.txt").write_text("content")
+    (path_tmp / "src" / "a.c").write_text("content", encoding="utf-8")
+    (path_tmp / "src" / "sub" / "b.c").write_text("content", encoding="utf-8")
+    (path_tmp / "src" / "sub" / "c.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
@@ -863,7 +863,7 @@ def test_static_accepts_recursive_named_glob(path_tmp, monkeypatch):
     """
     monkeypatch.chdir(path_tmp)
     (path_tmp / "src" / "sub").makedirs()
-    (path_tmp / "src" / "sub" / "a.txt").write_text("content")
+    (path_tmp / "src" / "sub" / "a.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
@@ -876,7 +876,7 @@ def test_static_accepts_recursive_named_glob(path_tmp, monkeypatch):
 def test_static_returns_covered_paths(path_tmp, monkeypatch):
     """The return value lists every path this call covers, trees with a trailing slash."""
     monkeypatch.chdir(path_tmp)
-    (path_tmp / "a.txt").write_text("content")
+    (path_tmp / "a.txt").write_text("content", encoding="utf-8")
     (path_tmp / "src").mkdir()
     (path_tmp / "data" / "sub").makedirs()
     monkeypatch.setenv("STEPUP_JOB_I", "0")
@@ -893,8 +893,8 @@ def test_static_accepts_named_glob(path_tmp, monkeypatch):
     """A `NamedGlob` argument contributes its matches without re-registering its pattern."""
     monkeypatch.chdir(path_tmp)
     (path_tmp / "src").mkdir()
-    (path_tmp / "src" / "a.txt").write_text("content")
-    (path_tmp / "src" / "b.txt").write_text("content")
+    (path_tmp / "src" / "a.txt").write_text("content", encoding="utf-8")
+    (path_tmp / "src" / "b.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
 
     client = _CaptureStaticClient()
@@ -909,7 +909,7 @@ def test_static_accepts_named_glob(path_tmp, monkeypatch):
 
     # Named-wildcard variant: `coerce_paths2` cannot flatten a `NamedGlob`'s iteration,
     # which is exactly the case `_iter_static_args` has to special-case.
-    (path_tmp / "f1.txt").write_text("content")
+    (path_tmp / "f1.txt").write_text("content", encoding="utf-8")
     client2 = _CaptureStaticClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client2)
     ng_named = NamedGlob("f${*i}.txt")
@@ -934,7 +934,7 @@ def test_static_env_var_in_pattern(path_tmp, monkeypatch):
     """An environment variable in a `static()` pattern is substituted before registration."""
     monkeypatch.chdir(path_tmp)
     (path_tmp / "src").mkdir()
-    (path_tmp / "src" / "a.txt").write_text("content")
+    (path_tmp / "src" / "a.txt").write_text("content", encoding="utf-8")
     monkeypatch.setenv("DATA", "src")
     monkeypatch.setenv("STEPUP_JOB_I", "0")
     client = _CaptureStaticClient()

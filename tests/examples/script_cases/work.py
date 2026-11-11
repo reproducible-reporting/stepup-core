@@ -21,7 +21,7 @@ def case_info(num):
 
 
 def run(num, out):
-    with open(out, "w") as fh:
+    with open(out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(f"{num_to_str(num)}\n")
 
 

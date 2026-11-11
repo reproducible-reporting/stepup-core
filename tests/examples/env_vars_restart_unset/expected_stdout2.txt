@@ -4,7 +4,7 @@
    PHASE │ build
   NOSKIP │ ./printvars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 73fcc992 ➜ 79524b1e, out_digest 4d823d94 ➜ (unset)
+Modified step hash   explained, inp_digest 186df66a ➜ 6511bea1, out_digest 4d823d94 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA' ➜ (unset)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        printvars.py

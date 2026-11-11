@@ -9,20 +9,20 @@ assert info.env == ["BAR", "FOO"]
 assert info.out == ["../out0.txt", "out1.txt"]
 assert info.vol == ["../vol1.txt", "vol0.txt"]
 
-with open("out1.txt", "w") as f:
+with open("out1.txt", "w", encoding="utf-8", newline="\n") as f:
     pass
-with open("../out0.txt", "w") as f:
+with open("../out0.txt", "w", encoding="utf-8", newline="\n") as f:
     pass
-with open("vol0.txt", "w") as f:
+with open("vol0.txt", "w", encoding="utf-8", newline="\n") as f:
     pass
-with open("../vol1.txt", "w") as f:
+with open("../vol1.txt", "w", encoding="utf-8", newline="\n") as f:
     pass
 
 amend(inp="../inp1.txt", env="EGG", out="../out2.txt", vol="../vol2.txt")
 
-with open("../out2.txt", "w") as f:
+with open("../out2.txt", "w", encoding="utf-8", newline="\n") as f:
     pass
-with open("../vol2.txt", "w") as f:
+with open("../vol2.txt", "w", encoding="utf-8", newline="\n") as f:
     pass
 
 # Info should not be affected by amendments.

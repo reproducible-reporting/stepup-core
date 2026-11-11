@@ -50,7 +50,7 @@ def test_missing():
 
 def test_symbolic_link(path_tmp: Path):
     path_dest = path_tmp / "dest.txt"
-    with open(path_dest, "w") as fh:
+    with open(path_dest, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("Hello!")
     assert compute_file_digest(path_dest) == sha256(b"Hello!").digest()
     path_symlink = path_tmp / "link.txt"

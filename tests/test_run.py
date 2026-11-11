@@ -7,7 +7,9 @@ import os
 import shlex
 import shutil
 import signal
+import subprocess
 import sys
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -19,6 +21,7 @@ from stepup.core.outcome import ResourceUsage
 from stepup.core.run import (
     ChildOutcome,
     Run,
+    _communicate_wait4,
     _detect_python_entrypoint,
     _exec_in_forkserver,
     _executable_compatible_with_current_python,
@@ -145,6 +148,25 @@ async def test_launch_command_measures_resource_usage(tmp_path):
     # The wall time brackets the whole child, so it cannot be shorter than the CPU time
     # of this single-threaded child.
     assert outcome.usage.wtime >= outcome.usage.utime
+
+
+def test_communicate_wait4_without_wait4(monkeypatch: pytest.MonkeyPatch):
+    """Without `os.wait4`, a child is still reaped, but its CPU time is reported as zero."""
+    monkeypatch.delattr(os, "wait4", raising=False)
+    code = "import sys; print(sys.stdin.read()); raise SystemExit(3)"
+    proc = subprocess.Popen(
+        [sys.executable, "-c", code],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    stdout, stderr, usage = _communicate_wait4(proc, b"in", time.perf_counter())
+    assert proc.returncode == 3
+    assert stdout.strip() == b"in"
+    assert stderr == b""
+    assert usage.utime == 0.0
+    assert usage.stime == 0.0
+    assert usage.wtime > 0.0
 
 
 def test_lost_child_outcome_signal():

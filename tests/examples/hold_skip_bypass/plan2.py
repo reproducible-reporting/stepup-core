@@ -24,7 +24,7 @@ with hold():
     # early -- but the real point is that it must not have been *dispatched* at all, which
     # the absence of its START line below confirms.
     time.sleep(0.5)
-    lines = Path(".stepup/success.log").read_text().splitlines()
+    lines = Path(".stepup/success.log").read_text(encoding="utf-8").splitlines()
     if not any("SKIP" in line and "cached" in line for line in lines):
         raise RuntimeError(
             "The unchanged 'cached' step was not skipped while the hold was still active."

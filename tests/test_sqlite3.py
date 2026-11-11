@@ -377,7 +377,7 @@ async def test_sqllog_written_on_exit(tmp_path):
         assert not path_queries.is_file()
 
     assert path_queries.is_file()
-    with open(path_queries) as fh:
+    with open(path_queries, encoding="utf-8") as fh:
         log = json.load(fh)
 
     assert len(log) == 2
@@ -403,7 +403,7 @@ async def test_sqllog_csv_rows(tmp_path):
     with sqllog, DBSession.open(":memory:", sqllog=sqllog) as db:
         assert db.sqllog is not None
         # The CSV file (header only) is created as soon as the recorder is entered.
-        with open(path_timings, newline="") as fh:
+        with open(path_timings, encoding="utf-8", newline="") as fh:
             header = next(csv.reader(fh))
         assert header == [
             "transaction_i",
@@ -417,7 +417,7 @@ async def test_sqllog_csv_rows(tmp_path):
             db.execute("CREATE TABLE t (a INTEGER)")
             db.executemany("INSERT INTO t VALUES (?)", [(1,), (2,)])
 
-    with open(path_timings, newline="") as fh:
+    with open(path_timings, encoding="utf-8", newline="") as fh:
         _header, create_row, insert_row = csv.reader(fh)
 
     # Both statements ran in the same (only) transaction.

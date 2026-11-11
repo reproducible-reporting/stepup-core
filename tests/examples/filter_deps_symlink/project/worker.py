@@ -5,7 +5,7 @@ from helper import get_version
 
 
 def run():
-    with open("worker_out.json", "w") as f:
+    with open("worker_out.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(get_version(), f)
 
 

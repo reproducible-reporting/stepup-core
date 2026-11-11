@@ -22,14 +22,16 @@ INPUTS = ["out/a.txt", "out/b.txt", "out/c.txt"]
 
 def run():
     invocations_path = Path("invocations.txt")
-    count = int(invocations_path.read_text()) + 1 if invocations_path.is_file() else 1
-    invocations_path.write_text(f"{count}\n")
+    count = (
+        int(invocations_path.read_text(encoding="utf-8")) + 1 if invocations_path.is_file() else 1
+    )
+    invocations_path.write_text(f"{count}\n", encoding="utf-8")
 
     parts = []
     for inp in INPUTS:
         amend(inp=[inp])
-        parts.append(Path(inp).read_text().strip())
-    Path("out/result.txt").write_text("".join(parts) + "\n")
+        parts.append(Path(inp).read_text(encoding="utf-8").strip())
+    Path("out/result.txt").write_text("".join(parts) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

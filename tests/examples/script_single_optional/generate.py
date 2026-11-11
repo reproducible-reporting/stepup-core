@@ -10,7 +10,7 @@ def info():
 
 
 def run():
-    with open("runout.txt", "w") as fh:
+    with open("runout.txt", "w", encoding="utf-8", newline="\n") as fh:
         print("Some intermediate output.", file=fh)
 
 

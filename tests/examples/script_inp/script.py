@@ -5,7 +5,7 @@ CASE_FMT = "{}"
 
 
 def cases():
-    with open("config.txt") as fh:
+    with open("config.txt", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if len(line) > 0:
@@ -17,7 +17,7 @@ def case_info(line):
 
 
 def run(out):
-    with open(out, "w") as fh:
+    with open(out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(f"Hello, {out}!")
 
 

@@ -5,13 +5,13 @@ from stepup.core.api import amend
 # In production code, you would typically call amend with all the files at once.
 
 amend(inp="inp0.txt")
-with open("inp0.txt") as fh:
+with open("inp0.txt", encoding="utf-8") as fh:
     print(fh.read().strip())
 
 amend(inp="tmp1.txt")
-with open("tmp1.txt") as fh:
+with open("tmp1.txt", encoding="utf-8") as fh:
     print(fh.read().strip())
 
 amend(inp="inp2.txt")
-with open("inp2.txt") as fh:
+with open("inp2.txt", encoding="utf-8") as fh:
     print(fh.read().strip())

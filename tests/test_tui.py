@@ -6,10 +6,8 @@ import argparse
 import asyncio
 import contextlib
 import os
-import pty
 import signal
 import sys
-import termios
 from collections.abc import AsyncGenerator, Callable, Generator
 from decimal import Decimal
 from types import SimpleNamespace
@@ -24,6 +22,7 @@ from stepup.core.constants import PERF_DATA
 from stepup.core.director import DirectorHandler, interpret_jobs
 from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import ConfigError, PathError, ToolError
+from stepup.core.oscompat import raw_terminal_available
 from stepup.core.rpc import SocketRPCServer, allow_rpc, is_rpc_allowed
 from stepup.core.tui import (
     _KEY_ACTIONS,
@@ -36,6 +35,7 @@ from stepup.core.tui import (
     _build_director_argv,
     _build_tool,
     _check_no_running_director,
+    _check_platform_support,
     _deprecated_boot_tool,
     _iter_keystrokes,
     _normalize_targets,
@@ -45,6 +45,10 @@ from stepup.core.tui import (
     keyboard,
     positive_decimal,
 )
+
+if raw_terminal_available():
+    import pty
+    import termios
 
 
 def _build_test_build_parser(loader: ConfigLoader) -> argparse.ArgumentParser:
@@ -331,7 +335,9 @@ def test_check_no_running_director_live_pid_raises(
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", path_tmp / "director.log")
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
-    (path_tmp / "director.log").write_text(f"SOCKET {stale_socket}\nPID {os.getpid()}\n")
+    (path_tmp / "director.log").write_text(
+        f"SOCKET {stale_socket}\nPID {os.getpid()}\n", encoding="utf-8"
+    )
     with pytest.raises(ToolError, match=f"pid {os.getpid()}"):
         _check_no_running_director()
 
@@ -344,7 +350,7 @@ def test_check_no_running_director_dead_pid_passes(
     monkeypatch.setattr("stepup.core.tui.is_process_running", lambda pid: False)
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
-    (path_tmp / "director.log").write_text(f"SOCKET {stale_socket}\nPID 12345\n")
+    (path_tmp / "director.log").write_text(f"SOCKET {stale_socket}\nPID 12345\n", encoding="utf-8")
     _check_no_running_director()
     assert "Ignoring stale socket" in capsys.readouterr().out
 
@@ -356,7 +362,7 @@ def test_check_no_running_director_missing_pid_line_raises(
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", path_tmp / "director.log")
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
-    (path_tmp / "director.log").write_text(f"SOCKET {stale_socket}\n")
+    (path_tmp / "director.log").write_text(f"SOCKET {stale_socket}\n", encoding="utf-8")
     with pytest.raises(ToolError, match="may still be running"):
         _check_no_running_director()
 
@@ -367,7 +373,7 @@ def test_check_no_running_director_missing_socket_passes(
     """A missing director socket path does not raise."""
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", path_tmp / "director.log")
     missing_socket = path_tmp / "missing_socket"
-    (path_tmp / "director.log").write_text(f"SOCKET {missing_socket}\n")
+    (path_tmp / "director.log").write_text(f"SOCKET {missing_socket}\n", encoding="utf-8")
     _check_no_running_director()
 
 
@@ -376,7 +382,7 @@ def test_check_no_running_director_empty_log_passes(
 ) -> None:
     """An empty `DIRECTOR_LOG` does not raise."""
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", path_tmp / "director.log")
-    (path_tmp / "director.log").write_text("")
+    (path_tmp / "director.log").write_text("", encoding="utf-8")
     _check_no_running_director()
 
 
@@ -413,7 +419,7 @@ def test_reset_stepup_dir_keeps_log_when_director_runs(
     director_log = dir_stepup / "director.log"
     stale_socket = path_tmp / "stale_socket"
     stale_socket.touch()
-    director_log.write_text(f"SOCKET {stale_socket}\n")
+    director_log.write_text(f"SOCKET {stale_socket}\n", encoding="utf-8")
     (dir_stepup / "other.log").touch()
     monkeypatch.setattr("stepup.core.tui.STEPUP_DIR", dir_stepup)
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)
@@ -642,7 +648,7 @@ def _report_problems(
     director_log: Path, text: str, monkeypatch: pytest.MonkeyPatch, debug: bool = False
 ) -> tuple[FakeReporterHandler, int]:
     """Let `_report_director_log_problems` loose on a director log with the given contents."""
-    director_log.write_text(text)
+    director_log.write_text(text, encoding="utf-8")
     monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)
     monkeypatch.setenv("STEPUP_DEBUG", "1" if debug else "0")
     reporter_handler = FakeReporterHandler()
@@ -888,6 +894,7 @@ def _run_suspend_handler(
     return stops
 
 
+@pytest.mark.requires_suspend
 def test_suspend_handler_stops_this_process(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ctrl-Z reaches the director through the terminal, so forwarding it would duplicate it."""
     monkeypatch.setattr("stepup.core.tui._terminal_broadcasts", lambda sig, pid: True)
@@ -898,6 +905,7 @@ def test_suspend_handler_stops_this_process(monkeypatch: pytest.MonkeyPatch) -> 
     assert suspend_handler.reporter_handler.display_calls == ["suspend", "resume"]
 
 
+@pytest.mark.requires_suspend
 def test_suspend_handler_forwards_when_not_broadcast(monkeypatch: pytest.MonkeyPatch) -> None:
     """A `kill -TSTP` reaches only the TUI, so the director must be stopped and continued too."""
     monkeypatch.setattr("stepup.core.tui._terminal_broadcasts", lambda sig, pid: False)
@@ -906,6 +914,8 @@ def test_suspend_handler_forwards_when_not_broadcast(monkeypatch: pytest.MonkeyP
     assert suspend_handler.process_director.signals == [signal.SIGTSTP, signal.SIGCONT]
 
 
+@pytest.mark.requires_termios
+@pytest.mark.requires_suspend
 def test_suspend_handler_hands_the_terminal_over_and_back(monkeypatch: pytest.MonkeyPatch) -> None:
     """The shell gets a canonical terminal, and raw mode is taken over again on resume."""
     monkeypatch.setattr("stepup.core.tui._terminal_broadcasts", lambda sig, pid: True)
@@ -932,6 +942,7 @@ def test_suspend_handler_hands_the_terminal_over_and_back(monkeypatch: pytest.Mo
         os.close(secondary_fd)
 
 
+@pytest.mark.requires_suspend
 def test_suspend_handler_without_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
     """A non-interactive run has no terminal to hand over, but must still suspend."""
     monkeypatch.setattr("stepup.core.tui._terminal_broadcasts", lambda sig, pid: True)
@@ -946,11 +957,12 @@ def test_terminal_broadcasts_never_for_sigterm() -> None:
     assert not _terminal_broadcasts(signal.SIGTERM, os.getpid())
 
 
+@pytest.mark.requires_suspend
 def test_terminal_broadcasts_for_sigtstp_in_foreground(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ctrl-Z is generated by the terminal driver for the whole foreground process group."""
 
     @contextlib.contextmanager
-    def fake_tty(path: str):
+    def fake_tty(path: str, **kwargs):
         assert path == "/dev/tty"
         yield SimpleNamespace(fileno=lambda: 99)
 
@@ -963,7 +975,7 @@ def test_terminal_broadcasts_for_sigtstp_in_foreground(monkeypatch: pytest.Monke
 def test_terminal_broadcasts_without_controlling_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
     """Without a controlling terminal, nothing was broadcast, so the signal must be forwarded."""
 
-    def raise_oserror(path: str) -> None:
+    def raise_oserror(path: str, **kwargs) -> None:
         raise OSError("no controlling terminal")
 
     monkeypatch.setattr("builtins.open", raise_oserror)
@@ -1041,6 +1053,48 @@ def test_async_build_rejects_bad_watcher_in_watch_mode(
         asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
 
 
+@pytest.mark.parametrize(
+    ("overrides", "predicate", "match"),
+    [
+        ({"forkserver": True}, "forkserver_available", "forkserver is not available"),
+        ({"perf": 500}, "perf_available", "perf is only supported on Linux"),
+    ],
+)
+def test_check_platform_support_rejects(
+    monkeypatch: pytest.MonkeyPatch, overrides: dict, predicate: str, match: str
+) -> None:
+    """A feature the platform lacks is a usage error, not a crash of the director."""
+    monkeypatch.setattr(f"stepup.core.tui.{predicate}", lambda: False)
+    with pytest.raises(ConfigError, match=match):
+        _check_platform_support(_base_build_args(**overrides))
+
+
+@pytest.mark.parametrize("predicate", ["forkserver_available", "perf_available"])
+def test_check_platform_support_ignores_unused_features(
+    monkeypatch: pytest.MonkeyPatch, predicate: str
+) -> None:
+    """A missing feature does not matter as long as it is not requested."""
+    monkeypatch.setattr(f"stepup.core.tui.{predicate}", lambda: False)
+    _check_platform_support(_base_build_args(forkserver=False, perf=None))
+
+
+def test_async_build_rejects_unavailable_forkserver(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The platform check runs before anything is set up, let alone the director started."""
+    (path_tmp / "plan.py").touch()
+    monkeypatch.setattr("stepup.core.tui.forkserver_available", lambda: False)
+
+    async def fail_create_subprocess_exec(*args, **kwargs):
+        raise AssertionError("The director must not be started.")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fail_create_subprocess_exec)
+    args = _base_build_args(progress=False, forkserver=True)
+    with contextlib.chdir(path_tmp), pytest.raises(ConfigError, match="forkserver"):
+        asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
+    assert not (path_tmp / ".stepup").exists()
+
+
 def test_async_build_ignores_watcher_without_watch_mode(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1081,10 +1135,11 @@ def _pre_interrupted_signal_handler(reporter_handler, process_director) -> Termi
         (3, None, 3),
         (0, signal.SIGTERM, ReturnCode.INTERRUPTED.value),
         (3, signal.SIGINT, 3 | ReturnCode.INTERRUPTED.value),
-        # A wait status of -9 is not a ReturnCode combination, so it becomes INTERNAL.
-        (-signal.SIGKILL, None, ReturnCode.INTERNAL.value),
+        # A wait status of -9 (SIGKILL) is not a ReturnCode combination, so it becomes INTERNAL.
+        # The literal keeps this module importable where `signal.SIGKILL` does not exist.
+        (-9, None, ReturnCode.INTERNAL.value),
         (
-            -signal.SIGKILL,
+            -9,
             signal.SIGTERM,
             ReturnCode.INTERNAL.value | ReturnCode.INTERRUPTED.value,
         ),
@@ -1595,6 +1650,7 @@ def _patch_interactive_director(
     return fake_reporter_handler, keyboard_calls
 
 
+@pytest.mark.requires_termios
 def test_async_build_director_exits_before_socket(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch, tty_stdin: int
 ) -> None:
@@ -1619,6 +1675,7 @@ def test_async_build_director_exits_before_socket(
     assert fake_reporter_handler.stop_reporting_calls >= 1
 
 
+@pytest.mark.requires_termios
 def test_async_build_starts_keyboard_when_socket_appears(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch, tty_stdin: int
 ) -> None:
@@ -1633,6 +1690,22 @@ def test_async_build_starts_keyboard_when_socket_appears(
     assert keyboard_calls[0].name == "director"
 
 
+@pytest.mark.requires_termios
+def test_async_build_without_raw_terminal_skips_keyboard(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch, tty_stdin: int
+) -> None:
+    """Where single keystrokes cannot be read, a terminal does not start the keyboard task."""
+    (path_tmp / "plan.py").touch()
+    monkeypatch.setattr("stepup.core.tui.raw_terminal_available", lambda: False)
+    _, keyboard_calls = _patch_interactive_director(monkeypatch, returncode=0, create_socket=True)
+    args = _base_build_args(progress=False)
+    with contextlib.chdir(path_tmp):
+        returncode = asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
+    assert returncode == 0
+    assert keyboard_calls == []
+
+
+@pytest.mark.requires_termios
 def test_raw_terminal_restores_attributes() -> None:
     """`RawTerminal` clears `ICANON`/`ECHO` inside the context and restores them after."""
     primary_fd, secondary_fd = pty.openpty()
@@ -1649,6 +1722,7 @@ def test_raw_terminal_restores_attributes() -> None:
         os.close(secondary_fd)
 
 
+@pytest.mark.requires_termios
 def test_raw_terminal_restores_on_exception() -> None:
     """`RawTerminal` restores the original attributes even when the body raises."""
     primary_fd, secondary_fd = pty.openpty()
@@ -1663,6 +1737,7 @@ def test_raw_terminal_restores_on_exception() -> None:
         os.close(secondary_fd)
 
 
+@pytest.mark.requires_termios
 def test_raw_terminal_suspend_resume_round_trip() -> None:
     """`suspend` hands the original attributes back, `resume` takes raw mode over again."""
     primary_fd, secondary_fd = pty.openpty()
@@ -1683,6 +1758,7 @@ def test_raw_terminal_suspend_resume_round_trip() -> None:
         os.close(secondary_fd)
 
 
+@pytest.mark.requires_termios
 def test_raw_terminal_suspend_resume_without_enter() -> None:
     """A `RawTerminal` that never entered raw mode leaves the terminal alone."""
     primary_fd, secondary_fd = pty.openpty()
@@ -1698,6 +1774,7 @@ def test_raw_terminal_suspend_resume_without_enter() -> None:
         os.close(secondary_fd)
 
 
+@pytest.mark.requires_termios
 def test_iter_keystrokes_yields_from_pty(monkeypatch: pytest.MonkeyPatch) -> None:
     """`_iter_keystrokes` reads real keystrokes from a pty put in raw mode by its caller.
 

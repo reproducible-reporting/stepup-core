@@ -20,7 +20,7 @@ from stepup.core.tool import ToolFunc
 def _write_director_log(path_tmp: Path, socket_path: Path, pid: int) -> None:
     """Write a director log with the same first lines as `async_main` in `director.py`."""
     (path_tmp / DIRECTOR_LOG).parent.makedirs_p()
-    with open(path_tmp / DIRECTOR_LOG, "w") as fh:
+    with open(path_tmp / DIRECTOR_LOG, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(f"SOCKET {socket_path}\nPID {pid}\nLOG_LEVEL INFO\n")
 
 

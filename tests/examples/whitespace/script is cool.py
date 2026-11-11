@@ -7,9 +7,9 @@ def info():
 
 
 def run(inp, out):
-    with open(inp) as fh:
+    with open(inp, encoding="utf-8") as fh:
         text = fh.read()
-    with open(out, "w") as fh:
+    with open(out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(text)
 
 

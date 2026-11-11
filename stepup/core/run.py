@@ -14,7 +14,6 @@ import io
 import logging
 import multiprocessing
 import os
-import resource
 import runpy
 import shlex
 import shutil
@@ -38,6 +37,10 @@ from .outcome import ChildOutcome, ResourceUsage
 from .step import Step
 from .tracebacks import print_step_traceback
 from .utils import escape_control_chars
+
+if sys.platform != "win32":
+    # Only the forkserver path uses it, and Windows has no forkserver.
+    import resource
 
 __all__ = (
     "ForkserverWorker",
@@ -562,6 +565,8 @@ def _communicate_wait4(
 
     Reads stdout and stderr concurrently in threads to avoid a pipe-full deadlock,
     then calls `os.wait4` to reap the child and capture its individual CPU usage.
+    Where `os.wait4` does not exist, the child is reaped without measuring its CPU usage,
+    which is then reported as zero.
     """
     stdout_join = _start_drain(proc.stdout.read) if proc.stdout is not None else None
     stderr_join = _start_drain(proc.stderr.read) if proc.stderr is not None else None
@@ -577,6 +582,9 @@ def _communicate_wait4(
     stdout = stdout_join() if stdout_join is not None else b""
     stderr = stderr_join() if stderr_join is not None else b""
 
+    if not hasattr(os, "wait4"):
+        proc.wait()
+        return stdout, stderr, ResourceUsage(wtime=time.perf_counter() - wtime_start)
     _, status, rusage = os.wait4(proc.pid, 0)
     proc.returncode = os.waitstatus_to_exitcode(status)
     usage = ResourceUsage(

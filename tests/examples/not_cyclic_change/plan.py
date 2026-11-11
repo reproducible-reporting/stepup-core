@@ -3,5 +3,8 @@ from stepup.core.api import amend, static
 
 static("input.txt")
 amend(inp="input.txt", out="output.txt")
-with open("output.txt", "w") as fo, open("input.txt") as fi:
+with (
+    open("output.txt", "w", encoding="utf-8", newline="\n") as fo,
+    open("input.txt", encoding="utf-8") as fi,
+):
     fo.write(fi.read())

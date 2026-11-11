@@ -23,6 +23,6 @@ else:
 # first invocation, where producer.sh and this step race; irrelevant afterward.
 time.sleep(0.2)
 
-content = data_path.read_text()
+content = data_path.read_text(encoding="utf-8")
 amend(inp=["data.txt"])
 print(f"sink read: {content.strip()}")

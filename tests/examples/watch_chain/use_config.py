@@ -4,11 +4,11 @@ import json
 from stepup.core.api import run
 
 # Load configuration
-with open("config.json") as fh:
+with open("config.json", encoding="utf-8") as fh:
     config = json.load(fh)
 
 # Write some output file
-with open("output.txt", "w") as fh:
+with open("output.txt", "w", encoding="utf-8", newline="\n") as fh:
     print(config["msg"], file=fh)
 
 # Use the log parameter to create a new runsh.

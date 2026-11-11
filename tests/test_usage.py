@@ -15,6 +15,7 @@ from stepup.core.usage import (
     CGROUP_UNAVAILABLE_LINE,
     REPORT_TEMPLATE,
     CgroupMemorySampler,
+    _get_director_usage,
     finalize_resource_usage,
 )
 
@@ -24,23 +25,25 @@ from stepup.core.usage import (
 
 
 def test_cgroup_memory_sampler_tracks_peak(path_tmp: Path):
-    (path_tmp / "memory.current").write_text("1048576")  # 1 MiB
+    (path_tmp / "memory.current").write_text("1048576", encoding="utf-8")  # 1 MiB
     sampler = CgroupMemorySampler(cgroup_dir=path_tmp)
     sampler.sample_once()
     assert sampler.peak_mib == 1.0
 
-    (path_tmp / "memory.current").write_text("2097152")  # 2 MiB
+    (path_tmp / "memory.current").write_text("2097152", encoding="utf-8")  # 2 MiB
     sampler.sample_once()
     assert sampler.peak_mib == 2.0
 
-    (path_tmp / "memory.current").write_text("524288")  # 0.5 MiB: peak must not drop
+    (path_tmp / "memory.current").write_text(
+        "524288", encoding="utf-8"
+    )  # 0.5 MiB: peak must not drop
     sampler.sample_once()
     assert sampler.peak_mib == 2.0
 
 
 def test_cgroup_memory_sampler_uses_memory_peak_file(path_tmp: Path):
-    (path_tmp / "memory.current").write_text("1048576")  # 1 MiB
-    (path_tmp / "memory.peak").write_text("5242880")  # 5 MiB kernel-tracked peak
+    (path_tmp / "memory.current").write_text("1048576", encoding="utf-8")  # 1 MiB
+    (path_tmp / "memory.peak").write_text("5242880", encoding="utf-8")  # 5 MiB kernel-tracked peak
     sampler = CgroupMemorySampler(cgroup_dir=path_tmp)
     sampler.sample_once()
     assert sampler.peak_mib == 5.0
@@ -53,7 +56,7 @@ def test_cgroup_memory_sampler_without_readable_files(path_tmp: Path):
 
 
 async def test_cgroup_memory_sampler_loop_stops(path_tmp: Path):
-    (path_tmp / "memory.current").write_text("1048576")  # 1 MiB
+    (path_tmp / "memory.current").write_text("1048576", encoding="utf-8")  # 1 MiB
     # The interval is long, so the loop can only end quickly through the stop event.
     sampler = CgroupMemorySampler(cgroup_dir=path_tmp, interval=100.0)
     stop_event = asyncio.Event()
@@ -66,7 +69,7 @@ async def test_cgroup_memory_sampler_loop_stops(path_tmp: Path):
 
 
 async def test_cgroup_memory_sampler_loop_cancelled(path_tmp: Path):
-    (path_tmp / "memory.current").write_text("1048576")  # 1 MiB
+    (path_tmp / "memory.current").write_text("1048576", encoding="utf-8")  # 1 MiB
     sampler = CgroupMemorySampler(cgroup_dir=path_tmp, interval=100.0)
     task = asyncio.create_task(sampler.loop(asyncio.Event()))
     await asyncio.sleep(0)
@@ -98,6 +101,16 @@ def test_report_memory_lines_are_aligned():
     assert [len(line) for line in lines] == [60, 60, 60, 60]
 
 
+def test_get_director_usage():
+    """The current process has used some CPU time and some memory, wherever it runs."""
+    utime, stime, peak_mib = _get_director_usage()
+    assert utime > 0.0
+    assert stime >= 0.0
+    # Any Python interpreter with pytest loaded needs more than a few MiB,
+    # so this also catches a wrong unit conversion by a factor of 1024.
+    assert 10.0 < peak_mib < 100_000.0
+
+
 def test_finalize_resource_usage_without_sampler():
     step_usage = ResourceUsage(utime=2.0, stime=1.0, wtime=7.0)
     report, summary = finalize_resource_usage(time.perf_counter() - 5.0, step_usage, None)
@@ -112,7 +125,7 @@ def test_finalize_resource_usage_takes_final_sample(path_tmp: Path):
     sampler = CgroupMemorySampler(cgroup_dir=path_tmp)
     sampler.sample_once()
     assert sampler.peak_mib is None
-    (path_tmp / "memory.current").write_text("3145728")  # 3 MiB
+    (path_tmp / "memory.current").write_text("3145728", encoding="utf-8")  # 3 MiB
     report, _ = finalize_resource_usage(time.perf_counter(), ResourceUsage(), sampler)
     assert sampler.peak_mib == 3.0
     assert report.endswith(CGROUP_PEAK_MEM_TEMPLATE.format(aggregate_mib=3.0))

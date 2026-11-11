@@ -1695,7 +1695,7 @@ async def test_find_glob_violations_stale_match_not_on_disk_no_violation(wfp: Wo
 
 async def test_find_glob_violations_no_node_on_disk_violation(wfp: Workflow, tmpdir):
     with contextlib.chdir(tmpdir):
-        with open("orphan.txt", "w") as fh:
+        with open("orphan.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("x")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
@@ -1780,7 +1780,7 @@ async def test_find_glob_violations_volatile_violation(wfp: Workflow):
 
 async def test_find_glob_violations_detached_step_no_violation(wfp: Workflow, tmpdir):
     with contextlib.chdir(tmpdir):
-        with open("orphan.txt", "w") as fh:
+        with open("orphan.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("x")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
@@ -1800,7 +1800,7 @@ async def test_find_glob_violations_detached_node_still_violation(wfp: Workflow,
     docstrings' "detached nodes never count" rationale).
     """
     with contextlib.chdir(tmpdir):
-        with open("detached.txt", "w") as fh:
+        with open("detached.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("x")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
@@ -1819,7 +1819,7 @@ async def test_find_glob_violations_detached_node_still_violation(wfp: Workflow,
 
 async def test_find_glob_violations_two_patterns_two_violations_sorted(wfp: Workflow, tmpdir):
     with contextlib.chdir(tmpdir):
-        with open("shared.txt", "w") as fh:
+        with open("shared.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("x")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")

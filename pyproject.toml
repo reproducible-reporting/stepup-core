@@ -122,7 +122,9 @@ addopts = "-n auto --dist worksteal -W error -W ignore::ResourceWarning"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
-    "requires_forkserver: mark test that requires STEPUP_BUILD_FORKSERVER != 0",
+    "requires_forkserver: skip unless the forkserver is available and STEPUP_BUILD_FORKSERVER != 0",
+    "requires_termios: skip unless POSIX terminal control (termios, pty) is available",
+    "requires_suspend: skip unless the job-control signals of Ctrl-Z are available",
 ]
 timeout = 15
 
@@ -131,9 +133,14 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
+# Preview mode is only enabled for the preview rules selected by their full code below,
+# but it also turns on the preview behavior of stable rules.
+preview = true
+explicit-preview-rules = true
 select = [
     "A", "B", "BLE", "C4", "E", "EXE", "F", "I", "ICN", "ISC", "N", "NPY", "PERF", "PIE", "PL",
-    "PT", "PYI", "RET", "RSE", "RUF", "SIM", "TRY", "UP", "W"
+    "PT", "PYI", "RET", "RSE", "RUF", "SIM", "TRY", "UP", "W",
+    "PLW1514",  # https://docs.astral.sh/ruff/rules/unspecified-encoding/ (preview in ruff 0.17.2)
 ]
 ignore = [
     "ISC004",  # https://docs.astral.sh/ruff/rules/isc004/

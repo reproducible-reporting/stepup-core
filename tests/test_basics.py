@@ -14,21 +14,21 @@ from stepup.core.rpc import SocketAsyncRPCClient
 
 
 async def test_unknown_instruction(client: SocketAsyncRPCClient):
-    with open("DONE.txt", "w") as fh:
+    with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
         await client("instruction_that_does_not_exist")
 
 
 async def test_missing_argument(client: SocketAsyncRPCClient):
-    with open("DONE.txt", "w") as fh:
+    with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
         await client("declare_static")
 
 
 async def test_wrong_type(client: SocketAsyncRPCClient):
-    with open("DONE.txt", "w") as fh:
+    with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
         await client("declare_static", 5)
@@ -55,14 +55,14 @@ step:./plan.py
 
 
 def _check_graph(path, expected):
-    with open(path) as fh:
+    with open(path, encoding="utf-8") as fh:
         cur = fh.read()
         cur = re.sub(r" {10}(inp_|out_| {4})digest = ([ 0-9a-f]{71}|same)\n", "", cur)
         assert cur == expected
 
 
 async def test_from_scratch(client: SocketAsyncRPCClient, path_tmp: Path):
-    with open("DONE.txt", "w") as fh:
+    with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
         fh.write("done")
     await client("wait_for_idle")
     prefix_graph = path_tmp / "graph"
@@ -97,18 +97,18 @@ file:foo
 
 def _get_job_i() -> int:
     """Read the job_i of the currently running boot step, written by `BUILD_UNTIL_DONE`."""
-    with open("STARTED.txt") as fh:
+    with open("STARTED.txt", encoding="utf-8") as fh:
         return int(fh.read())
 
 
 async def test_static(client: SocketAsyncRPCClient, path_tmp: Path):
     try:
-        with open("foo", "w") as fh:
+        with open("foo", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("bar")
         result = await client("declare_static", _get_job_i(), [], ["foo"], [])
         assert result is None
     finally:
-        with open("DONE.txt", "w") as fh:
+        with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("done")
     await client("wait_for_idle")
     prefix_graph = path_tmp / "graph"
@@ -158,7 +158,7 @@ file:copy.txt
 
 async def test_copy(client: SocketAsyncRPCClient, path_tmp: Path):
     try:
-        with open("original.txt", "w") as fh:
+        with open("original.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("Hello world!")
         job_i = _get_job_i()
         await client(
@@ -177,7 +177,7 @@ async def test_copy(client: SocketAsyncRPCClient, path_tmp: Path):
         result = await client("declare_static", job_i, [], ["original.txt"], [])
         assert result is None
     finally:
-        with open("DONE.txt", "w") as fh:
+        with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("done")
     await client("wait_for_idle")
     prefix_graph = path_tmp / "graph"
@@ -200,7 +200,7 @@ async def test_static_registers_tree_before_file(client: SocketAsyncRPCClient, p
     try:
         job_i = _get_job_i()
         os.mkdir("sub")
-        with open("sub/data.txt", "w") as fh:
+        with open("sub/data.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         result = await client("declare_static", job_i, ["sub/"], ["sub/data.txt"], [])
         assert result is None
@@ -218,12 +218,12 @@ async def test_static_registers_tree_before_file(client: SocketAsyncRPCClient, p
             True,
         )
     finally:
-        with open("DONE.txt", "w") as fh:
+        with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("done")
     await client("wait_for_idle")
     prefix_graph = path_tmp / "graph"
     await client("write_graph", prefix_graph)
-    with open(prefix_graph + ".txt") as fh:
+    with open(prefix_graph + ".txt", encoding="utf-8") as fh:
         graph = fh.read()
     # The tree is the file's owner: a node is created, with the tree as its creator.
     assert "file:sub/data.txt\n" in graph
@@ -236,13 +236,13 @@ async def test_amend_blocks_until_static_tree_match_confirmed(client: SocketAsyn
     try:
         job_i = _get_job_i()
         os.mkdir("sub")
-        with open("sub/data.txt", "w") as fh:
+        with open("sub/data.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         await client("declare_static", job_i, ["sub/"], [], [])
         carry_on = await client("amend_step", job_i, ["sub/data.txt"], [], [], [])
         assert carry_on is True
     finally:
-        with open("DONE.txt", "w") as fh:
+        with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("done")
     await client("wait_for_idle")
 
@@ -257,7 +257,7 @@ async def test_amend_reports_missing_static_tree_match(client: SocketAsyncRPCCli
         carry_on = await client("amend_step", job_i, ["sub/ghost.txt"], [], [], [])
         assert carry_on is False
     finally:
-        with open("DONE.txt", "w") as fh:
+        with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("done")
     await client("wait_for_idle")
 
@@ -295,7 +295,7 @@ async def test_hold_release_rpc_smoke(client: SocketAsyncRPCClient):
         )
         await client("release_dispatch", job_i)
     finally:
-        with open("DONE.txt", "w") as fh:
+        with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("done")
     await client("wait_for_idle")
     assert Path("a.txt").is_file()
@@ -315,7 +315,7 @@ async def test_hold_nested_rpc_smoke(client: SocketAsyncRPCClient):
         await client("release_dispatch", job_i)
         await client("release_dispatch", job_i)
     finally:
-        with open("DONE.txt", "w") as fh:
+        with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("done")
     await client("wait_for_idle")
 
@@ -333,6 +333,6 @@ async def test_release_without_hold_raises_graph_error(client: SocketAsyncRPCCli
         with pytest.raises(GraphError):
             await client("release_dispatch", job_i)
     finally:
-        with open("DONE.txt", "w") as fh:
+        with open("DONE.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("done")
     await client("wait_for_idle")

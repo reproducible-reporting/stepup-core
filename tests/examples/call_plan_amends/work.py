@@ -12,9 +12,9 @@ def plan():
 
 
 def run(inp, out):
-    with open(out[0], "w") as f:
+    with open(out[0], "w", encoding="utf-8", newline="\n") as f:
         for p in inp:
-            with open(p) as g:
+            with open(p, encoding="utf-8") as g:
                 f.write(g.read())
 
 

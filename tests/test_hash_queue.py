@@ -175,9 +175,9 @@ async def test_gather_hashes_returns_results_in_input_order(wfs: Workflow, tmpdi
     with contextlib.chdir(tmpdir):
         async with wfs.db:
             wfs.declare_static_files(wfs.root, ["a.txt", "b.txt"])
-        with open("a.txt", "w") as fh:
+        with open("a.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("aaa")
-        with open("b.txt", "w") as fh:
+        with open("b.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("bbbb")
 
         hash_queue = HashQueue(wake=asyncio.Event())

@@ -2,7 +2,7 @@
 from stepup.core.api import amend
 
 # Parse the sources.txt file
-with open("sources.txt") as fh:
+with open("sources.txt", encoding="utf-8") as fh:
     paths_inp = fh.read().split()
 
 # Request the additional input.
@@ -12,5 +12,5 @@ amend(inp=paths_inp)
 # This part is reachable only if the requested inputs are present.
 for path_inp in paths_inp:
     print(f"Contents of {path_inp}:")
-    with open(path_inp) as fh:
+    with open(path_inp, encoding="utf-8") as fh:
         print(fh.read())

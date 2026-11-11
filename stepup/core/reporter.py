@@ -359,7 +359,7 @@ class ReporterHandler:
             "yellow": WARNING_LOG,
         }.get(tag_color, SUCCESS_LOG)
         path_log.parent.makedirs_p()
-        with open(path_log, "a") as file:
+        with open(path_log, "a", encoding="utf-8", newline="\n") as file:
             console = Console(file=file, width=80)
             console.print(line, no_wrap=True, soft_wrap=True)
             for title, page in pages:

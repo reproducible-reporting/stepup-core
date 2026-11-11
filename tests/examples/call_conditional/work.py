@@ -4,13 +4,13 @@ from stepup.core.call import driver
 
 
 def plan(inp):
-    with open(inp[0]) as f:
+    with open(inp[0], encoding="utf-8") as f:
         if f.read().strip() == "enabled":
             call("./work.py", "run", out=["result.txt"])
 
 
 def run(out):
-    with open(out[0], "w") as f:
+    with open(out[0], "w", encoding="utf-8", newline="\n") as f:
         f.write("done\n")
 
 

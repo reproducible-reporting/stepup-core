@@ -34,7 +34,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     if args.json is not None:
         variables.update(json.loads(args.json))
     result = render_jinja_file(args.path_in, variables, latex=latex)
-    with open(args.path_out, "w") as fh:
+    with open(args.path_out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(result)
     # A rendered script must remain executable, so the template's mode is copied over.
     args.path_out.chmod(args.path_in.stat().st_mode)
@@ -95,7 +95,7 @@ def render_jinja_file(path: StrPath, variables: dict[str, Any], *, latex: bool =
     rendered
         A string with the result.
     """
-    with open(path) as fh:
+    with open(path, encoding="utf-8") as fh:
         source = fh.read()
     return render_jinja_str(source, variables, latex=latex, name=coerce_str(path))
 

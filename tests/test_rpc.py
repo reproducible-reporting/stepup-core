@@ -55,7 +55,7 @@ from stepup.core.rpc import (
 from stepup.core.utils import DIRECTOR_LOG_CHECKS
 
 
-@pytest_asyncio.fixture()
+@pytest_asyncio.fixture
 async def socket_server_path(dir_sockets):
     async with asyncio.timeout(5):
         path = dir_sockets / "socket"
@@ -72,7 +72,7 @@ async def socket_server_path(dir_sockets):
             await process.wait()
 
 
-@pytest_asyncio.fixture()
+@pytest_asyncio.fixture
 async def sc(socket_server_path):
     async with SocketAsyncRPCClient(socket_server_path) as client:
         yield client
@@ -225,7 +225,7 @@ async def test_client_call_after_close(socket_server_path):
             await client.call.echo("world")
 
 
-@pytest_asyncio.fixture()
+@pytest_asyncio.fixture
 async def deaf_server_path(dir_sockets):
     """The path of a server that accepts connections and then never reads a single byte."""
     writers = []
@@ -1199,7 +1199,7 @@ async def test_send_loop_answers_an_unpicklable_result_with_an_empty_body():
         assert connection.writer.data == (7).to_bytes(8) + (0).to_bytes(8)
 
 
-@pytest_asyncio.fixture()
+@pytest_asyncio.fixture
 async def no_reply_server_path(dir_sockets):
     """Path of a socket server that answers every call with an empty body.
 
@@ -1267,7 +1267,7 @@ async def test_client_no_reply_error_names_the_log_of_its_own_server(no_reply_se
                 await client.call.echo("hello")
 
 
-@pytest_asyncio.fixture()
+@pytest_asyncio.fixture
 async def vanishing_server_path(dir_sockets):
     """Path of a socket server that drops the connection instead of answering the first call."""
     path = dir_sockets / "vanishing_socket"
@@ -1391,7 +1391,7 @@ async def test_client_close_survives_a_peer_gone_on_wait_closed(sc, peer_gone):
         await sc.close()
 
 
-@pytest_asyncio.fixture()
+@pytest_asyncio.fixture
 async def corrupt_server_path(dir_sockets):
     """Path of a socket server whose response is not an RPC message.
 

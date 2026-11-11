@@ -21,6 +21,7 @@ from stepup.core.director import ServeConfig, serve
 from stepup.core.enums import HashUpdateCause, Need
 from stepup.core.file import File
 from stepup.core.hash import FileHash
+from stepup.core.oscompat import forkserver_available, raw_terminal_available, suspend_available
 from stepup.core.reporter import ReporterClient
 from stepup.core.rpc import SocketAsyncRPCClient
 from stepup.core.sqlite3 import DBSession
@@ -30,13 +31,32 @@ from stepup.core.workflow import Workflow
 pytest.register_assert_rewrite("stepup.core.pytest")
 
 
+def _forkserver_enabled() -> bool:
+    """Whether the forkserver is available and not switched off for this test run."""
+    return forkserver_available() and os.environ.get("STEPUP_BUILD_FORKSERVER") != "0"
+
+
+CAPABILITY_MARKERS = {
+    "requires_forkserver": (
+        _forkserver_enabled,
+        "requires the forkserver (available on this platform and STEPUP_BUILD_FORKSERVER != 0)",
+    ),
+    "requires_termios": (raw_terminal_available, "requires POSIX terminal control (termios)"),
+    "requires_suspend": (suspend_available, "requires the job-control signals of Ctrl-Z"),
+}
+"""Markers that skip a test when a capability is missing, with the predicate testing for it.
+
+Each marker must also be registered under `markers` in `pyproject.toml`.
+"""
+
+
 def pytest_collection_modifyitems(items):
-    if os.environ.get("STEPUP_BUILD_FORKSERVER") == "0":
-        skip = pytest.mark.skip(
-            reason="requires fork-based process execution (STEPUP_BUILD_FORKSERVER != 0)"
-        )
+    for name, (available, reason) in CAPABILITY_MARKERS.items():
+        if available():
+            continue
+        skip = pytest.mark.skip(reason=reason)
         for item in items:
-            if item.get_closest_marker("requires_forkserver"):
+            if item.get_closest_marker(name):
                 item.add_marker(skip)
 
 
@@ -89,14 +109,14 @@ def dir_sockets() -> Iterator[Path]:
         yield Path(path)
 
 
-@pytest_asyncio.fixture()
+@pytest_asyncio.fixture
 async def client(tmpdir, dir_sockets) -> AsyncGenerator[SocketAsyncRPCClient, None]:
     # Launch stepup in background
     with contextlib.chdir(tmpdir):
         Path(".stepup").makedirs_p()
         director_socket_path = dir_sockets / "director"
 
-        with open("plan.py", "w") as fh:
+        with open("plan.py", "w", encoding="utf-8", newline="\n") as fh:
             fh.write(BUILD_UNTIL_DONE)
         os.chmod("plan.py", stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
         # The DBSession owns the SQLite connection for the lifetime of the director task,

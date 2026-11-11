@@ -1,11 +1,11 @@
  STARTUP │ Watching 1 directory
  STARTUP │ Checking 4 file(s) for changes
  DELETED │ inp.txt
- UPDATED │ plan.py (digest 04f162d6 ➜ 7800367b, size 264 ➜ 111)
+ UPDATED │ plan.py (digest e600f0a5 ➜ 7800367b, size 327 ➜ 111)
    PHASE │ build
  UNAMEND │ ./plan.py
 ──────────────────────── Outdated dynamic dependencies ─────────────────────────
-Modified step hash   compact ➜ explained, inp_digest 0a37b5ac ➜ dc7cd356, out_digest b19341b7 ➜ (unset)
+Modified step hash   compact ➜ explained, inp_digest 7a032960 ➜ dc7cd356, out_digest b19341b7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./plan.py
  SUCCESS │ ./plan.py

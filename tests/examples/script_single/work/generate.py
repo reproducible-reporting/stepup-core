@@ -14,9 +14,9 @@ def info():
 
 
 def run():
-    with open("config.json") as fh:
+    with open("config.json", encoding="utf-8") as fh:
         config = json.load(fh)
-    with open("test.csv", "w") as fh:
+    with open("test.csv", "w", encoding="utf-8", newline="\n") as fh:
         fh.write("name,value\n")
         for value in config:
             if value % 2 == 0:

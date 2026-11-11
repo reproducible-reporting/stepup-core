@@ -3,9 +3,9 @@ import os
 
 from stepup.core.api import run
 
-with open("inp1.txt") as fh:
+with open("inp1.txt", encoding="utf-8") as fh:
     text = fh.read().strip()
 if text == "a":
     run("./work2.py", inp=["work2.py", "inp2.txt"], out="out2.txt")
-with open("out1.txt", "w") as fh:
+with open("out1.txt", "w", encoding="utf-8", newline="\n") as fh:
     print(f"level={os.getenv('LEVEL')}", file=fh)

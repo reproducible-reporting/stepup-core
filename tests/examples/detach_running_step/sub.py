@@ -4,7 +4,7 @@ import time
 
 from path import Path
 
-with open("trigger_sub.txt", "w") as f:
+with open("trigger_sub.txt", "w", encoding="utf-8", newline="\n") as f:
     f.write("triggered")
 
 while not Path("trigger_work2.txt").exists():

@@ -18,7 +18,7 @@ assert info.env == []
 assert info.out == ["out.txt"]
 assert info.vol == []
 
-with open(info.filter_inp("*.txt").single()) as f:
+with open(info.filter_inp("*.txt").single(), encoding="utf-8") as f:
     text = f.read()
-with open(info.out[0], "w") as f:
+with open(info.out[0], "w", encoding="utf-8", newline="\n") as f:
     f.write(text.upper())

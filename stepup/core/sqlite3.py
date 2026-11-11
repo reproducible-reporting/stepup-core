@@ -297,7 +297,7 @@ class SQLLog:
 
     def __enter__(self) -> Self:
         """Create the timings file and write its header."""
-        with open(self.path_timings, "w", newline="") as fh:
+        with open(self.path_timings, "w", encoding="utf-8", newline="") as fh:
             csv.DictWriter(fh, _SQLLOG_CSV_COLUMNS).writeheader()
         return self
 
@@ -373,7 +373,7 @@ class SQLLog:
         The file is opened and closed for every call, so the write reaches disk synchronously
         and rows stay correctly ordered, mirroring `append_joblog_record()` in `job.py`.
         """
-        with open(self.path_timings, "a", newline="") as fh:
+        with open(self.path_timings, "a", encoding="utf-8", newline="") as fh:
             csv.DictWriter(fh, _SQLLOG_CSV_COLUMNS).writerow(row)
 
     def _write_query_index(self) -> None:
@@ -390,7 +390,7 @@ class SQLLog:
             json_converter.unstructure(key) | json_converter.unstructure(info)
             for key, info in self._queries.items()
         ]
-        with open(self.path_queries, "w") as f:
+        with open(self.path_queries, "w", encoding="utf-8", newline="\n") as f:
             json.dump(records, f)
 
 

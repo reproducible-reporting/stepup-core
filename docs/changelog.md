@@ -30,8 +30,18 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   Developers of StepUp can select the library with the environment variable `STEPUP_WATCHER`,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
 
+### Changed
+
+- StepUp reads and writes its own text files in UTF-8 on every platform,
+  instead of in the locale encoding,
+  and writes them with `\n` line endings.
+  This includes the files in `.stepup/`, the output of `stepup graph`
+  and the files that `loadns()`, `dumpns()` and `render_jinja()` read or write.
+
 ### Fixed
 
+- Enabling the forkserver or `perf` on a platform that does not have it
+  now fails with a clear error message, before the build starts.
 - On macOS, the director no longer reports an error when the other side closes a connection
   that the director is still using, which could happen at the end of a build.
 

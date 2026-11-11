@@ -10,7 +10,7 @@ def run(out):
     # Local import to test module dependency scanning.
     from helper import func  # noqa: PLC0415
 
-    with open(out, "w") as fh:
+    with open(out, "w", encoding="utf-8", newline="\n") as fh:
         print(func(), file=fh)
 
 

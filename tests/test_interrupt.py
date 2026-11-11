@@ -11,19 +11,22 @@ exactly as a key press does.
 
 import contextlib
 import os
-import pty
 import re
 import signal
 import stat
 import subprocess
 import sys
-import termios
 import time
 
 import pytest
 from path import Path
 
 from stepup.core.enums import ReturnCode
+from stepup.core.oscompat import raw_terminal_available
+
+if raw_terminal_available():
+    import pty
+    import termios
 
 PLAN = """#!/usr/bin/env python3
 from stepup.core.api import step
@@ -37,10 +40,11 @@ LEAF = "sleep 300"
 TIMEOUT = 60.0
 """Hard cap for a single interrupt scenario, well above all shutdown grace periods."""
 
-pytestmark = pytest.mark.timeout(3 * TIMEOUT)
-"""Budget for a whole scenario, which polices its own deadlines with `TIMEOUT`.
+pytestmark = [pytest.mark.timeout(3 * TIMEOUT), pytest.mark.requires_termios]
+"""The pseudo terminal that every scenario runs on, and the budget for a whole scenario.
 
-Setup, call and teardown share this budget,
+A scenario polices its own deadlines with `TIMEOUT`.
+Setup, call and teardown share the budget,
 and it must stay above their combined worst case,
 so that a scenario that runs out of time fails on its own assertion,
 which says which process was in which state,
@@ -162,7 +166,7 @@ def wait_for_director(path_tmp: Path, master: int) -> int:
     while time.monotonic() < deadline:
         drain(master)
         if path_log.is_file():
-            match = re.search(r"^PID (\d+)$", path_log.read_text(), re.MULTILINE)
+            match = re.search(r"^PID (\d+)$", path_log.read_text(encoding="utf-8"), re.MULTILINE)
             if match is not None:
                 return int(match.group(1))
         time.sleep(0.1)
@@ -209,7 +213,7 @@ def stepup_on_pty(request: pytest.FixtureRequest, path_tmp: Path):
     """
     command, shell = getattr(request, "param", (LEAF, False))
     path_plan = path_tmp / "plan.py"
-    path_plan.write_text(PLAN.format(command=command, shell=shell))
+    path_plan.write_text(PLAN.format(command=command, shell=shell), encoding="utf-8")
     path_plan.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
     process, master = spawn_on_pty(path_tmp)
     leaf_pid = None
@@ -242,9 +246,9 @@ def test_ctrl_c_lets_the_director_finish_its_shutdown(stepup_on_pty, path_tmp: P
     process, master, _ = stepup_on_pty
     os.write(master, INTERRUPT_CHAR)
     wait_exit(process, master, TIMEOUT)
-    assert "Traceback" not in (path_tmp / ".stepup" / "director.log").read_text()
+    assert "Traceback" not in (path_tmp / ".stepup" / "director.log").read_text(encoding="utf-8")
     # 'See you!' is the last thing the director reports, after writing its logs.
-    assert "See you!" in (path_tmp / ".stepup" / "success.log").read_text()
+    assert "See you!" in (path_tmp / ".stepup" / "success.log").read_text(encoding="utf-8")
 
 
 def test_sigterm_leaves_no_orphans(stepup_on_pty) -> None:
@@ -404,7 +408,7 @@ def stepup_job_on_pty(path_tmp: Path):
         interface, the director and the long-running step, in that order.
     """
     path_plan = path_tmp / "plan.py"
-    path_plan.write_text(PLAN.format(command=LEAF, shell=False))
+    path_plan.write_text(PLAN.format(command=LEAF, shell=False), encoding="utf-8")
     path_plan.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
     master, slave = pty.openpty()
     process = subprocess.Popen(
@@ -440,6 +444,7 @@ def stepup_job_on_pty(path_tmp: Path):
         os.close(master)
 
 
+@pytest.mark.requires_suspend
 def test_ctrl_z_suspends_running_steps(stepup_job_on_pty) -> None:
     """Ctrl-Z stops the steps too, which the terminal cannot do: they run in their own session."""
     _, master, pids = stepup_job_on_pty
@@ -454,6 +459,7 @@ def test_ctrl_z_suspends_running_steps(stepup_job_on_pty) -> None:
     wait_states(pids, STATES_RUNNING, master, TIMEOUT / 2)
 
 
+@pytest.mark.requires_suspend
 def test_ctrl_z_restores_the_terminal(stepup_job_on_pty) -> None:
     """The shell gets a canonical terminal back, and StepUp takes raw mode over again.
 
@@ -480,6 +486,7 @@ def test_ctrl_z_restores_the_terminal(stepup_job_on_pty) -> None:
     wait_raw(master, TIMEOUT / 2)
 
 
+@pytest.mark.requires_suspend
 def test_ctrl_z_shows_the_cursor(stepup_job_on_pty) -> None:
     """The live display hides the cursor, so it must be stopped before the shell prompt returns."""
     _, master, pids = stepup_job_on_pty
@@ -490,6 +497,7 @@ def test_ctrl_z_shows_the_cursor(stepup_job_on_pty) -> None:
     assert b"\x1b[?25h" in output, "The cursor was left invisible while suspended."
 
 
+@pytest.mark.requires_suspend
 def test_ctrl_z_then_ctrl_c_still_aborts(stepup_job_on_pty) -> None:
     """A suspension is not an interruption: the build must survive it and still abort later."""
     process, master, pids = stepup_job_on_pty

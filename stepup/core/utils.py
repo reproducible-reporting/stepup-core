@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import shlex
+import sys
 from collections.abc import Iterable
 
 from path import Path
@@ -14,6 +15,9 @@ from path import Path
 from .constants import DIRECTOR_LOG_PID_PREFIX, DIRECTOR_LOG_SOCKET_PREFIX
 from .exceptions import StepUpError
 from .path import StrPath, coerce_str
+
+if sys.platform == "win32":
+    from .winapi import is_process_alive
 
 __all__ = (
     "as_list",
@@ -258,6 +262,10 @@ def is_process_running(pid: int) -> bool:
     Treat it conservatively: waiting for a director or refusing to start a build is harmless,
     two directors on one database are not.
     """
+    if sys.platform == "win32":
+        # `os.kill(pid, 0)` is no liveness check on Windows,
+        # where signal 0 is `CTRL_C_EVENT` and is sent to the console instead.
+        return is_process_alive(pid)
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -287,7 +295,7 @@ def query_director_log(director_log: Path) -> tuple[Path | None, int | None, str
         An explanation of why no existing socket was found, empty when one was.
     """
     try:
-        with open(director_log) as fh:
+        with open(director_log, encoding="utf-8") as fh:
             line_socket = fh.readline()
             line_pid = fh.readline()
     except OSError as exc:
@@ -371,7 +379,7 @@ def scan_director_log(path_director_log: Path) -> list[str]:
     # because a director starting up in parallel may remove it between the test and the open.
     findings = []
     try:
-        with open(path_director_log) as fh:
+        with open(path_director_log, encoding="utf-8") as fh:
             for line in fh:
                 for pattern, label in DIRECTOR_LOG_CHECKS:
                     if pattern.search(line) is not None:

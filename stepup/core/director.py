@@ -177,6 +177,12 @@ class ServeConfig:
 
 
 def main():
+    # Output that does not go to a console is otherwise written in the locale encoding,
+    # e.g. the ANSI code page on Windows with Python 3.14 and older.
+    # `PYTHONIOENCODING` cannot be used instead, because steps inherit the director's environment.
+    # Without an explicit `errors`, `reconfigure` would also reset that of `stderr` to `strict`.
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8", errors=stream.errors, newline="\n")
     args = parse_args()
     mp_ctx = None
     if args.forkserver:
@@ -449,7 +455,9 @@ def _get_ncore() -> int:
             return int(value)
     if hasattr(os, "sched_getaffinity"):
         return len(os.sched_getaffinity(0))
-    return os.cpu_count() or 1
+    # `os.process_cpu_count` is new in Python 3.13 and respects the CPU affinity on Windows.
+    process_cpu_count = getattr(os, "process_cpu_count", os.cpu_count)
+    return process_cpu_count() or 1
 
 
 def interpret_jobs(jobs: Decimal) -> int:
@@ -699,7 +707,7 @@ def _check_plan():
         raise ValueError(f"Is not a file: {PLAN_PY}")
     if not os.access(PLAN_PY, os.X_OK):
         raise ValueError(f"File is not executable: {PLAN_PY}")
-    with open(PLAN_PY) as fh:
+    with open(PLAN_PY, encoding="utf-8") as fh:
         shebang = "#!/usr/bin/env python3"
         if not fh.readline().rstrip() == shebang:
             raise ValueError(f"First line of plan differs from '{shebang}': {PLAN_PY}")
@@ -1046,11 +1054,11 @@ class DirectorHandler:
     async def write_graph(self, prefix: str) -> None:
         """Write out the graph in text and dot formats."""
         async with self.db:
-            with open(f"{prefix}.txt", "w") as fh:
+            with open(f"{prefix}.txt", "w", encoding="utf-8", newline="\n") as fh:
                 print(self.workflow.format_str(), file=fh)
-            with open(f"{prefix}_provenance.dot", "w") as fh:
+            with open(f"{prefix}_provenance.dot", "w", encoding="utf-8", newline="\n") as fh:
                 print(self.workflow.format_dot_provenance(), file=fh)
-            with open(f"{prefix}_dependency.dot", "w") as fh:
+            with open(f"{prefix}_dependency.dot", "w", encoding="utf-8", newline="\n") as fh:
                 print(self.workflow.format_dot_dependency(), file=fh)
         await self.reporter(
             "DIRECTOR",

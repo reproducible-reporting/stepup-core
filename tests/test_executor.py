@@ -348,7 +348,7 @@ async def test_compute_out_step_hash_returns_unchanged_outputs(wfs: Workflow, tm
     and without it stored, `FileHash.refreshed` digests the output again on every run.
     """
     with contextlib.chdir(tmpdir):
-        with open("out.txt", "w") as fh:
+        with open("out.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         fresh = FileHash.unknown().refreshed("out.txt")
         stale = attrs.evolve(fresh, mtime=fresh.mtime - 10.0, inode=fresh.inode + 1)
@@ -489,7 +489,7 @@ async def test_run_hash_job_resolves_future_without_touching_workflow(wfs: Workf
     with contextlib.chdir(tmpdir):
         async with wfs.db:
             wfs.declare_static_files(wfs.root, ["foo.txt"])
-        with open("foo.txt", "w") as fh:
+        with open("foo.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         real_hash = FileHash.unknown().refreshed("foo.txt")
 
@@ -508,7 +508,7 @@ async def test_run_hash_job_brackets_progress_bar(wfs: Workflow, tmpdir):
     `HashJob.job_i`/`.path` in place of `Step.i`/`.label`. The bracket lives in
     `run_hash_job` because hash jobs are started from three different places."""
     with contextlib.chdir(tmpdir):
-        with open("foo.txt", "w") as fh:
+        with open("foo.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         async with wfs.db:
             wfs.declare_static_files(wfs.root, ["foo.txt"])

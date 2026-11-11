@@ -18,7 +18,7 @@ pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="Cgroups only ex
 
 def test_own_cgroup_path_no_unified_hierarchy(monkeypatch, path_tmp):
     fake_path = path_tmp / "cgroup"
-    fake_path.write_text("1:name=systemd:/\n2:cpu,cpuacct:/\n")
+    fake_path.write_text("1:name=systemd:/\n2:cpu,cpuacct:/\n", encoding="utf-8")
     real_open = open
 
     def fake_open(path, *args, **kwargs):
@@ -33,8 +33,8 @@ def test_own_cgroup_path_no_unified_hierarchy(monkeypatch, path_tmp):
 
 def test_find_own_memory_cgroup_success(path_tmp):
     (path_tmp / "own").mkdir()
-    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
-    (path_tmp / "own" / "memory.current").write_text("1048576")
+    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n", encoding="utf-8")
+    (path_tmp / "own" / "memory.current").write_text("1048576", encoding="utf-8")
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(cgroups, "_own_cgroup_path", lambda: "own")
         assert find_own_memory_cgroup(cgroup_root=path_tmp) == str(path_tmp / "own")
@@ -55,7 +55,9 @@ def test_find_own_memory_cgroup_no_cgroup_procs(path_tmp, monkeypatch):
 
 def test_find_own_memory_cgroup_not_alone(path_tmp, monkeypatch):
     (path_tmp / "own").mkdir()
-    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n{os.getpid() + 1}\n")
+    (path_tmp / "own" / "cgroup.procs").write_text(
+        f"{os.getpid()}\n{os.getpid() + 1}\n", encoding="utf-8"
+    )
     monkeypatch.setattr(cgroups, "_own_cgroup_path", lambda: "own")
     with pytest.raises(CgroupError):
         find_own_memory_cgroup(cgroup_root=path_tmp)
@@ -63,7 +65,7 @@ def test_find_own_memory_cgroup_not_alone(path_tmp, monkeypatch):
 
 def test_find_own_memory_cgroup_memory_not_readable(path_tmp, monkeypatch):
     (path_tmp / "own").mkdir()
-    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
+    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n", encoding="utf-8")
     monkeypatch.setattr(cgroups, "_own_cgroup_path", lambda: "own")
     with pytest.raises(CgroupError):
         find_own_memory_cgroup(cgroup_root=path_tmp)
@@ -78,24 +80,24 @@ def own_dir(path_tmp, monkeypatch):
 
 
 def test_get_ncore_from_cgroup_cpuset_only(path_tmp, own_dir):
-    (own_dir / "cpuset.cpus.effective").write_text("0-3,7,9-10")
+    (own_dir / "cpuset.cpus.effective").write_text("0-3,7,9-10", encoding="utf-8")
     assert get_ncore_from_cgroup(cgroup_root=path_tmp) == 7
 
 
 def test_get_ncore_from_cgroup_cpu_max_only(path_tmp, own_dir):
-    (own_dir / "cpu.max").write_text("350000 100000")
+    (own_dir / "cpu.max").write_text("350000 100000", encoding="utf-8")
     assert get_ncore_from_cgroup(cgroup_root=path_tmp) == 3
 
 
 def test_get_ncore_from_cgroup_min_of_both(path_tmp, own_dir):
-    (own_dir / "cpuset.cpus.effective").write_text("0-7")
-    (own_dir / "cpu.max").write_text("350000 100000")
+    (own_dir / "cpuset.cpus.effective").write_text("0-7", encoding="utf-8")
+    (own_dir / "cpu.max").write_text("350000 100000", encoding="utf-8")
     assert get_ncore_from_cgroup(cgroup_root=path_tmp) == 3
 
 
 def test_get_ncore_from_cgroup_unlimited_quota_uses_cpuset(path_tmp, own_dir):
-    (own_dir / "cpuset.cpus.effective").write_text("0-3")
-    (own_dir / "cpu.max").write_text("max 100000")
+    (own_dir / "cpuset.cpus.effective").write_text("0-3", encoding="utf-8")
+    (own_dir / "cpu.max").write_text("max 100000", encoding="utf-8")
     assert get_ncore_from_cgroup(cgroup_root=path_tmp) == 4
 
 
@@ -111,11 +113,11 @@ def test_get_ncore_from_cgroup_not_linux(path_tmp, monkeypatch):
 
 
 def test_get_ncore_from_cgroup_fractional_quota_floors_to_minimum_one(path_tmp, own_dir):
-    (own_dir / "cpu.max").write_text("50000 100000")
+    (own_dir / "cpu.max").write_text("50000 100000", encoding="utf-8")
     assert get_ncore_from_cgroup(cgroup_root=path_tmp) == 1
 
 
 def test_get_ncore_from_cgroup_malformed_cpuset_falls_back_to_cpu_max(path_tmp, own_dir):
-    (own_dir / "cpuset.cpus.effective").write_text("not-a-cpu-list")
-    (own_dir / "cpu.max").write_text("350000 100000")
+    (own_dir / "cpuset.cpus.effective").write_text("not-a-cpu-list", encoding="utf-8")
+    (own_dir / "cpu.max").write_text("350000 100000", encoding="utf-8")
     assert get_ncore_from_cgroup(cgroup_root=path_tmp) == 3

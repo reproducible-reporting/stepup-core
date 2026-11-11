@@ -115,7 +115,7 @@ def test_function_via_commandline_json():
 
 def test_function_via_inp_json_file(monkeypatch, path_tmp):
     args_file = path_tmp / "args.json"
-    with open(args_file, "w") as fh:
+    with open(args_file, "w", encoding="utf-8", newline="\n") as fh:
         json.dump({"x": 7}, fh)
     received = []
 
@@ -130,7 +130,7 @@ def test_function_via_inp_json_file(monkeypatch, path_tmp):
 
 def test_function_via_inp_yaml_file(monkeypatch, path_tmp):
     args_file = path_tmp / "args.yaml"
-    with open(args_file, "w") as fh:
+    with open(args_file, "w", encoding="utf-8", newline="\n") as fh:
         yaml.dump({"x": 7}, fh)
     received = []
 
@@ -147,7 +147,7 @@ def test_inp_file_unknown_extension(monkeypatch, path_tmp):
     # subs_env_vars() exits cleanly first (calling amend(env=set())),
     # then loadns raises ValueError on the unsupported .txt suffix.
     args_file = path_tmp / "args.txt"
-    with open(args_file, "w") as fh:
+    with open(args_file, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("x=1")
     monkeypatch.setattr("stepup.core.api.amend", lambda **kw: None)
     args = argparse.Namespace(function="fn", json_inp=None, path_inp=str(args_file))
@@ -207,7 +207,7 @@ def test_inp_filtered_when_not_in_sig():
 
 def test_json_and_inp_mutually_exclusive(monkeypatch, path_tmp):
     args_file = path_tmp / "args.json"
-    with open(args_file, "w") as fh:
+    with open(args_file, "w", encoding="utf-8", newline="\n") as fh:
         json.dump({}, fh)
     monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x":1}', f"--inp={args_file}"])
     with pytest.raises(SystemExit):
@@ -459,7 +459,7 @@ def test_args_file_json(captured, monkeypatch, path_tmp):
     call("./s.py", "fn", args_file="foo.json", x=1)
     assert "--inp=foo.json" in captured[0]["command"]
     assert (path_tmp / "foo.json").exists()
-    with open(path_tmp / "foo.json") as fh:
+    with open(path_tmp / "foo.json", encoding="utf-8") as fh:
         data = json.load(fh)
     assert data["x"] == 1
 
@@ -469,7 +469,7 @@ def test_args_file_yaml(captured, monkeypatch, path_tmp):
     call("./s.py", "fn", args_file="foo.yaml", x=2)
     assert "--inp=foo.yaml" in captured[0]["command"]
     assert (path_tmp / "foo.yaml").exists()
-    with open(path_tmp / "foo.yaml") as fh:
+    with open(path_tmp / "foo.yaml", encoding="utf-8") as fh:
         data = yaml.safe_load(fh)
     assert data["x"] == 2
 

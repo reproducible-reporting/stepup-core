@@ -15,7 +15,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
  SUCCESS │ sleep 0.5; echo 'Some input for drop_dynamic example' > inp.txt
     SKIP │ ./work.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 829bcf18, out_digest e3b0c442
+Same step hash       explained, inp_digest 5f345640, out_digest e3b0c442
 Same inp hash        inp.txt
 Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)

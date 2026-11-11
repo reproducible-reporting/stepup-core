@@ -258,13 +258,13 @@ def test_shorten_keeps_the_anchors_of_a_surviving_frame(path_tmp: Path):
     objects, instead of recomputing them from the code and the line number.
     """
     path_plan = path_tmp / "plan.py"
-    with open(path_plan, "w") as fh:
+    with open(path_plan, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("def main():\n    _call_next() + _call_next()\n")
     namespace = {
         "__name__": "__main__",
         "_call_next": _spoof_raise(*API, CyclicError("cycle")),
     }
-    with open(path_plan) as fh:
+    with open(path_plan, encoding="utf-8") as fh:
         exec(compile(fh.read(), path_plan, "exec"), namespace)
     with pytest.raises(CyclicError) as exc_info:
         namespace["main"]()

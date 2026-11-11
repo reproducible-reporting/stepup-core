@@ -107,12 +107,12 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     # Rewrite the script to activate the commented-out redirection of the stepup output.
     # This is done in Python, because the `sed` of macOS does not support GNU extensions.
     path_main = workdir / "main.sh"
-    path_main.write_text(
-        re.sub(r"^((?:stepup|sb).*?) & #", r"\1", path_main.read_text(), flags=re.MULTILINE)
-    )
+    text = path_main.read_text(encoding="utf-8")
+    text = re.sub(r"^((?:stepup|sb).*?) & #", r"\1", text, flags=re.MULTILINE)
+    path_main.write_text(text, encoding="utf-8")
     # The trace of `main.sh` goes to a file instead of the inherited streams,
     # so that it survives a timeout and is printed as one block, whatever happens.
-    with open(workdir / MAIN_LOG, "w") as main_log:
+    with open(workdir / MAIN_LOG, "w", encoding="utf-8", newline="\n") as main_log:
         stepup_proc = await asyncio.create_subprocess_shell(
             "." / Path("main.sh"),
             stdin=subprocess.DEVNULL,
@@ -142,7 +142,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
                     f"{stepup_proc.returncode}. See the {MAIN_LOG} below for the command "
                     f"it died on."
                 )
-            with open(path_cur) as fh:
+            with open(path_cur, encoding="utf-8") as fh:
                 cur = fh.read().rstrip()
 
             # Print the current output for debugging purposes,
@@ -182,10 +182,10 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             # Overwrite the expected output or keep the pair for the comparison below.
             if overwrite_expected:
                 path_exp = srcdir / fn_exp
-                with open(path_exp, "w") as fh:
+                with open(path_exp, "w", encoding="utf-8", newline="\n") as fh:
                     print(cur, file=fh)
             else:
-                with open(path_exp) as fh:
+                with open(path_exp, encoding="utf-8") as fh:
                     exp = fh.read().rstrip()
                 pairs.append((path_exp, cur, exp))
     finally:
@@ -193,7 +193,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             print()
             print(f"########## {path_log} ##########")
             print()
-            with open(path_log) as fh:
+            with open(path_log, encoding="utf-8") as fh:
                 print(fh.read().rstrip())
         print()
         # `None` means the example was still running when it ran out of time.
@@ -249,7 +249,7 @@ async def run_plan(srcdir: Path, tmpdir: Path):
 @functools.cache
 def _parse(path: Path) -> ast.Module:
     """The abstract syntax tree of a Python source file."""
-    return ast.parse(path.read_text(), filename=path)
+    return ast.parse(path.read_text(encoding="utf-8"), filename=path)
 
 
 @functools.cache
@@ -403,7 +403,7 @@ class ConventionTests:
         """
         if self.example_rc is None:
             pytest.skip("The test suite has no integration examples.")
-        text = (Path(request.path).parent / self.example_rc).read_text()
+        text = (Path(request.path).parent / self.example_rc).read_text(encoding="utf-8")
         constants = {
             match.group(1): int(match.group(2))
             for match in re.finditer(r"^RETURN_CODE_(\w+)=(\d+)$", text, re.MULTILINE)

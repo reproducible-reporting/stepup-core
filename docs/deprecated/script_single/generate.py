@@ -14,7 +14,7 @@ def info():
 
 
 def run(inp, out):
-    with open("config.json") as fh:
+    with open("config.json", encoding="utf-8") as fh:
         config = json.load(fh)
     nstep = config["nstep"]
     freq = config["freq"]

@@ -20,7 +20,6 @@ import signal
 import subprocess
 import sys
 import tempfile
-import termios
 import threading
 import time
 from collections.abc import AsyncGenerator
@@ -44,7 +43,8 @@ from .constants import (
     STEPUP_DIR,
 )
 from .enums import ReturnCode
-from .exceptions import RPCError, ToolError, UsageError
+from .exceptions import ConfigError, RPCError, ToolError, UsageError
+from .oscompat import forkserver_available, perf_available, raw_terminal_available
 from .path import get_stepup_root
 from .reporter import ReporterHandler
 from .rpc import SocketAsyncRPCClient, SocketRPCServer
@@ -57,6 +57,9 @@ from .utils import (
     scan_director_log,
 )
 from .watcher import select_watcher_backend
+
+if raw_terminal_available():
+    import termios
 
 __all__ = ("add_boot_subcommand", "add_build_subcommand")
 
@@ -376,8 +379,11 @@ async def _async_build(args: argparse.Namespace) -> int:
         If `plan.py` does not exist in the project root,
         or if a director is already running (see `_check_no_running_director`).
     ConfigError
-        If watch mode is requested with an unusable file watcher (see `select_watcher_backend`).
+        If watch mode is requested with an unusable file watcher (see `select_watcher_backend`),
+        or if a requested feature is not available on this platform
+        (see `_check_platform_support`).
     """
+    _check_platform_support(args)
     stepup_root = get_stepup_root()
     targets, target_dirs = _normalize_targets(args.targets, stepup_root)
     if stepup_root != Path.cwd():
@@ -435,6 +441,32 @@ async def _async_build(args: argparse.Namespace) -> int:
             await task_reporter
 
     return returncode | _report_director_log_problems(reporter_handler)
+
+
+def _check_platform_support(args: argparse.Namespace) -> None:
+    """Refuse options that enable a feature this platform does not have.
+
+    Parameters
+    ----------
+    args
+        The parsed `stepup build` command-line arguments,
+        including the defaults taken from the configuration files and environment variables.
+
+    Raises
+    ------
+    ConfigError
+        If the forkserver or `perf` is requested on a platform without it.
+    """
+    if args.forkserver and not forkserver_available():
+        raise ConfigError(
+            f"The forkserver is not available on {sys.platform}. "
+            "Do not enable it with --forkserver, STEPUP_BUILD_FORKSERVER or a config file."
+        )
+    if args.perf is not None and not perf_available():
+        raise ConfigError(
+            f"Profiling with perf is only supported on Linux, not on {sys.platform}. "
+            "Do not enable it with --perf, STEPUP_BUILD_PERF or a config file."
+        )
 
 
 def _normalize_targets(raw_targets: list[str], stepup_root: Path) -> tuple[list[Path], list[Path]]:
@@ -651,7 +683,7 @@ async def _supervise_director(
     task_keyboard = None
     raw_terminal = None
     try:
-        with open(DIRECTOR_LOG, "w") as log_file:
+        with open(DIRECTOR_LOG, "w", encoding="utf-8", newline="\n") as log_file:
             # The child gets a duplicate of the log file descriptor,
             # so this handle can be closed right after the spawn,
             # instead of being kept open for the whole build.
@@ -678,8 +710,10 @@ async def _supervise_director(
                 loop.add_signal_handler(sig, signal_handler.handle, sig)
             loop.add_signal_handler(signal.SIGTSTP, suspend_handler.handle)
             # Set up keyboard interaction, or work non-interactively.
-            if sys.stdin.isatty() and await _wait_for_director_socket(
-                director_socket_path, stop_event, task_director
+            if (
+                raw_terminal_available()
+                and sys.stdin.isatty()
+                and await _wait_for_director_socket(director_socket_path, stop_event, task_director)
             ):
                 # Raw mode is entered here, not inside the keyboard task,
                 # so that it is already in place when that task starts,
@@ -966,8 +1000,13 @@ class SuspendHandler:
             self.reporter_handler.resume_display(suspended_seconds)
 
 
-_TERMINAL_SIGNALS = frozenset({signal.SIGINT, signal.SIGTSTP})
-"""The signals StepUp handles that the terminal driver can generate itself."""
+_TERMINAL_SIGNALS = frozenset(
+    getattr(signal, name) for name in ("SIGINT", "SIGTSTP") if hasattr(signal, name)
+)
+"""The signals StepUp handles that the terminal driver can generate itself.
+
+`SIGTSTP` only exists on platforms with job control.
+"""
 
 
 def _terminal_broadcasts(sig: signal.Signals, pid: int) -> bool:
@@ -998,7 +1037,7 @@ def _terminal_broadcasts(sig: signal.Signals, pid: int) -> bool:
     try:
         # Query the controlling terminal itself:
         # stdin may be redirected while the process is still in the foreground process group.
-        with open("/dev/tty") as tty:
+        with open("/dev/tty", encoding="utf-8") as tty:
             foreground_pgid = os.tcgetpgrp(tty.fileno())
         return foreground_pgid == os.getpgid(0) == os.getpgid(pid)
     except OSError:

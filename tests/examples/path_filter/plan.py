@@ -4,6 +4,6 @@ from stepup.core.extapi import filter_dependencies
 
 paths = filter_dependencies(["bar.py", "venv/foo.py"])
 amend(vol="paths.txt")
-with open("paths.txt", "w") as fh:
+with open("paths.txt", "w", encoding="utf-8", newline="\n") as fh:
     for path in paths:
         print(path, file=fh)

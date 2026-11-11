@@ -34,7 +34,7 @@ def init_joblog(njob: int) -> None:
     Any records of a previous build phase are discarded.
     """
     row = (monotonic_ns(), 0, "INIT", f"maximum concurrent jobs: {njob}")
-    with open(JOBLOG_CSV, "w", newline="") as fh:
+    with open(JOBLOG_CSV, "w", encoding="utf-8", newline="") as fh:
         csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerows([JOBLOG_COLUMNS, row])
 
 
@@ -62,7 +62,7 @@ def append_joblog_record(event: str, job_i: int, description: str) -> None:
     while the numeric columns stay bare.
     """
     row = (monotonic_ns(), job_i, event, description[:100])
-    with open(JOBLOG_CSV, "a", newline="") as fh:
+    with open(JOBLOG_CSV, "a", encoding="utf-8", newline="") as fh:
         csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerow(row)
 
 

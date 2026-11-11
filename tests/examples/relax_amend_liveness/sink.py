@@ -27,6 +27,6 @@ else:
 # relax_amend_success/sink.py for why this matters).
 time.sleep(0.2)
 
-content = data_path.read_text()
+content = data_path.read_text(encoding="utf-8")
 amend(inp=["data.txt"])
 print(f"sink read: {content.strip()}")

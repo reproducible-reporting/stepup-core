@@ -347,6 +347,7 @@ alphabetically within each group.
 :   Set to `true` to use a forkserver for Python step execution,
     which reduces startup overhead.
     This is enabled by default on Linux.
+    Enabling it on a platform without the forkserver start method, such as Windows, is an error.
 
 `preload_modules` / `STEPUP_BUILD_PRELOAD_MODULES` / `--preload-modules`
 
@@ -382,6 +383,7 @@ alphabetically within each group.
 
 :   Set to a frequency in Hz to enable performance monitoring of the director process
     with the [Linux perf profiler](https://perfwiki.github.io/main/).
+    Enabling it on any other platform is an error.
     See the section on [Profiling](../development.md#profiling)
     in the development documentation for more details.
 

@@ -15,11 +15,14 @@ def main():
     args = parser.parse_args()
 
     # Load the markers
-    with open(args.marker_file) as fm:
+    with open(args.marker_file, encoding="utf-8") as fm:
         markers = [json.loads(line) for line in fm]
     markers.sort(key=lambda x: x[0])
 
-    with open(args.inp_file) as fi, open(args.out_file, "w") as fo:
+    with (
+        open(args.inp_file, encoding="utf-8", newline="\n") as fi,
+        open(args.out_file, "w", encoding="utf-8") as fo,
+    ):
         for line in fi:
             record = json.loads(line)
             if len(markers) > 0 and isinstance(record, list) and record[0] > markers[0][0]:

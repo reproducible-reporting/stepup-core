@@ -37,7 +37,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
     workdir = Path(path_main).parent
     root = workdir
     out = []
-    with open(path_main) as fh:
+    with open(path_main, encoding="utf-8") as fh:
         for line in fh:
             if line.startswith("# INP:"):
                 inp.append(workdir / line[6:].strip())

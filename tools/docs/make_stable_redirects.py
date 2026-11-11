@@ -100,7 +100,7 @@ def write_redirects(site_dir: Path) -> int:
         relative = url[len(home) :]
         destination = site_dir / "stable" / relative / "index.html"
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(REDIRECT_TEMPLATE.format(target=url))
+        destination.write_text(REDIRECT_TEMPLATE.format(target=url), encoding="utf-8", newline="\n")
         count += 1
     return count
 

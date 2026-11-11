@@ -5,7 +5,7 @@ from path import Path
 
 from stepup.core.api import amend
 
-with open("trigger_work.txt", "w") as f:
+with open("trigger_work.txt", "w", encoding="utf-8", newline="\n") as f:
     print("triggered", file=f)
 
 # Bounded sleep (not an infinite loop): gives plan.py's poll loop (every 0.2s) time to
@@ -18,4 +18,4 @@ time.sleep(2.0)
 # the late.txt marker below.
 amend(inp="extra_input.txt")
 
-Path("late.txt").write_text(Path("extra_input.txt").read_text())
+Path("late.txt").write_text(Path("extra_input.txt").read_text(encoding="utf-8"))

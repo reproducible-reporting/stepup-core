@@ -3,10 +3,10 @@ from stepup.core.call import driver
 
 
 def run(inp, out):
-    with open(inp[0]) as g:
+    with open(inp[0], encoding="utf-8") as g:
         content = g.read()
     for path in out:
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
             f.write(content)
 
 

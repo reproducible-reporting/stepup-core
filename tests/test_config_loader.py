@@ -92,7 +92,7 @@ def test_load_file_missing(path_tmp: Path, loader: ConfigLoader):
 
 def test_load_file_unsupported_format(path_tmp: Path, loader: ConfigLoader):
     cfg = path_tmp / "stepup.ini"
-    cfg.write_text("[stepup]\njobs = 4\n")
+    cfg.write_text("[stepup]\njobs = 4\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="unsupported config file format"):
         loader._load_file(cfg)
 

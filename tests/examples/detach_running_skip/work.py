@@ -3,7 +3,7 @@ import time
 
 from path import Path
 
-with open("trigger_work.txt", "w") as f:
+with open("trigger_work.txt", "w", encoding="utf-8", newline="\n") as f:
     print("triggered", file=f)
 
 # Bounded sleep (not an infinite loop): gives plan.py's poll loop (every 0.2s) time to
@@ -13,5 +13,5 @@ time.sleep(2.0)
 
 # A run counter: it must still read 1 after the second run, proving this step was
 # skipped rather than executed again.
-count = int(Path("out.txt").read_text()) if Path("out.txt").is_file() else 0
-Path("out.txt").write_text(str(count + 1))
+count = int(Path("out.txt").read_text(encoding="utf-8")) if Path("out.txt").is_file() else 0
+Path("out.txt").write_text(str(count + 1), encoding="utf-8")

@@ -189,6 +189,17 @@ be resolved by restructuring the code,
 because the project's rule set already excludes rules that would fire spuriously
 in this codebase.
 
+### Text Files
+
+Open every text file with `encoding="utf-8"`, and write text files with `newline="\n"` as well,
+so that files are identical on all platforms,
+including Windows with Python 3.14 and older, where the default is the ANSI code page.
+CSV files are the exception: they are opened with `newline=""`, as the `csv` module requires.
+Ruff enforces the encoding with `PLW1514`,
+but only for `open()` and `pathlib`, not for the methods of `path.Path`.
+Their `read_text()` and `write_text()` need `encoding="utf-8"` too,
+while `write_text()` already writes `\n` line endings by default.
+
 ### Docstrings
 
 Use **NumPy-style** sections (`Parameters`, `Returns`, `Raises`, ...)

@@ -76,7 +76,7 @@ def load_step_info(filename: StrPath) -> StepInfo | list[StepInfo]:
 
     The file should contain a single JSON object or a JSON array of such objects.
     """
-    with open(filename) as fh:
+    with open(filename, encoding="utf-8") as fh:
         data = json.load(fh)
     if isinstance(data, dict):
         return json_converter.structure(data, StepInfo)
@@ -88,6 +88,6 @@ def dump_step_info(filename: StrPath, step_info: StepInfo | Iterable[StepInfo]):
 
     The file will contain a single JSON object or a JSON array of such objects.
     """
-    with open(filename, "w") as fh:
+    with open(filename, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(json_converter.unstructure(step_info), fh, indent=2)
         fh.write("\n")

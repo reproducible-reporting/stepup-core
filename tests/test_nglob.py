@@ -440,7 +440,7 @@ def _make_files(paths: Collection[str]):
         else:
             if len(path.parent) > 0:
                 path.parent.makedirs_p()
-            with open(path, "w"):
+            with open(path, "w", encoding="utf-8", newline="\n"):
                 pass
 
 

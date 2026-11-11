@@ -117,7 +117,7 @@ async def test_finalize_reverts_optional_only_when_cleaning(
     """
     with contextlib.chdir(tmpdir):
         for path in "data.txt", "vol.log":
-            with open(path, "w") as fh:
+            with open(path, "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(path)
 
         scheduler = Scheduler(wfp, db=wfp.db)
@@ -297,7 +297,7 @@ async def test_run_promoted_hash_jobs_applies_result(wfs: Workflow, tmpdir):
     with contextlib.chdir(tmpdir):
         async with wfs.db:
             wfs.declare_static_files(wfs.root, ["a.txt"])
-        with open("a.txt", "w") as fh:
+        with open("a.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("aaa")
 
         scheduler = Scheduler(wfs, db=wfs.db)
@@ -337,7 +337,7 @@ async def test_run_promoted_hash_jobs_applies_siblings_of_a_failing_job(wfs: Wor
     The error still reaches the `amend()` caller.
     """
     with contextlib.chdir(tmpdir):
-        with open("a.txt", "w") as fh:
+        with open("a.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("aaa")
         async with wfs.db:
             wfs.declare_static_files(wfs.root, ["a.txt", "b.txt"])
@@ -431,7 +431,7 @@ async def test_handle_done_tasks_applies_hash_results_in_one_transaction(
     with contextlib.chdir(tmpdir):
         paths = ["a.txt", "b.txt"]
         for path in paths:
-            with open(path, "w") as fh:
+            with open(path, "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(path)
         async with wfs.db:
             wfs.declare_static_files(wfs.root, paths)

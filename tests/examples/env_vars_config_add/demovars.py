@@ -3,7 +3,7 @@ import json
 
 from stepup.core.api import run
 
-with open("variables.json") as fh:
+with open("variables.json", encoding="utf-8") as fh:
     env_vars = json.load(fh)
 info = run(
     "./printvars.py",

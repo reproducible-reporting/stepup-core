@@ -68,9 +68,9 @@ async def test_run_once_reports_unchanged_and_updates_only_the_changed_file(wfp:
     file must keep its UPDATED report and get its new hash applied. Exercises the
     `gather_hashes`-based path in `run_once` with more than one file at once."""
     with contextlib.chdir(tmpdir):
-        with open("same.txt", "w") as fh:
+        with open("same.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("same")
-        with open("changed.txt", "w") as fh:
+        with open("changed.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("before")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
@@ -82,7 +82,7 @@ async def test_run_once_reports_unchanged_and_updates_only_the_changed_file(wfp:
 
         # Simulate "changed.txt" having been rewritten while the build phase was active,
         # and both paths having been recorded as (candidate) updates by the watcher.
-        with open("changed.txt", "w") as fh:
+        with open("changed.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("after")
 
         watcher = _make_watcher(wfp)
@@ -113,7 +113,7 @@ async def test_run_once_ignores_glob_relevant_undeclared_file(wfp: Workflow, tmp
     The path still reaches `process_nglob_changes`, which is what recorded it in the first place.
     """
     with contextlib.chdir(tmpdir):
-        with open("given.txt", "w") as fh:
+        with open("given.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("given")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
@@ -144,7 +144,7 @@ async def test_run_once_reports_settled_unconfirmed_file_as_changed(wfp: Workflo
     and reaches `process_nglob_changes`.
     """
     with contextlib.chdir(tmpdir):
-        with open("stale.txt", "w") as fh:
+        with open("stale.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("stale")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
@@ -187,7 +187,7 @@ async def test_run_once_drain_records_missing_file(wfp: Workflow, tmpdir):
         # Simulate the file being created externally while the build phase is still
         # running: the inotify event lands in change_queue before the drain loop at the
         # start of the next watch phase gets to it.
-        with open("ghost.txt", "w") as fh:
+        with open("ghost.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         change_queue = asyncio.Queue()
         change_queue.put_nowait((Change.UPDATED, "ghost.txt"))
@@ -208,7 +208,7 @@ async def test_run_once_drain_records_files_under_removed_dir(wfp: Workflow, tmp
     """
     with contextlib.chdir(tmpdir):
         os.mkdir("sub")
-        with open("sub/a.txt", "w") as fh:
+        with open("sub/a.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
@@ -241,7 +241,7 @@ async def test_record_deleted_parent_skips_build_products_during_build(wfp: Work
     """
     with contextlib.chdir(tmpdir):
         os.mkdir("sub")
-        with open("sub/out.txt", "w") as fh:
+        with open("sub/out.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("built")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")

@@ -95,7 +95,7 @@ async def test_rescan_files_confirms_unchanged_stray_unconfirmed_row(wfs: Workfl
     without depending on a step rerun and without an UPDATED/DELETED report
     (the file did not actually change)."""
     with contextlib.chdir(tmpdir):
-        with open("foo.txt", "w") as fh:
+        with open("foo.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         # A real (not `conftest.fake_hash`) hash is needed here: the "unchanged" case
         # only holds if the cached hash actually matches what refreshed() computes from disk.
@@ -120,7 +120,7 @@ async def test_rescan_files_confirms_deleted_stray_unconfirmed_row(wfs: Workflow
     """A stray UNCONFIRMED row whose file is now absent must become MISSING, reported
     as DELETED, the same reporting as a regular CONFIRMED file being externally deleted."""
     with contextlib.chdir(tmpdir):
-        with open("foo.txt", "w") as fh:
+        with open("foo.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         async with wfs.db:
             declare_static(wfs, wfs.root, ["foo.txt"])
@@ -145,12 +145,12 @@ async def test_rescan_files_reports_externally_updated_static_file(wfs: Workflow
     """A regular (non-UNCONFIRMED) CONFIRMED file that changed on disk must still be picked
     up by the scan, reported as UPDATED, and get its new hash applied."""
     with contextlib.chdir(tmpdir):
-        with open("foo.txt", "w") as fh:
+        with open("foo.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("hello")
         async with wfs.db:
             file = declare_static(wfs, wfs.root, ["foo.txt"])[0]
             old_hash = file.get_hash()
-        with open("foo.txt", "w") as fh:
+        with open("foo.txt", "w", encoding="utf-8", newline="\n") as fh:
             fh.write("changed")
 
         builder = _make_builder(wfs)
@@ -181,12 +181,12 @@ async def test_rescan_files_applies_whole_scan_in_one_transaction(
     with contextlib.chdir(tmpdir):
         paths = ["a.txt", "b.txt", "c.txt"]
         for path in paths:
-            with open(path, "w") as fh:
+            with open(path, "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(path)
         async with wfs.db:
             declare_static(wfs, wfs.root, paths)
         for path in paths:
-            with open(path, "w") as fh:
+            with open(path, "w", encoding="utf-8", newline="\n") as fh:
                 fh.write("changed " + path)
 
         builder = _make_builder(wfs)
@@ -225,9 +225,9 @@ async def test_rescan_nglobs_persists_readable_matches(wfp: Workflow, tmpdir):
     `json.JSONDecodeError` on the pickled bytes.
     """
     with contextlib.chdir(tmpdir):
-        with open("inp1.txt", "w"):
+        with open("inp1.txt", "w", encoding="utf-8", newline="\n"):
             pass
-        with open("inp2.txt", "w"):
+        with open("inp2.txt", "w", encoding="utf-8", newline="\n"):
             pass
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
@@ -240,7 +240,7 @@ async def test_rescan_nglobs_persists_readable_matches(wfp: Workflow, tmpdir):
         # Simulate files changing while the director was not running:
         # inp2.txt is deleted and inp3.txt appears.
         os.remove("inp2.txt")
-        with open("inp3.txt", "w"):
+        with open("inp3.txt", "w", encoding="utf-8", newline="\n"):
             pass
 
         reporter = _FakeReporter()

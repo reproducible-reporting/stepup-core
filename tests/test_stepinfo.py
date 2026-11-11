@@ -37,7 +37,7 @@ def test_load_step_info_single(path_tmp: Path):
         "out": ["output1.txt"],
         "vol": ["volatile1.txt"],
     }
-    with open(path_json, "w") as f:
+    with open(path_json, "w", encoding="utf-8", newline="\n") as f:
         json.dump(data, f)
     step_info = load_step_info(path_json)
     assert isinstance(step_info, StepInfo)
@@ -64,7 +64,7 @@ def test_load_step_info_multiple(path_tmp: Path):
             "vol": ["volatile2.txt"],
         },
     ]
-    with open(path_json, "w") as f:
+    with open(path_json, "w", encoding="utf-8", newline="\n") as f:
         json.dump(data, f)
     step_infos = load_step_info(path_json)
     assert isinstance(step_infos, list)
@@ -83,7 +83,7 @@ def test_dump_step_info(path_tmp: Path):
         vol=["volatile1.txt"],
     )
     dump_step_info(path_json, step_info)
-    with open(path_json) as f:
+    with open(path_json, encoding="utf-8") as f:
         data = json.load(f)
     assert data["command"] == "echo 'Hello, World!'"
     assert data["workdir"] == "/tmp"
@@ -114,7 +114,7 @@ def test_dump_step_info_multiple(path_tmp: Path):
         ),
     ]
     dump_step_info(path_json, step_infos)
-    with open(path_json) as f:
+    with open(path_json, encoding="utf-8") as f:
         data = json.load(f)
     assert len(data) == 2
     assert data[0]["command"] == "echo 'Hello, World!'"

@@ -3,7 +3,7 @@ from stepup.core.api import amend
 
 # This is an evil example. Don't do this in production code.
 # Tamper with an already-declared, already-hashed input while running.
-with open("trigger.txt", "w") as fh:
+with open("trigger.txt", "w", encoding="utf-8", newline="\n") as fh:
     print("tampered", file=fh)
 
 # never.txt is never created, so this always defers the step

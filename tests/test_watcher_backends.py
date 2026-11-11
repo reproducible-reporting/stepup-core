@@ -80,7 +80,7 @@ async def check(backend, expected: set, optional: frozenset = frozenset()) -> li
 
 
 def write(path: str, content: str = "x"):
-    with open(path, "w") as fh:
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(content)
 
 

@@ -1603,13 +1603,13 @@ def loadns(
     variables = {}
     for path_var in su_paths_variables:
         if path_var.suffix == ".json":
-            with open(path_var) as fh:
+            with open(path_var, encoding="utf-8") as fh:
                 variables.update(json.load(fh))
         elif path_var.suffix == ".toml":
             with open(path_var, "rb") as fh:
                 variables.update(tomllib.load(fh))
         elif path_var.suffix in (".yaml", ".yml"):
-            with open(path_var) as fh:
+            with open(path_var, encoding="utf-8") as fh:
                 variables.update(yaml.safe_load(fh))
         elif path_var.suffix == ".py":
             dir_py = path_var.parent.normpath()
@@ -1673,12 +1673,12 @@ def _dumpns(
         data = vars(data)
     if su_path.suffix == ".json":
         unstructured = json_converter.unstructure(data)
-        with open(su_path, "w") as fh:
+        with open(su_path, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(unstructured, fh, indent=2)
             fh.write("\n")
     elif su_path.suffix in (".yaml", ".yml"):
         unstructured = yaml_converter.unstructure(data)
-        with open(su_path, "w") as fh:
+        with open(su_path, "w", encoding="utf-8", newline="\n") as fh:
             yaml.dump(unstructured, fh)
     else:
         raise StepUpError(f"dumpns: unsupported file format: {su_path.suffix!r}")

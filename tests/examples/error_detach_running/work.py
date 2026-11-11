@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import time
 
-with open("trigger_work.txt", "w") as f:
+with open("trigger_work.txt", "w", encoding="utf-8", newline="\n") as f:
     print("triggered", file=f)
 
 # Bounded sleep (not an infinite loop): gives plan.py's poll loop (every 0.2s) time to

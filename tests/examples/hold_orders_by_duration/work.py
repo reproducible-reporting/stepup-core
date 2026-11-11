@@ -5,4 +5,4 @@ import sys
 from pathlib import Path
 
 label, out_path = sys.argv[1:]
-Path(out_path).write_text(f"{label}\n")
+Path(out_path).write_text(f"{label}\n", encoding="utf-8", newline="\n")

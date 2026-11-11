@@ -49,8 +49,17 @@ def test_interpret_jobs_fraction_affinity(monkeypatch):
     assert result == 12
 
 
+def test_interpret_jobs_fraction_process_cpu_count(monkeypatch):
+    monkeypatch.delattr("os.sched_getaffinity", raising=False)
+    monkeypatch.setattr("os.process_cpu_count", lambda: 8, raising=False)
+    monkeypatch.setattr("os.cpu_count", lambda: 16)
+    result = interpret_jobs(Decimal("1.5"))
+    assert result == 12
+
+
 def test_interpret_jobs_fraction_cpu_count(monkeypatch):
     monkeypatch.delattr("os.sched_getaffinity", raising=False)
+    monkeypatch.delattr("os.process_cpu_count", raising=False)
     monkeypatch.setattr("os.cpu_count", lambda: 8)
     result = interpret_jobs(Decimal("1.5"))
     assert result == 12

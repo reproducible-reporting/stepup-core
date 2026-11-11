@@ -12,4 +12,4 @@ if args and args[0].startswith("--sleep="):
     args = args[1:]
 label, out_path = args
 time.sleep(sleep_seconds)
-Path(out_path).write_text(f"{label}\n")
+Path(out_path).write_text(f"{label}\n", encoding="utf-8", newline="\n")
