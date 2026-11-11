@@ -74,8 +74,12 @@ examples = [
     "matplotlib>=3.8.0",
     "numpy>=1.26.0",
 ]
+# An alternative file watcher, selected with STEPUP_WATCHER=watchfiles.
+watchfiles = [
+    "watchfiles>=1.3.0",
+]
 dev = [
-    "stepup[tests,examples]",
+    "stepup[tests,examples,watchfiles]",
     "mkdocs",
     "mkdocstrings[python]",
     "mkdocs-macros-plugin",

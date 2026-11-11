@@ -66,6 +66,7 @@ CORE_ENV_VARS = frozenset(
         "STEPUP_PATH_FILTER",
         "STEPUP_ROOT",
         "STEPUP_SYNC_RPC_TIMEOUT",
+        "STEPUP_WATCHER",
     }
 )
 """The variables StepUp Core acts on without a subcommand defining a setting for them.

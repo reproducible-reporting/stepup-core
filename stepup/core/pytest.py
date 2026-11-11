@@ -18,6 +18,7 @@ from path import Path
 from .constants import DIRECTOR_LOG, STEPUP_DIR
 from .enums import ReturnCode
 from .utils import scan_director_log
+from .watcher import WATCHER_BACKEND
 
 __all__ = ("ConventionTests", "remove_hashes", "run_example", "run_plan")
 
@@ -44,6 +45,29 @@ which says nothing about what went wrong.
 EXAMPLE_TIMEOUT = 30.0
 """Seconds to wait for an example to finish before failing the test."""
 
+CHANGE_LINE = re.compile(r"^ ?(?:UPDATED|DELETED) │ (.*)$")
+"""A line of the reporter output about a file change observed in watch mode."""
+
+
+def sort_change_runs(text: str) -> str:
+    """Sort each run of consecutive `UPDATED` and `DELETED` lines by path.
+
+    The lines about the same path keep their order.
+    """
+    result = []
+    run = []
+    for line in [*text.split("\n"), None]:
+        match = None if line is None else CHANGE_LINE.match(line)
+        if match is not None:
+            run.append((match.group(1), line))
+            continue
+        run.sort(key=lambda item: item[0])
+        result.extend(run_line for _, run_line in run)
+        run = []
+        if line is not None:
+            result.append(line)
+    return "\n".join(result)
+
 
 async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     """Run an example use case in a temporary directory and check the outputs.
@@ -57,6 +81,10 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
     All files in the srcdir starting with `expected_` will be compared to corresponding files
     starting with `current_` in the temporary directory after completion of the example.
+    With `STEPUP_WATCHER=watchfiles`,
+    the order of consecutive `UPDATED` and `DELETED` lines is not compared,
+    because the changes observed together are reported in sorted order,
+    see `stepup.core.watcher.WatchfilesWrapper`.
 
     Parameters
     ----------
@@ -165,6 +193,9 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
     # Check late for errors, to maximize the printed output.
     for path_exp, cur, exp in pairs:
+        if WATCHER_BACKEND == "watchfiles":
+            cur = sort_change_runs(cur)
+            exp = sort_change_runs(exp)
         assert cur == exp, path_exp
 
     assert stepup_proc.returncode == 0
