@@ -10,7 +10,7 @@ import time
 import pytest
 
 if sys.platform == "win32":
-    from stepup.core.winapi import JobObject, get_peak_working_set, is_process_alive
+    from stepup.core.winapi import JobObject, JobUsage, get_peak_working_set, is_process_alive
 
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows only")
 
@@ -66,6 +66,23 @@ def _wait_gone(pid: int) -> None:
         time.sleep(0.02)
 
 
+def _wait_idle(job: "JobObject") -> "JobUsage":
+    """Poll the job until none of its members is active, and return its usage.
+
+    Windows signals the handle of an exiting process slightly before it updates the accounting
+    of the job.
+    On a busy machine, `active` may then still count a process for tens of milliseconds
+    after `Popen.wait` returned, as observed on Windows 11 24H2 with Python 3.11.
+    """
+    deadline = time.monotonic() + JOB_TIMEOUT
+    usage = job.query_usage()
+    while usage.active != 0:
+        assert time.monotonic() < deadline, f"The job still has {usage.active} active processes."
+        time.sleep(0.02)
+        usage = job.query_usage()
+    return usage
+
+
 def test_job_object_terminate_ends_the_whole_tree() -> None:
     job = JobObject.create()
     try:
@@ -83,7 +100,7 @@ def test_job_object_terminate_ends_the_whole_tree() -> None:
             job.terminate(7)
             assert proc.wait(JOB_TIMEOUT) == 7
             _wait_gone(grandchild_pid)
-            assert job.query_usage().active == 0
+            _wait_idle(job)
     finally:
         job.close()
 
@@ -114,8 +131,7 @@ def test_job_object_usage_counts_the_cpu_time_of_exited_members() -> None:
         with subprocess.Popen([sys.executable, "-c", code]) as proc:
             job.assign(proc.pid)
             assert proc.wait(JOB_TIMEOUT) == 0
-        usage = job.query_usage()
-        assert usage.active == 0
+        usage = _wait_idle(job)
         assert 0.25 < usage.utime + usage.stime < 5.0
     finally:
         job.close()
