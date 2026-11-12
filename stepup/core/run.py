@@ -279,6 +279,10 @@ def _signal_process_group(pid: int, sig: int) -> None:
     child has been forked but has not called `os.setsid` yet, so its group does not exist yet.
     A process that has already exited raises `ProcessLookupError` from both calls,
     which `Worker` methods ignore.
+    The fallback is also taken when `os.killpg` raises `PermissionError`,
+    because macOS reports `EPERM` instead of `ESRCH` for a group whose only members are zombies,
+    which happens when a step has exited but has not been reaped yet.
+    A genuine lack of permission then raises `PermissionError` from `os.kill` as well.
 
     Parameters
     ----------
@@ -289,7 +293,7 @@ def _signal_process_group(pid: int, sig: int) -> None:
     """
     try:
         os.killpg(pid, sig)
-    except ProcessLookupError:
+    except (ProcessLookupError, PermissionError):
         os.kill(pid, sig)
 
 

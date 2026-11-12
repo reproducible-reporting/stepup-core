@@ -95,6 +95,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   now fails with a clear error message, before the build starts.
 - On macOS, the director no longer reports an error when the other side closes a connection
   that the director is still using, which could happen at the end of a build.
+- On macOS, interrupting, suspending or resuming a step that has just exited
+  no longer fails with a `PermissionError` in the director.
 
 ## [4.0.3][] - 2026-09-19 {: #v4.0.3 }
 
