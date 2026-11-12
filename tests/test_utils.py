@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Tests for stepup.core.utils."""
 
+import io
 import os
 import subprocess
 import sys
@@ -16,10 +17,12 @@ from stepup.core.utils import (
     extract_env_overrides,
     format_subprocess,
     is_process_running,
+    is_terminal,
     merge_resources,
     parse_resources,
     query_director_log,
     scan_director_log,
+    write_utf8_unless_terminal,
 )
 
 
@@ -304,3 +307,69 @@ def test_scan_director_log_order_and_labels(path_tmp: Path):
 )
 def test_extract_env_overrides(command, env_overrides, remaining):
     assert extract_env_overrides(command) == (env_overrides, remaining)
+
+
+def test_is_terminal_without_stream():
+    """A process may have no standard streams at all, e.g. under `pythonw.exe`."""
+    assert not is_terminal(None)
+
+
+def test_is_terminal_in_memory_stream():
+    assert not is_terminal(io.StringIO())
+
+
+def test_is_terminal_null_device():
+    """The null device is no terminal, although `isatty()` is true for it on Windows."""
+    with open(os.devnull, encoding="utf-8") as stream:
+        assert not is_terminal(stream)
+
+
+def test_is_terminal_file(path_tmp: Path):
+    with open(path_tmp / "out.txt", "w", encoding="utf-8") as stream:
+        assert not is_terminal(stream)
+
+
+@pytest.mark.requires_termios
+def test_is_terminal_pty():
+    primary_fd, secondary_fd = os.openpty()
+    try:
+        with os.fdopen(secondary_fd, "w", encoding="utf-8") as stream:
+            assert is_terminal(stream)
+    finally:
+        os.close(primary_fd)
+
+
+def _legacy_stream(errors: str) -> io.TextIOWrapper:
+    """Create a text stream as Python sets it up for redirected output on a legacy code page."""
+    return io.TextIOWrapper(io.BytesIO(), encoding="cp1252", errors=errors)
+
+
+def test_write_utf8_unless_terminal_redirected(monkeypatch: pytest.MonkeyPatch):
+    stdout = _legacy_stream("strict")
+    stderr = _legacy_stream("backslashreplace")
+    monkeypatch.setattr(sys, "stdout", stdout)
+    monkeypatch.setattr(sys, "stderr", stderr)
+    write_utf8_unless_terminal()
+    for stream in stdout, stderr:
+        # The vertical bar of the reporter has no place in the code page.
+        stream.write("DIRECTOR \u2502 ok\n")
+        stream.flush()
+        assert stream.buffer.getvalue() == "DIRECTOR \u2502 ok\n".encode()
+    assert stdout.errors == "strict"
+    assert stderr.errors == "backslashreplace"
+
+
+def test_write_utf8_unless_terminal_leaves_a_terminal_alone(monkeypatch: pytest.MonkeyPatch):
+    stdout = _legacy_stream("strict")
+    monkeypatch.setattr(sys, "stdout", stdout)
+    monkeypatch.setattr(sys, "stderr", stdout)
+    monkeypatch.setattr("stepup.core.utils.is_terminal", lambda stream: True)
+    write_utf8_unless_terminal()
+    assert stdout.encoding == "cp1252"
+
+
+def test_write_utf8_unless_terminal_leaves_other_streams_alone(monkeypatch: pytest.MonkeyPatch):
+    """A replaced or missing standard stream cannot be reconfigured, and needs no encoding."""
+    monkeypatch.setattr(sys, "stdout", io.StringIO())
+    monkeypatch.setattr(sys, "stderr", None)
+    write_utf8_unless_terminal()

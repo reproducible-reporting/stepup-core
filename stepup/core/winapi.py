@@ -6,11 +6,19 @@ This module can only be imported on Windows.
 """
 
 import ctypes
+import msvcrt
 from ctypes import wintypes
 
 import attrs
 
-__all__ = ("JobObject", "JobUsage", "get_peak_working_set", "is_process_alive")
+__all__ = (
+    "JobObject",
+    "JobUsage",
+    "get_peak_working_set",
+    "is_console",
+    "is_process_alive",
+    "read_console_keys",
+)
 
 
 _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -45,6 +53,13 @@ JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
 
 JOB_TIME_UNIT = 1e-7
 """The unit of the CPU times in the accounting information of a job [s], i.e. 100 ns."""
+
+
+KEY_EVENT = 0x0001
+"""Event type of an input record that holds a `KeyEventRecord`."""
+
+MAX_INPUT_RECORDS = 256
+"""The largest number of input records that `read_console_keys` takes from a console at once."""
 
 
 class ProcessMemoryCounters(ctypes.Structure):
@@ -121,6 +136,32 @@ class JobObjectBasicAccountingInformation(ctypes.Structure):
     )
 
 
+class KeyEventRecord(ctypes.Structure):
+    """The `KEY_EVENT_RECORD` structure, with the Unicode member of its character union."""
+
+    _fields_ = (
+        ("bKeyDown", wintypes.BOOL),
+        ("wRepeatCount", wintypes.WORD),
+        ("wVirtualKeyCode", wintypes.WORD),
+        ("wVirtualScanCode", wintypes.WORD),
+        ("UnicodeChar", wintypes.WORD),
+        ("dwControlKeyState", wintypes.DWORD),
+    )
+
+
+class InputRecord(ctypes.Structure):
+    """The `INPUT_RECORD` structure of `ReadConsoleInputW`.
+
+    Its union is represented by the key event alone,
+    which is as large as the largest member of the union.
+    """
+
+    _fields_ = (
+        ("EventType", wintypes.WORD),
+        ("KeyEvent", KeyEventRecord),
+    )
+
+
 _kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
 _kernel32.OpenProcess.restype = wintypes.HANDLE
 _kernel32.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
@@ -156,6 +197,20 @@ _kernel32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
 _kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
 _kernel32.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
 _kernel32.TerminateJobObject.restype = wintypes.BOOL
+_kernel32.GetConsoleMode.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+_kernel32.GetConsoleMode.restype = wintypes.BOOL
+_kernel32.GetNumberOfConsoleInputEvents.argtypes = (
+    wintypes.HANDLE,
+    ctypes.POINTER(wintypes.DWORD),
+)
+_kernel32.GetNumberOfConsoleInputEvents.restype = wintypes.BOOL
+_kernel32.ReadConsoleInputW.argtypes = (
+    wintypes.HANDLE,
+    ctypes.POINTER(InputRecord),
+    wintypes.DWORD,
+    ctypes.POINTER(wintypes.DWORD),
+)
+_kernel32.ReadConsoleInputW.restype = wintypes.BOOL
 
 
 def is_process_alive(pid: int) -> bool:
@@ -210,6 +265,75 @@ def get_peak_working_set() -> int:
     if not ok:
         raise ctypes.WinError(ctypes.get_last_error())
     return counters.PeakWorkingSetSize
+
+
+def is_console(fd: int) -> bool:
+    """Check whether a file descriptor is the input buffer or a screen buffer of a console.
+
+    This is stricter than `os.isatty`, which is also true for other character devices,
+    e.g. for a stream that is redirected from or to `NUL`.
+    """
+    try:
+        handle = msvcrt.get_osfhandle(fd)
+    except OSError:
+        return False
+    mode = wintypes.DWORD()
+    return bool(_kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
+
+
+def read_console_keys(fd: int, timeout: float) -> str:
+    """Wait for keystrokes on a console and take them from its input buffer.
+
+    The console keeps processing its input as before while this waits,
+    so a Ctrl-C still becomes a console control event.
+    `msvcrt.getwch` cannot be used for this reason:
+    it switches off all input processing for as long as it waits,
+    after which a Ctrl-C is just the character `\x03`.
+
+    Parameters
+    ----------
+    fd
+        A file descriptor of the input buffer of a console.
+    timeout
+        The time to wait for input, in seconds.
+
+    Returns
+    -------
+    keys
+        The characters of the keys that were pressed, in order.
+        The string is empty when the wait timed out,
+        or when the input consisted of other events only, e.g. keys without a character.
+
+    Raises
+    ------
+    OSError
+        If the console input cannot be read, e.g. because the console is gone.
+    """
+    handle = msvcrt.get_osfhandle(fd)
+    result = _kernel32.WaitForSingleObject(handle, round(timeout * 1000))
+    if result == WAIT_TIMEOUT:
+        return ""
+    if result != WAIT_OBJECT_0:
+        raise ctypes.WinError(ctypes.get_last_error())
+    count = wintypes.DWORD()
+    if not _kernel32.GetNumberOfConsoleInputEvents(handle, ctypes.byref(count)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    # Never ask for more records than there are, because `ReadConsoleInputW` waits for the first.
+    size = min(count.value, MAX_INPUT_RECORDS)
+    if size == 0:
+        return ""
+    records = (InputRecord * size)()
+    if not _kernel32.ReadConsoleInputW(handle, records, size, ctypes.byref(count)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    keys = []
+    for record in records[: count.value]:
+        if record.EventType == KEY_EVENT and record.KeyEvent.bKeyDown:
+            code = record.KeyEvent.UnicodeChar
+            # A character outside the Basic Multilingual Plane arrives as two surrogates,
+            # which are not characters on their own.
+            if code != 0 and not 0xD800 <= code <= 0xDFFF:
+                keys.append(chr(code))
+    return "".join(keys)
 
 
 @attrs.define(frozen=True)

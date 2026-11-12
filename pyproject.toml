@@ -126,6 +126,7 @@ markers = [
     "requires_forkserver: skip unless the forkserver is available and STEPUP_BUILD_FORKSERVER != 0",
     "requires_termios: skip unless POSIX terminal control (termios, pty) is available",
     "requires_suspend: skip unless the job-control signals of Ctrl-Z are available",
+    "requires_windows_console: skip unless the terminal is a Windows console",
 ]
 timeout = 15
 

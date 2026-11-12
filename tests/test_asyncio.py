@@ -5,6 +5,7 @@
 import asyncio
 import contextlib
 import os
+import signal
 from functools import partial
 
 import pytest
@@ -13,6 +14,7 @@ from core_common import settled_task_names
 from stepup.core.asyncio import (
     MAX_POLL_DELAY,
     iter_until_stopped,
+    signal_handlers,
     wait_for_any_event,
     wait_for_path,
     wait_for_readable_fd,
@@ -248,3 +250,69 @@ async def test_iter_until_stopped_cancel_leaves_no_pending_tasks():
     with contextlib.suppress(asyncio.CancelledError):
         await task
     assert await settled_task_names() == []
+
+
+#
+# Signals
+#
+
+
+TEST_SIGNAL = getattr(signal, "SIGBREAK", None) or signal.SIGUSR1
+"""A signal that this process can raise in itself and that pytest does not use, on any platform."""
+
+
+async def _raise_and_collect(received: list[str]) -> None:
+    """Raise `TEST_SIGNAL` in this process and wait until a callback has recorded something."""
+    signal.raise_signal(TEST_SIGNAL)
+    # The callback must go through the event loop, so it cannot have run yet.
+    assert received == []
+    async with asyncio.timeout(5):
+        while received == []:
+            await asyncio.sleep(0.01)
+
+
+async def test_signal_handlers_calls_back_in_the_event_loop():
+    before = signal.getsignal(TEST_SIGNAL)
+    received = []
+    with signal_handlers({TEST_SIGNAL: partial(received.append, "seen")}):
+        await _raise_and_collect(received)
+    assert received == ["seen"]
+    assert signal.getsignal(TEST_SIGNAL) == before
+
+
+async def test_signal_handlers_without_add_signal_handler(monkeypatch: pytest.MonkeyPatch):
+    """An event loop without `add_signal_handler`, like the Proactor loop, is served as well."""
+    loop = asyncio.get_running_loop()
+
+    def not_implemented(sig, callback, *args):
+        raise NotImplementedError
+
+    monkeypatch.setattr(loop, "add_signal_handler", not_implemented)
+
+    def fail_remove(sig):
+        raise AssertionError("Nothing was added to the event loop, so nothing may be removed.")
+
+    monkeypatch.setattr(loop, "remove_signal_handler", fail_remove)
+    marker = signal.signal(TEST_SIGNAL, signal.SIG_IGN)
+    try:
+        received = []
+        with signal_handlers({TEST_SIGNAL: partial(received.append, "seen")}):
+            assert signal.getsignal(TEST_SIGNAL) != signal.SIG_IGN
+            await _raise_and_collect(received)
+        assert received == ["seen"]
+        # The handler that was replaced is back, whatever it was.
+        assert signal.getsignal(TEST_SIGNAL) == signal.SIG_IGN
+    finally:
+        signal.signal(TEST_SIGNAL, marker)
+
+
+async def test_signal_handlers_restores_after_exception():
+    before = signal.getsignal(TEST_SIGNAL)
+    with pytest.raises(RuntimeError, match="boom"), signal_handlers({TEST_SIGNAL: print}):
+        raise RuntimeError("boom")
+    assert signal.getsignal(TEST_SIGNAL) == before
+
+
+async def test_signal_handlers_without_signals():
+    with signal_handlers({}):
+        pass

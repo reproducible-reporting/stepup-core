@@ -38,7 +38,7 @@ class ReturnCode(Flag):
     """
 
     INTERRUPTED = auto()
-    """The build was aborted by a terminal signal (Ctrl-C or `SIGTERM`).
+    """The build was aborted by a terminal signal (e.g. Ctrl-C or `SIGTERM`).
 
     Set by the terminal user interface, not by the director:
     it describes how the build ended, not the state of the workflow,

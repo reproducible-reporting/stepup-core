@@ -5,6 +5,7 @@
 import argparse
 import asyncio
 import contextlib
+import functools
 import logging
 import multiprocessing
 import os
@@ -26,7 +27,7 @@ try:
 except ImportError:
     yappi = None
 
-from .asyncio import wait_for_any_event
+from .asyncio import signal_handlers, wait_for_any_event
 from .builder import Builder
 from .cgroups import get_ncore_from_cgroup
 from .constants import (
@@ -46,6 +47,7 @@ from .executor import Executor
 from .file import File
 from .hash import FileHash
 from .nglob import NamedGlob
+from .oscompat import abort_signals, suspend_available
 from .reporter import ReporterClient
 from .rpc import RPC_TRANSPORTS, SocketRPCServer, allow_rpc
 from .run import describe_stop_level
@@ -55,6 +57,7 @@ from .startup import resume_from_db
 from .stepinfo import StepInfo
 from .tool import positive_int
 from .usage import CgroupMemorySampler, finalize_resource_usage
+from .utils import write_utf8_unless_terminal
 from .watcher import Watcher
 from .workflow import Workflow
 
@@ -179,12 +182,7 @@ class ServeConfig:
 
 
 def main():
-    # Output that does not go to a console is otherwise written in the locale encoding,
-    # e.g. the ANSI code page on Windows with Python 3.14 and older.
-    # `PYTHONIOENCODING` cannot be used instead, because steps inherit the director's environment.
-    # Without an explicit `errors`, `reconfigure` would also reset that of `stderr` to `strict`.
-    for stream in (sys.stdout, sys.stderr):
-        stream.reconfigure(encoding="utf-8", errors=stream.errors, newline="\n")
+    write_utf8_unless_terminal()
     args = parse_args()
     mp_ctx = None
     if args.forkserver:
@@ -505,8 +503,9 @@ async def serve(
         A `multiprocessing` forkserver context for Python step execution,
         or `None` to use plain subprocesses.
     handle_signals
-        Whether to install handlers for `SIGINT` and `SIGTERM` that abort the build.
-        See `DirectorHandler.interrupt`.
+        Whether to install handlers for the signals that abort the build
+        (see `stepup.core.oscompat.abort_signals` and `DirectorHandler.interrupt`)
+        and, where a process can be suspended, for `SIGTSTP` (see `DirectorHandler.suspend`).
         Set to False when running the director inside another process (e.g. the test suite),
         where hijacking the process-wide signal handlers is not wanted.
 
@@ -690,31 +689,33 @@ async def _run_tasks(
         coroutines.append(handler.watcher.loop(handler.stop_event))
         if watch_first:
             coroutines.append(watch_first_loop(handler.watcher, handler, handler.stop_event))
-    # Abort the build on a terminal signal,
-    # instead of dying with a KeyboardInterrupt traceback (SIGINT)
-    # or instantly and mid-transaction (SIGTERM).
-    loop = asyncio.get_running_loop()
+    callbacks = {}
     if handle_signals:
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, handler.interrupt, sig)
-        # Stop the running steps along with this process, which the terminal cannot do itself.
-        loop.add_signal_handler(signal.SIGTSTP, handler.suspend)
-    try:
-        await asyncio.gather(*coroutines)
-    finally:
-        # In case of an exception, set the stop event, so other parts know they can stop waiting.
-        handler.stop_event.set()
-        # Regular shutdown.
-        # The signal handlers stay installed for its duration:
-        # a step ignoring the first interrupt is killed by a second one during `builder.stop()`.
-        await handler.builder.stop()
-        exit_event.set()
-        await rpc_server
-        director_socket_path.remove_p()
-        await handler.cancel_interrupt()
-        if handle_signals:
-            for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGTSTP):
-                loop.remove_signal_handler(sig)
+        # Abort the build on a terminal signal,
+        # instead of dying with a KeyboardInterrupt traceback (SIGINT)
+        # or instantly and mid-transaction (SIGTERM).
+        callbacks.update(
+            (sig, functools.partial(handler.interrupt, sig)) for sig in abort_signals()
+        )
+        if suspend_available():
+            # Stop the running steps along with this process,
+            # which the terminal cannot do itself.
+            callbacks[signal.SIGTSTP] = handler.suspend
+    with signal_handlers(callbacks):
+        try:
+            await asyncio.gather(*coroutines)
+        finally:
+            # In case of an exception, set the stop event,
+            # so other parts know they can stop waiting.
+            handler.stop_event.set()
+            # Regular shutdown.
+            # The signal handlers stay installed for its duration: a step ignoring
+            # the first interrupt is killed by a second one during `builder.stop()`.
+            await handler.builder.stop()
+            exit_event.set()
+            await rpc_server
+            director_socket_path.remove_p()
+            await handler.cancel_interrupt()
 
 
 def _check_plan():
@@ -1219,7 +1220,7 @@ class DirectorHandler:
         so that a single Ctrl-C is always enough to get the shell prompt back.
         A second signal only cuts that grace period short.
 
-        This is a plain callback (not a coroutine), as required by `add_signal_handler`.
+        This is a plain callback (not a coroutine), as a signal handler must be.
         The work happens in a task, since reporting and waiting are asynchronous.
         """
         self._interrupt_count += 1
@@ -1236,7 +1237,7 @@ class DirectorHandler:
             f"Interrupting running steps ({describe_stop_level(StopLevel.INTERRUPT)}).",
         )
         self._stop_scheduling()
-        # Steps run in a session of their own, so the terminal does not signal them:
+        # Steps are detached from the terminal, whose Ctrl-C does not reach them:
         # this is the only thing that stops them, on every route
         # (Ctrl-C, SIGTERM, or a SIGINT sent to the terminal user interface alone).
         self.executor.interrupt(StopLevel.INTERRUPT)

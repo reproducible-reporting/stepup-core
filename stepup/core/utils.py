@@ -3,19 +3,21 @@
 """Small utilities used throughout."""
 
 import contextlib
+import io
 import logging
 import os
 import re
 import shlex
 import sys
 from collections.abc import Iterable
+from typing import TextIO
 
 from .constants import DIRECTOR_LOG_PID_PREFIX, DIRECTOR_LOG_SOCKET_PREFIX
 from .exceptions import StepUpError
 from .path import Path, StrPath, coerce_str
 
 if sys.platform == "win32":
-    from .winapi import is_process_alive
+    from .winapi import is_console, is_process_alive
 
 __all__ = (
     "as_list",
@@ -24,11 +26,13 @@ __all__ = (
     "format_subprocess",
     "is_debug",
     "is_process_running",
+    "is_terminal",
     "merge_resources",
     "parse_resources",
     "query_director_log",
     "scan_director_log",
     "to_bool",
+    "write_utf8_unless_terminal",
 )
 
 
@@ -249,6 +253,42 @@ def merge_resources(base: str | None, override: str | None) -> str:
     """Merge two comma-separated resource specs. (`override` wins per resource name.)"""
     merged = {**parse_resources(base or ""), **parse_resources(override or "")}
     return ",".join(f"{k}:{v}" for k, v in merged.items())
+
+
+def is_terminal(stream: TextIO | None) -> bool:
+    """Check whether a standard stream of this process is connected to a terminal.
+
+    On Windows, this is stricter than `isatty()`, which is also true for other character devices,
+    e.g. for a stream that is redirected from or to `NUL`.
+    """
+    if stream is None:
+        return False
+    if sys.platform == "win32":
+        try:
+            fd = stream.fileno()
+        except OSError:
+            # The stream is not backed by a file descriptor.
+            return False
+        return is_console(fd)
+    return stream.isatty()
+
+
+def write_utf8_unless_terminal() -> None:
+    """Make the standard output and error write UTF-8 and `\\n`, unless they are a terminal.
+
+    Output that does not go to a terminal is otherwise written in the locale encoding,
+    e.g. the ANSI code page on Windows with Python 3.14 and older,
+    which cannot represent everything that StepUp prints,
+    and with the line endings of the platform.
+    A terminal is left alone, because Python already writes to it in the encoding it expects.
+
+    An environment variable such as `PYTHONIOENCODING` is no alternative,
+    because every child process would inherit it.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper) and not is_terminal(stream):
+            # Without an explicit `errors`, `reconfigure` would reset that of `stderr` to `strict`.
+            stream.reconfigure(encoding="utf-8", errors=stream.errors, newline="\n")
 
 
 def is_process_running(pid: int) -> bool:

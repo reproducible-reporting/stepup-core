@@ -4,12 +4,18 @@
 
 import asyncio
 import socket
+import subprocess
+import sys
+from typing import Self
 
 import attrs
 
 from stepup.core.exceptions import CyclicError
 from stepup.core.path import Path
 from stepup.core.rpc import TCP_HOST, TOKEN_SIZE, _TCPEndpoint, allow_rpc
+
+if sys.platform == "win32":
+    from stepup.core.winapi import JobObject
 
 
 async def settled_task_names() -> list[str]:
@@ -78,3 +84,87 @@ class EchoHandler:
 
     def not_allowed(self):
         print("This method should not be callable.")
+
+
+@attrs.define
+class ConsoleHost:
+    """A program that runs in a Windows console of its own, with the test as its user.
+
+    The work is done by the script `console_host.py`, which documents the actions.
+    The script and everything it starts are members of one Job Object,
+    so that `close` leaves nothing behind, whatever state a failed test is in.
+    """
+
+    process: subprocess.Popen = attrs.field()
+    """The process of `console_host.py`, which ends with the return code of the program."""
+
+    job: "JobObject" = attrs.field()
+    """The job that holds the script, the program and all their descendants."""
+
+    path_output: Path = attrs.field()
+    """The file that collects the standard output and error of the program."""
+
+    @classmethod
+    def start(cls, argv: list[str], cwd: Path, path_output: Path) -> Self:
+        """Start a program in a new console, which has no visible window.
+
+        Parameters
+        ----------
+        argv
+            The command line of the program.
+        cwd
+            The working directory of the program.
+        path_output
+            The file to which the program writes its standard output and error.
+        """
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE
+        process = subprocess.Popen(
+            [sys.executable, Path(__file__).parent / "console_host.py", path_output, *argv],
+            cwd=cwd,
+            stdin=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+            startupinfo=startupinfo,
+        )
+        job = JobObject.create()
+        job.assign(process.pid)
+        return cls(process, job, path_output)
+
+    def act(self, action: str) -> None:
+        """Let the user of the console do something, e.g. `"ctrl-c"` or `"keys q"`."""
+        self.process.stdin.write(f"{action}\n")
+        self.process.stdin.flush()
+
+    def wait(self, timeout: float) -> int:
+        """Wait until the program exits on its own, and return its return code.
+
+        Raises
+        ------
+        AssertionError
+            If the program is still running after `timeout` seconds.
+        """
+        self.process.stdin.close()
+        try:
+            return self.process.wait(timeout)
+        except subprocess.TimeoutExpired:
+            raise AssertionError(
+                f"The program did not exit within {timeout} s. Its output:\n{self.output()}"
+            ) from None
+
+    def output(self) -> str:
+        """Return what the program has written so far."""
+        try:
+            return self.path_output.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            # The program has not been started yet.
+            return ""
+
+    def close(self) -> None:
+        """End everything that is still running in the console."""
+        self.job.terminate(1)
+        self.job.close()
+        self.process.stdin.close()
+        self.process.wait()

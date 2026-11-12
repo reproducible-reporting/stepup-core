@@ -16,7 +16,7 @@ from .enums import ReturnCode
 from .exceptions import ConfigError, UsageError
 from .path import get_stepup_root
 from .tool import print_error
-from .utils import is_debug
+from .utils import is_debug, write_utf8_unless_terminal
 
 __all__ = ("main", "sb_main")
 
@@ -47,6 +47,7 @@ def main():
     a tool raises it to end the process with an exit code of its own,
     e.g. the bit flags that `stepup build` reports.
     """
+    write_utf8_unless_terminal()
     try:
         _run_subcommand()
     except UsageError as exc:

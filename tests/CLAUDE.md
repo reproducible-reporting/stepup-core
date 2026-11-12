@@ -18,6 +18,15 @@ so that extension packages can impose the same conventions with the same two lin
 Add a new convention check to that class,
 unless it can only ever apply to StepUp Core.
 
+## Terminal Tests
+
+`tests/test_interrupt.py` and `tests/test_console.py` run `stepup build` as a real process
+on a terminal of its own, to test Ctrl-C, Ctrl-Z and the keyboard commands end to end.
+The first uses a pseudo terminal and only runs on POSIX (`requires_termios`).
+The second uses a new console and only runs on Windows (`requires_windows_console`),
+with `ConsoleHost` in `tests/core_common.py` playing the user of that console.
+A scenario about terminal signals or keys that makes sense on both platforms belongs in both.
+
 ## Integration Examples
 
 `tests/examples/*/` contains integration test cases,

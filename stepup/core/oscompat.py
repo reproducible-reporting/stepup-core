@@ -17,12 +17,26 @@ import socket
 import sys
 
 __all__ = (
+    "abort_signals",
     "af_unix_available",
     "forkserver_available",
     "perf_available",
     "raw_terminal_available",
     "suspend_available",
+    "windows_console_available",
 )
+
+
+def abort_signals() -> tuple[signal.Signals, ...]:
+    """The signals that ask a process to stop, of those that the platform can deliver.
+
+    Windows defines `SIGTERM` without ever delivering it,
+    because a process is terminated there without being told.
+    It has `SIGBREAK` instead, which is how Python reports a Ctrl-Break.
+    """
+    if hasattr(signal, "SIGBREAK"):
+        return (signal.SIGINT, signal.SIGBREAK)
+    return (signal.SIGINT, signal.SIGTERM)
 
 
 def af_unix_available() -> bool:
@@ -46,6 +60,15 @@ def perf_available() -> bool:
 def raw_terminal_available() -> bool:
     """Whether single keystrokes can be read from a terminal through the `termios` module."""
     return importlib.util.find_spec("termios") is not None
+
+
+def windows_console_available() -> bool:
+    """Whether the terminal is a Windows console instead of a POSIX terminal.
+
+    A console hands out single keystrokes as input records, without a raw mode,
+    and delivers a Ctrl-C or Ctrl-Break to every process attached to it.
+    """
+    return sys.platform == "win32"
 
 
 def suspend_available() -> bool:

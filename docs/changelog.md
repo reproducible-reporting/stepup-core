@@ -54,6 +54,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - The environment variable `STEPUP_SHELL` selects the POSIX shell
   that runs the commands of steps with `shell=True`, instead of `/bin/sh`,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
+- `stepup build` can be controlled from a Windows console:
+  `Ctrl-C` and `Ctrl-Break` abort the build,
+  and the [keyboard commands](reference/interactive.md) work.
+  Suspending a build with `Ctrl-Z` is not possible there.
+  This is a part of Windows support, which is not complete yet.
 
 ### Changed
 
@@ -76,6 +81,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   and writes them with `\n` line endings.
   This includes the files in `.stepup/`, the output of `stepup graph`
   and the files that `loadns()`, `dumpns()` and `render_jinja()` read or write.
+- The `stepup` command writes its standard output and error in UTF-8 with `\n` line endings
+  when they are redirected to a file or a pipe, instead of in the locale encoding.
+  Output to a terminal is not affected, and neither is output under a UTF-8 locale.
+- When the director ends with an exit code that is not a combination of
+  the [return codes](reference/returncode.md) of StepUp,
+  e.g. because a program that wraps the director failed,
+  `stepup build` now reports that code and returns `1`, instead of passing the code on.
 
 ### Fixed
 

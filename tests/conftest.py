@@ -25,6 +25,7 @@ from stepup.core.oscompat import (
     forkserver_available,
     raw_terminal_available,
     suspend_available,
+    windows_console_available,
 )
 from stepup.core.path import Path
 from stepup.core.popen import find_shell
@@ -50,6 +51,7 @@ CAPABILITY_MARKERS = {
     ),
     "requires_termios": (raw_terminal_available, "requires POSIX terminal control (termios)"),
     "requires_suspend": (suspend_available, "requires the job-control signals of Ctrl-Z"),
+    "requires_windows_console": (windows_console_available, "requires a Windows console"),
 }
 """Markers that skip a test when a capability is missing, with the predicate testing for it.
 

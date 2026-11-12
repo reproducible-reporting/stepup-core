@@ -189,6 +189,58 @@ The rules below are easy to break, and `_stop_windows_step` explains them:
 - Ctrl-Z does not exist.
   `Worker.suspend` and `resume` do nothing where `oscompat.suspend_available()` is false.
 
+### Windows: Console Control Events and Keys (`tui.py`, `director.py`)
+
+The TUI and the director handle the signals of `oscompat.abort_signals()`
+with `signal_handlers()` (`asyncio.py`),
+which also serves the Proactor event loop, where `loop.add_signal_handler` does not exist.
+On Windows, these signals are `SIGINT` and `SIGBREAK`,
+which is how Python reports the console control events of Ctrl-C and Ctrl-Break.
+`SIGTERM` is defined but never delivered, because a Windows process is terminated without notice.
+
+- A console control event cannot be sent to one process.
+  The console delivers it to all its processes, or to those of one process group.
+  The TUI therefore starts the director without creation flags,
+  in the same console and the same process group,
+  and never forwards an event (`_terminal_broadcasts`).
+  A director in a console or group of its own would not notice a Ctrl-C.
+- Of the two, only a Ctrl-C is kept away from the steps by their process groups.
+  A Ctrl-Break reaches them directly, at the same time as the director.
+- A process that was started in a new process group ignores Ctrl-C,
+  and so does everything it starts, because this setting is inherited.
+  StepUp leaves the setting alone, so `stepup build` then only reacts to Ctrl-Break,
+  much like a background job on POSIX.
+  The tests undo it with `SetConsoleCtrlHandler` (`tests/console_host.py`),
+  because a test runner may be in that state.
+- Keys are read with `winapi.read_console_keys`, in a thread, and never with `msvcrt.getwch`.
+  The latter switches off the input processing of the console for as long as it waits.
+  With a thread waiting in `getwch`, a Ctrl-C arrived as the character `\x03`
+  and no longer as an event, when this was tested on Windows 11 24H2.
+- A console is recognized with `utils.is_terminal`, not with `isatty()`,
+  which is also true for `NUL` on Windows.
+- A console that goes away does not hang up its processes as a POSIX terminal does.
+  When the SSH session of a build was closed, on Windows 11 24H2 with OpenSSH,
+  the TUI ended at once, without a signal, and the director carried on in its watch phase.
+  The TUI therefore puts the director in a Job Object of its own (`_confine_director`),
+  as the director does with its steps, so that nothing of a build outlives `stepup build`.
+- A killed process has no signal to show for it.
+  `Process.kill()` gives the director exit code 1, a valid `ReturnCode`,
+  so `TerminalSignalHandler` remembers that it killed the director.
+  Any exit code that is not a `ReturnCode` combination, e.g. `0xC000013A`, becomes `INTERNAL`.
+
+`tests/test_console.py` covers this end to end, as `tests/test_interrupt.py` does for POSIX.
+It runs `stepup build` in a new console and generates the events and keys in it,
+so it needs no interactive session.
+
+### Encoding of the Standard Streams
+
+`write_utf8_unless_terminal()` (`utils.py`) is called first thing by `stepup` and by the director.
+A standard output or error that is not a terminal is then written in UTF-8 with `\n` line endings,
+instead of in the locale encoding, which is the ANSI code page on Windows
+with Python 3.14 and older and cannot represent what the reporter prints.
+The environment is not used for this (`PYTHONIOENCODING`, `PYTHONUTF8`),
+because the steps inherit it from the director.
+
 ### Commands on Every Platform (`popen.py`)
 
 `popen_args()` turns a command into the `args` of `subprocess.Popen`.

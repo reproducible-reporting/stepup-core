@@ -3,8 +3,12 @@
 """Asyncio utilities used in StepUp."""
 
 import asyncio
+import contextlib
+import functools
+import signal
 import sys
-from collections.abc import AsyncIterator, Callable, Coroutine
+from collections.abc import AsyncIterator, Callable, Coroutine, Iterator, Mapping
+from types import FrameType
 from typing import Any, TypeVar
 
 from .path import Path
@@ -12,6 +16,7 @@ from .path import Path
 __all__ = (
     "_wait_closed_compat",
     "iter_until_stopped",
+    "signal_handlers",
     "wait_for_any_event",
     "wait_for_path",
     "wait_for_readable_fd",
@@ -94,6 +99,60 @@ async def _wait_closed_compat(server: asyncio.Server):
     waiter = server.get_loop().create_future()
     server._waiters.append(waiter)
     await waiter
+
+
+#
+# Signals
+#
+
+
+@contextlib.contextmanager
+def signal_handlers(callbacks: Mapping[signal.Signals, Callable[[], object]]) -> Iterator[None]:
+    """Handle signals in the running event loop, for the duration of a `with` block.
+
+    A callback runs in the event loop, like any other callback,
+    and not in between two arbitrary instructions, as a handler of `signal.signal` does.
+    It can therefore use everything that `asyncio` offers.
+
+    This works with every event loop,
+    also with the Proactor event loop of Windows, which has no `add_signal_handler`.
+    The block must be entered and left in the main thread.
+
+    Parameters
+    ----------
+    callbacks
+        The function to call without arguments for each signal to handle.
+        Use `functools.partial` when it takes arguments.
+    """
+    loop = asyncio.get_running_loop()
+    added = []
+    replaced = {}
+    try:
+        for sig, callback in callbacks.items():
+            try:
+                loop.add_signal_handler(sig, callback)
+                added.append(sig)
+            except NotImplementedError:
+                # The interpreter runs the handler in the main thread, after the event loop
+                # has been woken up through its wake-up socket (`signal.set_wakeup_fd`).
+                replaced[sig] = signal.signal(sig, functools.partial(_relay_signal, loop, callback))
+        yield
+    finally:
+        for sig in added:
+            loop.remove_signal_handler(sig)
+        for sig, previous in replaced.items():
+            # `None` stands for a handler that was not installed from Python.
+            signal.signal(sig, signal.SIG_DFL if previous is None else previous)
+
+
+def _relay_signal(
+    loop: asyncio.AbstractEventLoop,
+    callback: Callable[[], object],
+    signum: int,
+    frame: FrameType | None,
+) -> None:
+    """Pass a signal on to the event loop, as a handler for `signal.signal`."""
+    loop.call_soon_threadsafe(callback)
 
 
 #

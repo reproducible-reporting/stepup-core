@@ -8,6 +8,8 @@ import contextlib
 import os
 import signal
 import sys
+import threading
+import time
 from collections.abc import AsyncGenerator, Callable, Generator
 from decimal import Decimal
 from types import SimpleNamespace
@@ -33,6 +35,7 @@ from stepup.core.rpc import (
 from stepup.core.tui import (
     _KEY_ACTIONS,
     _KEY_STROKE_HELP,
+    _KILL_MECHANISM,
     RawTerminal,
     SuspendHandler,
     TerminalSignalHandler,
@@ -42,11 +45,13 @@ from stepup.core.tui import (
     _build_tool,
     _check_no_running_director,
     _check_platform_support,
+    _confine_director,
     _deprecated_boot_tool,
     _iter_keystrokes,
     _normalize_targets,
     _report_director_log_problems,
     _reset_stepup_dir,
+    _stdin_has_keystrokes,
     _terminal_broadcasts,
     keyboard,
     positive_decimal,
@@ -56,17 +61,26 @@ if raw_terminal_available():
     import pty
     import termios
 
-xfail_windows_signals = pytest.mark.xfail(
-    sys.platform == "win32",
-    reason="`tui.py` uses signals that do not exist on Windows (`SIGTSTP`, `SIGKILL`).",
-    raises=(AttributeError, ValueError),
-    strict=True,
+requires_signal_wait_status = pytest.mark.skipif(
+    not hasattr(signal, "SIGKILL"),
+    reason="A wait status only names a signal on POSIX.",
 )
-"""Mark a test that fails on Windows because the terminal frontend uses POSIX signals.
+"""Mark a test in which the director has a negative wait status, i.e. was killed by a signal."""
 
-The mark is strict: a marked test that passes on Windows is reported as a failure,
-which is the cue to remove the mark.
-"""
+
+_CONFINE_DIRECTOR = _confine_director
+"""The real function, which `_no_director_job` replaces in `tui.py` for every test."""
+
+
+@pytest.fixture(autouse=True)
+def _no_director_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the tests from putting a process in a Job Object.
+
+    The stand-ins for the director have a made-up pid.
+    On Windows, that pid may belong to an unrelated process,
+    which would be terminated when the job is closed.
+    """
+    monkeypatch.setattr("stepup.core.tui._confine_director", lambda pid: None)
 
 
 def _build_test_build_parser(loader: ConfigLoader) -> argparse.ArgumentParser:
@@ -787,13 +801,18 @@ class FakeProcess:
 
     pid: int = attrs.field(default=1234)
     returncode: int = attrs.field(default=0)
-    signals: list[int] = attrs.field(init=False, factory=list)
+    gone: bool = attrs.field(default=False)
+    """Whether the process has exited, so that it can no longer be killed."""
+    signals: list[int | str] = attrs.field(init=False, factory=list)
+    """The signals sent, with `"kill"` standing for a call of `kill()`."""
 
     def send_signal(self, sig: int) -> None:
         self.signals.append(sig)
 
     def kill(self) -> None:
-        self.signals.append(signal.SIGKILL)
+        if self.gone:
+            raise ProcessLookupError
+        self.signals.append("kill")
 
     async def wait(self) -> int:
         return self.returncode
@@ -832,15 +851,17 @@ def test_signal_handler_sigterm_always_forwarded(signal_handler: TerminalSignalH
     assert signal_handler.sig == signal.SIGTERM
 
 
-@xfail_windows_signals
 def test_signal_handler_third_signal_kills_director(
     signal_handler: TerminalSignalHandler,
 ) -> None:
     """An impatient user must always be able to get the shell prompt back."""
     for _ in range(3):
         signal_handler.handle(signal.SIGTERM)
-    assert signal_handler.process_director.signals[-1] == signal.SIGKILL
-    assert signal_handler.reporter_handler.reports[-1][0] == "ERROR"
+    assert signal_handler.process_director.signals[-1] == "kill"
+    assert signal_handler.reporter_handler.reports[-1] == (
+        "ERROR",
+        f"Killing the director ({_KILL_MECHANISM}).",
+    )
 
 
 def test_signal_handler_reports_once(signal_handler: TerminalSignalHandler) -> None:
@@ -993,6 +1014,7 @@ def test_terminal_broadcasts_for_sigtstp_in_foreground(monkeypatch: pytest.Monke
     assert _terminal_broadcasts(signal.SIGTSTP, os.getpid())
 
 
+@pytest.mark.requires_termios
 def test_terminal_broadcasts_without_controlling_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
     """Without a controlling terminal, nothing was broadcast, so the signal must be forwarded."""
 
@@ -1001,6 +1023,24 @@ def test_terminal_broadcasts_without_controlling_terminal(monkeypatch: pytest.Mo
 
     monkeypatch.setattr("builtins.open", raise_oserror)
     assert not _terminal_broadcasts(signal.SIGINT, 1)
+
+
+def test_terminal_broadcasts_on_a_windows_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A console control event reaches every process of the console, so it is never forwarded.
+
+    Forwarding is not even possible:
+    `send_signal` can only terminate a Windows process or send it another console event.
+    """
+    monkeypatch.setattr("stepup.core.tui.windows_console_available", lambda: True)
+
+    def fail_open(path: str, **kwargs) -> None:
+        raise AssertionError("A Windows console has no /dev/tty to ask.")
+
+    monkeypatch.setattr("builtins.open", fail_open)
+    assert _terminal_broadcasts(signal.SIGINT, 1)
+    if hasattr(signal, "SIGBREAK"):
+        assert _terminal_broadcasts(signal.SIGBREAK, 1)
+    assert not _terminal_broadcasts(signal.SIGTERM, 1)
 
 
 def test_build_tool_raises_tui_error(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1038,7 +1078,6 @@ def test_boot_tool_propagates_return_code(monkeypatch: pytest.MonkeyPatch) -> No
     assert exc_info.value.code == 42
 
 
-@xfail_windows_signals
 def test_async_build_returns_director_returncode(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1137,7 +1176,6 @@ def test_async_build_rejects_unavailable_forkserver(
     assert not (path_tmp / ".stepup").exists()
 
 
-@xfail_windows_signals
 def test_async_build_ignores_watcher_without_watch_mode(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1158,7 +1196,6 @@ def test_async_build_ignores_watcher_without_watch_mode(
     assert returncode == 0
 
 
-@xfail_windows_signals
 def test_async_build_uses_one_transport(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch, rpc_transport: str
 ) -> None:
@@ -1206,15 +1243,22 @@ def _pre_interrupted_signal_handler(reporter_handler, process_director) -> Termi
         (3, None, 3),
         (0, signal.SIGTERM, ReturnCode.INTERRUPTED.value),
         (3, signal.SIGINT, 3 | ReturnCode.INTERRUPTED.value),
+        # Every flag at once is still a ReturnCode combination.
+        (63, None, 63),
         # A wait status of -9 (SIGKILL) is not a ReturnCode combination, so it becomes INTERNAL.
         # The literal keeps this module importable where `signal.SIGKILL` does not exist.
-        pytest.param(-9, None, ReturnCode.INTERNAL.value, marks=xfail_windows_signals),
+        pytest.param(-9, None, ReturnCode.INTERNAL.value, marks=requires_signal_wait_status),
         pytest.param(
             -9,
             signal.SIGTERM,
             ReturnCode.INTERNAL.value | ReturnCode.INTERRUPTED.value,
-            marks=xfail_windows_signals,
+            marks=requires_signal_wait_status,
         ),
+        # Neither is an exit code with a bit that no flag uses,
+        # e.g. the status of a Windows process that a console control event ended.
+        (64, None, ReturnCode.INTERNAL.value),
+        (0xC000013A, None, ReturnCode.INTERNAL.value),
+        (0xC000013A, signal.SIGINT, ReturnCode.INTERNAL.value | ReturnCode.INTERRUPTED.value),
     ],
 )
 def test_translate_wait_status(wait_status: int, sig: signal.Signals | None, expected: int) -> None:
@@ -1224,7 +1268,7 @@ def test_translate_wait_status(wait_status: int, sig: signal.Signals | None, exp
     assert signal_handler.translate_wait_status(wait_status) == expected
 
 
-@xfail_windows_signals
+@requires_signal_wait_status
 def test_translate_wait_status_reports_killed_director() -> None:
     """A director killed by a signal is reported by name, not silently turned into a code."""
     signal_handler = TerminalSignalHandler(FakeReporterHandler(), FakeProcess())
@@ -1232,7 +1276,44 @@ def test_translate_wait_status_reports_killed_director() -> None:
     assert signal_handler.reporter_handler.reports == [("ERROR", "Director killed by SIGKILL")]
 
 
-@xfail_windows_signals
+def test_translate_wait_status_reports_unexpected_code() -> None:
+    """An exit code that the director cannot have chosen is reported in hexadecimal."""
+    signal_handler = TerminalSignalHandler(FakeReporterHandler(), FakeProcess())
+    signal_handler.translate_wait_status(0xC000013A)
+    assert signal_handler.reporter_handler.reports == [
+        ("ERROR", "Director exited with unexpected code 0xC000013A")
+    ]
+
+
+def test_translate_wait_status_of_director_killed_without_signal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Where killing leaves no signal in the wait status, the kill itself is remembered.
+
+    The exit code of a process killed on Windows is chosen by its killer.
+    The one that `Process.kill()` picks is a valid `ReturnCode`,
+    so it cannot be told from an exit code of the director.
+    """
+    monkeypatch.delattr(signal, "SIGKILL", raising=False)
+    signal_handler = TerminalSignalHandler(FakeReporterHandler(), FakeProcess())
+    signal_handler._kill_director()
+    assert signal_handler.translate_wait_status(1) == ReturnCode.INTERNAL.value
+    assert signal_handler.reporter_handler.reports == [
+        ("ERROR", f"Director killed by {_KILL_MECHANISM}")
+    ]
+
+
+def test_translate_wait_status_of_director_that_exited_before_the_kill(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A kill that came too late does not overrule the exit code of the director."""
+    monkeypatch.delattr(signal, "SIGKILL", raising=False)
+    signal_handler = TerminalSignalHandler(FakeReporterHandler(), FakeProcess(gone=True))
+    signal_handler._kill_director()
+    assert signal_handler.translate_wait_status(4) == 4
+    assert signal_handler.reporter_handler.reports == []
+
+
 def test_async_build_ors_interrupted_bit(path_tmp: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The `INTERRUPTED` bit is OR-ed onto whatever the director reported, when `sig` is set."""
     (path_tmp / "plan.py").touch()
@@ -1597,7 +1678,6 @@ def test_async_build_director_spawn_failure_does_not_hang(
         asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
 
 
-@xfail_windows_signals
 def test_async_build_stops_reporter_on_nonzero_exit(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1624,7 +1704,6 @@ def test_async_build_stops_reporter_on_nonzero_exit(
     assert fake_reporter_handler.stop_reporting_calls >= 1
 
 
-@xfail_windows_signals
 def test_async_build_stops_reporter_on_clean_exit(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1889,3 +1968,192 @@ def test_iter_keystrokes_yields_from_pty(monkeypatch: pytest.MonkeyPatch) -> Non
         chars = asyncio.run(asyncio.wait_for(run(), timeout=5))
     assert chars == ["r", "q"]
     assert _terminal_attrs(secondary_fd) == before
+
+
+#
+# Keystrokes from a Windows console
+#
+
+
+@pytest.mark.parametrize(
+    ("raw_terminal", "windows_console", "terminal", "expected"),
+    [
+        (True, False, True, True),
+        (False, True, True, True),
+        (True, False, False, False),
+        (False, True, False, False),
+        (False, False, True, False),
+    ],
+)
+def test_stdin_has_keystrokes(
+    monkeypatch: pytest.MonkeyPatch,
+    raw_terminal: bool,
+    windows_console: bool,
+    terminal: bool,
+    expected: bool,
+) -> None:
+    """Keystrokes need a terminal on stdin and a way to read single keys from it."""
+    monkeypatch.setattr("stepup.core.tui.raw_terminal_available", lambda: raw_terminal)
+    monkeypatch.setattr("stepup.core.tui.windows_console_available", lambda: windows_console)
+    monkeypatch.setattr("stepup.core.tui.is_terminal", lambda stream: terminal)
+    assert _stdin_has_keystrokes() is expected
+
+
+@attrs.define
+class FakeConsole:
+    """A stand-in for `read_console_keys`, which hands out prepared batches of keys."""
+
+    batches: list[str | Exception] = attrs.field()
+    """What successive calls return or raise. After the last one, every call times out."""
+
+    calls: int = attrs.field(init=False, default=0)
+    """The number of calls made so far."""
+
+    threads: set[threading.Thread] = attrs.field(init=False, factory=set)
+    """The threads that called this function."""
+
+    def __call__(self, fd: int, timeout: float) -> str:
+        self.threads.add(threading.current_thread())
+        self.calls += 1
+        if len(self.batches) > 0:
+            batch = self.batches.pop(0)
+            if isinstance(batch, Exception):
+                raise batch
+            return batch
+        time.sleep(0.01)
+        return ""
+
+
+def _patch_windows_console(monkeypatch: pytest.MonkeyPatch, console: FakeConsole) -> None:
+    """Make `tui.py` read its keystrokes from a fake Windows console, on any platform."""
+    monkeypatch.setattr("stepup.core.tui.raw_terminal_available", lambda: False)
+    monkeypatch.setattr("stepup.core.tui.windows_console_available", lambda: True)
+    monkeypatch.setattr("stepup.core.tui.is_terminal", lambda stream: True)
+    # The function only exists in `tui.py` on Windows.
+    monkeypatch.setattr("stepup.core.tui.read_console_keys", console, raising=False)
+    monkeypatch.setattr(sys, "stdin", SimpleNamespace(fileno=lambda: 0))
+
+
+def test_iter_keystrokes_from_windows_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keys arrive one at a time and in order, also when the console hands out several at once."""
+    console = FakeConsole(["g", "", "dq"])
+    _patch_windows_console(monkeypatch, console)
+
+    async def scenario() -> list[str]:
+        stop_event = asyncio.Event()
+        chars = []
+        async for ch in _iter_keystrokes(stop_event):
+            chars.append(ch)
+            if len(chars) == 3:
+                stop_event.set()
+        return chars
+
+    assert asyncio.run(asyncio.wait_for(scenario(), timeout=5)) == ["g", "d", "q"]
+    # The reader has ended with the generator, so it cannot report to a closed event loop.
+    (thread,) = console.threads
+    assert not thread.is_alive()
+    assert thread is not threading.main_thread()
+
+
+def test_iter_keystrokes_survives_a_lost_windows_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A console that can no longer be read ends the reader, not the build."""
+    console = FakeConsole(["g", OSError("The handle is invalid.")])
+    _patch_windows_console(monkeypatch, console)
+
+    async def scenario() -> list[str]:
+        stop_event = asyncio.Event()
+        chars = []
+        async for ch in _iter_keystrokes(stop_event):
+            chars.append(ch)
+            # Give the reader ample time to run into the error and beyond.
+            await asyncio.sleep(0.2)
+            stop_event.set()
+        return chars
+
+    assert asyncio.run(asyncio.wait_for(scenario(), timeout=5)) == ["g"]
+    assert console.calls == 2
+
+
+def test_async_build_starts_keyboard_on_windows_console(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Windows console needs no raw mode, so the keyboard task starts without `RawTerminal`."""
+    (path_tmp / "plan.py").touch()
+    _patch_windows_console(monkeypatch, FakeConsole([]))
+
+    def fail_raw_terminal(fd: int) -> None:
+        raise AssertionError("A Windows console must not be reconfigured.")
+
+    monkeypatch.setattr("stepup.core.tui.RawTerminal", fail_raw_terminal)
+    _, keyboard_calls = _patch_interactive_director(monkeypatch, returncode=0, create_socket=True)
+    args = _base_build_args(progress=False)
+    with contextlib.chdir(path_tmp):
+        returncode = asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
+    assert returncode == 0
+    assert len(keyboard_calls) == 1
+
+
+@attrs.define
+class FakeJob:
+    """A stand-in for `winapi.JobObject` that records what happens to it."""
+
+    fail_assign: bool = attrs.field(default=False)
+    members: list[int] = attrs.field(init=False, factory=list)
+    closed: bool = attrs.field(init=False, default=False)
+
+    def create(self) -> "FakeJob":
+        return self
+
+    def assign(self, pid: int) -> None:
+        if self.fail_assign:
+            raise OSError("The process has exited.")
+        self.members.append(pid)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_confine_director_only_on_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("stepup.core.tui.windows_console_available", lambda: False)
+    assert _CONFINE_DIRECTOR(1234) is None
+
+
+def test_confine_director_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A director that cannot be put in a job, e.g. because it is gone, is no reason to fail."""
+    job = FakeJob(fail_assign=True)
+    monkeypatch.setattr("stepup.core.tui.windows_console_available", lambda: True)
+    monkeypatch.setattr("stepup.core.tui.JobObject", job, raising=False)
+    assert _CONFINE_DIRECTOR(1234) is None
+    assert job.closed
+
+
+def test_async_build_confines_director_on_windows(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The director is in a job for as long as it runs, and the job is closed afterwards."""
+    (path_tmp / "plan.py").touch()
+    job = FakeJob()
+    monkeypatch.setattr("stepup.core.tui.windows_console_available", lambda: True)
+    monkeypatch.setattr("stepup.core.tui.is_terminal", lambda stream: False)
+    monkeypatch.setattr("stepup.core.tui.JobObject", job, raising=False)
+    monkeypatch.setattr("stepup.core.tui._confine_director", _CONFINE_DIRECTOR)
+    monkeypatch.setattr("stepup.core.tui.ReporterHandler", lambda *a, **kw: FakeReporterHandler())
+    closed_while_running = []
+
+    @attrs.define
+    class WatchedProcess(FakeProcess):
+        async def wait(self) -> int:
+            closed_while_running.append(job.closed)
+            return self.returncode
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        return WatchedProcess(pid=4321)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+    args = _base_build_args(progress=False)
+    with contextlib.chdir(path_tmp):
+        returncode = asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
+    assert returncode == 0
+    assert job.members == [4321]
+    assert closed_while_running == [False]
+    assert job.closed

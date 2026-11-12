@@ -8,9 +8,18 @@ import sys
 import time
 
 import pytest
+from core_common import ConsoleHost
+
+from stepup.core.path import Path
 
 if sys.platform == "win32":
-    from stepup.core.winapi import JobObject, JobUsage, get_peak_working_set, is_process_alive
+    from stepup.core.winapi import (
+        JobObject,
+        JobUsage,
+        get_peak_working_set,
+        is_console,
+        is_process_alive,
+    )
 
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows only")
 
@@ -146,3 +155,66 @@ def test_job_object_assign_exited_process() -> None:
                 job.assign(proc.pid)
     finally:
         job.close()
+
+
+def test_is_console_null_device() -> None:
+    """The null device is a character device, for which `isatty()` is true, but no console."""
+    with open(os.devnull, "rb") as fh:
+        assert fh.isatty()
+        assert not is_console(fh.fileno())
+
+
+def test_is_console_file_and_pipe(path_tmp: Path) -> None:
+    with open(path_tmp / "file.txt", "wb") as fh:
+        assert not is_console(fh.fileno())
+    read_fd, write_fd = os.pipe()
+    try:
+        assert not is_console(read_fd)
+        assert not is_console(write_fd)
+    finally:
+        os.close(read_fd)
+        os.close(write_fd)
+
+
+def test_is_console_closed_fd() -> None:
+    read_fd, write_fd = os.pipe()
+    os.close(read_fd)
+    os.close(write_fd)
+    assert not is_console(read_fd)
+
+
+CONSOLE_READER = """
+import sys
+from stepup.core.winapi import is_console, read_console_keys
+
+fd = sys.stdin.fileno()
+print("console", is_console(fd), is_console(sys.stdout.fileno()), flush=True)
+print("idle", ascii(read_console_keys(fd, 0.05)), flush=True)
+keys = ""
+while "q" not in keys:
+    keys += read_console_keys(fd, 0.1)
+print("keys", ascii(keys), flush=True)
+"""
+"""A program that reports what it reads from its console, until the key `q` is pressed."""
+
+
+def test_read_console_keys(path_tmp: Path) -> None:
+    """Keys typed in a real console arrive in order, once for each time they are pressed."""
+    host = ConsoleHost.start(
+        [sys.executable, "-c", CONSOLE_READER], path_tmp, path_tmp / "reader.out"
+    )
+    try:
+        deadline = time.monotonic() + 10
+        while "idle" not in host.output():
+            assert time.monotonic() < deadline, "The reader did not start in time."
+            time.sleep(0.05)
+        host.act("keys ab\u00e9bq")
+        assert host.wait(10) == 0
+        # The standard input of the program is the console, and its standard output is a file.
+        assert host.output().splitlines() == [
+            "console True False",
+            "idle ''",
+            "keys 'ab\\xe9bq'",
+        ]
+    finally:
+        host.close()

@@ -15,6 +15,7 @@ This module involves a bi-directional RPC connection between the director and th
 import argparse
 import asyncio
 import contextlib
+import functools
 import os
 import signal
 import subprocess
@@ -28,7 +29,7 @@ from typing import Self
 
 import attrs
 
-from .asyncio import iter_until_stopped, wait_for_path
+from .asyncio import iter_until_stopped, signal_handlers, wait_for_path
 from .cgroups import cgroup_scope_prefix
 from .config_loader import ConfigLoader
 from .constants import (
@@ -43,7 +44,14 @@ from .constants import (
 )
 from .enums import ReturnCode
 from .exceptions import ConfigError, RPCError, ToolError, UsageError
-from .oscompat import forkserver_available, perf_available, raw_terminal_available
+from .oscompat import (
+    abort_signals,
+    forkserver_available,
+    perf_available,
+    raw_terminal_available,
+    suspend_available,
+    windows_console_available,
+)
 from .path import Path, get_stepup_root, to_slash
 from .reporter import ReporterHandler
 from .rpc import SocketAsyncRPCClient, SocketRPCServer, select_rpc_transport
@@ -51,6 +59,7 @@ from .tool import SubParsers, ToolFunc, positive_decimal, positive_int
 from .utils import (
     is_debug,
     is_process_running,
+    is_terminal,
     merge_resources,
     query_director_log,
     scan_director_log,
@@ -59,6 +68,8 @@ from .watcher import select_watcher_backend
 
 if raw_terminal_available():
     import termios
+if windows_console_available():
+    from .winapi import JobObject, read_console_keys
 
 __all__ = ("add_boot_subcommand", "add_build_subcommand")
 
@@ -693,6 +704,7 @@ async def _supervise_director(
     """
     task_keyboard = None
     raw_terminal = None
+    director_job = None
     try:
         with open(DIRECTOR_LOG, "w", encoding="utf-8", newline="\n") as log_file:
             # The child gets a duplicate of the log file descriptor,
@@ -704,43 +716,44 @@ async def _supervise_director(
                 stdout=log_file,
                 stderr=subprocess.STDOUT,
             )
-        # Install terminal signal handlers, to avoid internal tracebacks
-        # when the user presses Ctrl-C or the process is killed by a SIGTERM.
+        director_job = _confine_director(process_director.pid)
+        # Handle terminal signals, to avoid internal tracebacks
+        # when the user presses Ctrl-C or the process is asked to stop, e.g. by a SIGTERM.
         # The director aborts the build itself,
         # so this waits for it rather than exiting straight away,
         # which would cut its shutdown short.
         signal_handler = TerminalSignalHandler(reporter_handler, process_director)
-        suspend_handler = SuspendHandler(reporter_handler, process_director)
-        loop = asyncio.get_running_loop()
+        callbacks = {sig: functools.partial(signal_handler.handle, sig) for sig in abort_signals()}
+        suspend_handler = None
+        if suspend_available():
+            suspend_handler = SuspendHandler(reporter_handler, process_director)
+            callbacks[signal.SIGTSTP] = suspend_handler.handle
         # Wait for the director in a task,
         # so that the interactive setup below can race the appearance of its socket
         # against its exit.
         task_director = asyncio.create_task(process_director.wait(), name="director-wait")
         try:
-            for sig in (signal.SIGINT, signal.SIGTERM):
-                loop.add_signal_handler(sig, signal_handler.handle, sig)
-            loop.add_signal_handler(signal.SIGTSTP, suspend_handler.handle)
-            # Set up keyboard interaction, or work non-interactively.
-            if (
-                raw_terminal_available()
-                and sys.stdin.isatty()
-                and await _wait_for_director_socket(director_socket_path, stop_event, task_director)
-            ):
-                # Raw mode is entered here, not inside the keyboard task,
-                # so that it is already in place when that task starts,
-                # and so that the suspend handler has a terminal to hand back to the shell.
-                raw_terminal = RawTerminal(sys.stdin.fileno())
-                raw_terminal.enter()
-                suspend_handler.raw_terminal = raw_terminal
-                task_keyboard = asyncio.create_task(
-                    keyboard(director_socket_path, reporter_handler, stop_event),
-                    name="keyboard",
-                )
-            wait_status = await task_director
+            with signal_handlers(callbacks):
+                # Set up keyboard interaction, or work non-interactively.
+                if _stdin_has_keystrokes() and await _wait_for_director_socket(
+                    director_socket_path, stop_event, task_director
+                ):
+                    if raw_terminal_available():
+                        # Raw mode is entered here, not inside the keyboard task,
+                        # so that it is already in place when that task starts,
+                        # and so that the suspend handler has a terminal
+                        # to hand back to the shell.
+                        raw_terminal = RawTerminal(sys.stdin.fileno())
+                        raw_terminal.enter()
+                        if suspend_handler is not None:
+                            suspend_handler.raw_terminal = raw_terminal
+                    task_keyboard = asyncio.create_task(
+                        keyboard(director_socket_path, reporter_handler, stop_event),
+                        name="keyboard",
+                    )
+                wait_status = await task_director
         finally:
             signal_handler.cancel_kill()
-            for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGTSTP):
-                loop.remove_signal_handler(sig)
             if not task_director.done():
                 # An exception escaped on the way to (or during) the await above.
                 # The director must not survive this function:
@@ -770,6 +783,43 @@ async def _supervise_director(
             # so that the reader thread cannot consume a keystroke in raw mode
             # after the terminal has been handed back to the shell.
             raw_terminal.leave()
+        if director_job is not None:
+            director_job.close()
+
+
+def _confine_director(pid: int) -> "JobObject | None":
+    """Make sure that the director cannot outlive this process, where the platform needs it.
+
+    A POSIX terminal that goes away hangs up this process and the director alike.
+    A Windows console does not:
+    when the SSH session of a build was closed, on Windows 11 24H2 with OpenSSH,
+    this process ended at once, without a signal, and the director carried on without it.
+    The director is therefore put in a Job Object that only this process holds,
+    so that Windows ends the director, and with it the steps, when this process is gone.
+
+    Parameters
+    ----------
+    pid
+        The process id of the director, which must still be running or waited for by the caller.
+
+    Returns
+    -------
+    job
+        The job to close when the director has exited,
+        or `None` on other platforms than Windows and when Windows refuses.
+    """
+    if not windows_console_available():
+        return None
+    try:
+        job = JobObject.create()
+    except OSError:
+        return None
+    try:
+        job.assign(pid)
+    except OSError:
+        job.close()
+        return None
+    return job
 
 
 async def _wait_for_director_socket(
@@ -882,6 +932,9 @@ class TerminalSignalHandler:
     _kill_handle: asyncio.TimerHandle | None = attrs.field(init=False, default=None)
     """Handle of the scheduled `_kill_director` call, or `None` when none is pending."""
 
+    _killed: bool = attrs.field(init=False, default=False)
+    """Whether this handler killed the director."""
+
     def handle(self, sig: signal.Signals) -> None:
         """React to a terminal signal, escalating when it is received repeatedly."""
         self._count += 1
@@ -891,7 +944,7 @@ class TerminalSignalHandler:
                 "WARNING", f"Interrupted by {sig.name}. Waiting for the director to stop.", []
             )
         if self._count >= 3:
-            self.reporter_handler.report("ERROR", "Killing the director (SIGKILL).", [])
+            self.reporter_handler.report("ERROR", f"Killing the director ({_KILL_MECHANISM}).", [])
             self._kill_director()
             return
         if not _terminal_broadcasts(sig, self.process_director.pid):
@@ -909,27 +962,38 @@ class TerminalSignalHandler:
     def translate_wait_status(self, wait_status: int) -> int:
         """Turn the director's wait status into a `ReturnCode` flag combination.
 
-        Both corrections applied here are about signals,
+        The corrections applied here are about signals,
         which is why this lives on the signal handler:
-        the director may have been killed by one, and this process may have received one.
+        the director may have been killed, and this process may have received a signal.
 
         Parameters
         ----------
         wait_status
-            What `Process.wait()` returned:
-            the director's exit code, or minus the number of the signal that killed it.
+            What `Process.wait()` returned: the director's exit code,
+            or, on POSIX, minus the number of the signal that killed it.
 
         Returns
         -------
         returncode
             The director's exit code,
-            with `ReturnCode.INTERRUPTED` OR-ed in when a terminal signal was received,
-            and replaced by `ReturnCode.INTERNAL` when the director was killed by a signal,
-            since a negative wait status is not a `ReturnCode` combination.
+            with `ReturnCode.INTERRUPTED` OR-ed in when a terminal signal was received.
+            It is replaced by `ReturnCode.INTERNAL` when the director did not get to decide it:
+            when it was killed, or when the wait status is not a `ReturnCode` combination,
+            e.g. the status `0xC000013A` of a Windows process that a console event ended.
         """
         if wait_status < 0:
             signal_name = signal.Signals(-wait_status).name
             self.reporter_handler.report("ERROR", f"Director killed by {signal_name}", [])
+            returncode = ReturnCode.INTERNAL.value
+        elif self._killed and not hasattr(signal, "SIGKILL"):
+            # Where a killed process has no signal to show for it,
+            # its exit code is whatever its killer picked.
+            self.reporter_handler.report("ERROR", f"Director killed by {_KILL_MECHANISM}", [])
+            returncode = ReturnCode.INTERNAL.value
+        elif not _is_return_code(wait_status):
+            self.reporter_handler.report(
+                "ERROR", f"Director exited with unexpected code 0x{wait_status:08X}", []
+            )
             returncode = ReturnCode.INTERNAL.value
         else:
             returncode = wait_status
@@ -954,6 +1018,20 @@ class TerminalSignalHandler:
         self.cancel_kill()
         with contextlib.suppress(ProcessLookupError):
             self.process_director.kill()
+            self._killed = True
+
+
+def _is_return_code(wait_status: int) -> bool:
+    """Whether a non-negative wait status is a combination of `ReturnCode` flags."""
+    try:
+        ReturnCode(wait_status)
+    except ValueError:
+        return False
+    return True
+
+
+_KILL_MECHANISM = "SIGKILL" if hasattr(signal, "SIGKILL") else "TerminateProcess"
+"""What `Process.kill()` uses to end the director, for the messages to the user."""
 
 
 @attrs.define
@@ -1013,11 +1091,12 @@ class SuspendHandler:
 
 
 _TERMINAL_SIGNALS = frozenset(
-    getattr(signal, name) for name in ("SIGINT", "SIGTSTP") if hasattr(signal, name)
+    getattr(signal, name) for name in ("SIGINT", "SIGTSTP", "SIGBREAK") if hasattr(signal, name)
 )
-"""The signals StepUp handles that the terminal driver can generate itself.
+"""The signals StepUp handles that the terminal can generate itself.
 
-`SIGTSTP` only exists on platforms with job control.
+`SIGTSTP` only exists on platforms with job control,
+and `SIGBREAK` only where the terminal is a Windows console.
 """
 
 
@@ -1031,6 +1110,13 @@ def _terminal_broadcasts(sig: signal.Signals, pid: int) -> bool:
     are both in the process group that owns the controlling terminal.
     A `SIGINT` or `SIGTSTP` sent explicitly (`kill -INT`, `kill -TSTP`) to a backgrounded StepUp
     does not qualify, and neither does any `SIGTERM`.
+
+    A Windows console has no such distinction.
+    `SIGINT` and `SIGBREAK` stand for console control events (Ctrl-C and Ctrl-Break),
+    which cannot be sent to a single process:
+    the console delivers them to all its processes, or to all those of one process group.
+    The director is attached to the same console and is in the same process group,
+    so it always received what this process received.
 
     Parameters
     ----------
@@ -1046,6 +1132,8 @@ def _terminal_broadcasts(sig: signal.Signals, pid: int) -> bool:
     """
     if sig not in _TERMINAL_SIGNALS:
         return False
+    if windows_console_available():
+        return True
     try:
         # Query the controlling terminal itself:
         # stdin may be redirected while the process is still in the foreground process group.
@@ -1119,11 +1207,17 @@ _KEY_STROKE_HELP = "\n".join(
 )
 
 
+def _stdin_has_keystrokes() -> bool:
+    """Whether single keystrokes can be read from the standard input of this process."""
+    return (raw_terminal_available() or windows_console_available()) and is_terminal(sys.stdin)
+
+
 @attrs.define
 class RawTerminal:
     """Owner of the terminal attributes of `fd` while keyboard interaction is active.
 
-    Single keystrokes can only be read when canonical input and echo are disabled,
+    On a POSIX terminal,
+    single keystrokes can only be read when canonical input and echo are disabled,
     which is a process-wide change to a terminal shared with the shell.
     This class owns the attributes it found,
     so that the same state can be handed back on the way out (`leave`)
@@ -1181,20 +1275,29 @@ class RawTerminal:
         termios.tcsetattr(self.fd, termios.TCSAFLUSH, tcattr)
 
 
+_CONSOLE_POLL_INTERVAL = 0.1
+"""Seconds after which the thread that reads keys from a Windows console checks if it must stop."""
+
+
 async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, None]:
     """Yield keystrokes from stdin, one at a time, until `stop_event` is set.
 
-    The terminal must already be in raw mode..
+    A POSIX terminal must already be in raw mode, see `RawTerminal`.
+    A Windows console needs no preparation, see `read_console_keys`.
 
-    Reads happen in a background thread because putting stdin in non-blocking mode
+    Reads happen in a background thread.
+    On POSIX, this is because putting stdin in non-blocking mode
     (e.g. via `asyncio.StreamReader`) also affects stdout and stderr
     when they share the same underlying open file description as stdin,
     which breaks `print` and `rich.print` for large output.
+    On Windows, the event loop cannot wait for console input.
 
-    The background thread may still be blocked in `sys.stdin.read(1)` after this generator closes,
+    On POSIX, the background thread may still be blocked in `sys.stdin.read(1)`
+    after this generator closes,
     since there is no portable way to interrupt a blocking read on stdin from another thread.
     It is daemonic and the process is about to exit anyway,
     so it consumes at most one keystroke typed between the end of the build and process exit.
+    On Windows, the thread has ended when this generator closes.
     """
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue()
@@ -1207,9 +1310,31 @@ async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, Non
                 break
             loop.call_soon_threadsafe(queue.put_nowait, ch)
 
-    threading.Thread(target=_stdin_loop, daemon=True).start()
-    async for ch in iter_until_stopped(queue.get, stop_event):
-        yield ch
+    stop_reading = threading.Event()
+
+    def _console_loop():
+        fd = sys.stdin.fileno()
+        # Without a console that can be read, there are no keys to wait for,
+        # which is no reason to disturb the build.
+        with contextlib.suppress(OSError):
+            while not stop_reading.is_set():
+                for ch in read_console_keys(fd, _CONSOLE_POLL_INTERVAL):
+                    loop.call_soon_threadsafe(queue.put_nowait, ch)
+
+    if windows_console_available():
+        thread = threading.Thread(target=_console_loop, daemon=True)
+        thread.start()
+        try:
+            async for ch in iter_until_stopped(queue.get, stop_event):
+                yield ch
+        finally:
+            # The thread must not outlive the event loop it reports to.
+            stop_reading.set()
+            await asyncio.to_thread(thread.join)
+    else:
+        threading.Thread(target=_stdin_loop, daemon=True).start()
+        async for ch in iter_until_stopped(queue.get, stop_event):
+            yield ch
 
 
 async def keyboard(
