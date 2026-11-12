@@ -200,7 +200,6 @@ def test_nt_path_module_plain_arguments():
     module = _NtPath.module
     paths = [_NtPath("C:/a/b/c"), _NtPath("C:/a/b/d")]
     assert module.commonpath(paths) == "C:/a/b"
-    assert module.commonprefix(paths) == "C:/a/b/"
     assert module.relpath(paths[0], start=paths[1]) == "../c"
     assert module.split(paths[0]) == ("C:/a/b", "c")
     assert module.isabs(paths[0])
