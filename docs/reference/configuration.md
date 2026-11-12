@@ -208,6 +208,16 @@ and cannot be configured through config files or command-line options.
     Only `stepup build` reads this variable:
     the steps and the other subcommands find out which transport is in use by themselves.
 
+`STEPUP_SHELL`
+
+:   The POSIX shell that runs the commands of steps created with `shell=True`,
+    and local shell scripts on platforms that cannot execute them directly.
+    The value is the path of the shell, or its name, which is then looked up in `PATH`.
+    StepUp starts it as `SHELL -c COMMAND`.
+    The default is `/bin/sh` on Linux and macOS.
+    Only `stepup build` and steps that call `run_subprocess()` with `shell=True` read this variable.
+    Changing it does not make StepUp rerun steps.
+
 `STEPUP_SYNC_RPC_TIMEOUT`
 
 :   The number of seconds a synchronous RPC client waits for a response from the director,

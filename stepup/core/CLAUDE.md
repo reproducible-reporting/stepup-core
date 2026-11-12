@@ -30,7 +30,7 @@ StepUp runs as two process types:
   Launching the step's command and hashing its files are delegated to `run.py` and
   `hash.py` respectively (see below).
 - **Hashing** (`hash.py`):
-  File/step hashing, which is the only blocking work, runs in a dedicated `ThreadWorker`,
+  File/step hashing, which is blocking work, runs in a dedicated `ThreadWorker`,
   one thread per hash computation inside the director process, see `run.py`.
   The chunked digest loop releases the GIL and checks a cancel event between 256 KiB chunks,
   so hashes are concurrent and promptly interruptible.
@@ -103,20 +103,37 @@ The point of concentrating this in `main()` is that a tool needs no error handli
 A helper such as `interact.py`'s `_connect_director` restates one exception as
 another, but never prints, exits, or decides whether a traceback is warranted.
 
-## Step Launching and Interruption (`run.py`)
+## Step Launching and Interruption (`run.py`, `popen.py`)
 
 `run.py` owns "run a step's command as a child process and return a `ChildOutcome`,"
 independent of the step lifecycle in `executor.py`:
-command classification (shell vs. `*.py` script vs. console-script entry point vs. plain
-exec), spawning the subprocess or forkserver child, and capturing its output/return code/
+command classification (built-in copy vs. shell vs. `*.py` script vs. console-script entry point
+vs. plain exec), spawning the subprocess or forkserver child, and capturing its output/return code/
 resource usage. `launch_command()` is its single dispatch entry point, called from
 `Executor._run_command()`.
 
 `run.py` also defines `Worker`, the base class for anything that is the in-flight work of a
 `Run` and can be interrupted by `Executor.interrupt()`: `SubprocessWorker` and
-`ForkserverWorker` signal the underlying OS process; `ThreadWorker`
+`ForkserverWorker` stop the underlying OS process; `ThreadWorker`
 cancels a computation instead, so it overrides `interrupt()` directly
-rather than using `Worker`'s signal-delivery template.
+rather than using `Worker`'s delivery template.
+
+### Stop Levels
+
+The director does not pass signal numbers around, because Windows has no signals to speak of.
+`DirectorHandler`, `Builder.stop` and `Executor.interrupt` use a `StopLevel` (`enums.py`),
+which `Worker._stop` turns into what the platform offers:
+
+| Level | POSIX | Windows |
+| --- | --- | --- |
+| `INTERRUPT` | `SIGINT` to the process group | `CTRL_BREAK_EVENT` to the process group |
+| `TERMINATE` | `SIGTERM` to the process group | `CTRL_BREAK_EVENT` to the process group |
+| `KILL` | `SIGKILL` to the process group | `TerminateJobObject` |
+
+`describe_stop_level()` names the mechanism in the messages for the user.
+A `ThreadWorker` cancels its computation at every level.
+
+### POSIX: Sessions and Process Groups
 
 Every step runs in a **session of its own**: `start_new_session=True` for subprocesses and
 `os.setsid()` at the top of `_forkserver_entry` for forkserver children.
@@ -137,6 +154,87 @@ The director and the TUI stop *themselves* by re-raising `SIGTSTP` with the defa
 disposition, which keeps them a well-behaved job of the shell.
 Anything that measures wall time across a suspension must discount it,
 see `Executor.suspended_total`.
+
+### Windows: Process Groups and Job Objects
+
+Windows has no sessions and no forkserver.
+Every step is a subprocess that is started with `CREATE_NEW_PROCESS_GROUP`
+and put in a Job Object of its own (`winapi.JobObject`) right after its creation.
+The two do different work:
+
+- The **process group** is what `CTRL_BREAK_EVENT` is sent to.
+  It also keeps the Ctrl-C of the console away from the step, as a session does on POSIX.
+  A process that the step starts in another group is out of reach of the event.
+- The **Job Object** holds everything the step starts, whatever its group.
+  `KILL` terminates it, and the CPU time of the step is read from it,
+  because Windows has no `os.wait4`.
+  Its limit `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` ends the steps when the director dies,
+  even when the director itself is killed.
+
+The rules below are easy to break, and `_stop_windows_step` explains them:
+
+- `CTRL_BREAK_EVENT` travels through the console that the director shares with its steps.
+  Without a console, sending it fails, and the step is killed instead.
+  The director must therefore stay attached to the console of the TUI.
+- Send the event only to a process that was started with `CREATE_NEW_PROCESS_GROUP`.
+  Sent to another process, it went to every process of the console, the director included,
+  when this was tested on Windows 11 24H2.
+- A process that does not handle the event ends at once,
+  with the status `STATUS_CONTROL_C_EXIT` and without cleaning up.
+  A Python step gets no `KeyboardInterrupt`,
+  and the `trap` of a shell step did not run with Git for Windows 2.56.
+- A step that has finished may leave processes behind.
+  Their job is kept open (`_retire_job`), so that they outlive their step, as on POSIX,
+  and end with the director, unlike on POSIX.
+- Ctrl-Z does not exist.
+  `Worker.suspend` and `resume` do nothing where `oscompat.suspend_available()` is false.
+
+### Commands on Every Platform (`popen.py`)
+
+`popen_args()` turns a command into the `args` of `subprocess.Popen`.
+`run.py` and `extapi.run_subprocess()` both use it, and never the `shell=True` of `subprocess`,
+which is `cmd.exe` on Windows.
+
+- A shell command runs as `[shell, "-c", command]` with the POSIX shell of `find_shell()`:
+  the one that `STEPUP_SHELL` names, `/bin/sh`, or on Windows the shell that comes with Git.
+  The search skips a `sh` in the Windows directory, because that one starts WSL.
+  The search is lazy, so that a build without shell steps needs no shell,
+  and a failed search fails the step that needed it, not the director.
+- On POSIX, nothing else is translated,
+  because the kernel finds programs and reads shebang lines.
+- On Windows, `popen.py` does that work.
+  A program without a directory is looked up on the `PATH` and `PATHEXT` of the step,
+  not on those of the director, and not in the current directory,
+  which `CreateProcess` and `shutil.which` both try first.
+  A program with a directory is resolved in the working directory of the step.
+  A script runs with the interpreter of its shebang line:
+  `sh` and `bash` are those of `find_shell()`, `python` and `python3` are `sys.executable`,
+  and anything else is looked up on `PATH`.
+
+Windows hands a child one command line, which every program splits by rules of its own.
+`subprocess` quotes a list of arguments for programs built with the C runtime of Microsoft.
+For two other families, `popen.py` builds the command line itself:
+programs on the Cygwin or MSYS2 runtime, such as the shell and the tools of Git for Windows,
+and batch files, which `cmd.exe` runs.
+Passing a list of arguments to `subprocess` for such a program changes the arguments,
+e.g. a `*` is expanded and a `&` starts another command.
+
+### Built-in Copy
+
+The command `cp -p SRC DST` without a shell, which is what `copy()` creates, starts no process:
+`launch_command()` copies the file in a `ThreadWorker`.
+Starting a process for every copy is slow without a forkserver, and Windows has no `cp`.
+The command stays what it is on every platform,
+and with it the step label, the step hash and the expected outputs of the examples.
+The copy follows `cp -p`, not `shutil.copystat` (see `_copy_file`),
+and checks its cancel event between chunks, like the hashing in `hash.py`.
+
+### Captured Output
+
+`_decode` turns the bytes that a step wrote into text: it reads UTF-8 and drops what is invalid.
+All captured output, also what a forkserver child collects as text,
+passes through `_normalize_newlines`, which turns `\r\n` into `\n` on every platform,
+so that the recorded output of a step does not depend on where or how it ran.
 
 ## Workflow Graph (`trellis.py`, `workflow.py`)
 

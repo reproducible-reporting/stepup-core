@@ -10,6 +10,7 @@ import pytest
 from core_common import create_socket_path
 
 from stepup.core.path import Path
+from stepup.core.popen import _resolve_interpreter, popen_args
 from stepup.core.utils import (
     escape_control_chars,
     extract_env_overrides,
@@ -93,7 +94,13 @@ def test_merge_resources(base: str | None, override: str | None, expected: str) 
     [
         "echo hello",
         'echo "Monday frown\nCoffee smile" > story.txt',
-        "printf 'a\tb\r\n'",
+        pytest.param(
+            "printf 'a\tb\r\n'",
+            marks=pytest.mark.skipif(
+                sys.platform == "win32",
+                reason="The bash of Git for Windows drops carriage returns from a script.",
+            ),
+        ),
         "a'b'c=1; echo done",
         "echo '\x01\x02'",
     ],
@@ -101,11 +108,16 @@ def test_merge_resources(base: str | None, override: str | None, expected: str) 
 def test_escape_control_chars_roundtrip(command, path_tmp):
     escaped = escape_control_chars(command)
     assert "\n" not in escaped
-    original = subprocess.run(
-        ["bash", "-c", command], capture_output=True, check=False, cwd=path_tmp
-    )
-    reproduced = subprocess.run(
-        ["bash", "-c", escaped], capture_output=True, check=False, cwd=path_tmp
+    # The `$'...'` quoting is a feature of bash, which the shell of a step need not be.
+    bash = _resolve_interpreter("bash", os.environ, path_tmp)
+    original, reproduced = (
+        subprocess.run(
+            popen_args([bash, "-c", script], shell=False, env=os.environ, cwd=path_tmp),
+            capture_output=True,
+            check=False,
+            cwd=path_tmp,
+        )
+        for script in (command, escaped)
     )
     assert reproduced.stdout == original.stdout
     assert reproduced.returncode == original.returncode

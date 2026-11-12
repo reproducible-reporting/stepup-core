@@ -17,6 +17,7 @@ from collections.abc import Iterable, Iterator, Mapping
 from .api import get_job_i, get_rpc_client, getenv
 from .exceptions import StepUpError
 from .path import Path, StrPath, get_here, get_root, get_stepup_root, translate
+from .popen import popen_args
 from .step import truncate_output
 from .utils import extract_env_overrides
 
@@ -220,7 +221,7 @@ def run_subprocess(
         When `shell=False` (the default),
         `cmd` is split with `shlex.split` and executed directly (no shell),
         so shell features (pipes, redirections, ...) are not available.
-        When `shell=True`, `cmd` is passed as-is to the system shell, which enables shell features.
+        When `shell=True`, `cmd` is passed as-is to a POSIX shell, which enables shell features.
         As an exception, leading `VAR=value` assignments are extracted and applied
         to the subprocess environment, even when `shell=False`.
         In either case, the caller is responsible for proper quoting.
@@ -238,7 +239,9 @@ def run_subprocess(
         The value is forwarded to `record_subprocess`, which stores `bytes` as a short summary
         (byte length and a truncated SHA-256) rather than raw binary.
     shell
-        When `True`, execute `cmd` via the system shell (`subprocess.run(..., shell=True)`).
+        When `True`, execute `cmd` via a POSIX shell, on every platform:
+        `/bin/sh`, a shell that StepUp looks for on Windows,
+        or the one that the environment variable `STEPUP_SHELL` names.
         Enables shell features such as pipes, redirections, and glob expansion.
         The flag is also recorded for display purposes.
     check
@@ -250,6 +253,7 @@ def run_subprocess(
         Whether to run in text or binary mode.
         By default, the mode follows the type of `stdin`: text for `str`, binary for `bytes`.
         When no `stdin` is provided, the default is text mode.
+        Text is encoded and decoded as UTF-8 on every platform.
         In binary mode, the captured standard output and error are recorded
         as a short summary (byte length and a truncated SHA-256) rather than verbatim,
         just like binary `stdin`.
@@ -263,6 +267,10 @@ def run_subprocess(
     ------
     subprocess.CalledProcessError
         When `check` is `True` and the subprocess exits with a non-zero return code.
+    ConfigError
+        When `shell` is `True` and no POSIX shell is found.
+    OSError
+        When the subprocess cannot be started, e.g. because the program does not exist.
     TypeError
         When `stdin` is not `str`, `bytes`, or `None`,
         or when `stdin` is inconsistent with the `text` flag.
@@ -276,17 +284,17 @@ def run_subprocess(
     if env_overrides is not None:
         run_env.update(env_overrides)
     cp = subprocess.run(
-        cmd if shell else shlex.split(cmd),
+        popen_args(cmd if shell else shlex.split(cmd), shell=shell, env=run_env, cwd=workdir),
         cwd=workdir,
         env=run_env,
-        shell=shell,
         input=stdin,
         stdin=None if stdin is not None else subprocess.DEVNULL,
         capture_output=True,
         text=text,
         # Ignoring decoding errors is useful to deal with ill-behaved subprocesses like LaTeX.
-        # A non-`None` `errors` switches `Popen` to text mode by itself,
-        # so it must stay `None` in binary mode.
+        # A non-`None` `encoding` or `errors` switches `Popen` to text mode by itself,
+        # so both must stay `None` in binary mode.
+        encoding="utf-8" if text else None,
         errors="ignore" if text else None,
         check=False,  # handled below, so the subprocess can be recorded with its return code
     )

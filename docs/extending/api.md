@@ -60,8 +60,13 @@ The dispatch logic depends on the `shell` flag passed to [`step()`][stepup.core.
 and the form of the command string:
 
 - **Shell mode** (`shell=True`):
-  The full command string is passed to a shell.
+  The full command string is passed to a POSIX shell,
+  which is `/bin/sh` unless the environment variable `STEPUP_SHELL` names another one.
   Shell features such as pipes and redirections are available.
+
+- **Built-in copy** (`shell=False` and the command is exactly `cp -p SRC DST`):
+  StepUp copies the file itself, without starting a process.
+  This is the command of the steps that [`copy()`][stepup.core.api.copy] creates.
 
 - **Python script** (`shell=False` and the first word ends in `.py`):
   The script is executed via a Python wrapper that auto-detects local imports
@@ -151,8 +156,9 @@ def compile_typst(src, out, root):
 
 The `cmd` argument is a single shell-quoted string.
 By default, `run_subprocess()` splits the command with `shlex.split` and runs it without a shell.
-With the option `shell=True`, the command is run via a shell, which allows you to use shell features
-like pipes and redirections.
+With the option `shell=True`, the command is run via a POSIX shell,
+the same one as for a step with `shell=True`,
+which allows you to use shell features like pipes and redirections.
 The string is stored and displayed verbatim and you are responsible for proper quoting.
 This gives you the opportunity to prepare a convenient human-readable command string.
 

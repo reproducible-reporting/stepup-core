@@ -19,13 +19,12 @@ The work done by `finalize` is implemented in `finalize.py`, not here.
 
 import asyncio
 import logging
-import signal
 from collections.abc import Iterable, Mapping
 
 import attrs
 
 from .asyncio import wait_for_any_event
-from .enums import HashUpdateCause, ReturnCode
+from .enums import HashUpdateCause, ReturnCode, StopLevel
 from .executor import Executor
 from .finalize import remove_deletable_files, report_unbuilt, revert_optional_steps
 from .hash import FileHash
@@ -383,8 +382,8 @@ class Builder:
         await self._apply_hash_results(hash_jobs)
 
     async def stop(self):
-        """Cancel any still-running tasks, signal their child processes and flush step durations."""
-        self.executor.interrupt(signal.SIGTERM)
+        """Cancel any still-running tasks, stop their child processes and flush step durations."""
+        self.executor.interrupt(StopLevel.TERMINATE)
         # Started hash jobs are covered by executor.interrupt() above, through Executor.running.
         # This covers the queued-but-not-yet-started jobs,
         # whose futures would otherwise hang forever.

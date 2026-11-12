@@ -11,7 +11,8 @@ from types import SimpleNamespace
 import attrs
 import pytest
 
-from stepup.core.enums import HashUpdateCause, Need, StepState
+import stepup.core.run as run_mod
+from stepup.core.enums import HashUpdateCause, Need, StepState, StopLevel
 from stepup.core.exceptions import HashCancelledError
 from stepup.core.executor import Executor, NoOverwriteDict, Run
 from stepup.core.file import File, FileState
@@ -140,8 +141,8 @@ async def testrun_work_thread_interrupt():
     task = asyncio.ensure_future(executor._run_work_thread(run, work))
     await asyncio.to_thread(started.wait, 10)
 
-    # Exercises the ThreadWorker branch in interrupt(); the signal value is ignored there.
-    executor.interrupt(signal.SIGTERM)
+    # Exercises the ThreadWorker branch in interrupt(); the stop level is ignored there.
+    executor.interrupt(StopLevel.TERMINATE)
 
     # Must not propagate as a task exception: any error from the work callable fails
     # just this run, instead of crashing the job loop (see testrun_work_thread_exception).
@@ -183,6 +184,47 @@ class _FakeProcessWorker(Worker):
         self.calls.append(sig)
 
 
+def test_interrupt_delivers_the_stop_level_to_every_process_worker():
+    """How a level reaches a process is up to the worker, the executor only passes it on."""
+    executor = _make_executor()
+    stops = []
+    for job_i in 31, 32:
+        run = _make_worker_run(job_i)
+        run.worker = _FakeProcessWorker(job_i)
+        run.worker._stop = lambda level, job_i=job_i: stops.append((job_i, level))
+        executor.running[job_i] = run
+    idle = _make_worker_run(33)
+    executor.running[33] = idle
+
+    executor.interrupt(StopLevel.INTERRUPT)
+    executor.interrupt(StopLevel.KILL)
+
+    assert stops == [
+        (31, StopLevel.INTERRUPT),
+        (32, StopLevel.INTERRUPT),
+        (31, StopLevel.KILL),
+        (32, StopLevel.KILL),
+    ]
+
+
+def test_suspend_resume_without_job_control(monkeypatch: pytest.MonkeyPatch):
+    """Where steps cannot be stopped, a suspension only does the bookkeeping."""
+    monkeypatch.setattr(run_mod, "suspend_available", lambda: False)
+    executor = _make_executor()
+    run = _make_worker_run(23)
+    worker = _FakeProcessWorker(23)
+    run.worker = worker
+    executor.running[23] = run
+
+    executor.suspend()
+    nrun, seconds = executor.resume()
+
+    assert worker.calls == []
+    assert nrun == 1
+    assert executor.suspended_total == seconds
+
+
+@pytest.mark.requires_suspend
 def test_suspend_resume_signal_process_workers():
     """Steps are stopped with `SIGSTOP` and continued with `SIGCONT`."""
     executor = _make_executor()

@@ -322,9 +322,9 @@ def test_run_subprocess_stdout_stderr_recorded_binary(monkeypatch):
         "record_subprocess",
         lambda cmd, rc, **kw: recorded.append((kw["stdout"], kw["stderr"])),
     )
-    cmd = shlex.join(
-        [sys.executable, "-c", "import sys; print('out'); print('err', file=sys.stderr)"]
-    )
+    # The child writes bytes, because Python ends the lines of text with `\r\n` on Windows.
+    code = "import sys; sys.stdout.buffer.write(b'out\\n'); sys.stderr.buffer.write(b'err\\n')"
+    cmd = shlex.join([sys.executable, "-c", code])
     cp = run_subprocess(cmd, stdin=b"", text=False)
     assert cp.stdout == b"out\n"
     assert cp.stderr == b"err\n"

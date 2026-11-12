@@ -24,7 +24,7 @@ from typing import Any
 
 import attrs
 
-from .enums import FileState, HashUpdateCause, StepState
+from .enums import FileState, HashUpdateCause, StepState, StopLevel
 from .exceptions import HashCancelledError
 from .file import File
 from .hash import (
@@ -79,7 +79,7 @@ class Executor:
       created for each job.
     - `run_hash_job` is the coroutine created for each hash job.
     - `defer` marks a running job as deferred for later execution.
-    - `interrupt` signals every currently running job.
+    - `interrupt` asks every currently running job to stop.
     - `suspend` and `resume` stop and continue the running step commands.
     """
 
@@ -191,11 +191,11 @@ class Executor:
             run.unfresh.update(unfresh)
         run.success = False
 
-    def interrupt(self, sig: int):
-        """Send a signal to all currently running step commands, or cancel a running hash."""
+    def interrupt(self, level: StopLevel):
+        """Ask all currently running step commands to stop, and cancel the running hashes."""
         for run in list(self.running.values()):
             if run.worker is not None:
-                run.worker.interrupt(sig)
+                run.worker.interrupt(level)
 
     def suspend(self) -> None:
         """Stop the child process of every running step, for the duration of a suspension.
@@ -204,6 +204,7 @@ class Executor:
         `ThreadWorker.interrupt` cancels its computation instead of signalling a process,
         which is the opposite of what a suspension needs.
         Hash threads are left alone here, see `ThreadWorker.suspend`.
+        On a platform without the signals for it, the steps keep running.
         """
         if self._suspend_start is not None:
             return

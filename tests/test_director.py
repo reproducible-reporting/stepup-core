@@ -14,6 +14,7 @@ import pytest
 
 from stepup.core import director
 from stepup.core.director import SCHEDULER_CPU_ENV_VARS, DirectorHandler, interpret_jobs
+from stepup.core.enums import StopLevel
 from stepup.core.exceptions import CgroupError
 from stepup.core.path import Path
 from stepup.core.reporter import ReporterClient
@@ -107,12 +108,12 @@ class FakeScheduler:
 
 @attrs.define
 class FakeExecutor:
-    """Records the signals sent to running steps."""
+    """Records the stop levels delivered to running steps."""
 
-    signals: list[int] = attrs.field(init=False, factory=list)
+    signals: list[StopLevel] = attrs.field(init=False, factory=list)
 
-    def interrupt(self, sig: int) -> None:
-        self.signals.append(sig)
+    def interrupt(self, level: StopLevel) -> None:
+        self.signals.append(level)
 
 
 @attrs.define
@@ -194,12 +195,12 @@ async def test_shutdown_escalates_to_sigint_then_sigkill():
     handler = make_director_handler(nrunning=1)
     await handler.shutdown()
     await handler.shutdown()
-    assert handler.executor.signals == [signal.SIGINT]
+    assert handler.executor.signals == [StopLevel.INTERRUPT]
     await handler.shutdown()
-    assert handler.executor.signals == [signal.SIGINT, signal.SIGKILL]
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL]
     # Any further press stays at the nuclear option.
     await handler.shutdown()
-    assert handler.executor.signals == [signal.SIGINT, signal.SIGKILL, signal.SIGKILL]
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL, StopLevel.KILL]
 
 
 async def test_interrupt_aborts_without_waiting():
@@ -209,7 +210,7 @@ async def test_interrupt_aborts_without_waiting():
     await await_interrupt(handler)
     assert handler.stop_event.is_set()
     assert handler.scheduler.draining
-    assert handler.executor.signals == [signal.SIGINT]
+    assert handler.executor.signals == [StopLevel.INTERRUPT]
 
 
 async def test_interrupt_then_shutdown_escalates_straight_to_sigkill():
@@ -217,9 +218,9 @@ async def test_interrupt_then_shutdown_escalates_straight_to_sigkill():
     handler = make_director_handler(nrunning=0)
     handler.interrupt(signal.SIGINT)
     await await_interrupt(handler)
-    assert handler.executor.signals == [signal.SIGINT]
+    assert handler.executor.signals == [StopLevel.INTERRUPT]
     await handler.shutdown()
-    assert handler.executor.signals == [signal.SIGINT, signal.SIGKILL]
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL]
 
 
 async def test_interrupt_kills_steps_after_grace(monkeypatch):
@@ -228,7 +229,7 @@ async def test_interrupt_kills_steps_after_grace(monkeypatch):
     handler = make_director_handler(nrunning=1)
     handler.interrupt(signal.SIGTERM)
     await await_interrupt(handler)
-    assert handler.executor.signals == [signal.SIGINT, signal.SIGKILL]
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL]
 
 
 async def test_interrupt_second_signal_skips_the_grace(monkeypatch):
@@ -239,7 +240,7 @@ async def test_interrupt_second_signal_skips_the_grace(monkeypatch):
     handler.interrupt(signal.SIGINT)
     handler.interrupt(signal.SIGINT)
     await await_interrupt(handler)
-    assert handler.executor.signals == [signal.SIGINT, signal.SIGKILL]
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL]
     assert time.monotonic() - time_start < 5.0
 
 
@@ -253,7 +254,7 @@ async def test_cancel_interrupt_cancels_a_pending_grace(monkeypatch):
     await asyncio.sleep(0.05)
     await handler.cancel_interrupt()
     assert time.monotonic() - time_start < 5.0
-    assert handler.executor.signals == [signal.SIGINT]
+    assert handler.executor.signals == [StopLevel.INTERRUPT]
 
 
 #

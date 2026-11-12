@@ -8,6 +8,7 @@ Also defines `Worker`, the base class for the in-flight work of a `Run` that can
 import asyncio
 import atexit
 import contextlib
+import errno
 import functools
 import importlib
 import io
@@ -18,8 +19,10 @@ import runpy
 import shlex
 import shutil
 import signal
+import stat
 import subprocess
 import sys
+import sysconfig
 import threading
 import time
 from collections.abc import Callable
@@ -30,15 +33,20 @@ import attrs
 
 from .api import amend
 from .asyncio import wait_for_readable_fd
-from .exceptions import RunError
+from .enums import StopLevel
+from .exceptions import ConfigError, RunError
 from .extapi import get_local_import_paths
+from .oscompat import suspend_available
 from .outcome import ChildOutcome, ResourceUsage
 from .path import Path
+from .popen import popen_args
 from .step import Step
 from .tracebacks import print_step_traceback
 from .utils import escape_control_chars
 
-if sys.platform != "win32":
+if sys.platform == "win32":
+    from .winapi import JobObject
+else:
     # Only the forkserver path uses it, and Windows has no forkserver.
     import resource
 
@@ -48,11 +56,45 @@ __all__ = (
     "SubprocessWorker",
     "ThreadWorker",
     "Worker",
+    "describe_stop_level",
     "launch_command",
 )
 
 
 logger = logging.getLogger(__name__)
+
+
+#
+# Stop levels
+#
+
+
+STOP_SIGNALS = {
+    StopLevel.INTERRUPT: "SIGINT",
+    StopLevel.TERMINATE: "SIGTERM",
+    StopLevel.KILL: "SIGKILL",
+}
+"""The POSIX signal that delivers each stop level, by name, because Windows lacks `SIGKILL`."""
+
+WINDOWS_KILL_EXIT_CODE = 1
+"""The exit code of the processes of a step that is killed on Windows.
+
+This is the code that `subprocess.Popen.kill` gives to a process there.
+"""
+
+
+def describe_stop_level(level: StopLevel) -> str:
+    """Name the mechanism that delivers a stop level to a step on this platform.
+
+    Returns
+    -------
+    name
+        The name of a signal on POSIX, and of a console event or a system call on Windows,
+        to tell the user what is being done to the running steps.
+    """
+    if sys.platform == "win32":
+        return "TerminateJobObject" if level == StopLevel.KILL else "CTRL_BREAK_EVENT"
+    return STOP_SIGNALS[level]
 
 
 #
@@ -63,10 +105,11 @@ logger = logging.getLogger(__name__)
 @attrs.define
 class Worker:
     """Base class for a subprocess or forkserver child process
-    that is the in-flight work of a `Run` and can be interrupted with a signal.
+    that is the in-flight work of a `Run` and can be stopped by the director.
 
     Subclasses implement `_describe` and `_signal`;
-    `interrupt` supplies the shared logging and error handling around them.
+    `interrupt`, `suspend` and `resume` supply the shared logging and error handling around them.
+    A subclass for a process that is not stopped with a signal overrides `_stop` as well.
     A worker with different interrupt semantics
     (e.g. a thread computation, which has no OS process to signal)
     may override `interrupt` instead.
@@ -75,25 +118,32 @@ class Worker:
     job_i: int = attrs.field(kw_only=True)
     """The unique id of the job that created this worker, for logging purposes."""
 
-    def interrupt(self, sig: int) -> None:
-        """Interrupt the in-flight work, ignoring a process that has already exited."""
+    def interrupt(self, level: StopLevel) -> None:
+        """Ask the in-flight work to stop, ignoring a process that has already exited."""
         with contextlib.suppress(ProcessLookupError):
             logger.info(
-                "Interrupting %s (job %d) with signal %d", self._describe(), self.job_i, sig
+                "Interrupting %s (job %d) with %s",
+                self._describe(),
+                self.job_i,
+                describe_stop_level(level),
             )
-            self._signal(sig)
+            self._stop(level)
 
     def suspend(self) -> None:
-        """Stop the in-flight work until `resume` is called.
+        """Stop the in-flight work until `resume` is called, where the platform can do that.
 
         Uses `SIGSTOP` rather than `SIGTSTP`; see `_signal_process_group` for why.
         """
+        if not suspend_available():
+            return
         with contextlib.suppress(ProcessLookupError):
             logger.info("Suspending %s (job %d)", self._describe(), self.job_i)
             self._signal(signal.SIGSTOP)
 
     def resume(self) -> None:
         """Continue the work stopped by `suspend`."""
+        if not suspend_available():
+            return
         with contextlib.suppress(ProcessLookupError):
             logger.info("Resuming %s (job %d)", self._describe(), self.job_i)
             self._signal(signal.SIGCONT)
@@ -101,6 +151,10 @@ class Worker:
     def _describe(self) -> str:
         """Return a short human-readable description of the worker, for logging."""
         raise NotImplementedError
+
+    def _stop(self, level: StopLevel) -> None:
+        """Deliver a stop level to the underlying process, by default as its POSIX signal."""
+        self._signal(getattr(signal, STOP_SIGNALS[level]))
 
     def _signal(self, sig: int) -> None:
         """Deliver `sig` to the underlying process."""
@@ -117,7 +171,8 @@ class ThreadWorker(Worker):
     """A computation running in a dedicated thread.
 
     Computationally intensive work must be designed to release the GIL.
-    Threads should never be used for client-specific commands.
+    A thread cannot be killed, so it must never run code that StepUp does not control,
+    such as the command of a step.
     """
 
     work: Callable[[threading.Event], Any] = attrs.field(kw_only=True)
@@ -154,7 +209,8 @@ class ThreadWorker(Worker):
             if self._thread.is_alive():
                 await asyncio.get_running_loop().run_in_executor(None, self._thread.join)
 
-    def interrupt(self, sig: int) -> None:
+    def interrupt(self, level: StopLevel) -> None:
+        """Cancel the computation, whatever the level, because a thread cannot be killed."""
         logger.info("Cancelling background compute thread for job %d", self.job_i)
         self._cancel_event.set()
 
@@ -237,15 +293,71 @@ def _signal_process_group(pid: int, sig: int) -> None:
         os.kill(pid, sig)
 
 
+def _stop_windows_step(proc: subprocess.Popen, job: "JobObject | None", level: StopLevel) -> None:
+    """Deliver a stop level to a step on Windows.
+
+    Every step is started with `CREATE_NEW_PROCESS_GROUP`,
+    which is the counterpart of the session that a step gets on POSIX:
+    its pid doubles as the id of a process group,
+    and the Ctrl-C of the terminal no longer reaches the step and what it starts.
+    The step is also put in a Job Object, which holds everything it starts, come what may.
+
+    `INTERRUPT` and `TERMINATE` send `CTRL_BREAK_EVENT` to the process group,
+    the only console event that can be sent to a group.
+    It ends a process with the status `STATUS_CONTROL_C_EXIT`, unless the process handles it.
+    The event travels through the console that the director shares with its steps.
+    Without one, there is no gentle way to stop a step, and it is killed straight away.
+    `KILL` terminates the Job Object.
+
+    The event must never be sent to a process that does not lead a group:
+    Windows 11 24H2 then delivered it to the other processes of the console,
+    which include the director.
+    An exited group leader is fine: the event still reaches the rest of its group.
+
+    Parameters
+    ----------
+    proc
+        The process that StepUp started for the step, with `CREATE_NEW_PROCESS_GROUP`.
+    job
+        The Job Object that holds the step, or `None` if it could not be created,
+        in which case only `proc` itself can be killed.
+    level
+        The stop level to deliver.
+    """
+    if level != StopLevel.KILL:
+        try:
+            os.kill(proc.pid, signal.CTRL_BREAK_EVENT)
+        except OSError as exc:
+            logger.info("Cannot send CTRL_BREAK_EVENT to subprocess %d: %s", proc.pid, exc)
+        else:
+            return
+    try:
+        if job is None or job.closed:
+            proc.kill()
+        else:
+            job.terminate(WINDOWS_KILL_EXIT_CODE)
+    except OSError as exc:
+        logger.warning("Cannot kill subprocess %d: %s", proc.pid, exc)
+
+
 @attrs.define
 class SubprocessWorker(Worker):
     """A running subprocess (shell command or direct exec)."""
 
     proc: subprocess.Popen = attrs.field()
-    """The subprocess to signal."""
+    """The subprocess to stop."""
+
+    job: "JobObject | None" = attrs.field(default=None)
+    """The Job Object that holds the subprocess and everything it starts, on Windows."""
 
     def _describe(self) -> str:
         return f"subprocess {self.proc.pid!r}"
+
+    def _stop(self, level: StopLevel) -> None:
+        if sys.platform == "win32":
+            _stop_windows_step(self.proc, self.job, level)
+        else:
+            super()._stop(level)
 
     def _signal(self, sig: int) -> None:
         _signal_process_group(self.proc.pid, sig)
@@ -320,7 +432,7 @@ class Run:
     """
 
     worker: Worker | None = attrs.field(init=False, default=None)
-    """The subprocess, forkserver child, or hash thread
+    """The subprocess, forkserver child, or thread
     currently doing this run's in-flight work, if any.
     """
 
@@ -438,8 +550,8 @@ def _executable_uses_same_python(path_exec: str) -> bool:
 def _executable_compatible_with_current_python(which_path: str) -> bool:
     """Check if an executable is usable with the current Python environment.
 
-    Fast path: the executable lives inside the current environment's `bin` directory,
-    or that of the base environment it was created from.
+    Fast path: the executable lives inside the current environment's directory for scripts
+    (`bin`, or `Scripts` on Windows), or that of the base environment it was created from.
     Slow path: the executable's shebang resolves to the same Python interpreter,
     covering packages installed via PYTHONPATH-extending environment modules.
 
@@ -456,10 +568,11 @@ def _executable_compatible_with_current_python(which_path: str) -> bool:
         `False` otherwise.
     """
     resolved = Path(which_path).realpath()
-    env_bins = {(Path(sys.prefix) / "bin").realpath(), (Path(sys.exec_prefix) / "bin").realpath()}
-    if sys.prefix != sys.base_prefix:
-        env_bins.add((Path(sys.base_prefix) / "bin").realpath())
-        env_bins.add((Path(sys.base_exec_prefix) / "bin").realpath())
+    # Only the name of the directory is taken from `sysconfig`,
+    # whose full path may be one that a distribution reserves for locally installed packages.
+    scripts = Path(sysconfig.get_path("scripts")).name
+    prefixes = {sys.prefix, sys.exec_prefix, sys.base_prefix, sys.base_exec_prefix}
+    env_bins = {(Path(prefix) / scripts).realpath() for prefix in prefixes}
     path_ok = any(resolved.startswith(d / "") or resolved == d for d in env_bins)
     return path_ok or _executable_uses_same_python(which_path)
 
@@ -528,7 +641,7 @@ def _start_drain(read_all: Callable[[], bytes]) -> Callable[[], bytes]:
 
     Returns a callable that joins the thread and returns the bytes it read.
     Isolates the "read on a background thread, join later" pattern
-    shared by `_communicate_wait4` and `_redirect_os_fds`.
+    shared by `_communicate` and `_redirect_os_fds`.
     Both dodge a pipe-full deadlock this way:
     a writer end of the pipe stays open elsewhere (in this process or a child one)
     while the thread drains the corresponding reader end.
@@ -549,8 +662,19 @@ def _start_drain(read_all: Callable[[], bytes]) -> Callable[[], bytes]:
     return join
 
 
+def _normalize_newlines(text: str) -> str:
+    """Turn every carriage return that is followed by a line feed into nothing.
+
+    Programs on Windows end their lines with both characters.
+    All captured output of a step goes through this function, on every platform,
+    so that the output does not depend on where or how the step ran.
+    """
+    return text.replace("\r\n", "\n")
+
+
 def _decode(data: bytes) -> str:
-    return data.decode("utf-8", "ignore")
+    """Decode the captured output of a step, dropping what is not valid UTF-8."""
+    return _normalize_newlines(data.decode("utf-8", "ignore"))
 
 
 #
@@ -558,7 +682,7 @@ def _decode(data: bytes) -> str:
 #
 
 
-def _communicate_wait4(
+def _communicate(
     proc: subprocess.Popen, stdin_data: bytes | None, wtime_start: float
 ) -> tuple[bytes, bytes, ResourceUsage]:
     """Communicate with `proc` and return `(stdout, stderr, usage)`.
@@ -595,8 +719,86 @@ def _communicate_wait4(
     return stdout, stderr, usage
 
 
+if sys.platform == "win32":
+    STEP_ISOLATION = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+else:
+    STEP_ISOLATION = {"start_new_session": True}
+"""The arguments of `subprocess.Popen` that detach a step from the terminal of the director.
+
+See `_signal_process_group` for POSIX and `_stop_windows_step` for Windows.
+"""
+
+_LINGERING_JOBS: list["JobObject"] = []
+"""The Job Objects of finished steps that left processes behind, see `_retire_job`."""
+
+
+def _create_job(proc: subprocess.Popen) -> "JobObject | None":
+    """Put a new subprocess in a Job Object of its own, where the platform has them.
+
+    A process that the subprocess starts before it is in the job escapes from the job.
+    This is accepted, because the assignment completed about 0.1 ms after `Popen` returned
+    when measured on Windows 11 24H2, while a new process needs milliseconds to start.
+    Closing the gap takes a process that is created suspended,
+    which `subprocess` cannot resume.
+
+    Returns
+    -------
+    job
+        The job that holds the subprocess, or `None` when there is none:
+        on other platforms than Windows, or when Windows refuses,
+        e.g. because the subprocess has exited already.
+    """
+    if sys.platform != "win32":
+        return None
+    try:
+        job = JobObject.create()
+    except OSError as exc:
+        logger.warning("Cannot create a Job Object for subprocess %d: %s", proc.pid, exc)
+        return None
+    try:
+        job.assign(proc.pid)
+    except OSError as exc:
+        job.close()
+        if proc.poll() is None:
+            logger.warning("Cannot put subprocess %d in a Job Object: %s", proc.pid, exc)
+        return None
+    return job
+
+
+def _close_empty_job(job: "JobObject") -> bool:
+    """Close a job if none of its processes is running, and tell whether it was closed."""
+    try:
+        active = job.query_usage().active
+    except OSError:
+        active = 0
+    if active == 0:
+        job.close()
+    return job.closed
+
+
+def _retire_job(job: "JobObject", proc: subprocess.Popen) -> None:
+    """Dispose of the job of a step that is no longer the in-flight work of a run.
+
+    A step that is abandoned while it runs, because its task was cancelled,
+    is terminated: nothing would stop it later, and nothing reads its output any longer.
+
+    A step that finished may have left processes behind, which then outlive it, as on POSIX.
+    Killing them could break another step,
+    because build tools start helper processes that later invocations share.
+    Their job is kept instead, so that they do end with the director.
+    """
+    if proc.returncode is None:
+        with contextlib.suppress(OSError):
+            job.terminate(WINDOWS_KILL_EXIT_CODE)
+        job.close()
+        return
+    _LINGERING_JOBS[:] = [other for other in _LINGERING_JOBS if not _close_empty_job(other)]
+    if not _close_empty_job(job):
+        _LINGERING_JOBS.append(job)
+
+
 async def _exec_subprocess(
-    cmd, *, shell: bool, env: dict, cwd: Path, stdin_data: bytes | None, run: Run
+    cmd: str | list[str], *, shell: bool, env: dict, cwd: Path, stdin_data: bytes | None, run: Run
 ) -> ChildOutcome:
     """Run `cmd` as a subprocess and return a `ChildOutcome`.
 
@@ -608,31 +810,40 @@ async def _exec_subprocess(
     Using `subprocess.Popen` (rather than `asyncio.create_subprocess_*`)
     means asyncio's child watcher never registers this PID,
     so the `os.wait4` call captures per-process CPU time without racing against the watcher.
+    On Windows, the CPU time is that of the Job Object of the step,
+    which covers everything the step started.
     """
     stdin = subprocess.PIPE if stdin_data is not None else subprocess.DEVNULL
     wtime_start = time.perf_counter()
     try:
         proc = subprocess.Popen(
-            cmd,
-            shell=shell,
+            popen_args(cmd, shell=shell, env=env, cwd=cwd),
             stdin=stdin,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env,
             cwd=cwd,
-            # Put the step in its own session; see `_signal_process_group`.
-            start_new_session=True,
+            **STEP_ISOLATION,
         )
+    except ConfigError as exc:
+        return ChildOutcome(1, "", f"{exc}\n")
     except OSError as exc:
         return ChildOutcome(1, "", f"Failed to launch command {cmd!r}: {exc}\n")
-    run.worker = SubprocessWorker(proc, job_i=run.job_i)
+    job = _create_job(proc)
+    run.worker = SubprocessWorker(proc, job, job_i=run.job_i)
     try:
         loop = asyncio.get_running_loop()
         stdout, stderr, usage = await loop.run_in_executor(
-            None, _communicate_wait4, proc, stdin_data, wtime_start
+            None, _communicate, proc, stdin_data, wtime_start
         )
+        if job is not None:
+            with contextlib.suppress(OSError):
+                job_usage = job.query_usage()
+                usage = attrs.evolve(usage, utime=job_usage.utime, stime=job_usage.stime)
     finally:
         run.worker = None
+        if job is not None:
+            _retire_job(job, proc)
     return ChildOutcome(proc.returncode, _decode(stdout), _decode(stderr), usage)
 
 
@@ -760,7 +971,7 @@ def _redirect_os_fds(stdout_buf: io.StringIO, stderr_buf: io.StringIO):
 
     def _read_fd_to_eof(fd: int) -> bytes:
         # Blocks until EOF, i.e. until every writer of this pipe end has closed it.
-        # Same semantics as `_communicate_wait4`:
+        # Same semantics as `_communicate`:
         # a step that leaves a daemon holding the inherited fd open
         # will keep this thread (and the join that waits for it) waiting.
         with os.fdopen(fd, "rb") as f:
@@ -867,7 +1078,14 @@ def _forkserver_entry(
     usage = ResourceUsage.from_diff(
         ru_self_start, ru_self_end, ru_children_start, ru_children_end, wtime_start, wtime_end
     )
-    result_conn.send(ChildOutcome(returncode, stdout_buf.getvalue(), stderr_buf.getvalue(), usage))
+    result_conn.send(
+        ChildOutcome(
+            returncode,
+            _normalize_newlines(stdout_buf.getvalue()),
+            _normalize_newlines(stderr_buf.getvalue()),
+            usage,
+        )
+    )
 
 
 PYCODE_WRAPPER = """\
@@ -925,6 +1143,119 @@ async def _run_python_entrypoint(
 
 
 #
+# Built-in copy
+#
+
+
+COPY_CHUNK_SIZE = 1 << 18
+"""The number of bytes copied between two checks of the cancel event."""
+
+
+def _is_builtin_copy(parts: list[str]) -> bool:
+    """Whether the words of a command are exactly `cp -p SRC DST`, without further options."""
+    return (
+        len(parts) == 4
+        and parts[:2] == ["cp", "-p"]
+        and not any(part.startswith("-") for part in parts[2:])
+    )
+
+
+def _copy_file(src: Path, dst: Path, cancel_event: threading.Event) -> bool:
+    """Copy a file together with its permission bits, timestamps and owner, as `cp -p` does.
+
+    Like `cp`, this follows symbolic links, copies into `dst` when that is a directory,
+    overwrites an existing destination in place,
+    and silently keeps the owner of the copy when it may not be changed.
+    Unlike `shutil.copystat`, it leaves extended attributes alone,
+    which include the security context of SELinux.
+
+    Parameters
+    ----------
+    src
+        The file to copy.
+    dst
+        The destination file, or an existing directory in which the copy gets the name of `src`.
+    cancel_event
+        The event that is checked between chunks of `COPY_CHUNK_SIZE` bytes.
+
+    Returns
+    -------
+    completed
+        `False` when `cancel_event` was set before the whole file was copied,
+        which leaves an incomplete destination behind.
+
+    Raises
+    ------
+    OSError
+        When the file cannot be copied.
+    """
+    if src.is_dir():
+        raise IsADirectoryError(errno.EISDIR, "The source is a directory", str(src))
+    if dst.is_dir():
+        dst = dst / src.name
+    with open(src, "rb", buffering=0) as fsrc:
+        src_stat = os.fstat(fsrc.fileno())
+        # Opening the destination truncates it, which would destroy the source.
+        if dst.exists() and dst.samefile(src):
+            raise OSError(
+                errno.EINVAL, "The source and the destination are the same file", str(src)
+            )
+        # A new destination is private until it gets the permission bits of the source.
+        opener = functools.partial(os.open, mode=stat.S_IRUSR | stat.S_IWUSR)
+        with open(dst, "wb", opener=opener) as fdst:
+            buf = bytearray(COPY_CHUNK_SIZE)
+            view = memoryview(buf)
+            # As in `compute_file_digest`, only `nread == 0` means the end of the file.
+            while True:
+                if cancel_event.is_set():
+                    return False
+                nread = fsrc.readinto(buf)
+                if nread == 0:
+                    break
+                fdst.write(view[:nread])
+    os.utime(dst, ns=(src_stat.st_atime_ns, src_stat.st_mtime_ns))
+    if hasattr(os, "chown"):
+        # Changing the owner takes privileges, changing the group only membership of it.
+        try:
+            os.chown(dst, src_stat.st_uid, src_stat.st_gid)
+        except OSError:
+            with contextlib.suppress(OSError):
+                os.chown(dst, -1, src_stat.st_gid)
+    # The permission bits come last, because changing the owner may clear some of them.
+    os.chmod(dst, stat.S_IMODE(src_stat.st_mode))
+    return True
+
+
+def _builtin_copy(src: Path, dst: Path, cancel_event: threading.Event) -> ChildOutcome:
+    """Copy a file as `_copy_file` does, and describe the result as that of a command.
+
+    The CPU time of the copy is part of that of the director, and is not reported here.
+    """
+    wtime_start = time.perf_counter()
+    try:
+        completed = _copy_file(src, dst, cancel_event)
+    except (OSError, ValueError) as exc:
+        # A path that no file system function accepts raises `ValueError`.
+        returncode, stderr = 1, f"Failed to copy {src} to {dst}: {exc}\n"
+    else:
+        returncode, stderr = (0, "") if completed else (1, f"Interrupted the copy to {dst}.\n")
+    usage = ResourceUsage(wtime=time.perf_counter() - wtime_start)
+    return ChildOutcome(returncode, "", stderr, usage)
+
+
+async def _run_builtin_copy(src: str, dst: str, cwd: Path, run: Run) -> ChildOutcome:
+    """Copy a file in a thread of the director, relative to the working directory of the step."""
+    worker = ThreadWorker(
+        work=functools.partial(_builtin_copy, cwd / src, cwd / dst), job_i=run.job_i
+    )
+    run.worker = worker
+    try:
+        return await worker.run_in_thread()
+    finally:
+        run.worker = None
+
+
+#
 # Command dispatching
 #
 
@@ -944,6 +1275,10 @@ async def launch_command(
     or a plain (non-shell) exec.
     Python scripts and entry points run in a forkserver child when `mp_ctx` is not `None`,
     and as a plain subprocess otherwise.
+    The one command that starts no process at all is `cp -p SRC DST` without a shell:
+    the director copies the file itself,
+    because starting a process for it is slow on platforms without a forkserver,
+    and because `cp` does not exist on Windows.
 
     Parameters
     ----------
@@ -973,6 +1308,8 @@ async def launch_command(
     parts = shlex.split(command)
     if not parts:
         raise ValueError(f"Empty command: {command!r}")
+    if not shell and _is_builtin_copy(parts):
+        return await _run_builtin_copy(parts[2], parts[3], cwd, run)
     if shell:
         return await _run_subprocess(command, shell=True, env=env, cwd=cwd, run=run)
     if parts[0].endswith(".py"):

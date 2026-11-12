@@ -27,6 +27,7 @@ from stepup.core.oscompat import (
     suspend_available,
 )
 from stepup.core.path import Path
+from stepup.core.popen import find_shell
 from stepup.core.reporter import ReporterClient
 from stepup.core.rpc import SocketAsyncRPCClient, select_rpc_transport
 from stepup.core.sqlite3 import DBSession
@@ -111,6 +112,18 @@ def rpc_transport(request: pytest.FixtureRequest) -> str:
     which follows `STEPUP_RPC_TRANSPORT`, so that the test suite can be run with either one.
     """
     return request.param
+
+
+@pytest.fixture
+def fresh_shell_cache() -> Iterator[None]:
+    """Make `find_shell` search again in this test, and forget what it finds afterwards.
+
+    A test that changes `STEPUP_SHELL` needs this,
+    because the shell is remembered for the lifetime of the process.
+    """
+    find_shell.cache_clear()
+    yield
+    find_shell.cache_clear()
 
 
 @pytest.fixture

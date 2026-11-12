@@ -56,6 +56,18 @@ if raw_terminal_available():
     import pty
     import termios
 
+xfail_windows_signals = pytest.mark.xfail(
+    sys.platform == "win32",
+    reason="`tui.py` uses signals that do not exist on Windows (`SIGTSTP`, `SIGKILL`).",
+    raises=(AttributeError, ValueError),
+    strict=True,
+)
+"""Mark a test that fails on Windows because the terminal frontend uses POSIX signals.
+
+The mark is strict: a marked test that passes on Windows is reported as a failure,
+which is the cue to remove the mark.
+"""
+
 
 def _build_test_build_parser(loader: ConfigLoader) -> argparse.ArgumentParser:
     """Build a `stepup build` parser through `_add_build_parser`, for parser-level tests."""
@@ -820,6 +832,7 @@ def test_signal_handler_sigterm_always_forwarded(signal_handler: TerminalSignalH
     assert signal_handler.sig == signal.SIGTERM
 
 
+@xfail_windows_signals
 def test_signal_handler_third_signal_kills_director(
     signal_handler: TerminalSignalHandler,
 ) -> None:
@@ -1025,6 +1038,7 @@ def test_boot_tool_propagates_return_code(monkeypatch: pytest.MonkeyPatch) -> No
     assert exc_info.value.code == 42
 
 
+@xfail_windows_signals
 def test_async_build_returns_director_returncode(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1123,6 +1137,7 @@ def test_async_build_rejects_unavailable_forkserver(
     assert not (path_tmp / ".stepup").exists()
 
 
+@xfail_windows_signals
 def test_async_build_ignores_watcher_without_watch_mode(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1143,6 +1158,7 @@ def test_async_build_ignores_watcher_without_watch_mode(
     assert returncode == 0
 
 
+@xfail_windows_signals
 def test_async_build_uses_one_transport(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch, rpc_transport: str
 ) -> None:
@@ -1192,11 +1208,12 @@ def _pre_interrupted_signal_handler(reporter_handler, process_director) -> Termi
         (3, signal.SIGINT, 3 | ReturnCode.INTERRUPTED.value),
         # A wait status of -9 (SIGKILL) is not a ReturnCode combination, so it becomes INTERNAL.
         # The literal keeps this module importable where `signal.SIGKILL` does not exist.
-        (-9, None, ReturnCode.INTERNAL.value),
-        (
+        pytest.param(-9, None, ReturnCode.INTERNAL.value, marks=xfail_windows_signals),
+        pytest.param(
             -9,
             signal.SIGTERM,
             ReturnCode.INTERNAL.value | ReturnCode.INTERRUPTED.value,
+            marks=xfail_windows_signals,
         ),
     ],
 )
@@ -1207,6 +1224,7 @@ def test_translate_wait_status(wait_status: int, sig: signal.Signals | None, exp
     assert signal_handler.translate_wait_status(wait_status) == expected
 
 
+@xfail_windows_signals
 def test_translate_wait_status_reports_killed_director() -> None:
     """A director killed by a signal is reported by name, not silently turned into a code."""
     signal_handler = TerminalSignalHandler(FakeReporterHandler(), FakeProcess())
@@ -1214,6 +1232,7 @@ def test_translate_wait_status_reports_killed_director() -> None:
     assert signal_handler.reporter_handler.reports == [("ERROR", "Director killed by SIGKILL")]
 
 
+@xfail_windows_signals
 def test_async_build_ors_interrupted_bit(path_tmp: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The `INTERRUPTED` bit is OR-ed onto whatever the director reported, when `sig` is set."""
     (path_tmp / "plan.py").touch()
@@ -1578,6 +1597,7 @@ def test_async_build_director_spawn_failure_does_not_hang(
         asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
 
 
+@xfail_windows_signals
 def test_async_build_stops_reporter_on_nonzero_exit(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1604,6 +1624,7 @@ def test_async_build_stops_reporter_on_nonzero_exit(
     assert fake_reporter_handler.stop_reporting_calls >= 1
 
 
+@xfail_windows_signals
 def test_async_build_stops_reporter_on_clean_exit(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

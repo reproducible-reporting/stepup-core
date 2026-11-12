@@ -41,11 +41,15 @@ async def backend(request, tmp_path, monkeypatch):
 
 async def watch(backend, *paths: str):
     """Ask the backend to watch directories, and wait until all existing ones are watched."""
-    for path in paths:
-        backend.dir_queue.put_nowait(Path(path))
+    requested = [Path(path) for path in paths]
+    for path in requested:
+        backend.dir_queue.put_nowait(path)
     async with asyncio.timeout(5):
+        # An empty queue does not show that the backend has handled the last request,
+        # because it takes a request from the queue before it records the directory.
         while not (
             backend.dir_queue.empty()
+            and all(path in backend.watches for path in requested)
             and all(value is not None for path, value in backend.watches.items() if path.is_dir())
         ):
             await asyncio.sleep(0.01)

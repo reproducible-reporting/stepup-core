@@ -4,7 +4,9 @@
 
 import contextlib
 import os
+import sys
 
+import pytest
 from conftest import declare_static
 
 from stepup.core.builder import Builder
@@ -141,6 +143,12 @@ async def test_rescan_files_confirms_deleted_stray_unconfirmed_row(wfs: Workflow
             assert wfs.find(File, "foo.txt").get_state() == FileState.MISSING
 
 
+@pytest.mark.xfail(
+    sys.platform == "win32",
+    reason="The expected message contains the file mode that a POSIX umask of 022 gives.",
+    raises=AssertionError,
+    strict=True,
+)
 async def test_rescan_files_reports_externally_updated_static_file(wfs: Workflow, tmpdir):
     """A regular (non-UNCONFIRMED) CONFIRMED file that changed on disk must still be picked
     up by the scan, reported as UPDATED, and get its new hash applied."""

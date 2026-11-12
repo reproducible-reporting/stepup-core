@@ -24,6 +24,7 @@ from stepup.core.path import Path
 #
 
 
+@pytest.mark.requires_forkserver
 async def test_wait_for_readable_fd():
     read_fd, write_fd = os.pipe()
     try:
@@ -39,6 +40,7 @@ async def test_wait_for_readable_fd():
     assert await settled_task_names() == []
 
 
+@pytest.mark.requires_forkserver
 async def test_wait_for_readable_fd_cancelled():
     """A cancelled wait must unregister its reader, or the next one is refused."""
     read_fd, write_fd = os.pipe()

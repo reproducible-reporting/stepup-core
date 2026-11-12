@@ -1185,8 +1185,11 @@ def run(
         The command to execute, optionally followed by arguments.
         The execution method is selected automatically at run time:
 
-        - If `shell=True`: the command is passed to a shell.
+        - If `shell=True`: the command is passed to a POSIX shell, on every platform.
           Shell features like pipes and redirections are supported.
+          The shell is `/bin/sh`, or the one that the environment variable `STEPUP_SHELL` names.
+        - If `shell=False` and the command is exactly `cp -p SRC DST`:
+          StepUp copies the file itself, as [`copy()`][stepup.core.api.copy] explains.
         - If `shell=False` and the first word ends in `.py`:
           the script is executed via a Python wrapper
           that auto-detects local imports.
@@ -1366,6 +1369,15 @@ def copy(
     duration: float | None = None,
 ) -> StepInfo:
     """Add a step that copies a file.
+
+    The step has the command `cp -p SRC DST`,
+    which StepUp carries out itself instead of starting the program `cp`.
+    This is faster, and it works on platforms without such a program.
+    Like `cp -p`, the copy gets the contents, the permission bits and the timestamps of `src`,
+    and also its owner and group when the user is allowed to set them.
+    A step with exactly this command and without a shell is always treated this way,
+    also when it was created with [`run()`][stepup.core.api.run]
+    or [`step()`][stepup.core.api.step].
 
     Parameters
     ----------

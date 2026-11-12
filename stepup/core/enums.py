@@ -23,6 +23,7 @@ __all__ = (
     "Need",
     "ReturnCode",
     "StepState",
+    "StopLevel",
 )
 
 
@@ -310,3 +311,20 @@ class Availability(IntEnum):
 
     AVAILABLE = 63
     """The file is BUILT or CONFIRMED, so it can be used as an input right away."""
+
+
+class StopLevel(IntEnum):
+    """How forcefully the director asks the running steps to stop.
+
+    The levels are portable, the way they reach a step is not:
+    `stepup.core.run` maps each level to what the platform offers.
+    """
+
+    INTERRUPT = 71
+    """Ask a step to stop, the way a Ctrl-C in a terminal would."""
+
+    TERMINATE = 72
+    """Ask a step to stop because the director shuts down and no longer waits for it."""
+
+    KILL = 73
+    """End a step and everything it started, without giving it a chance to react."""

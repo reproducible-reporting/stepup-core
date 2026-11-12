@@ -40,7 +40,7 @@ from .constants import (
     SQLLOG_CSV,
     SQLLOG_JSON,
 )
-from .enums import FileState, Need, ReturnCode, StepState
+from .enums import FileState, Need, ReturnCode, StepState, StopLevel
 from .exceptions import CgroupError, GraphError
 from .executor import Executor
 from .file import File
@@ -48,6 +48,7 @@ from .hash import FileHash
 from .nglob import NamedGlob
 from .reporter import ReporterClient
 from .rpc import RPC_TRANSPORTS, SocketRPCServer, allow_rpc
+from .run import describe_stop_level
 from .scheduler import Scheduler
 from .sqlite3 import DBSession, SQLLog
 from .startup import resume_from_db
@@ -777,14 +778,15 @@ class DirectorHandler:
     builder: Builder = attrs.field(kw_only=True)
     watcher: Watcher | None = attrs.field(kw_only=True)
     stop_event: asyncio.Event = attrs.field(kw_only=True)
-    _next_step_signal: signal.Signals = attrs.field(init=False, default=signal.SIGINT)
-    """The signal the next escalating `shutdown` sends to running steps.
+    _next_stop_level: StopLevel = attrs.field(init=False, default=StopLevel.INTERRUPT)
+    """The stop level the next escalating `shutdown` delivers to running steps.
 
-    Starts at `SIGINT` and moves to `SIGKILL`
-    once a `SIGINT` has been delivered to the steps, by either `shutdown` or `_interrupt`.
+    Starts at `INTERRUPT` (`SIGINT` on POSIX) and moves to `KILL` (`SIGKILL`)
+    once the steps have been interrupted, by either `shutdown` or `_interrupt`.
     Only `shutdown` reads it:
-    `_interrupt` always opens with `SIGINT` and escalates on a timer instead.
+    `_interrupt` always opens with `INTERRUPT` and escalates on a timer instead.
     See its docstring.
+    `stepup.core.run` documents what delivers each level on each platform.
     """
 
     _interrupt_count: int = attrs.field(init=False, default=0)
@@ -1168,8 +1170,8 @@ class DirectorHandler:
 
         The first call drains the scheduler and stops the build/watch loops gracefully:
         steps already running are left to finish on their own.
-        A second call interrupts running steps with `SIGINT`;
-        a third and any further call escalates to `SIGKILL`.
+        A second call interrupts running steps (`SIGINT` on POSIX);
+        a third and any further call kills them (`SIGKILL`).
 
         Waiting for running steps is the point of this (deliberate, interactive) route,
         so it escalates only when asked to, never on a timer.
@@ -1182,10 +1184,12 @@ class DirectorHandler:
         escalating = self.stop_event.is_set()
         self._stop_scheduling()
         if escalating:
-            sig = self._next_step_signal
-            await self.reporter("DIRECTOR", f"Interrupting running steps ({sig.name}).")
-            self.executor.interrupt(sig)
-            self._next_step_signal = signal.SIGKILL
+            level = self._next_stop_level
+            await self.reporter(
+                "DIRECTOR", f"Interrupting running steps ({describe_stop_level(level)})."
+            )
+            self.executor.interrupt(level)
+            self._next_stop_level = StopLevel.KILL
         elif len(self.builder.running_tasks) > 0:
             await self.reporter("DIRECTOR", "Waiting for steps to complete before shutdown.")
 
@@ -1210,7 +1214,7 @@ class DirectorHandler:
 
         Unlike `shutdown` (the `q` key), this never waits for running steps:
         the user asked for everything to stop, so the build ends as soon as the steps do.
-        The escalation to `SIGKILL` is on a timer (`INTERRUPT_GRACE`)
+        The escalation to `StopLevel.KILL` is on a timer (`INTERRUPT_GRACE`)
         rather than on further signals,
         so that a single Ctrl-C is always enough to get the shell prompt back.
         A second signal only cuts that grace period short.
@@ -1227,15 +1231,17 @@ class DirectorHandler:
     async def _interrupt(self, sig: signal.Signals) -> None:
         """Stop scheduling, interrupt running steps and kill whatever ignores that."""
         await self.reporter(
-            "DIRECTOR", f"Aborting the build ({sig.name}). Interrupting running steps (SIGINT)."
+            "DIRECTOR",
+            f"Aborting the build ({sig.name}). "
+            f"Interrupting running steps ({describe_stop_level(StopLevel.INTERRUPT)}).",
         )
         self._stop_scheduling()
         # Steps run in a session of their own, so the terminal does not signal them:
         # this is the only thing that stops them, on every route
         # (Ctrl-C, SIGTERM, or a SIGINT sent to the terminal user interface alone).
-        self.executor.interrupt(signal.SIGINT)
-        # A `q` press after this must escalate to SIGKILL, not re-send SIGINT.
-        self._next_step_signal = signal.SIGKILL
+        self.executor.interrupt(StopLevel.INTERRUPT)
+        # A `q` press after this must kill the steps, not interrupt them again.
+        self._next_stop_level = StopLevel.KILL
         # Give the steps a moment to wind down on their own.
         # Polling keeps this simple
         # and lets shutdown proceed immediately once the last step is gone,
@@ -1247,8 +1253,11 @@ class DirectorHandler:
                 break
             await asyncio.sleep(0.1)
         if len(self.builder.running_tasks) > 0:
-            await self.reporter("DIRECTOR", "Killing unresponsive steps (SIGKILL).")
-            self.executor.interrupt(signal.SIGKILL)
+            await self.reporter(
+                "DIRECTOR",
+                f"Killing unresponsive steps ({describe_stop_level(StopLevel.KILL)}).",
+            )
+            self.executor.interrupt(StopLevel.KILL)
 
     async def cancel_interrupt(self) -> None:
         """Cancel the pending grace period of `interrupt`, e.g. when the build ended in time."""

@@ -51,12 +51,26 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   which tests that a package does not use `path.Path`, `os.sep` or `os.path`.
   An extension package that subclasses `ConventionTests` gets this test too,
   and can skip it with `native_path_modules = None`.
+- The environment variable `STEPUP_SHELL` selects the POSIX shell
+  that runs the commands of steps with `shell=True`, instead of `/bin/sh`,
+  see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
 
 ### Changed
 
 - The items of `STEPUP_PATH_FILTER` and of a variable read with `getenv(multi=True)`
   are separated by `os.pathsep`.
   This is still a colon on Linux and macOS.
+- A step with the command `cp -p SRC DST` and without a shell,
+  which is what [`copy()`][stepup.core.api.copy] creates,
+  is now carried out by StepUp itself, without starting the program `cp`.
+  The copy still gets the permission bits, the timestamps
+  and, when allowed, the owner and group of the source.
+  This is a preparation for Windows support, which has no such program.
+- A carriage return followed by a line feed (`\r\n`) in the output of a step
+  is recorded as a single line feed, so that the output is the same on every platform.
+- `run_subprocess()` in `stepup.core.extapi` reads and writes text as UTF-8
+  instead of in the locale encoding, and with `shell=True`,
+  it uses the same shell as a step with `shell=True`.
 - StepUp reads and writes its own text files in UTF-8 on every platform,
   instead of in the locale encoding,
   and writes them with `\n` line endings.
