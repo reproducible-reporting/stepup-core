@@ -3,11 +3,13 @@
 """Utilities used by multiple test modules."""
 
 import asyncio
+import socket
 
 import attrs
 
 from stepup.core.exceptions import CyclicError
-from stepup.core.rpc import allow_rpc
+from stepup.core.path import Path
+from stepup.core.rpc import TCP_HOST, TOKEN_SIZE, _TCPEndpoint, allow_rpc
 
 
 async def settled_task_names() -> list[str]:
@@ -20,6 +22,18 @@ async def settled_task_names() -> list[str]:
         await asyncio.sleep(0)
     current = asyncio.current_task()
     return sorted(task.get_name() for task in asyncio.all_tasks() if task is not current)
+
+
+def create_socket_path(path: Path, transport: str):
+    """Create what a server on `transport` creates at its socket path, without a server.
+
+    A client finds the path, but nobody listening behind it.
+    """
+    if transport == "unix":
+        with socket.socket(socket.AF_UNIX) as sock:
+            sock.bind(path)
+    else:
+        _TCPEndpoint(TCP_HOST, 1, bytes(TOKEN_SIZE)).write(path)
 
 
 @attrs.define

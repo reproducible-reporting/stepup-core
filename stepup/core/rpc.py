@@ -9,11 +9,19 @@ a client may call remotely.
 Only decorated methods can be called, which bounds what a client may ask for by name.
 
 The bodies of requests and responses are unpickled,
-so the access permissions of the Unix domain socket are the trust boundary:
-whoever can connect to it can execute code in the process at the other end,
+so whoever can connect to a server can execute code in the process at the other end,
 whether a method allows it or not.
+A server listens on a Unix domain socket or on a TCP socket, see `select_rpc_transport`.
+A Unix domain socket admits the processes that can access its path.
+A TCP socket on the loopback interface admits every local user,
+so the server first reads a token from each new connection,
+and closes the connection without reading anything else when the token is wrong.
+Clients read the token from an endpoint file, see the section on endpoints below.
+Either way, the permissions of the directory holding the socket or the endpoint file
+are the trust boundary,
+so that directory must be accessible only to the user running the server.
 
-The clients that talk to a server over a Unix domain socket,
+The clients that talk to a server over a socket,
 `SocketAsyncRPCClient` and `SocketSyncRPCClient`,
 follow the same connecting and closing contract,
 which each of them implements on its own because one is asynchronous and the other is not:
@@ -33,12 +41,18 @@ which each of them implements on its own because one is asynchronous and the oth
 import asyncio
 import contextlib
 import errno
+import hmac
 import importlib
 import inspect
+import json
 import logging
 import os
 import pickle
+import secrets
 import socket
+import stat
+import sys
+import tempfile
 import traceback
 from collections.abc import AsyncIterator, Callable, Iterator
 from functools import cache, partial
@@ -48,12 +62,13 @@ import attrs
 
 from .asyncio import _wait_closed_compat, iter_until_stopped
 from .exceptions import ConfigError, RPCClientUnusableError, RPCError, UsageError
+from .oscompat import af_unix_available
+from .path import Path, StrPath
 from .utils import is_debug
-
-logger = logging.getLogger(__name__)
 
 __all__ = (
     "NO_RPC_TIMEOUT",
+    "RPC_TRANSPORTS",
     "BaseAsyncRPCClient",
     "BaseSyncRPCClient",
     "DummyAsyncRPCClient",
@@ -63,7 +78,10 @@ __all__ = (
     "SocketSyncRPCClient",
     "allow_rpc",
     "is_rpc_allowed",
+    "select_rpc_transport",
 )
+
+logger = logging.getLogger(__name__)
 
 FuncType = TypeVar("FuncType", bound=Callable)
 
@@ -162,6 +180,181 @@ def _decode_header(header: bytes) -> tuple[int, int]:
 
 
 #
+# Endpoints
+#
+# A server listens on one of two transports, see `select_rpc_transport`.
+# Its clients know it by a path, called the socket path, whatever the transport:
+#
+# - On a Unix domain socket, the socket path is the socket itself.
+# - On a TCP socket, the socket path is an endpoint file,
+#   which holds the address of the server and the token that a client sends before anything else.
+#   The server writes the file once it listens, see `_TCPEndpoint.write`,
+#   so that a file that exists means a server that accepts connections, as with a socket.
+#
+# A client tells the two apart by the type of file at the socket path,
+# so that only the server needs to know which transport is in use.
+#
+
+
+RPC_TRANSPORTS = ("unix", "tcp")
+"""The transports that a server can listen on, the preferred one first."""
+
+TCP_HOST = "127.0.0.1"
+"""The address at which a server on the TCP transport listens, which only this machine can reach."""
+
+TOKEN_SIZE = 32
+"""The number of random bytes in the token that a client on the TCP transport sends first."""
+
+AUTH_TIMEOUT = 10.0
+"""The number of seconds a server on the TCP transport waits for the token of a new connection.
+
+A client of this module sends its token right after connecting,
+so only a peer that does not speak this protocol makes the server wait this long.
+"""
+
+
+def select_rpc_transport() -> str:
+    """Select the transport of the RPC servers of a build.
+
+    A Unix domain socket is used by default, where the platform has them,
+    and `STEPUP_RPC_TRANSPORT=tcp` selects a TCP socket on the loopback interface instead.
+    On other platforms, `tcp` is the only choice.
+
+    Returns
+    -------
+    transport
+        One of `RPC_TRANSPORTS`.
+
+    Raises
+    ------
+    ConfigError
+        If `STEPUP_RPC_TRANSPORT` names a transport that cannot be used on this platform.
+    """
+    choices = RPC_TRANSPORTS if af_unix_available() else ("tcp",)
+    transport = os.environ.get("STEPUP_RPC_TRANSPORT", "") or choices[0]
+    if transport not in choices:
+        raise ConfigError(
+            f"STEPUP_RPC_TRANSPORT must be {' or '.join(choices)} on {sys.platform}, "
+            f"got {transport!r}."
+        )
+    return transport
+
+
+@attrs.define(frozen=True)
+class _TCPEndpoint:
+    """How to connect to a server on the TCP transport, as written in its endpoint file."""
+
+    host: str = attrs.field()
+    """The address at which the server listens."""
+
+    port: int = attrs.field()
+    """The port at which the server listens."""
+
+    token: bytes = attrs.field(repr=False)
+    """The token that a client sends before its first request."""
+
+    def write(self, path: StrPath):
+        """Write the endpoint file, such that no client can ever read part of it.
+
+        The file is written under a temporary name in the same directory,
+        and then renamed to `path`, which makes it appear in a single step.
+        On POSIX, only its owner can read it,
+        even when the directory is accessible to others by mistake.
+        On Windows, it inherits the access rules of the directory.
+
+        Parameters
+        ----------
+        path
+            The socket path of the server, which must not exist yet.
+        """
+        path = Path(path)
+        fd, path_tmp = tempfile.mkstemp(dir=path.parent, prefix=f"{path.name}.", suffix=".tmp")
+        path_tmp = Path(path_tmp)
+        try:
+            with open(fd, "w", encoding="utf-8", newline="\n") as fh:
+                json.dump({"host": self.host, "port": self.port, "token": self.token.hex()}, fh)
+            os.replace(path_tmp, path)
+        except BaseException:
+            path_tmp.remove_p()
+            raise
+
+    @classmethod
+    def read(cls, path: StrPath) -> "_TCPEndpoint":
+        """Read the endpoint file of a server.
+
+        Parameters
+        ----------
+        path
+            The socket path of the server.
+
+        Returns
+        -------
+        endpoint
+            Where to connect and which token to send.
+
+        Raises
+        ------
+        OSError
+            When the file cannot be read.
+        RPCError
+            When the file is not an endpoint file.
+        """
+        text = Path(path).read_text(encoding="utf-8")
+        try:
+            data = json.loads(text)
+            return cls(data["host"], int(data["port"]), bytes.fromhex(data["token"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RPCError(f"File {path} is not the endpoint file of an RPC server: {exc}") from exc
+
+
+def _read_endpoint(socket_path: StrPath) -> _TCPEndpoint | None:
+    """Find out how to connect to the server at a socket path.
+
+    Parameters
+    ----------
+    socket_path
+        The path of a Unix domain socket or of an endpoint file.
+
+    Returns
+    -------
+    endpoint
+        The contents of the endpoint file, or `None` when the path is a Unix domain socket.
+
+    Raises
+    ------
+    FileNotFoundError
+        When nothing exists at the path, i.e. no server is listening there (yet).
+        This is also what connecting to a Unix domain socket that does not exist raises.
+    RPCError
+        When the path is a file but not an endpoint file.
+    """
+    if stat.S_ISSOCK(os.stat(socket_path).st_mode):
+        return None
+    return _TCPEndpoint.read(socket_path)
+
+
+def _set_nodelay(sock: socket.socket):
+    """Send the small writes on a TCP socket right away, instead of holding them back.
+
+    The messages of RPC calls are small and each one is waited for,
+    which Nagle's algorithm combined with delayed acknowledgements stalls
+    by tens to hundreds of milliseconds.
+    `asyncio` sets this option for some of its TCP sockets but not for all of them,
+    e.g. not for those accepted by a server on Windows (observed with Python 3.14),
+    so every end of a connection sets it explicitly.
+
+    Parameters
+    ----------
+    sock
+        A connected TCP socket, or the `asyncio` wrapper of one.
+    """
+    # A connection that the peer has already closed may refuse the option,
+    # which the read or write that follows reports more clearly.
+    with contextlib.suppress(OSError):
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+
+#
 # Transport: asyncio streams
 #
 
@@ -174,6 +367,11 @@ def _is_peer_gone(exc: BaseException) -> bool:
     The latter is what macOS reports when writing to a Unix domain socket that the peer closed,
     in the situation where Linux reports `EPIPE`.
     (Observed with Python 3.14 on a GitHub-hosted macOS runner.)
+    On Windows, a TCP connection that the peer closed or reset raises
+    `ConnectionResetError` (`WSAECONNRESET`) or `ConnectionAbortedError` (`WSAECONNABORTED`),
+    and `errno.ENOTCONN` is `WSAENOTCONN`,
+    so the same test covers that platform.
+    (Observed with Python 3.14 on Windows 11.)
     """
     return isinstance(exc, ConnectionError) or (
         isinstance(exc, OSError) and exc.errno == errno.ENOTCONN
@@ -290,7 +488,7 @@ class _SocketReader:
     """The socket to read from."""
 
     socket_path: str = attrs.field()
-    """The path to the Unix domain socket, which the error messages refer to."""
+    """The socket path of the server, which the error messages refer to."""
 
     _buffer: bytes = attrs.field(init=False, default=b"")
     """The bytes received from the socket that are not yet consumed."""
@@ -629,6 +827,12 @@ class RPCServerConnection:
     writer: asyncio.StreamWriter = attrs.field()
     """The RPC results or exceptions are written to this writer."""
 
+    token: bytes | None = attrs.field(default=None, repr=False)
+    """The token that the client must send before its first request.
+
+    `None` when the transport needs no token, see the module docstring.
+    """
+
     _stop_event: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Set when the connection is being torn down, which ends both loops."""
 
@@ -688,6 +892,9 @@ class RPCServerConnection:
         so that no handler outlives the connection it was created for.
         """
         try:
+            if not await self._authenticate():
+                self._stop_event.set()
+                return
             requests = _iter_stream_messages(self.reader, self._stop_event)
             async with contextlib.aclosing(requests):
                 async for call_id, request in requests:
@@ -724,6 +931,39 @@ class RPCServerConnection:
             # since `_call_and_capture_failure` turns a failed call into a reply of its own.
             await asyncio.gather(*self._tasks, return_exceptions=True)
 
+    async def _authenticate(self) -> bool:
+        """Read the token that the client must send first, if any, and check it.
+
+        Nothing else is read from the connection before the token is accepted,
+        so a peer without the right token cannot get anything unpickled.
+
+        Returns
+        -------
+        accepted
+            Whether the connection may carry requests.
+            Without a token to check, this is always the case.
+            Otherwise, the right token must arrive within `AUTH_TIMEOUT` seconds,
+            before the peer is gone and before the connection is stopped.
+        """
+        if self.token is None:
+            return True
+        tokens = iter_until_stopped(partial(self.reader.readexactly, TOKEN_SIZE), self._stop_event)
+        token = None
+        try:
+            async with contextlib.aclosing(tokens), asyncio.timeout(AUTH_TIMEOUT):
+                # `None` when the connection is stopped first.
+                token = await anext(tokens, None)
+        except (asyncio.IncompleteReadError, TimeoutError):
+            pass
+        except OSError as exc:
+            if not _is_peer_gone(exc):
+                raise
+        if token is not None and hmac.compare_digest(token, self.token):
+            return True
+        if not self._stop_event.is_set():
+            logger.warning("Closing an RPC connection whose peer did not send the right token.")
+        return False
+
     def _queue_reply(self, call_id: int, task: asyncio.Task):
         """Hand a completed task to the send loop."""
         self._tasks.discard(task)
@@ -759,7 +999,7 @@ class RPCServerConnection:
 
 @attrs.define(eq=False)
 class SocketRPCServer:
-    """Accept connections on a Unix domain socket and serve the RPC calls they carry.
+    """Accept connections on a socket and serve the RPC calls they carry.
 
     Instances use identity-based equality, for the same reason as `RPCServerConnection`.
     """
@@ -768,7 +1008,17 @@ class SocketRPCServer:
     """The RPC handler."""
 
     socket_path: str = attrs.field()
-    """The path to the Unix domain socket."""
+    """The socket path at which clients find the server, see the section on endpoints.
+
+    Nothing may exist at this path before the server starts,
+    and its directory must be private, see the module docstring.
+    """
+
+    transport: str = attrs.field(validator=attrs.validators.in_(RPC_TRANSPORTS))
+    """The transport to listen on, see `select_rpc_transport`."""
+
+    _token: bytes | None = attrs.field(init=False, default=None, repr=False)
+    """The token that every client must send first, `None` until it is needed."""
 
     _connections: set[RPCServerConnection] = attrs.field(init=False, factory=set)
     """The connections currently being served."""
@@ -782,7 +1032,7 @@ class SocketRPCServer:
             The server keeps accepting connections until this event is set,
             and then stops the connections that are still open.
         """
-        server = await asyncio.start_unix_server(self._serve_connection, self.socket_path)
+        server = await self._listen()
         await stop_event.wait()
         # Closing the server only stops it from accepting,
         # so a connection whose peer keeps its side open keeps being served.
@@ -795,9 +1045,25 @@ class SocketRPCServer:
         await server.wait_closed()
         await _wait_closed_compat(server)
 
+    async def _listen(self) -> asyncio.Server:
+        """Start accepting connections, and only then create the endpoint file, if any."""
+        if self.transport == "unix":
+            return await asyncio.start_unix_server(self._serve_connection, self.socket_path)
+        self._token = secrets.token_bytes(TOKEN_SIZE)
+        server = await asyncio.start_server(self._serve_connection, TCP_HOST, 0)
+        try:
+            port = server.sockets[0].getsockname()[1]
+            _TCPEndpoint(TCP_HOST, port, self._token).write(self.socket_path)
+        except BaseException:
+            server.close()
+            raise
+        return server
+
     async def _serve_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        """Serve a single accepted connection, as `asyncio.start_unix_server` expects."""
-        connection = RPCServerConnection(self.handler, reader, writer)
+        """Serve a single accepted connection, as `asyncio.start_server` expects."""
+        if self._token is not None:
+            _set_nodelay(writer.get_extra_info("socket"))
+        connection = RPCServerConnection(self.handler, reader, writer, self._token)
         self._connections.add(connection)
         try:
             await connection.serve()
@@ -971,7 +1237,7 @@ which is unbounded after a call made with `NO_RPC_TIMEOUT`.
 
 @attrs.define
 class _SocketClientState:
-    """The bookkeeping shared by the RPC clients that talk to a server over a Unix domain socket.
+    """The bookkeeping shared by the RPC clients that talk to a server over a socket.
 
     This is mixed in next to `BaseAsyncRPCClient` or `BaseSyncRPCClient`,
     which contribute the calling half.
@@ -981,7 +1247,11 @@ class _SocketClientState:
     """
 
     socket_path: str = attrs.field()
-    """The path to the Unix domain socket, which the client-side error messages refer to."""
+    """The socket path of the server, see the section on endpoints.
+
+    The client finds out which transport the server uses when it connects,
+    and the client-side error messages refer to the server by this path.
+    """
 
     server_log_description: str | None = attrs.field(default=None)
     """Where the server at the other end records the reason of a failure, e.g. a log file.
@@ -1065,7 +1335,7 @@ class _PendingCall:
 
 @attrs.define
 class SocketAsyncRPCClient(_SocketClientState, BaseAsyncRPCClient):
-    """Asynchronous RPC client for a server on a Unix domain socket."""
+    """Asynchronous RPC client for a server on a socket."""
 
     _pending: dict[int, _PendingCall] = attrs.field(init=False, factory=dict)
     """The calls waiting for a response, indexed by call id.
@@ -1170,8 +1440,9 @@ class SocketAsyncRPCClient(_SocketClientState, BaseAsyncRPCClient):
         if self._connect_task is None:
             return
         # Let a connection that is still being opened finish, so that it is not left dangling.
-        # A connection that could not be opened at all has nothing to close.
-        with contextlib.suppress(OSError):
+        # A connection that could not be opened at all has nothing to close,
+        # and the call that tried to open it has already raised the reason.
+        with contextlib.suppress(OSError, RPCError):
             await self._connect_task
         if self._writer is None:
             return
@@ -1219,6 +1490,8 @@ class SocketAsyncRPCClient(_SocketClientState, BaseAsyncRPCClient):
             When the client is closed.
         OSError
             When the socket cannot be connected to.
+        RPCError
+            When the socket path holds a file that is not an endpoint file.
         """
         self._check_usable()
         if self._connect_task is None:
@@ -1228,8 +1501,15 @@ class SocketAsyncRPCClient(_SocketClientState, BaseAsyncRPCClient):
         await self._connect_task
 
     async def _open_connection(self):
-        """Connect to the socket and start the task that receives the responses."""
-        self._reader, self._writer = await asyncio.open_unix_connection(self.socket_path)
+        """Connect to the server and start the task that receives the responses."""
+        endpoint = _read_endpoint(self.socket_path)
+        if endpoint is None:
+            self._reader, self._writer = await asyncio.open_unix_connection(self.socket_path)
+        else:
+            self._reader, self._writer = await asyncio.open_connection(endpoint.host, endpoint.port)
+            _set_nodelay(self._writer.get_extra_info("socket"))
+            # Not drained here: whatever is sent next drains it along.
+            self._writer.write(endpoint.token)
         self._recv_task = asyncio.create_task(self._recv_loop(), name="client-rpc-recv-loop")
 
     async def _recv_loop(self):
@@ -1371,7 +1651,7 @@ class BaseSyncRPCClient(_BaseRPCClient):
 
 @attrs.define
 class SocketSyncRPCClient(_SocketClientState, BaseSyncRPCClient):
-    """Synchronous RPC client for a server on a Unix domain socket."""
+    """Synchronous RPC client for a server on a socket."""
 
     _socket: socket.socket | None = attrs.field(init=False, default=None)
     """The socket to communicate with the server."""
@@ -1509,18 +1789,52 @@ class SocketSyncRPCClient(_SocketClientState, BaseSyncRPCClient):
             When the client can no longer be used, see `_check_usable`.
         OSError
             When the socket cannot be connected to.
+            A later call tries to connect again.
+        RPCError
+            When the socket path holds a file that is not an endpoint file.
         TimeoutError
             When connecting takes longer than `socket_timeout`.
         """
         self._check_usable()
         if self._socket is None:
-            self._socket = socket.socket(socket.AF_UNIX)
-            self._socket.settimeout(socket_timeout)
-            self._socket.connect(self.socket_path)
+            self._socket = self._connect(socket_timeout)
             self._reader = _SocketReader(self._socket, self.socket_path)
         else:
             self._socket.settimeout(socket_timeout)
         return self._socket
+
+    def _connect(self, socket_timeout: float | None) -> socket.socket:
+        """Open a connection to the server, over the transport that the socket path reveals.
+
+        Parameters
+        ----------
+        socket_timeout
+            See `_ensure_connected`.
+
+        Returns
+        -------
+        sock
+            The connected socket, with the timeout installed.
+            On the TCP transport, the token has been sent already.
+        """
+        endpoint = _read_endpoint(self.socket_path)
+        if endpoint is None:
+            sock = socket.socket(socket.AF_UNIX)
+            try:
+                sock.settimeout(socket_timeout)
+                sock.connect(self.socket_path)
+            except BaseException:
+                sock.close()
+                raise
+            return sock
+        sock = socket.create_connection((endpoint.host, endpoint.port), timeout=socket_timeout)
+        try:
+            _set_nodelay(sock)
+            sock.sendall(endpoint.token)
+        except BaseException:
+            sock.close()
+            raise
+        return sock
 
     def _recv_response(self, expected_call_id: int) -> bytes | None:
         """Receive a single RPC response.

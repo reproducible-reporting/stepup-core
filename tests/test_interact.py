@@ -7,8 +7,10 @@ import os
 import subprocess
 import sys
 import threading
+from functools import partial
 
 import pytest
+from core_common import create_socket_path
 
 from stepup.core import interact
 from stepup.core.constants import DIRECTOR_LOG
@@ -84,16 +86,20 @@ def test_wait_for_director_socket_repeats_no_message(
 
 
 def test_wait_for_director_socket_slow_startup(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    path_tmp: Path,
+    dir_sockets: Path,
+    rpc_transport: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
 ) -> None:
     """As long as the director process is alive, the socket must be waited for without deadline."""
-    socket_path = path_tmp / "director"
+    socket_path = dir_sockets / "director"
     _write_director_log(path_tmp, socket_path, os.getpid())
     monkeypatch.setenv("STEPUP_ROOT", str(path_tmp))
     # The socket shows up long after the timeout, which must not apply on this path.
     monkeypatch.setattr(interact, "WAIT_FOR_SOCKET_TIMEOUT", 0.05)
     monkeypatch.setattr(interact, "WAIT_FOR_SOCKET_INTERVAL", 0.01)
-    timer = threading.Timer(0.5, socket_path.touch)
+    timer = threading.Timer(0.5, partial(create_socket_path, socket_path, rpc_transport))
     timer.start()
     try:
         assert interact.wait_for_director_socket() == socket_path

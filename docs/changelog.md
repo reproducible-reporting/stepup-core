@@ -30,6 +30,16 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   Developers of StepUp can select the library with the environment variable `STEPUP_WATCHER`,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
 
+- The processes of a build can talk to each other over TCP sockets on the loopback interface,
+  as an alternative to Unix domain sockets,
+  which is a preparation for Windows support.
+  A client must authenticate with a random token,
+  which only the user running `stepup build` can read.
+  Unix domain sockets remain the default where the platform supports them.
+  Developers of StepUp can select the transport with the environment variable
+  `STEPUP_RPC_TRANSPORT`,
+  see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
+
 - [`stepup.core.path.Path`][stepup.core.path.Path],
   a subclass of `path.Path` whose only path separator is `/` on every platform.
   All functions of StepUp that return a path now return an instance of this class.

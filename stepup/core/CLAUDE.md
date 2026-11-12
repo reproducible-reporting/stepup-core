@@ -16,7 +16,7 @@ StepUp runs as two process types:
 
 - **Director** (`director.py`):
   An asyncio process that owns the workflow graph and SQLite database.
-  It exposes an RPC server over a Unix socket, whose path is handed to it by the TUI
+  It exposes an RPC server over a socket, whose path is handed to it by the TUI
   (a per-run temp directory, e.g. `tempfile.TemporaryDirectory(prefix="stepup-")`,
   not under `.stepup/`).
   Manages `Builder`, `Watcher`, and `Scheduler`.
@@ -45,6 +45,29 @@ StepUp runs as two process types:
 The entry point `stepup build` (in `tui.py`) is what users run.
 It spawns the director and connects to it.
 (`stepup boot` still exists as a deprecated alias of `stepup build`.)
+
+### RPC Transport (`rpc.py`)
+
+The RPC servers listen on one of two transports,
+which the TUI selects once with `select_rpc_transport()` (`STEPUP_RPC_TRANSPORT`)
+and passes to the director with `--rpc-transport`:
+a Unix domain socket where `socket.AF_UNIX` exists (the default),
+or a TCP socket on `127.0.0.1` (the default and only choice on Windows).
+Either way, a server is known by a *socket path*:
+the Unix domain socket itself, or an endpoint file holding the port and a random token.
+The endpoint file appears atomically once the server listens,
+so "the path exists" means "the server accepts connections" for both transports,
+which is what the readiness check of the TUI and `query_director_log` rely on.
+Clients (steps, `stepup` subcommands, the director's reporter client)
+tell the transports apart by the file type at the socket path,
+so they need no setting, and `STEPUP_DIRECTOR_SOCKET` and the `SOCKET` line of the
+director log have the same shape for both.
+
+The request bodies are unpickled, so whoever can connect can run code in the server.
+A TCP client therefore sends the token before anything else,
+and the server reads nothing more from a connection with a wrong token.
+The private temporary directory is the trust boundary for both transports.
+Never put the token in an environment variable or on a command line.
 
 Naming gotcha, two similar flags with different meanings:
 

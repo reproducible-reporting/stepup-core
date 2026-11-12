@@ -20,10 +20,15 @@ from stepup.core.director import ServeConfig, serve
 from stepup.core.enums import HashUpdateCause, Need
 from stepup.core.file import File
 from stepup.core.hash import FileHash
-from stepup.core.oscompat import forkserver_available, raw_terminal_available, suspend_available
+from stepup.core.oscompat import (
+    af_unix_available,
+    forkserver_available,
+    raw_terminal_available,
+    suspend_available,
+)
 from stepup.core.path import Path
 from stepup.core.reporter import ReporterClient
-from stepup.core.rpc import SocketAsyncRPCClient
+from stepup.core.rpc import SocketAsyncRPCClient, select_rpc_transport
 from stepup.core.sqlite3 import DBSession
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
@@ -37,6 +42,7 @@ def _forkserver_enabled() -> bool:
 
 
 CAPABILITY_MARKERS = {
+    "requires_af_unix": (af_unix_available, "requires Unix domain sockets (socket.AF_UNIX)"),
     "requires_forkserver": (
         _forkserver_enabled,
         "requires the forkserver (available on this platform and STEPUP_BUILD_FORKSERVER != 0)",
@@ -97,9 +103,19 @@ which leaves the teardown of a test whose setup failed completely unguarded.
 """
 
 
+@pytest.fixture(params=[pytest.param("unix", marks=pytest.mark.requires_af_unix), "tcp"])
+def rpc_transport(request: pytest.FixtureRequest) -> str:
+    """Each transport of `stepup.core.rpc`, for a test that must cover both explicitly.
+
+    A test that only needs some working transport calls `select_rpc_transport()` instead,
+    which follows `STEPUP_RPC_TRANSPORT`, so that the test suite can be run with either one.
+    """
+    return request.param
+
+
 @pytest.fixture
 def dir_sockets() -> Iterator[Path]:
-    """Provide a directory for Unix domain sockets, with a path short enough for macOS.
+    """Provide a directory for socket paths, short enough for a Unix domain socket on macOS.
 
     macOS limits the path of a socket to 104 bytes,
     which the paths under pytest's temporary directories exceed there.
@@ -127,6 +143,7 @@ async def client(tmpdir, dir_sockets) -> AsyncGenerator[SocketAsyncRPCClient, No
                     serve(
                         ServeConfig(njob=1, use_duration=False, do_watch=True),
                         director_socket_path=director_socket_path,
+                        rpc_transport=select_rpc_transport(),
                         reporter=reporter,
                         db=db,
                         # Do not hijack the signal handlers of the pytest process.

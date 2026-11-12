@@ -47,7 +47,7 @@ from .file import File
 from .hash import FileHash
 from .nglob import NamedGlob
 from .reporter import ReporterClient
-from .rpc import SocketRPCServer, allow_rpc
+from .rpc import RPC_TRANSPORTS, SocketRPCServer, allow_rpc
 from .scheduler import Scheduler
 from .sqlite3 import DBSession, SQLLog
 from .startup import resume_from_db
@@ -211,7 +211,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "director_socket",
         type=Path,
-        help="The socket at which StepUp will listen for instructions.",
+        help="The path at which StepUp will listen for instructions: "
+        "the Unix domain socket or the endpoint file of the TCP socket, see --rpc-transport.",
     )
     parser.add_argument(
         "--cgroup",
@@ -300,6 +301,13 @@ def parse_args() -> argparse.Namespace:
         dest="reporter_socket",
         default=os.environ.get("STEPUP_REPORTER_SOCKET"),
         help="Socket to send reporter updates to, if any.",
+    )
+    parser.add_argument(
+        "--rpc-transport",
+        required=True,
+        choices=RPC_TRANSPORTS,
+        help="The transport on which the director listens for instructions. "
+        "The reporter socket reveals its own transport.",
     )
     parser.add_argument(
         "--defer-cap",
@@ -408,6 +416,7 @@ async def async_main(
             serve_result = await serve(
                 ServeConfig.from_args(args, njob),
                 director_socket_path=args.director_socket,
+                rpc_transport=args.rpc_transport,
                 reporter=reporter,
                 db=db,
                 mp_ctx=mp_ctx,
@@ -471,6 +480,7 @@ async def serve(
     config: ServeConfig,
     *,
     director_socket_path: Path,
+    rpc_transport: str,
     reporter: ReporterClient,
     db: DBSession,
     mp_ctx: multiprocessing.context.BaseContext | None = None,
@@ -483,7 +493,9 @@ async def serve(
     config
         The build policy for this run.
     director_socket_path
-        The socket to listen to for remote calls.
+        The socket path at which to listen for remote calls.
+    rpc_transport
+        The transport to listen on, see `stepup.core.rpc.select_rpc_transport`.
     reporter
         The reporter client for sending information back to the terminal user interface.
     db
@@ -555,6 +567,7 @@ async def serve(
         handler,
         memory_sampler,
         director_socket_path=director_socket_path,
+        rpc_transport=rpc_transport,
         watch_first=config.watch_first,
         handle_signals=handle_signals,
     )
@@ -657,13 +670,14 @@ async def _run_tasks(
     memory_sampler: CgroupMemorySampler | None,
     *,
     director_socket_path: Path,
+    rpc_transport: str,
     watch_first: bool,
     handle_signals: bool,
 ) -> None:
     """Run the director's async tasks until shutdown, then tear them down in order."""
     exit_event = asyncio.Event()
     rpc_server = asyncio.create_task(
-        SocketRPCServer(handler, director_socket_path).serve(exit_event)
+        SocketRPCServer(handler, director_socket_path, rpc_transport).serve(exit_event)
     )
     coroutines = [
         build_loop(handler.builder, handler.watcher, handler.stop_event),

@@ -13,14 +13,21 @@ Tests replace these predicates to cover both answers on one platform.
 import importlib.util
 import multiprocessing
 import signal
+import socket
 import sys
 
 __all__ = (
+    "af_unix_available",
     "forkserver_available",
     "perf_available",
     "raw_terminal_available",
     "suspend_available",
 )
+
+
+def af_unix_available() -> bool:
+    """Whether Unix domain sockets exist, which `asyncio` only supports where `socket` does."""
+    return hasattr(socket, "AF_UNIX")
 
 
 def forkserver_available() -> bool:

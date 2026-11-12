@@ -46,7 +46,7 @@ from .exceptions import ConfigError, RPCError, ToolError, UsageError
 from .oscompat import forkserver_available, perf_available, raw_terminal_available
 from .path import Path, get_stepup_root, to_slash
 from .reporter import ReporterHandler
-from .rpc import SocketAsyncRPCClient, SocketRPCServer
+from .rpc import SocketAsyncRPCClient, SocketRPCServer, select_rpc_transport
 from .tool import SubParsers, ToolFunc, positive_decimal, positive_int
 from .utils import (
     is_debug,
@@ -355,9 +355,11 @@ def _deprecated_boot_tool(args: argparse.Namespace) -> None:
 async def _async_build(args: argparse.Namespace) -> int:
     """Launch the director, forward keystrokes and terminal signals to it, and report progress.
 
-    Sockets are placed in a per-run temp directory under `/tmp` rather than `${PWD}/.stepup/`.
-    Unix domain socket paths have a strict limit of 104 bytes (macOS) / 108 bytes (Linux).
-    Deeply nested project paths can easily breach this constraint.
+    The socket paths, see `stepup.core.rpc`, are placed in a per-run temporary directory
+    rather than in `${PWD}/.stepup/`, for two reasons.
+    Only its owner can access it, which keeps other users out of the RPC connections.
+    Unix domain socket paths have a strict limit of 104 bytes (macOS) / 108 bytes (Linux),
+    which deeply nested project paths can easily breach.
 
     Parameters
     ----------
@@ -379,10 +381,12 @@ async def _async_build(args: argparse.Namespace) -> int:
         or if a director is already running (see `_check_no_running_director`).
     ConfigError
         If watch mode is requested with an unusable file watcher (see `select_watcher_backend`),
+        if the RPC transport cannot be used (see `select_rpc_transport`),
         or if a requested feature is not available on this platform
         (see `_check_platform_support`).
     """
     _check_platform_support(args)
+    rpc_transport = select_rpc_transport()
     stepup_root = get_stepup_root()
     targets, target_dirs = _normalize_targets(args.targets, stepup_root)
     if stepup_root != Path.cwd():
@@ -412,7 +416,9 @@ async def _async_build(args: argparse.Namespace) -> int:
         stop_event = asyncio.Event()
         reporter_handler = ReporterHandler(args.progress, stop_event)
         task_reporter = asyncio.create_task(
-            SocketRPCServer(reporter_handler, reporter_socket_path).serve(stop_event),
+            SocketRPCServer(reporter_handler, reporter_socket_path, rpc_transport).serve(
+                stop_event
+            ),
             name="reporter-rpc",
         )
         try:
@@ -422,6 +428,7 @@ async def _async_build(args: argparse.Namespace) -> int:
                 target_dirs,
                 director_socket_path,
                 reporter_socket_path,
+                rpc_transport=rpc_transport,
                 live_progress=reporter_handler.live_progress,
             )
             returncode = await _supervise_director(
@@ -565,6 +572,7 @@ def _build_director_argv(
     director_socket_path: Path,
     reporter_socket_path: Path,
     *,
+    rpc_transport: str,
     live_progress: bool,
 ) -> list[str]:
     """Translate the parsed `stepup build` arguments into the director's command line.
@@ -580,6 +588,8 @@ def _build_director_argv(
         The socket at which the director will listen for instructions.
     reporter_socket_path
         The socket at which the reporter listens for updates from the director.
+    rpc_transport
+        The transport on which the director will listen, see `select_rpc_transport`.
     live_progress
         Whether the director should send live step-count updates to the reporter.
 
@@ -607,6 +617,7 @@ def _build_director_argv(
             "stepup.core.director",
             director_socket_path,
             f"--reporter={reporter_socket_path}",
+            f"--rpc-transport={rpc_transport}",
             f"--jobs={args.jobs}",
             f"--defer-cap={args.defer_cap}",
             f"--log-level={args.log_level}",
@@ -776,7 +787,8 @@ async def _wait_for_director_socket(
     Parameters
     ----------
     director_socket_path
-        The path of the socket that the director creates when it is ready.
+        The socket path, see `stepup.core.rpc`,
+        at which something appears once the director accepts connections.
     stop_event
         Event that also ends the wait, e.g. when the build is shutting down.
     task_director

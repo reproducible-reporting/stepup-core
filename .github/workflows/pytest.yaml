@@ -26,7 +26,7 @@ on:
 
 jobs:
   tests:
-    name: ${{ matrix.suite.name }} (${{ matrix.platform.runner }}, ${{ matrix.platform.python-version }}, ${{ matrix.platform.resolution }}, ${{ matrix.platform.watcher }})
+    name: ${{ matrix.suite.name }} (${{ matrix.platform.runner }}, ${{ matrix.platform.python-version }}, ${{ matrix.platform.resolution }}, ${{ matrix.platform.watcher }}, ${{ matrix.platform.transport }})
     permissions:
       contents: read
     env:
@@ -35,6 +35,7 @@ jobs:
       # RPC timeout is set shorter to speed up tests in case of failures.
       STEPUP_SYNC_RPC_TIMEOUT: 10
       STEPUP_WATCHER: ${{ matrix.platform.watcher }}
+      STEPUP_RPC_TRANSPORT: ${{ matrix.platform.transport }}
     strategy:
       matrix:
         platform:
@@ -42,26 +43,37 @@ jobs:
             python-version: '3.11'
             resolution: lowest-direct
             watcher: asyncinotify
+            transport: unix
             extras: tests
           - runner: ubuntu-26.04
             python-version: '3.15'
             resolution: highest
             watcher: asyncinotify
+            transport: unix
             extras: tests
           - runner: ubuntu-26.04
             python-version: '3.15'
             resolution: highest
             watcher: watchfiles
+            transport: unix
             extras: tests,watchfiles
+          - runner: ubuntu-26.04
+            python-version: '3.15'
+            resolution: highest
+            watcher: asyncinotify
+            transport: tcp
+            extras: tests
           - runner: macos-26
             python-version: '3.11'
             resolution: lowest-direct
             watcher: watchfiles
+            transport: unix
             extras: tests
           - runner: macos-26
             python-version: '3.15'
             resolution: highest
             watcher: watchfiles
+            transport: unix
             extras: tests
         # The suites run as separate jobs, because the integration tests dominate the run time.
         suite:

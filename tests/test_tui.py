@@ -23,7 +23,13 @@ from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import ConfigError, PathError, ToolError
 from stepup.core.oscompat import raw_terminal_available
 from stepup.core.path import Path
-from stepup.core.rpc import SocketRPCServer, allow_rpc, is_rpc_allowed
+from stepup.core.rpc import (
+    SocketRPCServer,
+    _read_endpoint,
+    allow_rpc,
+    is_rpc_allowed,
+    select_rpc_transport,
+)
 from stepup.core.tui import (
     _KEY_ACTIONS,
     _KEY_STROKE_HELP,
@@ -470,6 +476,7 @@ def _call_build_director_argv(
         target_dirs or [],
         Path("/tmp/sockets/director"),
         Path("/tmp/sockets/reporter"),
+        rpc_transport="tcp",
         live_progress=live_progress,
     )
 
@@ -483,6 +490,7 @@ def test_build_director_argv_baseline() -> None:
         "stepup.core.director",
         Path("/tmp/sockets/director"),
         "--reporter=/tmp/sockets/reporter",
+        "--rpc-transport=tcp",
         "--jobs=1.0",
         "--defer-cap=100",
         "--log-level=WARNING",
@@ -1053,6 +1061,26 @@ def test_async_build_rejects_bad_watcher_in_watch_mode(
         asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
 
 
+def test_async_build_rejects_bad_rpc_transport(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A bad `STEPUP_RPC_TRANSPORT` is a usage error, raised before anything is set up."""
+    (path_tmp / "plan.py").touch()
+    monkeypatch.setenv("STEPUP_RPC_TRANSPORT", "udp")
+
+    async def fail_create_subprocess_exec(*args, **kwargs):
+        raise AssertionError("The director must not be started.")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fail_create_subprocess_exec)
+    args = _base_build_args(progress=False)
+    with (
+        contextlib.chdir(path_tmp),
+        pytest.raises(ConfigError, match="STEPUP_RPC_TRANSPORT must be"),
+    ):
+        asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
+    assert not (path_tmp / ".stepup").exists()
+
+
 @pytest.mark.parametrize(
     ("overrides", "predicate", "match"),
     [
@@ -1113,6 +1141,33 @@ def test_async_build_ignores_watcher_without_watch_mode(
     with contextlib.chdir(path_tmp):
         returncode = asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
     assert returncode == 0
+
+
+def test_async_build_uses_one_transport(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch, rpc_transport: str
+) -> None:
+    """The reporter and the director listen on the transport selected by the environment."""
+    (path_tmp / "plan.py").touch()
+    monkeypatch.setenv("STEPUP_RPC_TRANSPORT", rpc_transport)
+    monkeypatch.setattr("stepup.core.tui.ReporterHandler", lambda *a, **kw: FakeReporterHandler())
+    reporter_endpoints = []
+    director_argv = []
+
+    async def fake_create_subprocess_exec(*argv, **kwargs):
+        director_argv.extend(argv)
+        reporter_path = Path(next(arg for arg in argv if str(arg).startswith("--reporter="))[11:])
+        await wait_for_path(reporter_path, asyncio.Event())
+        reporter_endpoints.append(_read_endpoint(reporter_path))
+        return FakeProcess(returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+    args = _base_build_args(progress=False)
+    with contextlib.chdir(path_tmp):
+        returncode = asyncio.run(asyncio.wait_for(_async_build(args), timeout=5))
+    assert returncode == 0
+    assert f"--rpc-transport={rpc_transport}" in director_argv
+    (endpoint,) = reporter_endpoints
+    assert (endpoint is None) == (rpc_transport == "unix")
 
 
 def _pre_interrupted_signal_handler(reporter_handler, process_director) -> TerminalSignalHandler:
@@ -1313,7 +1368,7 @@ async def _drive_keyboard(
     """Serve *handler* over a real RPC socket and run `keyboard` against it with fixed keys."""
     server_stop_event = asyncio.Event()
     server_task = asyncio.create_task(
-        SocketRPCServer(handler, str(socket_path)).serve(server_stop_event)
+        SocketRPCServer(handler, str(socket_path), select_rpc_transport()).serve(server_stop_event)
     )
     try:
         await wait_for_path(socket_path, server_stop_event)

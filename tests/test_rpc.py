@@ -7,14 +7,19 @@ import contextlib
 import copy
 import errno
 import logging
+import os
 import pickle
+import secrets
+import socket
+import stat
 import sys
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 import pytest
 import pytest_asyncio
 from core_common import EchoHandler, settled_task_names
 
+from stepup.core.asyncio import wait_for_path
 from stepup.core.exceptions import (
     ConfigError,
     CyclicError,
@@ -29,6 +34,9 @@ from stepup.core.rpc import (
     HEADER_SIZE,
     MAX_BODY_SIZE,
     NO_RPC_TIMEOUT,
+    RPC_TRANSPORTS,
+    TCP_HOST,
+    TOKEN_SIZE,
     DummySyncRPCClient,
     RemoteCallProxy,
     RemoteFailure,
@@ -46,21 +54,24 @@ from stepup.core.rpc import (
     _encode_message,
     _is_peer_gone,
     _raise_remote_error,
+    _read_endpoint,
     _recv_stream_message,
     _resolve_socket_timeout,
     _SocketReader,
+    _TCPEndpoint,
     allow_rpc,
     is_rpc_allowed,
+    select_rpc_transport,
 )
 from stepup.core.utils import DIRECTOR_LOG_CHECKS
 
 
 @pytest_asyncio.fixture
-async def socket_server_path(dir_sockets):
+async def socket_server_path(dir_sockets, rpc_transport):
     async with asyncio.timeout(5):
         path = dir_sockets / "socket"
         process = await asyncio.create_subprocess_exec(
-            sys.executable, Path(__file__).parent / "echo_server_socket.py", path
+            sys.executable, Path(__file__).parent / "echo_server_socket.py", path, rpc_transport
         )
         while not path.exists():
             await asyncio.sleep(0.1)
@@ -131,7 +142,7 @@ async def test_socket_multi_clients(socket_server_path):
         assert await asyncio.gather(c2.call.echo("h"), c1.call.echo("w", 0.1)) == expected
 
 
-async def test_serve_stops_an_idle_connection(dir_sockets):
+async def test_serve_stops_an_idle_connection(dir_sockets, rpc_transport):
     """A peer that leaves a connection open may not delay the shutdown of the server.
 
     The client here stays connected on purpose and never closes,
@@ -143,7 +154,7 @@ async def test_serve_stops_an_idle_connection(dir_sockets):
         socket_path = dir_sockets / "socket"
         stop_event = asyncio.Event()
         server_task = asyncio.create_task(
-            SocketRPCServer(EchoHandler("idle"), str(socket_path)).serve(stop_event)
+            SocketRPCServer(EchoHandler("idle"), str(socket_path), rpc_transport).serve(stop_event)
         )
         client = SocketAsyncRPCClient(socket_path)
         try:
@@ -225,36 +236,75 @@ async def test_client_call_after_close(socket_server_path):
             await client.call.echo("world")
 
 
-@pytest_asyncio.fixture
-async def deaf_server_path(dir_sockets):
-    """The path of a server that accepts connections and then never reads a single byte."""
-    writers = []
-    path = dir_sockets / "deaf_socket"
-    server = await asyncio.start_unix_server(lambda reader, writer: writers.append(writer), path)
+RawHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]]
+
+
+@contextlib.asynccontextmanager
+async def _raw_server(handle: RawHandler, path: Path, transport: str) -> AsyncIterator[Path]:
+    """Serve the connections at a socket path with a handler that speaks the wire format itself.
+
+    On the TCP transport, the token is read before the handler gets the connection,
+    so that the handler receives the same bytes on both transports.
+    """
+    if transport == "unix":
+        server = await asyncio.start_unix_server(handle, path)
+    else:
+
+        async def handle_after_token(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+            with contextlib.suppress(asyncio.IncompleteReadError, ConnectionError):
+                await reader.readexactly(TOKEN_SIZE)
+            await handle(reader, writer)
+
+        server = await asyncio.start_server(handle_after_token, TCP_HOST, 0)
+        port = server.sockets[0].getsockname()[1]
+        _TCPEndpoint(TCP_HOST, port, secrets.token_bytes(TOKEN_SIZE)).write(path)
     try:
         yield path
     finally:
-        for writer in writers:
-            writer.transport.abort()
         server.close()
         await server.wait_closed()
 
 
-async def _park_a_request_in_the_write_buffer(client: SocketAsyncRPCClient):
-    """Leave the request of a cancelled call above the write high-water mark of the client.
+@pytest_asyncio.fixture
+async def deaf_server_path(dir_sockets, rpc_transport):
+    """The path of a server that accepts connections and then never reads a request."""
+    writers = []
+
+    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        writers.append(writer)
+
+    async with _raw_server(handle, dir_sockets / "deaf_socket", rpc_transport) as path:
+        try:
+            yield path
+        finally:
+            # Before the server waits for its connections to close.
+            for writer in writers:
+                writer.transport.abort()
+
+
+async def _park_requests_in_the_write_buffer(client: SocketAsyncRPCClient):
+    """Leave the requests of cancelled calls above the write high-water mark of the client.
 
     This is the state that a build shutting down leaves behind
     when the terminal user interface has stopped reading the reports sent to it.
+
+    Requests are sent until the client has to buffer one,
+    because the operating system takes a varying amount into its socket buffers first.
+    On Windows 11 build 26100, as observed in the test VM, the first two requests fit there.
     """
     await client._ensure_connected()
     transport = client._writer.transport
     high_water = transport.get_write_buffer_limits()[1]
-    task = asyncio.create_task(client.call.echo(b"x" * (4 * 1024 * 1024)))
+    tasks = []
     while transport.get_write_buffer_size() <= high_water:
-        await asyncio.sleep(0)
-    task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await task
+        counter = client._counter
+        tasks.append(asyncio.create_task(client.call.echo(b"x" * (4 * 1024 * 1024))))
+        # The request is written as soon as the call has taken its call id.
+        while client._counter == counter:
+            await asyncio.sleep(0)
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 async def test_client_close_bounds_its_own_send(deaf_server_path, monkeypatch: pytest.MonkeyPatch):
@@ -267,7 +317,7 @@ async def test_client_close_bounds_its_own_send(deaf_server_path, monkeypatch: p
     monkeypatch.setattr("stepup.core.rpc.CLOSE_TIMEOUT", 0.1)
     async with asyncio.timeout(5):
         client = SocketAsyncRPCClient(deaf_server_path)
-        await _park_a_request_in_the_write_buffer(client)
+        await _park_requests_in_the_write_buffer(client)
         close_task = asyncio.create_task(client.close())
         # Shielded: a close that waits for this server waits forever and ignores a cancellation,
         # so an unshielded wait would hang the test suite instead of failing this test.
@@ -284,7 +334,7 @@ async def test_client_close_completes_when_it_is_cancelled(deaf_server_path):
     """
     async with asyncio.timeout(5):
         client = SocketAsyncRPCClient(deaf_server_path)
-        await _park_a_request_in_the_write_buffer(client)
+        await _park_requests_in_the_write_buffer(client)
         close_task = asyncio.create_task(client.close())
         # Cancel only once the close message has been handed to the write buffer,
         # which is where the close would otherwise wait for the server.
@@ -354,6 +404,9 @@ class _RecordingSocket:
     def connect(self, path):
         self.events.append(("connect", str(path)))
 
+    def setsockopt(self, level, option, value):
+        self.events.append(("setsockopt", level, option, value))
+
     def sendall(self, data: bytes):
         self.events.append(("sendall", len(data)))
         if self.sendall_error is not None:
@@ -367,6 +420,8 @@ class _FakeSocketModule:
     """Stand-in for the `socket` module, handing out one `_RecordingSocket`."""
 
     AF_UNIX = "AF_UNIX"
+    IPPROTO_TCP = "IPPROTO_TCP"
+    TCP_NODELAY = "TCP_NODELAY"
 
     def __init__(self, sock: _RecordingSocket):
         self._sock = sock
@@ -375,13 +430,24 @@ class _FakeSocketModule:
         assert family == self.AF_UNIX
         return self._sock
 
+    def create_connection(self, address, timeout) -> _RecordingSocket:
+        self._sock.events.append(("create_connection", address, timeout))
+        return self._sock
+
 
 def _recording_client(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch, sendall_error: BaseException | None = None
+    path_tmp: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sendall_error: BaseException | None = None,
+    endpoint: _TCPEndpoint | None = None,
 ) -> tuple[SocketSyncRPCClient, _RecordingSocket]:
-    """Build a synchronous client whose socket records the calls made on it."""
+    """Build a synchronous client whose socket records the calls made on it.
+
+    The socket path looks like a Unix domain socket, or like an endpoint file with `endpoint`.
+    """
     sock = _RecordingSocket(sendall_error)
     monkeypatch.setattr("stepup.core.rpc.socket", _FakeSocketModule(sock))
+    monkeypatch.setattr("stepup.core.rpc._read_endpoint", lambda path: endpoint)
     return SocketSyncRPCClient(path_tmp / "socket"), sock
 
 
@@ -397,6 +463,39 @@ def test_sync_client_times_out_the_connect(path_tmp, monkeypatch: pytest.MonkeyP
     # A later call reuses the connection and applies its own timeout.
     assert client._ensure_connected(0.5) is sock
     assert sock.events[2:] == [("settimeout", 0.5)]
+
+
+def test_sync_client_connects_over_tcp(path_tmp, monkeypatch: pytest.MonkeyPatch):
+    """Over TCP, the timeout also bounds the connect, and the token leaves before anything else.
+
+    Without `TCP_NODELAY`, the token and the first request are two small writes in a row,
+    which Nagle's algorithm holds back until the server acknowledges the token.
+    """
+    endpoint = _TCPEndpoint(TCP_HOST, 1234, bytes(TOKEN_SIZE))
+    client, sock = _recording_client(path_tmp, monkeypatch, endpoint=endpoint)
+    assert client._ensure_connected(2.5) is sock
+    assert sock.events == [
+        ("create_connection", (TCP_HOST, 1234), 2.5),
+        ("setsockopt", "IPPROTO_TCP", "TCP_NODELAY", 1),
+        ("sendall", TOKEN_SIZE),
+    ]
+    assert client._ensure_connected(0.5) is sock
+    assert sock.events[3:] == [("settimeout", 0.5)]
+
+
+def test_sync_client_closes_a_socket_that_did_not_connect(
+    path_tmp, monkeypatch: pytest.MonkeyPatch
+):
+    """A failed connect must not leave a socket behind for the next call to stumble over."""
+    endpoint = _TCPEndpoint(TCP_HOST, 1234, bytes(TOKEN_SIZE))
+    client, sock = _recording_client(
+        path_tmp, monkeypatch, sendall_error=ConnectionResetError("reset"), endpoint=endpoint
+    )
+    with pytest.raises(ConnectionResetError):
+        client._ensure_connected(2.5)
+    assert sock.events[-1] == ("close",)
+    assert client._socket is None
+    assert client._reader is None
 
 
 def test_sync_client_close_bounds_its_own_send(path_tmp, monkeypatch: pytest.MonkeyPatch):
@@ -815,7 +914,14 @@ def _not_connected() -> OSError:
     return OSError(errno.ENOTCONN, "Socket is not connected")
 
 
-@pytest.fixture(params=[_connection_reset, _not_connected], ids=["reset", "enotconn"])
+def _connection_aborted() -> OSError:
+    return ConnectionAbortedError(errno.ECONNABORTED, "Software caused connection abort")
+
+
+@pytest.fixture(
+    params=[_connection_reset, _not_connected, _connection_aborted],
+    ids=["reset", "enotconn", "aborted"],
+)
 def peer_gone(request) -> Callable[[], OSError]:
     """Make the exception of a peer that is gone, in each form that Python raises it in.
 
@@ -824,12 +930,23 @@ def peer_gone(request) -> Callable[[], OSError]:
     return request.param
 
 
+# The errors of a peer that is gone are built the way the `socket` module raises them,
+# from an errno and, as on Windows, a Windows error code.
+# Elsewhere, the Windows error code is ignored and the errno picks the same subclass.
+_WSAECONNABORTED = 10053
+_WSAECONNRESET = 10054
+_WSAENOTCONN = 10057
+
+
 @pytest.mark.parametrize(
     ("exc", "result"),
     [
         (ConnectionResetError("Connection reset by peer"), True),
         (BrokenPipeError(errno.EPIPE, "Broken pipe"), True),
         (OSError(errno.ENOTCONN, "Socket is not connected"), True),
+        (OSError(errno.ECONNRESET, "Connection reset", None, _WSAECONNRESET), True),
+        (OSError(errno.ECONNABORTED, "Connection aborted", None, _WSAECONNABORTED), True),
+        (OSError(errno.ENOTCONN, "Socket is not connected", None, _WSAENOTCONN), True),
         (OSError(errno.EBADF, "Bad file descriptor"), False),
         (TimeoutError(), False),
         (ValueError("not an OSError"), False),
@@ -837,6 +954,18 @@ def peer_gone(request) -> Callable[[], OSError]:
 )
 def test_is_peer_gone(exc: BaseException, result: bool):
     assert _is_peer_gone(exc) is result
+
+
+def test_windows_errors_of_a_gone_peer_are_connection_errors():
+    """The exceptions that Windows raises for a closed or reset TCP connection.
+
+    Their classes are what `_is_peer_gone` recognizes,
+    so this is checked separately from the classification itself.
+    """
+    reset = OSError(errno.ECONNRESET, "reset", None, _WSAECONNRESET)
+    aborted = OSError(errno.ECONNABORTED, "aborted", None, _WSAECONNABORTED)
+    assert type(reset) is ConnectionResetError
+    assert type(aborted) is ConnectionAbortedError
 
 
 class _ImmediateEOFReader:
@@ -875,7 +1004,7 @@ async def test_serve_connection_survives_reset_during_close(peer_gone):
     """
     async with asyncio.timeout(5):
         writer = _ResetOnCloseWriter(peer_gone)
-        server = SocketRPCServer(EchoHandler("x"), "unused-socket")
+        server = SocketRPCServer(EchoHandler("x"), "unused-socket", "unix")
         await server._serve_connection(_ImmediateEOFReader(), writer)
         assert writer.closed
 
@@ -937,7 +1066,7 @@ async def test_recv_stream_message_raises_other_errors():
 async def test_serve_connection_survives_reset_during_recv(peer_gone):
     """Same failure mode as above, exercised through `SocketRPCServer._serve_connection`."""
     async with asyncio.timeout(5):
-        server = SocketRPCServer(EchoHandler("x"), "unused-socket")
+        server = SocketRPCServer(EchoHandler("x"), "unused-socket", "unix")
         await server._serve_connection(_ResetReader(peer_gone), _RecordingWriter())
 
 
@@ -1200,13 +1329,12 @@ async def test_send_loop_answers_an_unpicklable_result_with_an_empty_body():
 
 
 @pytest_asyncio.fixture
-async def no_reply_server_path(dir_sockets):
+async def no_reply_server_path(dir_sockets, rpc_transport):
     """Path of a socket server that answers every call with an empty body.
 
     This is what a server sends when it cannot send the reply itself,
     e.g. because the result of the call cannot be pickled.
     """
-    path = dir_sockets / "no_reply_socket"
 
     async def handle(reader, writer):
         with contextlib.suppress(asyncio.IncompleteReadError, ConnectionError):
@@ -1221,12 +1349,8 @@ async def no_reply_server_path(dir_sockets):
                 await writer.drain()
         writer.close()
 
-    server = await asyncio.start_unix_server(handle, path)
-    try:
+    async with _raw_server(handle, dir_sockets / "no_reply_socket", rpc_transport) as path:
         yield path
-    finally:
-        server.close()
-        await server.wait_closed()
 
 
 async def test_client_call_raises_when_server_cannot_reply(no_reply_server_path):
@@ -1268,9 +1392,8 @@ async def test_client_no_reply_error_names_the_log_of_its_own_server(no_reply_se
 
 
 @pytest_asyncio.fixture
-async def vanishing_server_path(dir_sockets):
+async def vanishing_server_path(dir_sockets, rpc_transport):
     """Path of a socket server that drops the connection instead of answering the first call."""
-    path = dir_sockets / "vanishing_socket"
 
     async def handle(reader, writer):
         # Read the fixed-size header of the first request and then disappear,
@@ -1279,12 +1402,8 @@ async def vanishing_server_path(dir_sockets):
             await reader.readexactly(16)
         writer.close()
 
-    server = await asyncio.start_unix_server(handle, path)
-    try:
+    async with _raw_server(handle, dir_sockets / "vanishing_socket", rpc_transport) as path:
         yield path
-    finally:
-        server.close()
-        await server.wait_closed()
 
 
 async def test_client_call_raises_when_server_dies(vanishing_server_path):
@@ -1392,13 +1511,12 @@ async def test_client_close_survives_a_peer_gone_on_wait_closed(sc, peer_gone):
 
 
 @pytest_asyncio.fixture
-async def corrupt_server_path(dir_sockets):
+async def corrupt_server_path(dir_sockets, rpc_transport):
     """Path of a socket server whose response is not an RPC message.
 
     Its header announces a body that no response could ever have,
     like a peer speaking another protocol.
     """
-    path = dir_sockets / "corrupt_socket"
 
     async def handle(reader, writer):
         with contextlib.suppress(asyncio.IncompleteReadError, ConnectionError):
@@ -1411,12 +1529,8 @@ async def corrupt_server_path(dir_sockets):
             await writer.drain()
         writer.close()
 
-    server = await asyncio.start_unix_server(handle, path)
-    try:
+    async with _raw_server(handle, dir_sockets / "corrupt_socket", rpc_transport) as path:
         yield path
-    finally:
-        server.close()
-        await server.wait_closed()
 
 
 async def test_client_call_fails_when_the_receive_loop_fails(corrupt_server_path):
@@ -1434,3 +1548,328 @@ async def test_client_call_fails_when_the_receive_loop_fails(corrupt_server_path
             await client.call.echo("world")
         with pytest.raises(RPCError, match="exceeds the maximum"):
             await client.close()
+
+
+#
+# Transports and endpoints.
+#
+
+
+@pytest.mark.parametrize(("af_unix", "expected"), [(True, "unix"), (False, "tcp")])
+def test_select_rpc_transport_default(
+    monkeypatch: pytest.MonkeyPatch, af_unix: bool, expected: str
+):
+    """Unix domain sockets are preferred where they exist, and an empty value means unset."""
+    monkeypatch.setattr("stepup.core.rpc.af_unix_available", lambda: af_unix)
+    monkeypatch.delenv("STEPUP_RPC_TRANSPORT", raising=False)
+    assert select_rpc_transport() == expected
+    monkeypatch.setenv("STEPUP_RPC_TRANSPORT", "")
+    assert select_rpc_transport() == expected
+
+
+@pytest.mark.parametrize("transport", RPC_TRANSPORTS)
+def test_select_rpc_transport_explicit(monkeypatch: pytest.MonkeyPatch, transport: str):
+    monkeypatch.setattr("stepup.core.rpc.af_unix_available", lambda: True)
+    monkeypatch.setenv("STEPUP_RPC_TRANSPORT", transport)
+    assert select_rpc_transport() == transport
+
+
+@pytest.mark.parametrize(
+    ("af_unix", "value", "match"),
+    [
+        (False, "unix", "must be tcp on"),
+        (True, "udp", "must be unix or tcp on"),
+        (True, "TCP", "must be unix or tcp on"),
+    ],
+)
+def test_select_rpc_transport_rejects(
+    monkeypatch: pytest.MonkeyPatch, af_unix: bool, value: str, match: str
+):
+    """A transport that the platform does not have is a usage error, not a crash later on."""
+    monkeypatch.setattr("stepup.core.rpc.af_unix_available", lambda: af_unix)
+    monkeypatch.setenv("STEPUP_RPC_TRANSPORT", value)
+    with pytest.raises(ConfigError, match=match):
+        select_rpc_transport()
+
+
+def test_endpoint_round_trip(path_tmp):
+    endpoint = _TCPEndpoint(TCP_HOST, 4321, secrets.token_bytes(TOKEN_SIZE))
+    endpoint.write(path_tmp / "endpoint")
+    assert _TCPEndpoint.read(path_tmp / "endpoint") == endpoint
+    assert _read_endpoint(path_tmp / "endpoint") == endpoint
+
+
+def test_endpoint_hides_the_token_from_repr():
+    """The token may not end up in a log through the representation of the endpoint."""
+    token = bytes(range(TOKEN_SIZE))
+    assert token.hex() not in repr(_TCPEndpoint(TCP_HOST, 4321, token))
+    assert str(token) not in repr(_TCPEndpoint(TCP_HOST, 4321, token))
+
+
+def test_endpoint_file_appears_complete(path_tmp, monkeypatch: pytest.MonkeyPatch):
+    """A client must never find an endpoint file that is still being written.
+
+    The file appears at its final path in one rename, after its contents are complete,
+    so a client polling for the path either finds nothing or all of it.
+    """
+    path = path_tmp / "endpoint"
+    endpoint = _TCPEndpoint(TCP_HOST, 4321, secrets.token_bytes(TOKEN_SIZE))
+    renames = []
+
+    def checking_replace(src, dst):
+        assert not Path(dst).exists()
+        assert _TCPEndpoint.read(src) == endpoint
+        renames.append(dst)
+        os.rename(src, dst)
+
+    monkeypatch.setattr("stepup.core.rpc.os.replace", checking_replace)
+    endpoint.write(path)
+    assert renames == [path]
+    # Nothing is left behind under the temporary name.
+    assert list(path_tmp.iterdir()) == [path]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
+def test_endpoint_file_is_private(path_tmp):
+    """Only the owner may read the token, even from a directory that others can access."""
+    path = path_tmp / "endpoint"
+    _TCPEndpoint(TCP_HOST, 4321, bytes(TOKEN_SIZE)).write(path)
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "",
+        '{"host": "127.0.0.1", "po',
+        '{"host": "127.0.0.1"}',
+        '{"host": "127.0.0.1", "port": 4321, "token": "not hex"}',
+        '{"host": "127.0.0.1", "port": "x", "token": ""}',
+        "[]",
+    ],
+)
+def test_read_endpoint_rejects_an_incomplete_file(path_tmp, content: str):
+    """A file at a socket path that is not a complete endpoint file is reported as such."""
+    path = path_tmp / "endpoint"
+    path.write_text(content, encoding="utf-8")
+    with pytest.raises(RPCError, match="is not the endpoint file of an RPC server"):
+        _read_endpoint(path)
+
+
+@pytest.mark.requires_af_unix
+def test_read_endpoint_recognizes_a_unix_domain_socket(dir_sockets):
+    path = dir_sockets / "socket"
+    with socket.socket(socket.AF_UNIX) as sock:
+        sock.bind(path)
+        assert _read_endpoint(path) is None
+
+
+async def test_client_before_the_server_listens(dir_sockets):
+    """A client that comes before anything exists at the socket path finds nothing there.
+
+    This holds for both transports alike,
+    because the client cannot know the transport before the path exists.
+    """
+    path = dir_sockets / "not_yet"
+    async with asyncio.timeout(5):
+        client = SocketAsyncRPCClient(path)
+        with pytest.raises(FileNotFoundError):
+            await client.call.echo("hello")
+        await client.close()
+    with SocketSyncRPCClient(path) as client, pytest.raises(FileNotFoundError):
+        client.call.echo("hello", _rpc_timeout=5)
+
+
+async def test_client_refuses_an_incomplete_endpoint_file(dir_sockets):
+    """A client that reads an endpoint file before it is complete must not connect anywhere.
+
+    The server never lets this happen (see `test_endpoint_file_appears_complete`),
+    so this is the defense against an endpoint file written by something else.
+    Closing such a client is still allowed, because there is no connection to close.
+    """
+    path = dir_sockets / "incomplete"
+    path.write_text('{"host": "127.0.0.1", "port": 43', encoding="utf-8")
+    async with asyncio.timeout(5):
+        client = SocketAsyncRPCClient(path)
+        with pytest.raises(RPCError, match="not the endpoint file"):
+            await client.call.echo("hello")
+        await client.close()
+    with SocketSyncRPCClient(path) as client, pytest.raises(RPCError, match="not the endpoint"):
+        client.call.echo("hello", _rpc_timeout=5)
+
+
+async def test_sync_client_connects_again_after_a_failed_connect(dir_sockets, rpc_transport):
+    """A server that was not there yet for the first call can still be reached by the next one.
+
+    The calls run in a worker thread,
+    because the server is served by the event loop of this test.
+    """
+    path = dir_sockets / "socket"
+    stop_event = asyncio.Event()
+    async with asyncio.timeout(5):
+        with SocketSyncRPCClient(path) as client:
+            with pytest.raises(FileNotFoundError):
+                await asyncio.to_thread(client.call.echo, "hello", _rpc_timeout=5)
+            server = SocketRPCServer(EchoHandler("late"), path, rpc_transport)
+            server_task = asyncio.create_task(server.serve(stop_event))
+            try:
+                await wait_for_path(path, stop_event)
+                result = await asyncio.to_thread(client.call.echo, "hello", _rpc_timeout=5)
+                assert result == "late: hello"
+                await asyncio.to_thread(client.close)
+            finally:
+                stop_event.set()
+                await server_task
+
+
+@contextlib.asynccontextmanager
+async def _echo_server(path: Path, transport: str) -> AsyncIterator[SocketRPCServer]:
+    """Run an echo server in the event loop of the test, for as long as the context lasts."""
+    stop_event = asyncio.Event()
+    server = SocketRPCServer(EchoHandler("echo"), path, transport)
+    server_task = asyncio.create_task(server.serve(stop_event), name="echo-server")
+    try:
+        await wait_for_path(path, stop_event)
+        yield server
+    finally:
+        stop_event.set()
+        await server_task
+
+
+async def _read_until_closed(reader: asyncio.StreamReader) -> bytes:
+    """Read everything the peer sends until it closes or resets the connection.
+
+    A peer that closes its socket with unread data in it resets the connection,
+    which is what a server does that stops reading after a wrong token.
+    """
+    data = b""
+    with contextlib.suppress(ConnectionError):
+        while chunk := await reader.read(4096):
+            data += chunk
+    return data
+
+
+class _MakeDirOnUnpickle:
+    """A request body that creates a directory when the server unpickles it."""
+
+    def __init__(self, path: Path):
+        self.path = path
+
+    def __reduce__(self):
+        return (os.mkdir, (str(self.path),))
+
+
+async def test_server_unpickles_nothing_after_a_wrong_token(
+    dir_sockets, path_tmp, caplog: pytest.LogCaptureFixture
+):
+    """A peer without the right token cannot get the server to unpickle anything.
+
+    The request after the wrong token would create a directory if it were unpickled.
+    """
+    marker = path_tmp / "unpickled"
+    request = pickle.dumps(_MakeDirOnUnpickle(marker))
+    async with asyncio.timeout(5), _echo_server(dir_sockets / "socket", "tcp") as server:
+        endpoint = _TCPEndpoint.read(server.socket_path)
+        reader, writer = await asyncio.open_connection(endpoint.host, endpoint.port)
+        wrong_token = bytes(byte ^ 0xFF for byte in endpoint.token)
+        writer.write(wrong_token + _encode_message(1, request))
+        await writer.drain()
+        assert await _read_until_closed(reader) == b""
+        writer.close()
+        with contextlib.suppress(ConnectionError):
+            await writer.wait_closed()
+    assert not marker.exists()
+    assert "did not send the right token" in caplog.text
+
+
+async def test_client_with_a_wrong_token_gets_no_reply(dir_sockets):
+    """A client that read a wrong token loses its connection on the first call.
+
+    Windows reports the reset by the server as a reset or as an abort,
+    depending on the timing (`ConnectionResetError` or `ConnectionAbortedError`).
+    """
+    async with asyncio.timeout(5), _echo_server(dir_sockets / "socket", "tcp") as server:
+        endpoint = _TCPEndpoint.read(server.socket_path)
+        forged_path = dir_sockets / "forged"
+        _TCPEndpoint(endpoint.host, endpoint.port, bytes(TOKEN_SIZE)).write(forged_path)
+        async with SocketAsyncRPCClient(forged_path) as client:
+            with pytest.raises(ConnectionError):
+                await client.call.echo("hello")
+
+        def sync_call():
+            with SocketSyncRPCClient(forged_path) as client:
+                client.call.echo("hello", _rpc_timeout=5)
+
+        with pytest.raises(ConnectionError):
+            await asyncio.to_thread(sync_call)
+        # The server keeps serving the clients that have the right token.
+        async with SocketAsyncRPCClient(server.socket_path) as client:
+            assert await client.call.echo("hello") == "echo: hello"
+
+
+async def test_server_closes_a_connection_without_a_token(
+    dir_sockets, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    """A peer that connects and sends nothing does not hold on to the server forever."""
+    monkeypatch.setattr("stepup.core.rpc.AUTH_TIMEOUT", 0.1)
+    async with asyncio.timeout(5), _echo_server(dir_sockets / "socket", "tcp") as server:
+        endpoint = _TCPEndpoint.read(server.socket_path)
+        reader, writer = await asyncio.open_connection(endpoint.host, endpoint.port)
+        assert await _read_until_closed(reader) == b""
+        writer.close()
+        with contextlib.suppress(ConnectionError):
+            await writer.wait_closed()
+    assert "did not send the right token" in caplog.text
+
+
+async def test_stop_ends_the_wait_for_a_token(dir_sockets, caplog: pytest.LogCaptureFixture):
+    """A peer that sends no token may not delay the shutdown of the server.
+
+    The server stops well before `AUTH_TIMEOUT`,
+    and a connection that is closed by the shutdown is not reported as a suspicious one.
+    """
+    stop_event = asyncio.Event()
+    path = dir_sockets / "socket"
+    server = SocketRPCServer(EchoHandler("echo"), path, "tcp")
+    async with asyncio.timeout(5):
+        server_task = asyncio.create_task(server.serve(stop_event))
+        await wait_for_path(path, stop_event)
+        endpoint = _TCPEndpoint.read(path)
+        reader, writer = await asyncio.open_connection(endpoint.host, endpoint.port)
+        while not server._connections:
+            await asyncio.sleep(0.01)
+        stop_event.set()
+        await asyncio.wait_for(server_task, 1.0)
+        assert await _read_until_closed(reader) == b""
+        writer.close()
+        with contextlib.suppress(ConnectionError):
+            await writer.wait_closed()
+    assert "did not send the right token" not in caplog.text
+
+
+def _nodelay(sock) -> bool:
+    return sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) != 0
+
+
+async def test_tcp_connections_send_without_delay(dir_sockets):
+    """Both ends of every TCP connection disable Nagle's algorithm.
+
+    On Windows, `asyncio` leaves it enabled on the sockets that a server accepts,
+    so the server side of this test only fails there when the server does not disable it.
+    """
+    async with asyncio.timeout(5), _echo_server(dir_sockets / "socket", "tcp") as server:
+        async_client = SocketAsyncRPCClient(server.socket_path)
+        sync_client = SocketSyncRPCClient(server.socket_path)
+        try:
+            assert await async_client.call.echo("hello") == "echo: hello"
+            assert await asyncio.to_thread(sync_client.call.echo, "hi", _rpc_timeout=5) == (
+                "echo: hi"
+            )
+            assert _nodelay(async_client._writer.get_extra_info("socket"))
+            assert _nodelay(sync_client._socket)
+            server_sockets = [c.writer.get_extra_info("socket") for c in server._connections]
+            assert len(server_sockets) == 2
+            assert all(_nodelay(sock) for sock in server_sockets)
+        finally:
+            await async_client.close()
+            await asyncio.to_thread(sync_client.close)

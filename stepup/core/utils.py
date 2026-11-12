@@ -286,6 +286,7 @@ def query_director_log(director_log: Path) -> tuple[Path | None, int | None, str
     -------
     socket_path
         The socket path advertised by the director if it exists on disk, and `None` otherwise.
+        It is a Unix domain socket or an endpoint file, see `stepup.core.rpc`.
     pid
         The pid advertised by the director,
         or `None` when the log holds no usable `PID` line.

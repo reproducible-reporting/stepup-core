@@ -193,6 +193,21 @@ and cannot be configured through config files or command-line options.
 :   The root directory containing the top-level `plan.py` file.
     If not set, StepUp will look for this file in the current directory.
 
+`STEPUP_RPC_TRANSPORT`
+
+:   The kind of socket through which `stepup build`, the director, the steps
+    and the other `stepup` subcommands talk to each other.
+    This is a setting for developers of StepUp, to test both transports on Linux and macOS.
+    End users can leave it unset.
+    With `unix`, the default where the platform supports them, Unix domain sockets are used.
+    With `tcp`, the default and the only accepted value on Windows,
+    the director and `stepup build` listen on TCP sockets on the loopback interface (`127.0.0.1`).
+    Every local user can connect to such a socket,
+    so a client must first send a random token,
+    which it reads from a file that only the user running `stepup build` can access.
+    Only `stepup build` reads this variable:
+    the steps and the other subcommands find out which transport is in use by themselves.
+
 `STEPUP_SYNC_RPC_TIMEOUT`
 
 :   The number of seconds a synchronous RPC client waits for a response from the director,

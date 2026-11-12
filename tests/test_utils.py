@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 import pytest
+from core_common import create_socket_path
 
 from stepup.core.path import Path
 from stepup.core.utils import (
@@ -181,9 +182,9 @@ def test_query_director_log_unopenable(path_tmp: Path):
     assert "could not be read" in message
 
 
-def test_query_director_log_live_socket(path_tmp: Path):
-    socket_path = path_tmp / "director"
-    socket_path.touch()
+def test_query_director_log_live_socket(path_tmp: Path, dir_sockets: Path, rpc_transport: str):
+    socket_path = dir_sockets / "director"
+    create_socket_path(socket_path, rpc_transport)
     path_log = path_tmp / "director.log"
     path_log.write_text(f"SOCKET {socket_path}\nPID 12345\nLOG_LEVEL INFO\n", encoding="utf-8")
     assert query_director_log(path_log) == (socket_path, 12345, "")
@@ -200,11 +201,13 @@ def test_query_director_log_stale_socket(path_tmp: Path):
     assert "does not exist" in message
 
 
-def test_query_director_log_socket_path_with_space(path_tmp: Path):
+def test_query_director_log_socket_path_with_space(
+    path_tmp: Path, dir_sockets: Path, rpc_transport: str
+):
     """A socket path with a space in it must not be truncated."""
-    socket_path = path_tmp / "with space" / "director"
+    socket_path = dir_sockets / "with space" / "director"
     socket_path.parent.makedirs_p()
-    socket_path.touch()
+    create_socket_path(socket_path, rpc_transport)
     path_log = path_tmp / "director.log"
     path_log.write_text(f"SOCKET {socket_path}\nPID 12345\n", encoding="utf-8")
     assert query_director_log(path_log)[0] == socket_path

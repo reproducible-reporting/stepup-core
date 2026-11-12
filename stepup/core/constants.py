@@ -65,6 +65,7 @@ CORE_ENV_VARS = frozenset(
         "STEPUP_MAX_OUTPUT_SIZE",
         "STEPUP_PATH_FILTER",
         "STEPUP_ROOT",
+        "STEPUP_RPC_TRANSPORT",
         "STEPUP_SYNC_RPC_TIMEOUT",
         "STEPUP_WATCHER",
     }
