@@ -252,6 +252,7 @@ async def _stop_process_group(pgid: int):
     or when it still is not empty `EXAMPLE_STOP_GRACE` seconds after `SIGKILL`.
     That only happens when zombies in the group are not reaped by their parents,
     which no signal can change.
+    On macOS, this returns as soon as only zombies are left in the group.
 
     Parameters
     ----------
@@ -267,7 +268,9 @@ async def _stop_process_group(pgid: int):
             while loop.time() < deadline:
                 await asyncio.sleep(0.1)
                 os.killpg(pgid, 0)
-        except ProcessLookupError:
+        # macOS raises `PermissionError` for a group of zombies,
+        # see `_signal_process_group` in `stepup.core.run`.
+        except (ProcessLookupError, PermissionError):
             return
 
 

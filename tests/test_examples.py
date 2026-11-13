@@ -448,6 +448,7 @@ def write_harness_example(path_tmp: Path, main: str) -> Path:
 async def assert_nothing_left(workdir: Path):
     """Check that the process group of `main.sh` is empty and that its step has stopped.
 
+    On macOS, a group with only zombies left counts as empty.
     Whatever is still running after `PROCESS_EXIT_WAIT` seconds is killed,
     so that a failing test does not leave it behind either.
 
@@ -474,7 +475,9 @@ async def assert_nothing_left(workdir: Path):
                     send(pid, signal.SIGKILL)
                     break
                 await asyncio.sleep(0.1)
-        except ProcessLookupError:
+        # `os.killpg` raises `PermissionError` on macOS for a group of zombies,
+        # see `_signal_process_group` in `stepup.core.run`.
+        except (ProcessLookupError, PermissionError):
             pass
     assert not survivors, f"Still running: {', '.join(survivors)}"
 
