@@ -55,9 +55,12 @@ a Unix domain socket where `socket.AF_UNIX` exists (the default),
 or a TCP socket on `127.0.0.1` (the default and only choice on Windows).
 Either way, a server is known by a *socket path*:
 the Unix domain socket itself, or an endpoint file holding the port and a random token.
-The endpoint file appears atomically once the server listens,
+Either one appears atomically once the server listens,
 so "the path exists" means "the server accepts connections" for both transports,
 which is what the readiness check of the TUI and `query_director_log` rely on.
+A Unix domain socket needs a rename for this (`SocketRPCServer._listen_unix`),
+because `bind()` creates the socket file before `listen()`,
+and a client that connects in between is refused.
 Clients (steps, `stepup` subcommands, the director's reporter client)
 tell the transports apart by the file type at the socket path,
 so they need no setting, and `STEPUP_DIRECTOR_SOCKET` and the `SOCKET` line of the

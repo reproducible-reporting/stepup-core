@@ -97,6 +97,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   that the director is still using, which could happen at the end of a build.
 - On macOS, interrupting, suspending or resuming a step that has just exited
   no longer fails with a `PermissionError` in the director.
+- A `stepup` command that contacts a director that is still starting up,
+  e.g. `stepup wait` right after `stepup build &`,
+  no longer fails now and then with `Connection refused`.
 
 ## [4.0.3][] - 2026-09-19 {: #v4.0.3 }
 

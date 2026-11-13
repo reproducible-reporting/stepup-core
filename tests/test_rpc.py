@@ -1680,6 +1680,31 @@ async def test_client_before_the_server_listens(dir_sockets):
         client.call.echo("hello", _rpc_timeout=5)
 
 
+async def test_socket_path_appears_once_the_server_listens(
+    dir_sockets, rpc_transport, monkeypatch: pytest.MonkeyPatch
+):
+    """A client that finds something at the socket path is never refused.
+
+    A Unix domain socket exists as soon as it is bound, which is before it listens,
+    so this is checked at the moment the server starts to listen.
+    """
+    path = dir_sockets / "socket"
+    exists_at_listen = []
+    listen = socket.socket.listen
+
+    def checking_listen(sock: socket.socket, *args):
+        exists_at_listen.append(path.exists())
+        return listen(sock, *args)
+
+    monkeypatch.setattr(socket.socket, "listen", checking_listen)
+    async with asyncio.timeout(5), _echo_server(path, rpc_transport) as server:
+        assert exists_at_listen == [False]
+        # Nothing is left behind under a temporary name.
+        assert list(dir_sockets.iterdir()) == [path]
+        async with SocketAsyncRPCClient(server.socket_path) as client:
+            assert await client.call.echo("hello") == "echo: hello"
+
+
 async def test_client_refuses_an_incomplete_endpoint_file(dir_sockets):
     """A client that reads an endpoint file before it is complete must not connect anywhere.
 

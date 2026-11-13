@@ -188,8 +188,10 @@ def _decode_header(header: bytes) -> tuple[int, int]:
 # - On a Unix domain socket, the socket path is the socket itself.
 # - On a TCP socket, the socket path is an endpoint file,
 #   which holds the address of the server and the token that a client sends before anything else.
-#   The server writes the file once it listens, see `_TCPEndpoint.write`,
-#   so that a file that exists means a server that accepts connections, as with a socket.
+#
+# Either way, the server creates the socket path only once it listens,
+# so that a path that exists means a server that accepts connections,
+# see `SocketRPCServer._listen`.
 #
 # A client tells the two apart by the type of file at the socket path,
 # so that only the server needs to know which transport is in use.
@@ -1046,9 +1048,9 @@ class SocketRPCServer:
         await _wait_closed_compat(server)
 
     async def _listen(self) -> asyncio.Server:
-        """Start accepting connections, and only then create the endpoint file, if any."""
+        """Start accepting connections, and only then create the socket path."""
         if self.transport == "unix":
-            return await asyncio.start_unix_server(self._serve_connection, self.socket_path)
+            return await self._listen_unix()
         self._token = secrets.token_bytes(TOKEN_SIZE)
         server = await asyncio.start_server(self._serve_connection, TCP_HOST, 0)
         try:
@@ -1056,6 +1058,28 @@ class SocketRPCServer:
             _TCPEndpoint(TCP_HOST, port, self._token).write(self.socket_path)
         except BaseException:
             server.close()
+            raise
+        return server
+
+    async def _listen_unix(self) -> asyncio.Server:
+        """Listen on a Unix domain socket that appears at the socket path once it listens."""
+        # `bind()` creates the socket file, but a client that connects before `listen()` is refused.
+        # The socket is therefore bound under a temporary name in the same directory,
+        # and renamed to the socket path once it listens.
+        # That name is kept short, because it is subject to the length limit of socket paths.
+        path_tmp = Path(f"{self.socket_path}.tmp")
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server = None
+        try:
+            sock.bind(path_tmp)
+            server = await asyncio.start_unix_server(self._serve_connection, sock=sock)
+            os.replace(path_tmp, self.socket_path)
+        except BaseException:
+            if server is None:
+                sock.close()
+            else:
+                server.close()
+            path_tmp.remove_p()
             raise
         return server
 
