@@ -78,3 +78,8 @@ jobs:
         run: |
           cd docs
           STEPUP_DEBUG=1 STEPUP_SYNC_RPC_TIMEOUT=10 stepup build -j 1.0
+      # The build only reports the lines of the director log that betray a problem,
+      # without the tracebacks that follow them.
+      - name: Show the director log
+        if: failure()
+        run: cat docs/.stepup/director.log || true
