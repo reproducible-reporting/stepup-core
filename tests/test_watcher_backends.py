@@ -182,13 +182,17 @@ async def test_dir_removed_and_recreated(backend):
     os.mkdir("sub")
     write("sub/a.txt")
     await watch(backend, "sub")
+    await settle(backend, "sub/a.txt")
     shutil.rmtree("sub")
+    # The marker shows that the removal has been reported,
+    # because changes are reported in the order in which they happened.
+    write("marker.txt")
     # asyncinotify reports the removed file and directory as deleted paths,
     # because inotify drops the watch of the directory before its parent reports the removal.
     # watchfiles reports the removed directory, and the removed file only if it came earlier.
     seen = await check(
         backend,
-        set(),
+        {(Change.UPDATED, "marker.txt")},
         frozenset(
             [
                 (Change.DELETED, "sub/a.txt"),
@@ -208,6 +212,7 @@ async def test_dir_moved_away_and_back(backend):
     os.mkdir("data")
     write("data/a.txt")
     await watch(backend, "data")
+    await settle(backend, "data/a.txt")
     os.rename("data", "other")
     await check(backend, {(Change.DELETED_PARENT, "data")}, frozenset([(Change.DELETED, "data")]))
     # Changes in the moved directory are not reported under its old path.
@@ -307,6 +312,7 @@ async def test_parent_of_watched_dir_renamed(backend):
     os.makedirs("top/sub")
     write("top/sub/a.txt")
     await watch(backend, "top/sub")
+    await settle(backend, "top/sub/a.txt")
     os.rename("top", "moved")
     await check(backend, {(Change.DELETED_PARENT, "top")}, frozenset([(Change.DELETED, "top")]))
     os.rename("moved", "top")
@@ -324,9 +330,10 @@ async def test_dir_outside_working_dir(backend):
     write("b.txt")
     await check(backend, {(Change.UPDATED, "../outside/sub/a.txt"), (Change.UPDATED, "b.txt")})
     shutil.rmtree("../outside/sub")
+    write("marker.txt")
     seen = await check(
         backend,
-        set(),
+        {(Change.UPDATED, "marker.txt")},
         frozenset(
             [
                 (Change.DELETED, "../outside/sub/a.txt"),
