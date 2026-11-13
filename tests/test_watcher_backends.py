@@ -103,6 +103,27 @@ async def check(backend, expected: set, optional: frozenset = frozenset()) -> li
     return seen
 
 
+async def settle(backend, *existing: str):
+    """Wait until the backend has reported what happened before its watches were started.
+
+    FSEvents (macOS) may report the creation of files shortly before a watch was started,
+    see `WatchfilesBackend`.
+
+    Parameters
+    ----------
+    backend
+        The backend whose watches have just been started.
+    existing
+        The files created before the watches, which may be reported once more.
+    """
+    write("settle.txt")
+    await check(
+        backend,
+        {(Change.UPDATED, "settle.txt")},
+        frozenset((Change.UPDATED, path) for path in existing),
+    )
+
+
 def write(path: str, content: str = "x"):
     with open(path, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(content)
@@ -228,6 +249,7 @@ async def test_only_changed_file_reported(backend):
     write("sub/a.txt")
     write("sub/b.txt")
     await watch(backend, "sub")
+    await settle(backend, "sub/a.txt", "sub/b.txt")
     write("sub/a.txt", "changed")
     await check(backend, {(Change.UPDATED, "sub/a.txt")})
     write("sub/c.txt")
@@ -242,10 +264,29 @@ async def test_modified_dir(backend):
     os.mkdir("sub")
     write("sub/a.txt")
     await watch(backend, "sub")
+    await settle(backend, "sub/a.txt")
     # Windows also reports a directory as modified when its entries change, at a time of its own.
     os.utime("sub")
     write("marker.txt")
     await check(backend, {(Change.UPDATED, "marker.txt")})
+
+
+async def test_dir_replaced_by_rename(backend):
+    if sys.platform == "win32":
+        pytest.skip("Windows does not rename a directory over another one.")
+    os.mkdir("sub")
+    os.mkdir("new")
+    write("new/a.txt")
+    await watch(backend, "sub")
+    await settle(backend)
+    os.rename("new", "sub")
+    await check(
+        backend,
+        {(Change.UPDATED, "sub/a.txt")},
+        frozenset([(Change.DELETED_PARENT, "sub"), (Change.DELETED, "sub")]),
+    )
+    write("sub/b.txt")
+    await check(backend, {(Change.UPDATED, "sub/b.txt")})
 
 
 async def test_contents_of_unwatched_subdir(backend):

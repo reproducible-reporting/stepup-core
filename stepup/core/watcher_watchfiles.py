@@ -94,8 +94,9 @@ def select_recursive_watch() -> bool:
 class WatchfilesBackend(WatcherBackend):
     """Interface between a `Watcher` instance and the `watchfiles` library.
 
-    It behaves as described for `WatcherBackend`, except for two details,
-    which are due to watchfiles handing over changes as an unordered set (as of watchfiles 1.3.0):
+    It behaves as described for `WatcherBackend`, except for three details.
+    The first two are due to watchfiles handing over changes as an unordered set
+    (as of watchfiles 1.3.0):
 
     - The changes observed within one batch (about 10 milliseconds)
       are reported in a fixed order instead of the order in which they happened.
@@ -103,6 +104,9 @@ class WatchfilesBackend(WatcherBackend):
       the current state of the path decides what is reported.
       For example, a file that was created and removed within one batch
       is only reported as removed.
+    - On macOS, a file created shortly before its directory is watched may be reported as updated,
+      because FSEvents also passes on changes from shortly before a watch was started
+      (observed on macOS 26.7 with watchfiles 1.3.0).
 
     watchfiles cannot add paths to a running watcher (as of watchfiles 1.3.0).
     Each time new directories must be watched, a new generation is created to watch all of them.
@@ -141,6 +145,9 @@ class WatchfilesBackend(WatcherBackend):
     watchfiles does not tell whether a removed path was a directory,
     so it is looked up here.
     """
+
+    _identities: dict[Path, tuple[int, int] | None] = attrs.field(init=False, factory=dict)
+    """The identity of each watched directory when it was last listed, see `_dir_identity`."""
 
     _pending: dict[Path, bool] = attrs.field(init=False, factory=dict)
     """The directories to watch in the next generation.
@@ -466,14 +473,28 @@ class WatchfilesBackend(WatcherBackend):
         A modified directory is left alone, because its own watch reports what changed in it.
         Windows reports a directory as modified whenever one of its entries changes
         (observed on Windows 11 24H2 with watchfiles 1.3.0).
+
+        A directory reported as created is only listed again when it has been replaced,
+        because FSEvents (macOS) also reports a directory as created
+        when that happened shortly before the watch was started,
+        or when it changes some time after its creation, e.g. in modification time
+        (observed on macOS 26.7 with watchfiles 1.3.0).
         """
         if _DELETED in codes and self._watched_in(path, number):
             self._lose_dir(path)
         if path.is_dir():
             if self.watches[path] is None:
                 self._schedule_tree(path)
-            elif _ADDED in codes:
+            elif _ADDED in codes and self._is_replaced(path):
                 self._rescan(path)
+
+    def _is_replaced(self, path: Path) -> bool:
+        """Return whether a watched directory is another one than when it was last listed.
+
+        A directory whose identity is unknown, before or now, counts as replaced.
+        """
+        identity = self._identities.get(path)
+        return identity is None or identity != _dir_identity(path)
 
     def _entry_changed(self, path: Path, codes: set[int]):
         """Handle the changes of a path that is not a watched directory.
@@ -515,6 +536,7 @@ class WatchfilesBackend(WatcherBackend):
             if other == path or _is_under(other, path):
                 self.watches[other] = None
                 self.subdirs.pop(other, None)
+                self._identities.pop(other, None)
         self.change_queue.put_nowait((Change.DELETED_PARENT, path))
 
     def _is_scheduled(self, path: Path) -> bool:
@@ -552,6 +574,7 @@ class WatchfilesBackend(WatcherBackend):
     def _apply_scan(self, path: Path, scan: "_DirScan", *, report_files: bool):
         """Record the entries of a watched directory, and report its files if requested."""
         self.subdirs[path] = scan.plain_dirs
+        self._identities[path] = scan.identity
         if report_files:
             for name in scan.files:
                 self.change_queue.put_nowait((Change.UPDATED, (path / name).normpath()))
@@ -659,6 +682,9 @@ class _DirScan:
 
     plain_dirs: set[str] = attrs.field()
     """The names of the directories that are not symbolic links."""
+
+    identity: tuple[int, int] | None = attrs.field()
+    """The identity of the directory itself, see `_dir_identity`."""
 
 
 def _create_generation(
@@ -792,6 +818,9 @@ def _scan_dir(path: Path) -> _DirScan | None:
     files = []
     dirs = []
     plain_dirs = set()
+    # When the directory is replaced during the scan,
+    # the old identity makes the next change of the directory list it again.
+    identity = _dir_identity(path)
     try:
         with os.scandir(path) as entries:
             for entry in entries:
@@ -803,7 +832,25 @@ def _scan_dir(path: Path) -> _DirScan | None:
                     files.append(entry.name)
     except (FileNotFoundError, NotADirectoryError):
         return None
-    return _DirScan(sorted(files), sorted(dirs), plain_dirs)
+    return _DirScan(sorted(files), sorted(dirs), plain_dirs, identity)
+
+
+def _dir_identity(path: Path) -> tuple[int, int] | None:
+    """Return the device and inode numbers of a directory, following symbolic links.
+
+    Returns
+    -------
+    identity
+        The numbers, or `None` when the directory is missing
+        or when the file system has no inode numbers.
+    """
+    try:
+        info = os.stat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    if info.st_ino == 0:
+        return None
+    return info.st_dev, info.st_ino
 
 
 def _lstat_mode(path: str) -> int | None:

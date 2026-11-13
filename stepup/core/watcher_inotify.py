@@ -80,6 +80,10 @@ class InotifyBackend(WatcherBackend):
     async def change_loop(self):
         """Collect events from inotify and translate them into items for the change_queue."""
         async for event in iter_until_stopped(self.inotify.get, self.stop_event):
+            watch = event.watch
+            if watch is not None and self.watches.get(Path(watch.path)) is not watch:
+                # The watch belongs to a directory that has been removed or replaced since.
+                continue
             # Mark watches that inotify reports as removed
             path = Path(event.path)
             if event.mask & Mask.IGNORED:
@@ -109,10 +113,10 @@ class InotifyBackend(WatcherBackend):
                         path = paths.pop(0)
                         if path not in self.watches:
                             continue
-                        if self.watches[path] is None:
-                            # When a directory is added that was once watched,
-                            # recreate the watch right away.
-                            self._install_watch(path)
+                        # A watch follows its directory, not its path,
+                        # so a directory that replaced a watched one needs a watch of its own.
+                        # Watching the same directory again returns the watch it already has.
+                        self._install_watch(path)
                         # Events of files created in this directory may have been missed.
                         for sub_path in path.iterdir():
                             if sub_path.is_file():
