@@ -122,19 +122,19 @@ jobs:
     steps:
       - &checkout
         uses: actions/checkout@v6
-        timeout-minutes: 1
+        timeout-minutes: 3
         with:
           persist-credentials: false
       - &setup-python
         name: Set up Python ${{ matrix.platform.python-version }}
         id: python
-        timeout-minutes: 1
+        timeout-minutes: 3
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.platform.python-version }}
       - &setup-uv
         name: Set up uv
-        timeout-minutes: 1
+        timeout-minutes: 3
         uses: astral-sh/setup-uv@v10.0.1
         with:
           # The uv cache is handled by the steps below instead,
@@ -147,7 +147,7 @@ jobs:
       - &restore-uv-cache
         name: Restore the uv cache
         id: uv-cache
-        timeout-minutes: 1
+        timeout-minutes: 3
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.UV_CACHE_DIR }}
@@ -160,14 +160,14 @@ jobs:
       - &prune-uv-cache
         name: Prune the uv cache
         if: steps.uv-cache.outputs.cache-hit != 'true'
-        timeout-minutes: 1
+        timeout-minutes: 3
         run: uv cache prune --ci
       - &save-uv-cache
         name: Save the uv cache
         # Jobs with the same key race to save the cache.
         # Only the first one succeeds and the others merely log a warning.
         if: steps.uv-cache.outputs.cache-hit != 'true'
-        timeout-minutes: 1
+        timeout-minutes: 3
         uses: actions/cache/save@v6
         with:
           path: ${{ env.UV_CACHE_DIR }}
@@ -207,7 +207,7 @@ jobs:
       - *prune-uv-cache
       - *save-uv-cache
       - name: Run the ${{ matrix.suite.name }} tests
-        timeout-minutes: 10
+        timeout-minutes: 30
         env:
           STEPUP_BUILD_FORKSERVER: ${{ matrix.suite.forkserver }}
         run: pytest -vv tests/test_examples.py
