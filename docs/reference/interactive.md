@@ -100,6 +100,31 @@ Two caveats:
   A few calls waive that timeout because the director answers them only when the workflow
   is ready for it, `amend()` most notably, and those wait for as long as the suspension lasts.
 
+## How Watch Mode Observes Changes
+
+With `--watch` or `--watch-first`, StepUp asks the operating system to report changes
+in the directories that hold files of the workflow.
+On Linux, it does so with inotify.
+On macOS and Windows, it uses the [watchfiles](https://pypi.org/project/watchfiles/) library,
+which comes with a few limitations:
+
+- Changes are collected in batches of about 10 milliseconds.
+  The changes within one batch are reported in a fixed order,
+  which may differ from the order in which they happened.
+- When the operating system has to drop changes because too many happen at once,
+  StepUp is not told that anything is missing.
+  This was observed with watchfiles 1.3.0, which does not pass on such a notice.
+  If StepUp seems to have missed changes after a burst of activity,
+  e.g. after switching branches in a large repository,
+  restart `stepup build`, which checks all files of the workflow when it starts.
+- On Windows, a single watch on the directory in which StepUp runs covers everything below it,
+  so you can rename and remove directories of the project while StepUp is watching.
+  Two exceptions remain, because Windows does not rename a directory
+  while a program keeps a directory below it open:
+  the parent directories of the directory in which StepUp runs,
+  and the parent directories of a watched directory outside of it,
+  e.g. `../shared` when the workflow uses `../shared/data/table.csv`.
+
 ## Interacting With a Background StepUp Process
 
 You can run StepUp in the background in several ways:

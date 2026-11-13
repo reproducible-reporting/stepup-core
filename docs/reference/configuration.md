@@ -239,6 +239,18 @@ and cannot be configured through config files or command-line options.
     On other platforms, `watchfiles` is the default and the only accepted value.
     Without watch mode, this variable is ignored.
 
+`STEPUP_WATCHER_RECURSIVE`
+
+:   How the `watchfiles` library watches the directories below the one in which StepUp runs:
+    `1` for a single recursive watch, `0` for a separate watch on every directory of interest.
+    This is a setting for developers of StepUp, to test both ways on every platform.
+    End users can leave it unset.
+    The default is `1` on Windows,
+    where a watch on a directory makes it impossible to rename its parent directories,
+    and `0` on other platforms.
+    Directories elsewhere always get a watch of their own.
+    This variable is ignored without watch mode and when `STEPUP_WATCHER` is `asyncinotify`.
+
 ## Settings for All Subcommands
 
 Each entry below lists the config file key, environment variable, and command-line option

@@ -9,13 +9,17 @@ import sys
 
 import pytest
 
-from stepup.core import watcher
+from stepup.core import watcher, watcher_watchfiles
 from stepup.core.enums import Change
 from stepup.core.exceptions import ConfigError
 from stepup.core.path import Path
 from stepup.core.pytest import sort_change_runs
 from stepup.core.watcher import _import_backend_class, select_watcher_backend
-from stepup.core.watcher_watchfiles import WatchfilesBackend
+from stepup.core.watcher_watchfiles import (
+    WatchfilesBackend,
+    _divide_dirs,
+    select_recursive_watch,
+)
 
 SETTLE_TIME = 0.2
 """How long to wait for changes that should not be reported, in seconds."""
@@ -28,15 +32,31 @@ SETTLE_TIME = 0.2
             marks=pytest.mark.skipif(sys.platform != "linux", reason="Linux only"),
         ),
         "watchfiles",
+        "watchfiles-recursive",
     ]
 )
-async def backend(request, tmp_path, monkeypatch):
-    """Provide a running backend that watches directories relative to an empty directory."""
-    monkeypatch.chdir(tmp_path)
-    pytest.importorskip(request.param)
-    backend_class = _import_backend_class(request.param)
-    async with backend_class(dir_queue=asyncio.Queue()) as result:
+async def backend(request, workdir):
+    """Provide a running backend, of every kind, that watches directories relative to `workdir`."""
+    library, _, mode = request.param.partition("-")
+    pytest.importorskip(library)
+    backend_class = _import_backend_class(library)
+    kwargs = {"recursive": mode == "recursive"} if library == "watchfiles" else {}
+    async with backend_class(dir_queue=asyncio.Queue(), **kwargs) as result:
         yield result
+
+
+@pytest.fixture
+def workdir(tmp_path, monkeypatch) -> Path:
+    """Make an empty directory the working directory, with room for directories next to it."""
+    result = Path(tmp_path) / "work"
+    result.mkdir()
+    monkeypatch.chdir(result)
+    return result
+
+
+def locks_parents(backend) -> bool:
+    """Return whether the watches of the backend keep Windows from renaming parent directories."""
+    return sys.platform == "win32" and not backend.recursive
 
 
 async def watch(backend, *paths: str):
@@ -203,6 +223,236 @@ async def test_no_changes_lost_while_adding_watches(backend):
     await check(backend, expected)
 
 
+async def test_only_changed_file_reported(backend):
+    os.mkdir("sub")
+    write("sub/a.txt")
+    write("sub/b.txt")
+    await watch(backend, "sub")
+    write("sub/a.txt", "changed")
+    await check(backend, {(Change.UPDATED, "sub/a.txt")})
+    write("sub/c.txt")
+    await check(backend, {(Change.UPDATED, "sub/c.txt")})
+    os.remove("sub/b.txt")
+    await check(backend, {(Change.DELETED, "sub/b.txt")})
+
+
+async def test_modified_dir(backend):
+    if not isinstance(backend, WatchfilesBackend):
+        pytest.skip("The asyncinotify backend reports the files of a directory that has changed.")
+    os.mkdir("sub")
+    write("sub/a.txt")
+    await watch(backend, "sub")
+    # Windows also reports a directory as modified when its entries change, at a time of its own.
+    os.utime("sub")
+    write("marker.txt")
+    await check(backend, {(Change.UPDATED, "marker.txt")})
+
+
+async def test_contents_of_unwatched_subdir(backend):
+    os.makedirs("other/deep")
+    await watch(backend, ".")
+    write("other/a.txt")
+    write("other/deep/b.txt")
+    os.mkdir("other/new")
+    write("other/new/c.txt")
+    os.remove("other/a.txt")
+    write("marker.txt")
+    await check(backend, {(Change.UPDATED, "marker.txt")})
+
+
+async def test_parent_of_watched_dir_renamed(backend):
+    if locks_parents(backend):
+        pytest.skip("Windows does not rename a directory with a watched directory in it.")
+    os.makedirs("top/sub")
+    write("top/sub/a.txt")
+    await watch(backend, "top/sub")
+    os.rename("top", "moved")
+    await check(backend, {(Change.DELETED_PARENT, "top")}, frozenset([(Change.DELETED, "top")]))
+    os.rename("moved", "top")
+    await check(backend, {(Change.UPDATED, "top/sub/a.txt")})
+    await watch(backend)
+    write("top/sub/b.txt")
+    await check(backend, {(Change.UPDATED, "top/sub/b.txt")})
+
+
+async def test_dir_outside_working_dir(backend):
+    os.makedirs("../outside/sub")
+    write("../outside/sub/a.txt")
+    await watch(backend, ".", "../outside/sub")
+    write("../outside/sub/a.txt", "changed")
+    write("b.txt")
+    await check(backend, {(Change.UPDATED, "../outside/sub/a.txt"), (Change.UPDATED, "b.txt")})
+    shutil.rmtree("../outside/sub")
+    seen = await check(
+        backend,
+        set(),
+        frozenset(
+            [
+                (Change.DELETED, "../outside/sub/a.txt"),
+                (Change.DELETED, "../outside/sub"),
+                (Change.DELETED_PARENT, "../outside/sub"),
+            ]
+        ),
+    )
+    assert (Change.DELETED, "../outside/sub/a.txt") in seen or (
+        Change.DELETED_PARENT,
+        "../outside/sub",
+    ) in seen
+    os.mkdir("../outside/sub")
+    write("../outside/sub/c.txt")
+    await check(backend, {(Change.UPDATED, "../outside/sub/c.txt")})
+    write("d.txt")
+    await check(backend, {(Change.UPDATED, "d.txt")})
+
+
+def symlink_dir(target: str, link: str):
+    """Create a symbolic link to a directory, or skip the test when that is not allowed."""
+    try:
+        # Windows does not resolve a link whose target is written with forward slashes.
+        os.symlink(os.path.normpath(target), link, target_is_directory=True)
+    except OSError:
+        pytest.skip("Symbolic links cannot be created.")
+
+
+async def test_symlink_to_dir_outside_working_dir(backend):
+    os.mkdir("../outside")
+    symlink_dir("../outside", "link")
+    await watch(backend, "link")
+    write("link/a.txt")
+    await check(backend, {(Change.UPDATED, "link/a.txt")})
+    write("../outside/a.txt", "changed")
+    await check(backend, {(Change.UPDATED, "link/a.txt")})
+
+
+async def test_symlink_to_watched_dir(backend):
+    if not isinstance(backend, WatchfilesBackend):
+        pytest.skip("inotify has one watch per directory, whatever the number of paths to it.")
+    os.mkdir("real")
+    symlink_dir("real", "link")
+    await watch(backend, "real", "link")
+    write("real/a.txt")
+    await check(backend, {(Change.UPDATED, "real/a.txt"), (Change.UPDATED, "link/a.txt")})
+
+
+@pytest.fixture
+def notify_calls(monkeypatch) -> list[dict]:
+    """Record the arguments of every `RustNotify` instance that is created."""
+    pytest.importorskip("watchfiles")
+    rust_notify = watcher_watchfiles._import_rust_notify()
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        return rust_notify(**kwargs)
+
+    monkeypatch.setattr(watcher_watchfiles, "_import_rust_notify", lambda: create)
+    return calls
+
+
+async def test_recursive_watch_is_kept(workdir, notify_calls):
+    async with WatchfilesBackend(dir_queue=asyncio.Queue(), recursive=True) as backend:
+        os.mkdir("old")
+        await watch(backend, "old")
+        os.makedirs("new/deeper")
+        await watch(backend, "new/deeper")
+        write("new/deeper/a.txt")
+        await check(backend, {(Change.UPDATED, "new/deeper/a.txt")})
+        shutil.rmtree("new")
+        await check(
+            backend,
+            {(Change.DELETED_PARENT, "new")},
+            frozenset(
+                [(Change.DELETED, "new/deeper/a.txt"), (Change.DELETED_PARENT, "new/deeper")]
+            ),
+        )
+        os.makedirs("new/deeper")
+        write("new/deeper/b.txt")
+        await check(backend, {(Change.UPDATED, "new/deeper/b.txt")})
+        assert [(call["watch_paths"], call["recursive"]) for call in notify_calls] == [
+            ([workdir.realpath()], True)
+        ]
+        # A directory elsewhere gets a watch of its own, next to the recursive one.
+        os.mkdir("../outside")
+        await watch(backend, "../outside")
+        write("../outside/c.txt")
+        write("old/d.txt")
+        await check(backend, {(Change.UPDATED, "../outside/c.txt"), (Change.UPDATED, "old/d.txt")})
+        assert [(call["watch_paths"], call["recursive"]) for call in notify_calls[1:]] == [
+            ([(workdir.parent / "outside").realpath()], False)
+        ]
+
+
+async def test_separate_watches_are_replaced(workdir, notify_calls):
+    async with WatchfilesBackend(dir_queue=asyncio.Queue(), recursive=False) as backend:
+        await watch(backend, ".")
+        os.mkdir("sub")
+        await watch(backend, "sub")
+        assert [(call["watch_paths"], call["recursive"]) for call in notify_calls] == [
+            ([workdir.realpath()], False),
+            ([workdir.realpath(), (workdir / "sub").realpath()], False),
+        ]
+
+
+@pytest.mark.parametrize(
+    ("dirs", "root", "instances"),
+    [
+        ([], None, [(frozenset(), False)]),
+        (["/w", "/w/a", "/x"], None, [(frozenset(["/w", "/w/a", "/x"]), False)]),
+        ([], "/w", []),
+        (["/w", "/w/a", "/w/a/b"], "/w", [(frozenset(["/w"]), True)]),
+        (["/w/a"], "/w", [(frozenset(["/w"]), True)]),
+        (
+            ["/w", "/w/a", "/x", "/wa", "/"],
+            "/w",
+            [(frozenset(["/w"]), True), (frozenset(["/x", "/wa", "/"]), False)],
+        ),
+        (["/x", "/x/y"], "/w", [(frozenset(["/x", "/x/y"]), False)]),
+        (["/", "/x", "/x/y"], "/", [(frozenset(["/"]), True)]),
+        (
+            ["C:/w/a", "C:/", "D:/w/a"],
+            "C:/w",
+            [
+                (frozenset(["C:/w"]), True),
+                (frozenset(["C:/", "D:/w/a"]), False),
+            ],
+        ),
+    ],
+)
+def test_divide_dirs(dirs, root, instances):
+    root = None if root is None else Path(root)
+    assert _divide_dirs([Path(path) for path in dirs], root) == instances
+
+
+@pytest.mark.parametrize(
+    ("platform", "value", "recursive"),
+    [
+        ("linux", "", False),
+        ("linux", "0", False),
+        ("linux", "1", True),
+        ("darwin", "", False),
+        ("darwin", "1", True),
+        ("win32", "", True),
+        ("win32", "0", False),
+        ("win32", "1", True),
+    ],
+)
+def test_select_recursive_watch(monkeypatch, platform, value, recursive):
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setenv("STEPUP_WATCHER_RECURSIVE", value)
+    assert select_recursive_watch() is recursive
+
+
+def test_select_recursive_watch_unset(monkeypatch):
+    monkeypatch.delenv("STEPUP_WATCHER_RECURSIVE", raising=False)
+    assert select_recursive_watch() is (sys.platform == "win32")
+
+
+def test_select_recursive_watch_rejects(monkeypatch):
+    monkeypatch.setenv("STEPUP_WATCHER_RECURSIVE", "yes")
+    with pytest.raises(ConfigError, match="STEPUP_WATCHER_RECURSIVE must be 0 or 1, got 'yes'"):
+        select_recursive_watch()
+
+
 @pytest.fixture
 def installed_watchers(monkeypatch):
     """Pretend that both file watching libraries are installed, whatever the platform."""
@@ -239,6 +489,18 @@ def test_select_watcher_backend_rejects(monkeypatch, platform, value, message):
     monkeypatch.setattr(sys, "platform", platform)
     monkeypatch.setenv("STEPUP_WATCHER", value)
     with pytest.raises(ConfigError, match=message):
+        select_watcher_backend()
+
+
+@pytest.mark.usefixtures("installed_watchers")
+def test_select_watcher_backend_checks_recursive(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setenv("STEPUP_WATCHER_RECURSIVE", "yes")
+    # The setting only matters for the library that uses it.
+    monkeypatch.setenv("STEPUP_WATCHER", "asyncinotify")
+    assert select_watcher_backend() == "asyncinotify"
+    monkeypatch.setenv("STEPUP_WATCHER", "watchfiles")
+    with pytest.raises(ConfigError, match="STEPUP_WATCHER_RECURSIVE must be 0 or 1"):
         select_watcher_backend()
 
 

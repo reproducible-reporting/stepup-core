@@ -9,21 +9,23 @@ import importlib
 import os
 import queue
 import stat
+import sys
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING
 
 import attrs
 
 from .asyncio import iter_until_stopped, wait_for_any_event
 from .enums import Change
+from .exceptions import ConfigError
 from .path import Path
 from .watcher_backend import WatcherBackend
 
 if TYPE_CHECKING:
     from watchfiles._rust_notify import RustNotify
 
-__all__ = ("WatchfilesBackend",)
+__all__ = ("WatchfilesBackend", "select_recursive_watch")
 
 
 WATCHFILES_STEP_MS = 10
@@ -48,9 +50,6 @@ WATCHFILES_MAX_ATTEMPTS = 10
 _ADDED = 1
 """The code of a created path in a batch from `RustNotify.watch`, see `watchfiles.Change`."""
 
-_MODIFIED = 2
-"""The code of a modified path in a batch from `RustNotify.watch`, see `watchfiles.Change`."""
-
 _DELETED = 3
 """The code of a removed path in a batch from `RustNotify.watch`, see `watchfiles.Change`."""
 
@@ -64,6 +63,31 @@ def _import_rust_notify() -> type["RustNotify"]:
     (watchfiles 1.3.0, mostly spent on anyio).
     """
     return importlib.import_module("watchfiles._rust_notify").RustNotify
+
+
+def select_recursive_watch() -> bool:
+    """Decide how `WatchfilesBackend` watches the directories below the working directory.
+
+    The default is one recursive watch on Windows and a watch per directory elsewhere,
+    for the reasons given in `WatchfilesBackend.recursive`.
+    `STEPUP_WATCHER_RECURSIVE=1` and `STEPUP_WATCHER_RECURSIVE=0` override the default.
+
+    Returns
+    -------
+    recursive
+        `True` for one recursive watch, `False` for a watch per directory.
+
+    Raises
+    ------
+    ConfigError
+        If `STEPUP_WATCHER_RECURSIVE` is set to something else than `0` or `1`.
+    """
+    value = os.environ.get("STEPUP_WATCHER_RECURSIVE", "")
+    if value == "":
+        return sys.platform == "win32"
+    if value not in ("0", "1"):
+        raise ConfigError(f"STEPUP_WATCHER_RECURSIVE must be 0 or 1, got {value!r}.")
+    return value == "1"
 
 
 @attrs.define
@@ -81,9 +105,28 @@ class WatchfilesBackend(WatcherBackend):
       is only reported as removed.
 
     watchfiles cannot add paths to a running watcher (as of watchfiles 1.3.0).
-    Each time new directories must be watched,
-    a new `RustNotify` instance, called a generation, is created to watch all of them.
+    Each time new directories must be watched, a new generation is created to watch all of them.
+    A generation consists of one or two `RustNotify` instances,
+    and takes over the instances of its predecessor that already watch what it needs.
     One thread owns all instances, reads their changes and replaces them on request.
+    """
+
+    recursive: bool = attrs.field(kw_only=True, factory=select_recursive_watch)
+    """Whether the directories below the working directory share one recursive watch.
+
+    When `False`, every directory in `watches` gets a watch of its own.
+    When `True`, a single watch on the working directory covers all directories below it,
+    and only the directories elsewhere get a watch of their own.
+    The changes in directories that are not in `watches` are dropped,
+    so the same changes are reported either way.
+
+    On Windows, a watch keeps its directory open,
+    which makes it impossible to rename any parent of that directory
+    (observed on Windows 11 24H2 with watchfiles 1.3.0).
+    The recursive watch only has that effect on the parents of the working directory.
+    On Linux, a recursive watch is the more expensive one,
+    because inotify then needs a watch for every directory below the working directory,
+    also for those StepUp has no interest in.
     """
 
     watches: dict[Path, int | None] = attrs.field(init=False, factory=dict)
@@ -113,7 +156,7 @@ class WatchfilesBackend(WatcherBackend):
     """The number of the latest generation requested from the reader thread."""
 
     _real_paths: dict[Path, str] = attrs.field(init=False, factory=dict)
-    """The path given to `RustNotify` for each watched directory."""
+    """The path under which `RustNotify` reports the changes of each watched directory."""
 
     _rebuild_needed: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Set when directories have been added to `_pending`."""
@@ -295,39 +338,49 @@ class WatchfilesBackend(WatcherBackend):
                     command = self._commands.get()
                     if command is None:
                         break
-                    generation, scans, missing = _create_generation(*command)
-                    if current is not None:
-                        # The old instance is drained after the new one has started,
+                    generation, scans, missing = _create_generation(
+                        *command, self.recursive, current
+                    )
+                    for notifier in () if current is None else current.notifiers:
+                        if notifier in generation.notifiers:
+                            continue
+                        # An old instance is drained after the new ones have started,
                         # so every change is reported by at least one of them.
                         # A stop event would discard the changes that are not returned yet.
-                        changes = current.notify.watch(
+                        changes = notifier.notify.watch(
                             WATCHFILES_DEBOUNCE_MS, WATCHFILES_STEP_MS, WATCHFILES_STEP_MS, None
                         )
                         self._send_changes(loop, current, changes)
-                        current.notify.close()
+                        notifier.notify.close()
                     current = generation
                     self._send(
                         loop,
-                        functools.partial(self._apply_generation, generation, scans, missing),
+                        functools.partial(
+                            self._apply_generation, generation.number, scans, missing
+                        ),
                     )
                 else:
                     # A call that starts after a flush request returns all changes made before it,
                     # unless notify takes longer than one step to pass a change on.
                     request = self._flush_requested
                     flushing = request > self._flush_sent
-                    changes = current.notify.watch(
-                        WATCHFILES_DEBOUNCE_MS,
-                        WATCHFILES_STEP_MS,
-                        WATCHFILES_STEP_MS if flushing else WATCHFILES_TIMEOUT_MS,
-                        self._closing,
-                    )
-                    self._send_changes(loop, current, changes)
+                    if len(current.notifiers) == 0 and not flushing:
+                        # Nothing can be watched, so there is no call to wait in.
+                        self._closing.wait(WATCHFILES_TIMEOUT_MS / 1000)
+                    for notifier in current.notifiers:
+                        changes = notifier.notify.watch(
+                            WATCHFILES_DEBOUNCE_MS,
+                            WATCHFILES_STEP_MS,
+                            WATCHFILES_STEP_MS if flushing else WATCHFILES_TIMEOUT_MS,
+                            self._closing,
+                        )
+                        self._send_changes(loop, current, changes)
                     if flushing:
                         self._flush_sent = request
                         self._send(loop, functools.partial(self._complete_flush, request))
         finally:
-            if current is not None:
-                current.notify.close()
+            for notifier in () if current is None else current.notifiers:
+                notifier.notify.close()
 
     def _send(self, loop: asyncio.AbstractEventLoop, work: Callable[[], None]):
         """Hand work over from the reader thread to `change_loop`."""
@@ -337,16 +390,30 @@ class WatchfilesBackend(WatcherBackend):
         """Hand the result of `RustNotify.watch` over to `change_loop`, if it has any changes.
 
         A result other than a set means that the call returned without changes.
+        The changes are translated here, in the reader thread,
+        so that the ones outside the watched directories never reach the event loop.
+        A recursive watch reports many of those,
+        e.g. every write to the workflow database during a build.
         """
-        if isinstance(changes, set) and len(changes) > 0:
-            self._send(loop, functools.partial(self._process_changes, generation, changes))
+        if isinstance(changes, set):
+            codes, sources = generation.translate(changes)
+            if len(codes) > 0:
+                self._send(
+                    loop,
+                    functools.partial(self._process_changes, generation.number, codes, sources),
+                )
 
     def _apply_generation(
-        self, generation: "_Generation", scans: dict[Path, "_DirScan"], missing: list[Path]
+        self, number: int, scans: dict[Path, tuple[str, "_DirScan"]], missing: list[Path]
     ):
         """Record the directories that a new generation watches.
 
-        See `_create_generation` for the meaning of the arguments.
+        Parameters
+        ----------
+        number
+            The number of the new generation.
+        scans, missing
+            See `_create_generation`.
         """
         installing = self._installing
         self._installing = {}
@@ -356,41 +423,35 @@ class WatchfilesBackend(WatcherBackend):
             if path.is_dir():
                 # It has been created again in the meantime.
                 self._schedule_tree(path)
-        for real_path, paths in generation.dirs.items():
-            for path in paths:
-                if path in scans:
-                    self.watches[path] = generation.number
-                    self._real_paths[path] = real_path
-        for path, scan in scans.items():
+        for path, (real_path, _) in scans.items():
+            self.watches[path] = number
+            self._real_paths[path] = real_path
+        for path, (_, scan) in scans.items():
             self._apply_scan(path, scan, report_files=installing[path])
         self._installed.set()
 
-    def _process_changes(self, generation: "_Generation", changes: set[tuple[int, str]]):
-        """Translate a batch of changes from `RustNotify.watch` into items for the change_queue.
+    def _process_changes(
+        self, number: int, codes: dict[Path, set[int]], sources: dict[Path, set[Path]]
+    ):
+        """Turn a batch of changes into items for the change_queue.
 
         The watched directories in the batch are handled first,
         so that the removal of one of them stops the reporting of changes inside it.
         Within each group, the paths are handled in sorted order.
         Changes that came through a watch that has been dropped since are stale and ignored.
+
+        Parameters
+        ----------
+        number
+            The number of the generation that reported the changes.
+        codes, sources
+            See `_Generation.translate`.
         """
-        codes: dict[Path, set[int]] = {}
-        sources: dict[Path, set[Path]] = {}
-        for code, real_path in changes:
-            parent, name = os.path.split(real_path)
-            # A change inside a watched directory, or of a watched directory itself.
-            pairs = [
-                (directory, (directory / name).normpath())
-                for directory in generation.dirs.get(parent, ())
-            ]
-            pairs.extend((directory, directory) for directory in generation.dirs.get(real_path, ()))
-            for directory, path in pairs:
-                codes.setdefault(path, set()).add(code)
-                sources.setdefault(path, set()).add(directory)
         for path in sorted(codes, key=lambda path: (path not in self.watches, path)):
-            if not any(self._watched_in(source, generation.number) for source in sources[path]):
+            if not any(self._watched_in(source, number) for source in sources[path]):
                 continue
             if path in self.watches:
-                self._dir_changed(path, codes[path], generation.number)
+                self._dir_changed(path, codes[path], number)
             else:
                 self._entry_changed(path, codes[path])
 
@@ -400,13 +461,18 @@ class WatchfilesBackend(WatcherBackend):
         return first is not None and first <= number
 
     def _dir_changed(self, path: Path, codes: set[int], number: int):
-        """Handle the changes of a directory that must be watched."""
+        """Handle the changes of a directory that must be watched.
+
+        A modified directory is left alone, because its own watch reports what changed in it.
+        Windows reports a directory as modified whenever one of its entries changes
+        (observed on Windows 11 24H2 with watchfiles 1.3.0).
+        """
         if _DELETED in codes and self._watched_in(path, number):
             self._lose_dir(path)
         if path.is_dir():
             if self.watches[path] is None:
                 self._schedule_tree(path)
-            elif _ADDED in codes or _MODIFIED in codes:
+            elif _ADDED in codes:
                 self._rescan(path)
 
     def _entry_changed(self, path: Path, codes: set[int]):
@@ -502,8 +568,8 @@ class WatchfilesBackend(WatcherBackend):
     def _rescan(self, path: Path):
         """Report all files in a watched directory and in the watched directories below it.
 
-        This happens when a watched directory is created or changed,
-        because changes of files created before the watch was installed may have been missed.
+        This happens when a watched directory turns out to be a new one,
+        because its watch belongs to the directory it replaced.
         """
         paths = [path]
         while len(paths) > 0:
@@ -518,22 +584,67 @@ class WatchfilesBackend(WatcherBackend):
                     paths.append(sub_path)
 
 
-@attrs.define
-class _Generation:
-    """A `RustNotify` instance, together with the directories it watches."""
-
-    number: int = attrs.field()
-    """Sequence number, which tells the changes of a newer instance from those of an older one."""
+@attrs.define(eq=False)
+class _Notifier:
+    """A `RustNotify` instance, together with what it watches."""
 
     notify: "RustNotify" = attrs.field()
     """The instance itself."""
 
+    paths: frozenset[str] = attrs.field()
+    """The directories given to the instance."""
+
+    recursive: bool = attrs.field()
+    """Whether the instance also reports the changes in the directories below `paths`."""
+
+
+@attrs.define
+class _Generation:
+    """The `RustNotify` instances in use, together with the directories watched through them."""
+
+    number: int = attrs.field()
+    """Sequence number, which tells the changes of a newer generation from those of an older one."""
+
+    notifiers: list[_Notifier] = attrs.field()
+    """The instances, some of which may also have been part of the previous generation."""
+
     dirs: dict[str, list[Path]] = attrs.field()
-    """The watched directories, keyed by the path given to `RustNotify`.
+    """The watched directories, keyed by the path under which `RustNotify` reports them.
 
     Symbolic links can lead to the same directory from more than one path,
     so each value is a list of directories as `WatchfilesBackend` knows them.
     """
+
+    def translate(
+        self, changes: set[tuple[int, str]]
+    ) -> tuple[dict[Path, set[int]], dict[Path, set[Path]]]:
+        """Express a batch of changes from `RustNotify.watch` in the paths of `WatchfilesBackend`.
+
+        Only the changes of watched directories and of their entries are kept.
+
+        Returns
+        -------
+        codes
+            The codes of the changes of each path.
+        sources
+            The watched directories through which the changes of each path were seen.
+        """
+        codes: dict[Path, set[int]] = {}
+        sources: dict[Path, set[Path]] = {}
+        for code, reported in changes:
+            # The constructor converts the separators that Windows reports.
+            real_path = Path(reported)
+            parent, name = real_path.splitpath()
+            # A change inside a watched directory, or of a watched directory itself.
+            pairs = [
+                (directory, (directory / name).normpath())
+                for directory in self.dirs.get(parent, ())
+            ]
+            pairs.extend((directory, directory) for directory in self.dirs.get(real_path, ()))
+            for directory, path in pairs:
+                codes.setdefault(path, set()).add(code)
+                sources.setdefault(path, set()).add(directory)
+        return codes, sources
 
 
 @attrs.define(frozen=True)
@@ -551,65 +662,129 @@ class _DirScan:
 
 
 def _create_generation(
-    number: int, keep: list[tuple[Path, str]], new: list[Path]
-) -> tuple[_Generation, dict[Path, _DirScan], list[Path]]:
-    """Create a `RustNotify` instance that watches the given directories.
+    number: int,
+    keep: list[tuple[Path, str]],
+    new: list[Path],
+    recursive: bool,
+    previous: _Generation | None,
+) -> tuple[_Generation, dict[Path, tuple[str, _DirScan]], list[Path]]:
+    """Create a generation that watches the given directories.
 
     Parameters
     ----------
     number
         The number of the new generation.
     keep
-        The directories that are watched already, with the paths given to `RustNotify` before.
+        The directories that are watched already,
+        with the paths under which `RustNotify` reports them.
     new
         The directories to watch from now on.
+    recursive
+        Whether the directories below the working directory share one recursive watch,
+        see `WatchfilesBackend.recursive`.
+    previous
+        The generation to replace.
+        Its instances that already watch what the new generation needs are taken over,
+        and the other ones are left for the caller to close.
 
     Returns
     -------
     generation
         The new generation.
     scans
-        The entries of the new directories, listed after their watches were installed.
+        The entries of the new directories, listed after their watches were installed,
+        each with the path under which `RustNotify` reports the directory.
     missing
         The directories that could not be watched, because they no longer exist.
     """
+    # The paths are resolved, because that is how the changes below a recursive watch,
+    # which does not follow symbolic links, are matched with the directories they belong to.
     real_paths = dict(keep)
-    real_paths.update((path, os.path.realpath(path)) for path in new if path.is_dir())
+    real_paths.update((path, path.realpath()) for path in new if path.is_dir())
+    root = Path.cwd().realpath() if recursive else None
+    old_notifiers = [] if previous is None else previous.notifiers
     attempt = 1
     while True:
         dirs: dict[str, list[Path]] = {}
         for path, real_path in real_paths.items():
             dirs.setdefault(real_path, []).append(path)
+        # A new directory needs a new watch, also when its path was watched before,
+        # because the old watch belongs to a directory that has been removed since.
+        fresh = {real_paths[path] for path in new if path in real_paths}
+        notifiers = []
         try:
-            notify = _import_rust_notify()(
-                watch_paths=list(dirs),
-                debug=False,
-                force_polling=False,
-                poll_delay_ms=0,
-                recursive=False,
-                ignore_permission_denied=False,
-            )
+            for paths, nested in _divide_dirs(dirs, root):
+                for notifier in old_notifiers:
+                    if (
+                        notifier.paths == paths
+                        and notifier.recursive == nested
+                        and paths.isdisjoint(fresh)
+                    ):
+                        break
+                else:
+                    notify = _import_rust_notify()(
+                        watch_paths=sorted(paths),
+                        debug=False,
+                        force_polling=False,
+                        poll_delay_ms=0,
+                        recursive=nested,
+                        ignore_permission_denied=False,
+                    )
+                    notifier = _Notifier(notify, paths, nested)
+                notifiers.append(notifier)
             break
         except FileNotFoundError:
             # A directory has been removed in the meantime,
             # which the generation that is still running reports.
+            for notifier in notifiers:
+                if notifier not in old_notifiers:
+                    notifier.notify.close()
             if attempt == WATCHFILES_MAX_ATTEMPTS:
                 raise
             attempt += 1
             real_paths = {
                 path: real_path
                 for path, real_path in real_paths.items()
-                if os.path.isdir(real_path)
+                if Path(real_path).is_dir()
             }
     scans = {}
     for path in new:
         if path in real_paths:
             scan = _scan_dir(path)
             if scan is not None:
-                scans[path] = scan
+                scans[path] = (real_paths[path], scan)
     missing = [path for path, _ in keep if path not in real_paths]
     missing.extend(path for path in new if path not in scans)
-    return _Generation(number, notify, dirs), scans, missing
+    return _Generation(number, notifiers, dirs), scans, missing
+
+
+def _divide_dirs(dirs: Iterable[str], root: str | None) -> list[tuple[frozenset[str], bool]]:
+    """Divide the directories to watch over `RustNotify` instances.
+
+    Parameters
+    ----------
+    dirs
+        The directories to watch, with symbolic links resolved.
+    root
+        The directory to watch recursively when one of `dirs` is at or below it,
+        or `None` to watch every directory separately.
+
+    Returns
+    -------
+    instances
+        For each instance, the directories to give it and whether it watches them recursively.
+        An instance without directories is left out.
+    """
+    flat = frozenset(dirs)
+    instances = []
+    if root is not None:
+        covered = frozenset(path for path in flat if path == root or _is_under(path, root))
+        if len(covered) > 0:
+            instances.append((frozenset([root]), True))
+            flat -= covered
+    if len(flat) > 0 or root is None:
+        instances.append((flat, False))
+    return instances
 
 
 def _scan_dir(path: Path) -> _DirScan | None:

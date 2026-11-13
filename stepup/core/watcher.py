@@ -39,7 +39,7 @@ from .path import Path
 from .reporter import ReporterClient
 from .sqlite3 import DBSession
 from .watcher_backend import WatcherBackend
-from .watcher_watchfiles import WatchfilesBackend
+from .watcher_watchfiles import WatchfilesBackend, select_recursive_watch
 from .workflow import Workflow
 
 
@@ -50,6 +50,8 @@ def select_watcher_backend() -> str:
     and `STEPUP_WATCHER=watchfiles` selects the `watchfiles` library instead,
     which is an optional dependency on this platform.
     On other platforms, `watchfiles` is the only choice.
+    How `watchfiles` is used is a separate setting, see `select_recursive_watch`,
+    which is checked here too, so that this function validates all settings of the file watcher.
 
     Returns
     -------
@@ -60,7 +62,8 @@ def select_watcher_backend() -> str:
     ------
     ConfigError
         If `STEPUP_WATCHER` names a library that cannot be used on this platform,
-        or if the selected library is not installed.
+        if the selected library is not installed,
+        or if `STEPUP_WATCHER_RECURSIVE` is invalid while `watchfiles` is selected.
     """
     choices = ("asyncinotify", "watchfiles") if sys.platform == "linux" else ("watchfiles",)
     backend = os.environ.get("STEPUP_WATCHER", "") or choices[0]
@@ -70,6 +73,8 @@ def select_watcher_backend() -> str:
         )
     if importlib.util.find_spec(backend) is None:
         raise ConfigError(f"Watch mode needs the {backend} library, which is not installed.")
+    if backend == "watchfiles":
+        select_recursive_watch()
     return backend
 
 
