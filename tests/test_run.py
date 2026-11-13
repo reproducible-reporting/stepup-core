@@ -153,18 +153,25 @@ async def test_launch_command_measures_resource_usage(tmp_path):
     This covers the measurement plumbing itself (`os.wait4` in `_communicate` plus the
     `perf_counter` bracket around `Popen`), which the pure `ResourceUsage` unit tests in
     test_usage.py cannot exercise because they feed in synthetic `rusage` snapshots.
+
+    The child burns CPU, so that its user time is measurable, and then sleeps.
+    On Windows, the CPU time comes from a Job Object, which counts it in clock ticks of 15.6 ms.
+    That can put the CPU time of a short child above its wall time,
+    unless the wall time holds idle time of more than a tick, which is what the sleep adds.
     """
     step = SimpleNamespace(i=1, label="burn", command_and_workdir=("burn", "."))
     run = Run(step, job_i=1)
-    command = f"{shlex.quote(sys.executable)} -c 'print(sum(range(2000000)))'"
+    count = 20_000_000
+    code = f"import time; print(sum(range({count}))); time.sleep(0.2)"
+    command = f"{shlex.quote(sys.executable)} -c {shlex.quote(code)}"
 
     outcome = await launch_command(
         command, shell=True, env=dict(os.environ), cwd=Path(tmp_path), mp_ctx=None, run=run
     )
 
     assert outcome.returncode == 0
-    assert outcome.stdout.strip() == "1999999000000"
-    # Interpreter startup plus the loop always costs measurable user CPU and wall time.
+    assert outcome.stdout.strip() == str(count * (count - 1) // 2)
+    # Interpreter startup plus the sum always costs measurable user CPU and wall time.
     assert outcome.usage.utime > 0.0
     assert outcome.usage.stime >= 0.0
     assert outcome.usage.wtime > 0.0

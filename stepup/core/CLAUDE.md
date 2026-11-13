@@ -168,6 +168,7 @@ The two do different work:
 - The **Job Object** holds everything the step starts, whatever its group.
   `KILL` terminates it, and the CPU time of the step is read from it,
   because Windows has no `os.wait4`.
+  That CPU time counts in clock ticks of 15.6 ms and can exceed the wall time of a short step.
   Its limit `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` ends the steps when the director dies,
   even when the director itself is killed.
 
