@@ -9,6 +9,7 @@ import importlib.util
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 
@@ -44,6 +45,14 @@ which says nothing about what went wrong.
 
 EXAMPLE_TIMEOUT = 30.0
 """Seconds to wait for an example to finish before failing the test."""
+
+EXAMPLE_STOP_GRACE = 10.0
+"""Seconds that the processes left behind by an example get to exit after a signal.
+
+It exceeds the `INTERRUPT_GRACE` of the director,
+because the director must stop its steps before it is killed itself:
+they run in sessions of their own, out of reach of the signals sent to the example.
+"""
 
 CHANGE_LINE = re.compile(r"^ ?(?:UPDATED|DELETED) │ (.*)$")
 """A line of the reporter output about a file change observed in watch mode."""
@@ -83,6 +92,11 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     because measured durations make the order of the steps depend on the machine.
     An example that needs them passes `--duration` to `stepup build`.
 
+    `main.sh` runs in a session of its own, without a terminal,
+    so that it leads the process group of everything it starts.
+    Whatever is left in that group when `main.sh` exits or runs out of time
+    is stopped with `SIGTERM`, and killed if it is still there `EXAMPLE_STOP_GRACE` seconds later.
+
     All files in the srcdir starting with `expected_` will be compared to corresponding files
     starting with `current_` in the temporary directory after completion of the example.
     When the file watcher is `watchfiles`,
@@ -113,8 +127,11 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     # The trace of `main.sh` goes to a file instead of the inherited streams,
     # so that it survives a timeout and is printed as one block, whatever happens.
     with open(workdir / MAIN_LOG, "w", encoding="utf-8", newline="\n") as main_log:
-        stepup_proc = await asyncio.create_subprocess_shell(
-            "." / Path("main.sh"),
+        # No shell is put in between,
+        # because a shell that forks instead of replacing itself would lead the process group,
+        # and the cleanup trap of `example.rc` would then find nothing to stop.
+        stepup_proc = await asyncio.create_subprocess_exec(
+            "./main.sh",
             stdin=subprocess.DEVNULL,
             stdout=main_log,
             stderr=subprocess.STDOUT,
@@ -126,9 +143,19 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
                 "STEPUP_DEBUG": "1",
                 "STEPUP_BUILD_DURATION": "0",
             },
+            start_new_session=True,
         )
+    # `None` means the example was still running when it ran out of time.
+    returncode = None
     try:
-        async with asyncio.timeout(EXAMPLE_TIMEOUT):
+        try:
+            async with asyncio.timeout(EXAMPLE_TIMEOUT):
+                returncode = await stepup_proc.wait()
+        finally:
+            # Stopping what `main.sh` left running before anything else
+            # keeps it from writing to the files compared below,
+            # and from outliving the test when `main.sh` ran out of time.
+            await _stop_process_group(stepup_proc.pid)
             await stepup_proc.wait()
 
         pairs = []
@@ -139,7 +166,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             if not path_cur.is_file():
                 raise AssertionError(
                     f"{path_cur.basename()} was not created and main.sh exited with "
-                    f"{stepup_proc.returncode}. See the {MAIN_LOG} below for the command "
+                    f"{returncode}. See the {MAIN_LOG} below for the command "
                     f"it died on."
                 )
             with open(path_cur, encoding="utf-8") as fh:
@@ -196,8 +223,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             with open(path_log, encoding="utf-8") as fh:
                 print(fh.read().rstrip())
         print()
-        # `None` means the example was still running when it ran out of time.
-        print(f"########## main.sh return code: {stepup_proc.returncode} ##########")
+        print(f"########## main.sh return code: {returncode} ##########")
 
     # Check late for errors, to maximize the printed output.
     sort_changes = select_watcher_backend() == "watchfiles"
@@ -207,7 +233,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             exp = sort_change_runs(exp)
         assert cur == exp, path_exp
 
-    assert stepup_proc.returncode == 0
+    assert returncode == 0
 
     # `stepup build` scans its own log when it exits and fails the build over any finding,
     # because `STEPUP_DEBUG` is set above. This second scan is the safety net for the runs
@@ -215,6 +241,34 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     # It only covers the last `stepup build` of the example: each one truncates the log.
     findings = scan_director_log(workdir / DIRECTOR_LOG)
     assert not findings, "Problems in director.log:\n" + "\n".join(findings)
+
+
+async def _stop_process_group(pgid: int):
+    """Stop the processes that are left in a process group, if any.
+
+    They get `SIGTERM` first and `SIGKILL` when they are still there `EXAMPLE_STOP_GRACE`
+    seconds later.
+    This returns as soon as the group is empty,
+    or when it still is not empty `EXAMPLE_STOP_GRACE` seconds after `SIGKILL`.
+    That only happens when zombies in the group are not reaped by their parents,
+    which no signal can change.
+
+    Parameters
+    ----------
+    pgid
+        The id of the process group, which outlives its leader as long as it has members.
+    """
+    loop = asyncio.get_running_loop()
+    for sig in signal.SIGTERM, signal.SIGKILL:
+        deadline = loop.time() + EXAMPLE_STOP_GRACE
+        try:
+            os.killpg(pgid, sig)
+            # Signal 0 is not delivered: it only checks whether the group still has members.
+            while loop.time() < deadline:
+                await asyncio.sleep(0.1)
+                os.killpg(pgid, 0)
+        except ProcessLookupError:
+            return
 
 
 async def run_plan(srcdir: Path, tmpdir: Path):

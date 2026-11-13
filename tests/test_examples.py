@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Run examples."""
 
+import asyncio
 import os
+import re
+import shutil
+import signal
 
 import pytest
 
@@ -10,7 +14,8 @@ from stepup.core.path import Path
 from stepup.core.pytest import EXAMPLE_TIMEOUT, run_example, run_plan
 
 pytestmark = pytest.mark.timeout(2 * EXAMPLE_TIMEOUT)
-"""Budget for a whole example, which `run_example` already bounds with `EXAMPLE_TIMEOUT`.
+"""Budget for a whole example, which `run_example` already bounds with `EXAMPLE_TIMEOUT`,
+plus twice `EXAMPLE_STOP_GRACE` to stop what the example left running.
 
 Setup, call and teardown share this budget,
 and it must stay above the deadline of the example itself,
@@ -370,3 +375,139 @@ def test_examples_list_has_no_extra():
 )
 async def test_plan(name: str, path_tmp: Path):
     await run_plan(Path("tests/examples") / name, path_tmp)
+
+
+#
+# Processes left behind by an example
+#
+
+
+HARNESS_PLAN = """\
+#!/usr/bin/env python3
+from stepup.core.api import run
+
+run("echo $$ > step.tmp && mv step.tmp step.pid && exec sleep 600", shell=True)
+"""
+"""A plan whose only step records its pid and then runs until it is stopped.
+
+The step runs in a session of its own,
+so that only the director can stop it, and only when it gets the chance.
+"""
+
+HARNESS_MAIN_FAILS = """\
+#!/usr/bin/env -S bash -x
+source ../example.rc
+echo $$ > main.pid
+sb -j 1 -w &
+echo $! > sb.pid
+until [[ -f step.pid ]]; do sleep 0.1; done
+exit 1
+"""
+"""A `main.sh` that fails while `stepup build` and its step are still running."""
+
+HARNESS_MAIN_HANGS = """\
+#!/usr/bin/env -S bash -x
+source ../example.rc
+echo $$ > main.pid
+sb -j 1 -w &
+echo $! > sb.pid
+stepup wait
+"""
+"""A `main.sh` that blocks for as long as its step runs."""
+
+PROCESS_EXIT_WAIT = 5.0
+"""Seconds that a stopped process gets to disappear before it counts as left behind."""
+
+
+def write_harness_example(path_tmp: Path, main: str) -> Path:
+    """Write an example outside `tests/examples`, to test `run_example` itself.
+
+    Parameters
+    ----------
+    path_tmp
+        The temporary directory in which the example is written.
+    main
+        The contents of `main.sh`.
+
+    Returns
+    -------
+    srcdir
+        The source directory of the example, to be passed to `run_example`.
+    """
+    srcdir = path_tmp / "src" / "example"
+    srcdir.makedirs_p()
+    shutil.copy("tests/examples/example.rc", srcdir.parent / "example.rc")
+    for name, text in ("main.sh", main), ("plan.py", HARNESS_PLAN):
+        path = srcdir / name
+        path.write_text(text, encoding="utf-8")
+        path.chmod(0o755)
+    (srcdir / ".gitignore").write_text(".stepup/\n*.pid\n", encoding="utf-8")
+    return srcdir
+
+
+async def assert_nothing_left(workdir: Path):
+    """Check that the process group of `main.sh` is empty and that its step has stopped.
+
+    Whatever is still running after `PROCESS_EXIT_WAIT` seconds is killed,
+    so that a failing test does not leave it behind either.
+
+    Parameters
+    ----------
+    workdir
+        The directory in which the example ran.
+    """
+    pgid = int((workdir / "main.pid").read_text(encoding="utf-8"))
+    step_pid = int((workdir / "step.pid").read_text(encoding="utf-8"))
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + PROCESS_EXIT_WAIT
+    survivors = []
+    for label, send, pid in [
+        ("the process group of main.sh", os.killpg, pgid),
+        ("the step", os.kill, step_pid),
+    ]:
+        try:
+            # Signal 0 is not delivered: it only checks whether the target exists.
+            while True:
+                send(pid, 0)
+                if loop.time() > deadline:
+                    survivors.append(label)
+                    send(pid, signal.SIGKILL)
+                    break
+                await asyncio.sleep(0.1)
+        except ProcessLookupError:
+            pass
+    assert not survivors, f"Still running: {', '.join(survivors)}"
+
+
+async def test_run_example_stops_background_after_failure(path_tmp: Path):
+    """The trap of `example.rc` stops what a failed `main.sh` left running in the background."""
+    srcdir = write_harness_example(path_tmp, HARNESS_MAIN_FAILS)
+    with pytest.raises(AssertionError):
+        await run_example(srcdir, path_tmp / "run")
+    workdir = path_tmp / "run" / "example"
+    # `run_example` would stop `stepup build` anyway, so the trace of the trap is checked too.
+    # The trap only finds `stepup build` when `main.sh` leads its own process group.
+    sb_pid = (workdir / "sb.pid").read_text(encoding="utf-8").strip()
+    main_log = (workdir / "main.log").read_text(encoding="utf-8")
+    assert re.search(rf"^\++ kill .*\b{sb_pid}\b", main_log, re.MULTILINE), main_log
+    await assert_nothing_left(workdir)
+
+
+async def test_run_example_stops_everything_when_cancelled(path_tmp: Path):
+    """Cancelling `run_example` stops `main.sh` and everything it started.
+
+    A Ctrl-C of pytest cancels a test in the same way.
+    """
+    srcdir = write_harness_example(path_tmp, HARNESS_MAIN_HANGS)
+    workdir = path_tmp / "run" / "example"
+    task = asyncio.create_task(run_example(srcdir, path_tmp / "run"))
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + EXAMPLE_TIMEOUT
+    while not (workdir / "step.pid").is_file() and not task.done() and loop.time() < deadline:
+        await asyncio.sleep(0.1)
+    task.cancel()
+    # A `run_example` that ended by itself raises its own error here, or nothing at all.
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert (workdir / "step.pid").is_file(), "The step never started."
+    await assert_nothing_left(workdir)

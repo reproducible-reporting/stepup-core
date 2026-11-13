@@ -45,6 +45,12 @@ When writing new examples, the following conventions ensure that they are proper
   so `../example.rc` resolves both under the test harness and when running
   `bash main.sh` directly inside an example directory.
 
+  `example.rc` installs a trap on `EXIT` that stops the background processes of `main.sh`,
+  e.g. `sb ... &` after a failed command, and then calls the shell function `cleanup`.
+  An example that needs a teardown of its own, such as removing a temporary directory,
+  redefines `cleanup` after sourcing `example.rc`.
+  It never sets a trap on `EXIT` itself, because that would replace the one of `example.rc`.
+
 - A local `.gitignore` file lists all StepUp-managed outputs,
   so that they are not accidentally committed to git.
   Include at least the following:

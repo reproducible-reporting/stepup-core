@@ -4,7 +4,6 @@ source ../example.rc
 # Prepare a directory outside the project to serve as an absolute static tree.
 export mytmpdir=$(mktemp -d)
 cleanup() { rm -rf "$mytmpdir"; }
-trap cleanup EXIT
 echo hello > "$mytmpdir/data.txt"
 
 # Run the example
