@@ -473,6 +473,9 @@ class WatchfilesBackend(WatcherBackend):
         A modified directory is left alone, because its own watch reports what changed in it.
         Windows reports a directory as modified whenever one of its entries changes
         (observed on Windows 11 24H2 with watchfiles 1.3.0).
+        It does so with a delay, e.g. when the directory is listed for the first time afterwards,
+        which may be when the watch of that directory has been requested but is not installed yet.
+        Such a directory has not appeared, so its files are not reported.
 
         A directory reported as created is only listed again when it has been replaced,
         because FSEvents (macOS) also reports a directory as created
@@ -484,7 +487,8 @@ class WatchfilesBackend(WatcherBackend):
             self._lose_dir(path)
         if path.is_dir():
             if self.watches[path] is None:
-                self._schedule_tree(path)
+                if _ADDED in codes or not self._is_scheduled(path):
+                    self._schedule_tree(path)
             elif _ADDED in codes and self._is_replaced(path):
                 self._rescan(path)
 

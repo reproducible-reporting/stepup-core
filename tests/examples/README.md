@@ -38,6 +38,28 @@ When writing new examples, the following conventions ensure that they are proper
   For example, `wait -f` and `stat -c` do not exist there,
   and `wc -l` pads its count with spaces.
 
+- Scripts must also run on Windows, with the bash and the tools of Git for Windows,
+  which the test builder uses there to run `main.sh`:
+    - Run Python as `python3`, in `main.sh` and on the shebang lines of scripts.
+      Windows has no such program, so the test builder puts a wrapper with that name on `PATH`,
+      as a user must do to run a step with `shell=True` that starts such a script.
+    - A Python script whose output is compared, or redirected to a file of the workflow,
+      writes lines that end in `\n`:
+      it opens files with `encoding="utf-8", newline="\n"`,
+      and calls `sys.stdout.reconfigure(newline="\n")` before it prints to a redirected output.
+      Windows ends lines with `\r\n` otherwise, which changes the digests in the expected output.
+    - Take the separator of a list of paths from `os.pathsep`, as in `env_vars_multi`,
+      when StepUp or a script splits the list.
+    - Git for Windows converts POSIX paths in the environment of a Windows program,
+      such as `${PWD}`, to Windows paths, also in a list of paths separated by colons.
+      It leaves a list with an empty item alone, so write
+      `"${PWD}/pkgs${PYTHONPATH:+:${PYTHONPATH}}"` instead of `"${PWD}/pkgs:${PYTHONPATH}"`.
+    - Python prints the file names of a traceback with backslashes,
+      so a `grep` for such a name accepts both separators, as in `error_debug_traceback`.
+    - An example that cannot work without permission bits, symbolic links or another feature
+      that Windows lacks is listed in the matching `EXAMPLES_REQUIRE_*` set
+      in `tests/test_examples.py`, with a comment that gives the reason.
+
 - After the shebang, each `main.sh` sources the shared boilerplate with
   `source ../example.rc`.
 
@@ -185,6 +207,11 @@ When writing new examples, the following conventions ensure that they are proper
   comparison, because stderr varies across OS and Python versions. To assert specific stderr
   (or stdout) text, grep `.stepup/success.log` from within `main.sh`.
   It keeps the full, un-stripped reporter output, including the standard-error page.
+
+- On a platform without permission bits of files, which is Windows,
+  **file modes and the digests of step hashes are not compared**:
+  the test builder masks them in the current and in the expected output.
+  The digests of files are compared on every platform.
 
 The test builder in `tests/test_examples.py` copies each example to a temporary directory,
 activates the commented-out redirects in `main.sh`, runs it, and compares all `current_*` files against

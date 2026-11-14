@@ -4,7 +4,8 @@ source ../example.rc
 # Run the example
 export STEPUP_ROOT="${PWD}/project"
 export STEPUP_PATH_FILTER="+${PWD}/pkgs"
-export PYTHONPATH="${PWD}/pkgs:${PYTHONPATH}"
+# Without a trailing colon, because Git for Windows then leaves the list of paths unconverted.
+export PYTHONPATH="${PWD}/pkgs${PYTHONPATH:+:${PYTHONPATH}}"
 cp pkgs/helper1.py pkgs/helper.py
 sb -j 1 -w & # > current_stdout1.txt &
 

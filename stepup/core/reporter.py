@@ -5,6 +5,7 @@
 import asyncio
 import contextlib
 import logging
+import sys
 from collections.abc import AsyncGenerator, Iterable
 from time import perf_counter
 
@@ -20,7 +21,7 @@ from rich.theme import Theme
 from .constants import FAIL_LOG, SUCCESS_LOG, WARNING_LOG
 from .path import Path
 from .rpc import BaseAsyncRPCClient, DummyAsyncRPCClient, SocketAsyncRPCClient, allow_rpc
-from .utils import escape_control_chars
+from .utils import escape_control_chars, rich_legacy_windows
 
 logger = logging.getLogger(__name__)
 
@@ -299,7 +300,7 @@ class ReporterHandler:
                 "bar.finished": "bold white",
             }
         )
-        return Console(highlight=False, theme=theme)
+        return Console(highlight=False, theme=theme, legacy_windows=rich_legacy_windows(sys.stdout))
 
     @live_progress.default
     def _default_live_progress(self):

@@ -9,7 +9,14 @@ set -e
 # which is only right when this script leads its own group,
 # as it does when it is started from an interactive shell or by the test harness.
 cleanup() { :; }
-trap 'kill $(pgrep -g $$ | grep -vx $$) > /dev/null 2> /dev/null || :; cleanup' EXIT
+if command -v pgrep > /dev/null; then
+    lingering() { pgrep -g $$ | grep -vx $$; }
+else
+    # Git for Windows has no `pgrep`, so only the background jobs of this script are stopped.
+    # Its `kill` ends a Windows program together with everything that program started.
+    lingering() { jobs -p; }
+fi
+trap 'kill $(lingering) > /dev/null 2> /dev/null || :; cleanup' EXIT
 rm -rvf $(cat .gitignore)
 
 # Bits of the `stepup build` return code, see `docs/reference/returncode.md`.

@@ -4,6 +4,7 @@
 
 import argparse
 import sqlite3
+import sys
 from collections.abc import Iterable
 
 from rich.console import Console
@@ -14,6 +15,7 @@ from .hash import FileHash
 from .path import Path, translate, translate_back
 from .sqlite3 import prefix_clause
 from .tool import SubParsers, ToolFunc, connect_graph_db
+from .utils import rich_legacy_windows
 
 __all__ = ("add_clean_subcommand",)
 
@@ -110,7 +112,7 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
     tr_consuming_paths.sort(reverse=True)
 
     # Loop over the paths, remove them and collect information to print.
-    console = Console(highlight=False)
+    console = Console(highlight=False, legacy_windows=rich_legacy_windows(sys.stdout))
     if not args.commit:
         console.print("[yellow]# Note: No files or directories are actually removed.[/]")
         console.print("[yellow]# Use the --commit option to execute the removals.[/]")

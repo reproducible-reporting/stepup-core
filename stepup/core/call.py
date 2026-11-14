@@ -17,6 +17,7 @@ from rich.console import Console
 from .api import loadns
 from .cattrs import json_converter
 from .path import Path
+from .utils import rich_legacy_windows
 
 __all__ = ("driver",)
 
@@ -136,7 +137,7 @@ def _print_list(script_path: str, ns: dict[str, Any]) -> None:
             and callable(fn)
             and (module_name is None or getattr(fn, "__module__", None) == module_name)
         }
-    console = Console(highlight=False)
+    console = Console(highlight=False, legacy_windows=rich_legacy_windows(sys.stdout))
     display = _short_path(script_path)
     for fn_name, fn in registry.items():
         sig = inspect.signature(fn)

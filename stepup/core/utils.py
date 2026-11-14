@@ -30,6 +30,7 @@ __all__ = (
     "merge_resources",
     "parse_resources",
     "query_director_log",
+    "rich_legacy_windows",
     "scan_director_log",
     "to_bool",
     "write_utf8_unless_terminal",
@@ -271,6 +272,24 @@ def is_terminal(stream: TextIO | None) -> bool:
             return False
         return is_console(fd)
     return stream.isatty()
+
+
+def rich_legacy_windows(stream: TextIO | None) -> bool | None:
+    """Decide the `legacy_windows` argument of a `rich` console that writes to a stream.
+
+    Left to itself, `rich` takes every stream that is not a modern Windows console
+    for a legacy one, a file or a pipe included,
+    and then makes its lines one character shorter than the width it was given.
+    Observed with rich 15.0 on Windows 11 24H2.
+
+    Returns
+    -------
+    legacy_windows
+        `False` for a stream that is not a terminal,
+        so that redirected output has the same layout on every platform,
+        and `None` for a terminal, which leaves the detection to `rich`.
+    """
+    return None if is_terminal(stream) else False
 
 
 def write_utf8_unless_terminal() -> None:

@@ -18,7 +18,8 @@ stepup join
 # client inside an RPCError, and the client's own traceback keeps every frame.
 grep -q "An exception was raised in the server during the call" .stepup/fail.log || exit 1
 grep -q "stepup.core.exceptions.CyclicError" .stepup/fail.log || exit 1
-grep -q "stepup/core/rpc.py" .stepup/fail.log || exit 1
+# Python prints the file names of a traceback with the separators of the platform.
+grep -q 'stepup[/\\]*core[/\\]*rpc\.py' .stepup/fail.log || exit 1
 grep -q "frozen runpy" .stepup/fail.log || exit 1
 ! grep -q "Shortened traceback" .stepup/fail.log || exit 1
 

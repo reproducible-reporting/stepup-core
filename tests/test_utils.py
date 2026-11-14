@@ -9,6 +9,7 @@ import sys
 
 import pytest
 from core_common import create_socket_path
+from rich.console import Console
 
 from stepup.core.path import Path
 from stepup.core.popen import _resolve_interpreter, popen_args
@@ -21,6 +22,7 @@ from stepup.core.utils import (
     merge_resources,
     parse_resources,
     query_director_log,
+    rich_legacy_windows,
     scan_director_log,
     write_utf8_unless_terminal,
 )
@@ -335,6 +337,26 @@ def test_is_terminal_pty():
     try:
         with os.fdopen(secondary_fd, "w", encoding="utf-8") as stream:
             assert is_terminal(stream)
+    finally:
+        os.close(primary_fd)
+
+
+def test_rich_legacy_windows_file(path_tmp: Path, monkeypatch: pytest.MonkeyPatch):
+    """A rule written to a file is as wide as `COLUMNS` says, on every platform."""
+    monkeypatch.setenv("COLUMNS", "60")
+    path_out = path_tmp / "out.txt"
+    with open(path_out, "w", encoding="utf-8", newline="\n") as stream:
+        assert rich_legacy_windows(stream) is False
+        Console(file=stream, legacy_windows=rich_legacy_windows(stream)).rule()
+    assert path_out.read_text(encoding="utf-8") == "─" * 60 + "\n"
+
+
+@pytest.mark.requires_termios
+def test_rich_legacy_windows_pty():
+    primary_fd, secondary_fd = os.openpty()
+    try:
+        with os.fdopen(secondary_fd, "w", encoding="utf-8") as stream:
+            assert rich_legacy_windows(stream) is None
     finally:
         os.close(primary_fd)
 

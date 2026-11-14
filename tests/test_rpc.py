@@ -168,6 +168,31 @@ async def test_serve_stops_an_idle_connection(dir_sockets, rpc_transport):
             await client.close()
 
 
+async def test_serve_returns_without_the_connection_count_of_asyncio(
+    dir_sockets, rpc_transport, monkeypatch: pytest.MonkeyPatch
+):
+    """The server stops when its connections are closed, whatever `asyncio` makes of them.
+
+    The Proactor event loop of Windows leaves a connection attached to its server
+    when it fails to shut down the socket, after which `asyncio.Server.wait_closed` never returns.
+    That failure is imitated here by never detaching any connection.
+    """
+    # The arguments of this method differ between Python versions.
+    monkeypatch.setattr(asyncio.Server, "_detach", lambda *args: None)
+    async with asyncio.timeout(5):
+        socket_path = dir_sockets / "socket"
+        stop_event = asyncio.Event()
+        server_task = asyncio.create_task(
+            SocketRPCServer(EchoHandler("idle"), str(socket_path), rpc_transport).serve(stop_event)
+        )
+        while not socket_path.exists():
+            await asyncio.sleep(0.01)
+        async with SocketAsyncRPCClient(socket_path) as client:
+            assert await client.call.echo("hello") == "idle: hello"
+        stop_event.set()
+        await server_task
+
+
 def test_sync_socket_rpc_client(socket_server_path):
     with SocketSyncRPCClient(socket_server_path) as client:
         assert client.call.echo("hello", _rpc_timeout=5) == "socket: hello"
@@ -1068,6 +1093,17 @@ async def test_serve_connection_survives_reset_during_recv(peer_gone):
     async with asyncio.timeout(5):
         server = SocketRPCServer(EchoHandler("x"), "unused-socket", "unix")
         await server._serve_connection(_ResetReader(peer_gone), _RecordingWriter())
+
+
+async def test_serve_connection_closes_a_connection_accepted_while_stopping():
+    """A connection whose handler starts after the server stopped is closed without being served."""
+    async with asyncio.timeout(5):
+        writer = _RecordingWriter()
+        server = SocketRPCServer(EchoHandler("x"), "unused-socket", "unix")
+        server._stopping = True
+        await server._serve_connection(_ResetReader(lambda: AssertionError("read")), writer)
+        assert writer.closed
+        assert writer.data == b""
 
 
 class _AlwaysResetWriter:

@@ -37,7 +37,7 @@ import os
 
 path = "data/foo.txt"
 st = os.stat(path)
-with open(path, "w") as f:
+with open(path, "w", encoding="utf-8", newline="\n") as f:
     f.write("world\n")
 os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns))
 EOF

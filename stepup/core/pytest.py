@@ -4,22 +4,30 @@
 
 import ast
 import asyncio
+import difflib
 import functools
 import importlib.util
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
 import sys
+from typing import TextIO
 
 import pytest
 
 from .constants import DIRECTOR_LOG, STEPUP_DIR
 from .enums import ReturnCode
+from .oscompat import file_modes_available
 from .path import Path
+from .popen import popen_args
 from .utils import scan_director_log
 from .watcher import select_watcher_backend
+
+if sys.platform == "win32":
+    from .winapi import JobObject
 
 __all__ = ("ConventionTests", "remove_hashes", "run_example", "run_plan")
 
@@ -54,8 +62,55 @@ because the director must stop its steps before it is killed itself:
 they run in sessions of their own, out of reach of the signals sent to the example.
 """
 
+EXAMPLE_POLL = 0.05
+"""Seconds between two looks at a process that `asyncio` cannot wait for."""
+
 CHANGE_LINE = re.compile(r"^ ?(?:UPDATED|DELETED) │ (.*)$")
 """A line of the reporter output about a file change observed in watch mode."""
+
+
+TRACEBACK_FILE = re.compile(r'^( *File ")([^"\n]*)(?=")', re.MULTILINE)
+"""The file name on a line of a Python traceback."""
+
+FILE_MODE = re.compile(r"(?<=[ (]mode )([-?a-z]{10}) ➜ ([-?a-z]{10})")
+"""The change of a file mode in the reporter output, e.g. `mode ?--------- ➜ -rw-r--r--`."""
+
+UNKNOWN_FILE_MODE = "?---------"
+"""The mode in the reporter output of a file that does not exist."""
+
+STEP_DIGEST = re.compile(r"(?<=\b(?:inp|out)_digest )([0-9a-f]{8})(?: ➜ ([0-9a-f]{8}))?")
+"""A digest of a step hash in the reporter output, possibly with the one that replaces it."""
+
+
+def mask_file_modes(text: str) -> str:
+    """Hide the parts of the reporter output that follow from the permission bits of files.
+
+    These are the file modes themselves and the digests of step hashes,
+    which cover the modes of the inputs and outputs of a step.
+    What remains is whether a mode or a digest is given, and whether it is a known one,
+    which is the same on a platform without permission bits.
+    """
+
+    def mask_mode(mode: str) -> str:
+        return mode if mode == UNKNOWN_FILE_MODE else mode[0] + "*" * 9
+
+    def mask_modes(match: re.Match) -> str:
+        return f"{mask_mode(match.group(1))} ➜ {mask_mode(match.group(2))}"
+
+    def mask_digests(match: re.Match) -> str:
+        return "*" * 8 if match.group(2) is None else f"{'*' * 8} ➜ {'*' * 8}"
+
+    return STEP_DIGEST.sub(mask_digests, FILE_MODE.sub(mask_modes, text))
+
+
+def slash_traceback_files(text: str) -> str:
+    """Write the file names in Python tracebacks with `/` as the only separator.
+
+    Python prints them with the separators of the platform.
+    """
+    return TRACEBACK_FILE.sub(
+        lambda match: match.group(1) + match.group(2).replace("\\", "/"), text
+    )
 
 
 def sort_change_runs(text: str) -> str:
@@ -92,10 +147,13 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     because measured durations make the order of the steps depend on the machine.
     An example that needs them passes `--duration` to `stepup build`.
 
-    `main.sh` runs in a session of its own, without a terminal,
-    so that it leads the process group of everything it starts.
-    Whatever is left in that group when `main.sh` exits or runs out of time
-    is stopped with `SIGTERM`, and killed if it is still there `EXAMPLE_STOP_GRACE` seconds later.
+    `main.sh` runs apart from the test runner, without a terminal,
+    and whatever it leaves running when it exits or runs out of time is stopped.
+    On POSIX, it leads the process group of a session of its own,
+    whose remaining members get `SIGTERM`,
+    and `SIGKILL` if they are still there `EXAMPLE_STOP_GRACE` seconds later.
+    On Windows, it runs with the bash of `stepup.core.popen.find_shell`,
+    in a hidden console and a Job Object of its own, which is terminated.
 
     All files in the srcdir starting with `expected_` will be compared to corresponding files
     starting with `current_` in the temporary directory after completion of the example.
@@ -103,6 +161,8 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     the order of consecutive `UPDATED` and `DELETED` lines is not compared,
     because the changes observed together are reported in sorted order,
     see `stepup.core.watcher_watchfiles.WatchfilesBackend`.
+    On a platform without permission bits of files,
+    the file modes and the digests of step hashes are not compared, see `mask_file_modes`.
 
     Parameters
     ----------
@@ -124,39 +184,16 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     text = path_main.read_text(encoding="utf-8")
     text = re.sub(r"^((?:stepup|sb).*?) & #", r"\1", text, flags=re.MULTILINE)
     path_main.write_text(text, encoding="utf-8")
-    # The trace of `main.sh` goes to a file instead of the inherited streams,
-    # so that it survives a timeout and is printed as one block, whatever happens.
-    with open(workdir / MAIN_LOG, "w", encoding="utf-8", newline="\n") as main_log:
-        # No shell is put in between,
-        # because a shell that forks instead of replacing itself would lead the process group,
-        # and the cleanup trap of `example.rc` would then find nothing to stop.
-        stepup_proc = await asyncio.create_subprocess_exec(
-            "./main.sh",
-            stdin=subprocess.DEVNULL,
-            stdout=main_log,
-            stderr=subprocess.STDOUT,
-            cwd=workdir,
-            env=os.environ
-            | {
-                "PYTHONUNBUFFERED": "yes",
-                "COLUMNS": "80",
-                "STEPUP_DEBUG": "1",
-                "STEPUP_BUILD_DURATION": "0",
-            },
-            start_new_session=True,
-        )
+    env = os.environ | {
+        "PYTHONUNBUFFERED": "yes",
+        "COLUMNS": "80",
+        "STEPUP_DEBUG": "1",
+        "STEPUP_BUILD_DURATION": "0",
+    }
     # `None` means the example was still running when it ran out of time.
     returncode = None
     try:
-        try:
-            async with asyncio.timeout(EXAMPLE_TIMEOUT):
-                returncode = await stepup_proc.wait()
-        finally:
-            # Stopping what `main.sh` left running before anything else
-            # keeps it from writing to the files compared below,
-            # and from outliving the test when `main.sh` ran out of time.
-            await _stop_process_group(stepup_proc.pid)
-            await stepup_proc.wait()
+        returncode = await _run_main(workdir, env)
 
         pairs = []
 
@@ -180,6 +217,8 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             print(cur)
 
             # Normalize output before comparing:
+            # - Python prints the file names of a traceback with the separators of the platform
+            cur = slash_traceback_files(cur)
             cur = cur.replace(Path.cwd(), "${PWD}")
             cur = cur.replace(workdir, "${CASE}")
             # - The director's socket path contains a random temporary directory
@@ -227,11 +266,25 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
     # Check late for errors, to maximize the printed output.
     sort_changes = select_watcher_backend() == "watchfiles"
+    mask_modes = not file_modes_available()
+    different = []
     for path_exp, cur, exp in pairs:
         if sort_changes:
             cur = sort_change_runs(cur)
             exp = sort_change_runs(exp)
-        assert cur == exp, path_exp
+        if mask_modes:
+            cur = mask_file_modes(cur)
+            exp = mask_file_modes(exp)
+        if cur != exp:
+            different.append(path_exp)
+            print()
+            print(f"########## difference with {path_exp.basename()} ##########")
+            print()
+            diff = difflib.unified_diff(
+                exp.split("\n"), cur.split("\n"), "expected", "current", lineterm=""
+            )
+            print("\n".join(diff))
+    assert not different, f"Unexpected output, see the differences below: {different}"
 
     assert returncode == 0
 
@@ -241,6 +294,62 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     # It only covers the last `stepup build` of the example: each one truncates the log.
     findings = scan_director_log(workdir / DIRECTOR_LOG)
     assert not findings, "Problems in director.log:\n" + "\n".join(findings)
+
+
+async def _run_main(workdir: Path, env: dict[str, str]) -> int:
+    """Run the `main.sh` of an example and stop everything it leaves running.
+
+    The trace of `main.sh` goes to `MAIN_LOG` instead of the inherited streams,
+    so that it survives a timeout and is printed as one block, whatever happens.
+    What `main.sh` left running is stopped before this returns or raises,
+    also when the caller is cancelled,
+    which keeps it from writing to the files of the example afterwards,
+    and from outliving the test.
+
+    Parameters
+    ----------
+    workdir
+        The directory of the example, in which `main.sh` runs.
+    env
+        The environment of `main.sh`.
+
+    Returns
+    -------
+    returncode
+        The return code of `main.sh`.
+
+    Raises
+    ------
+    TimeoutError
+        When `main.sh` is still running after `EXAMPLE_TIMEOUT` seconds.
+    """
+    with open(workdir / MAIN_LOG, "w", encoding="utf-8", newline="\n") as main_log:
+        if sys.platform == "win32":
+            return await _run_main_windows(workdir, env, main_log)
+        return await _run_main_posix(workdir, env, main_log)
+
+
+async def _run_main_posix(workdir: Path, env: dict[str, str], main_log: TextIO) -> int:
+    """Implement `_run_main` with a session and a process group."""
+    # No shell is put in between,
+    # because a shell that forks instead of replacing itself would lead the process group,
+    # and the cleanup trap of `example.rc` would then find nothing to stop.
+    proc = await asyncio.create_subprocess_exec(
+        "./main.sh",
+        stdin=subprocess.DEVNULL,
+        stdout=main_log,
+        stderr=subprocess.STDOUT,
+        cwd=workdir,
+        env=env,
+        start_new_session=True,
+    )
+    main_log.close()
+    try:
+        async with asyncio.timeout(EXAMPLE_TIMEOUT):
+            return await proc.wait()
+    finally:
+        await _stop_process_group(proc.pid)
+        await proc.wait()
 
 
 async def _stop_process_group(pgid: int):
@@ -274,6 +383,92 @@ async def _stop_process_group(pgid: int):
             return
 
 
+async def _run_main_windows(workdir: Path, env: dict[str, str], main_log: TextIO) -> int:
+    """Implement `_run_main` with a console and a Job Object.
+
+    Windows has no process groups that hold what a process starts,
+    and no signal that asks a process to stop.
+    The Job Object holds `main.sh` with everything below it,
+    and terminating it ends them all at once, without notice.
+    The console is one that only the example uses,
+    so that the console control events of StepUp stay within the example,
+    and so that the director has a console to send them through,
+    also when the test runner has none.
+    """
+    env = env | {"PATH": f"{_write_python3_shim(workdir.parent / 'bin')};{env.get('PATH', '')}"}
+    # Windows cannot run a script, and `asyncio` cannot start a command line,
+    # which is what the bash of Git for Windows needs, see `stepup.core.popen`.
+    args = popen_args(["./main.sh"], shell=False, env=env, cwd=workdir)
+    job = JobObject.create()
+    try:
+        proc = subprocess.Popen(
+            args,
+            stdin=subprocess.DEVNULL,
+            stdout=main_log,
+            stderr=subprocess.STDOUT,
+            cwd=workdir,
+            env=env,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        main_log.close()
+        try:
+            job.assign(proc.pid)
+            async with asyncio.timeout(EXAMPLE_TIMEOUT):
+                while proc.poll() is None:
+                    await asyncio.sleep(EXAMPLE_POLL)
+            return proc.returncode
+        finally:
+            await _stop_job(job)
+            # This only matters when `main.sh` could not be put in the job.
+            proc.kill()
+            proc.wait()
+    finally:
+        job.close()
+
+
+def _write_python3_shim(bindir: Path) -> Path:
+    """Write a shell script `python3` that runs the Python of the test runner.
+
+    Windows has no `python3`: a virtual environment only has `python.exe`,
+    and the `python3.exe` that Windows itself puts on `PATH` opens the Microsoft Store.
+    StepUp runs a script with `python3` on its shebang line with its own Python,
+    but a shell that is given such a script, by `main.sh` or by a step with `shell=True`,
+    looks for `python3` on `PATH`.
+    StepUp does not provide that program, because what a shell command needs is up to the user.
+    This script is the wrapper that a user installs to run such workflows on Windows,
+    so the examples are tested as that user would run them.
+
+    Parameters
+    ----------
+    bindir
+        The directory in which the script is written, which is created.
+
+    Returns
+    -------
+    bindir
+        The directory to put on `PATH`.
+    """
+    bindir.makedirs_p()
+    with open(bindir / "python3", "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(f'#!/bin/sh\nexec {shlex.quote(Path(sys.executable))} "$@"\n')
+    return bindir
+
+
+async def _stop_job(job: "JobObject"):
+    """Terminate the processes that are left in a Job Object, if any.
+
+    This returns as soon as the job is empty,
+    or when it still is not empty `EXAMPLE_STOP_GRACE` seconds later.
+    Windows ends the processes of a terminated job in its own time,
+    and they keep their files open until then.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + EXAMPLE_STOP_GRACE
+    while job.query_usage().active > 0 and loop.time() < deadline:
+        job.terminate(1)
+        await asyncio.sleep(EXAMPLE_POLL)
+
+
 async def run_plan(srcdir: Path, tmpdir: Path):
     """Copy a `plan.py` script to a temporary directory and run it as an ordinary Python script.
 
@@ -293,8 +488,9 @@ async def run_plan(srcdir: Path, tmpdir: Path):
     """
     workdir = tmpdir / "example"
     shutil.copytree(srcdir, workdir)
-    plan_proc = await asyncio.create_subprocess_shell(
-        f"{sys.executable} plan.py",
+    plan_proc = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "plan.py",
         stdin=subprocess.DEVNULL,
         cwd=workdir,
         env=os.environ | {"PYTHONUNBUFFERED": "yes"},

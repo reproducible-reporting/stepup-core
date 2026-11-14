@@ -48,9 +48,26 @@ What belongs here instead, because it concerns `tests/test_examples.py` itself:
   if the plan should also run standalone.
   The guard tests `test_examples_list_has_all_dirs` / `test_examples_list_has_no_extra`
   fail when `EXAMPLES` is out of sync with the directories under `tests/examples/`.
-- Examples that only work with the forkserver must be added to
-  `EXAMPLES_REQUIRES_FORKSERVER`; they are skipped when `STEPUP_BUILD_FORKSERVER=0`.
-  CI runs the suite twice, with `STEPUP_BUILD_FORKSERVER=1` and `=0`.
+- An example that needs something that not every platform or configuration offers
+  is added to the set named after that capability.
+  `EXAMPLE_MARKERS` maps each set to a marker of `CAPABILITY_MARKERS` in `tests/conftest.py`,
+  which skips the example where the capability is missing:
+    - `EXAMPLES_REQUIRES_FORKSERVER`: skipped without a forkserver,
+      which includes `STEPUP_BUILD_FORKSERVER=0`.
+      CI runs the suite twice, with `STEPUP_BUILD_FORKSERVER=1` and `=0`.
+    - `EXAMPLES_REQUIRE_FILE_MODES`: the example changes permission bits with `chmod`,
+      or needs a file without executable bit.
+    - `EXAMPLES_REQUIRE_SYMLINKS`: `main.sh` creates a symbolic link,
+      which takes a privilege on Windows.
+    - `EXAMPLES_REQUIRE_USR_BIN_ENV`: the example uses the file `/usr/bin/env` as such.
+
+  Every entry has a comment with its reason.
+  Keep these sets short: an example that fails on one platform is ported when possible,
+  following the rules for portable scripts in `tests/examples/README.md`,
+  and only skipped when the feature it tests does not exist there.
 
 `stepup/core/pytest.py` holds the pytest helpers that drive these workflows,
 including the comparison of `current_*` against `expected_*` files.
+The functions that normalize the output before that comparison
+are unit-tested in `tests/test_pytest.py`, not in `tests/test_examples.py`:
+the fast selection `-k "not test_example"` also deselects every test in a module of that name.

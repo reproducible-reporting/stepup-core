@@ -22,6 +22,7 @@ from stepup.core.file import File
 from stepup.core.hash import FileHash
 from stepup.core.oscompat import (
     af_unix_available,
+    file_modes_available,
     forkserver_available,
     raw_terminal_available,
     suspend_available,
@@ -43,14 +44,32 @@ def _forkserver_enabled() -> bool:
     return forkserver_available() and os.environ.get("STEPUP_BUILD_FORKSERVER") != "0"
 
 
+def _symlinks_available() -> bool:
+    """Whether this user can create symbolic links, which takes a privilege on Windows."""
+    with tempfile.TemporaryDirectory() as path:
+        try:
+            os.symlink("target", Path(path) / "link")
+        except (OSError, NotImplementedError):
+            return False
+    return True
+
+
+def _usr_bin_env_available() -> bool:
+    """Whether `/usr/bin/env` exists, as it does on every POSIX system."""
+    return Path("/usr/bin/env").is_file()
+
+
 CAPABILITY_MARKERS = {
     "requires_af_unix": (af_unix_available, "requires Unix domain sockets (socket.AF_UNIX)"),
+    "requires_file_modes": (file_modes_available, "requires permission bits of files (chmod)"),
     "requires_forkserver": (
         _forkserver_enabled,
         "requires the forkserver (available on this platform and STEPUP_BUILD_FORKSERVER != 0)",
     ),
     "requires_termios": (raw_terminal_available, "requires POSIX terminal control (termios)"),
     "requires_suspend": (suspend_available, "requires the job-control signals of Ctrl-Z"),
+    "requires_symlinks": (_symlinks_available, "requires the right to create symbolic links"),
+    "requires_usr_bin_env": (_usr_bin_env_available, "requires the file /usr/bin/env"),
     "requires_windows_console": (windows_console_available, "requires a Windows console"),
 }
 """Markers that skip a test when a capability is missing, with the predicate testing for it.

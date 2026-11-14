@@ -60,7 +60,7 @@ from typing import Any, NoReturn, TypeVar
 
 import attrs
 
-from .asyncio import _wait_closed_compat, iter_until_stopped
+from .asyncio import iter_until_stopped
 from .exceptions import ConfigError, RPCClientUnusableError, RPCError, UsageError
 from .oscompat import af_unix_available
 from .path import Path, StrPath
@@ -1025,8 +1025,22 @@ class SocketRPCServer:
     _connections: set[RPCServerConnection] = attrs.field(init=False, factory=set)
     """The connections currently being served."""
 
+    _idle: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    """Set when no connection is being served."""
+
+    _stopping: bool = attrs.field(init=False, default=False)
+    """Whether the server is winding down, after which it serves no new connections."""
+
     async def serve(self, stop_event: asyncio.Event):
         """Accept and serve connections until `stop_event` is set.
+
+        This returns when the server has stopped serving all its connections.
+        It keeps its own account of them and does not rely on `asyncio.Server.wait_closed`,
+        which waits forever for a connection that the event loop failed to close.
+        On Windows, a connection stays attached to its server
+        when shutting down its socket fails in `_call_connection_lost` of the Proactor event loop.
+        (Observed with Python 3.14.10 on Windows 11, where the shutdown of a connection
+        that the peer had just closed failed once with `WinError 10022`.)
 
         Parameters
         ----------
@@ -1034,18 +1048,18 @@ class SocketRPCServer:
             The server keeps accepting connections until this event is set,
             and then stops the connections that are still open.
         """
+        self._idle.set()
         server = await self._listen()
         await stop_event.wait()
+        self._stopping = True
         # Closing the server only stops it from accepting,
-        # so a connection whose peer keeps its side open keeps being served.
-        # Since `wait_closed` below waits for every connection being served,
-        # such a peer would decide when this method returns.
+        # so a connection whose peer keeps its side open keeps being served,
+        # and such a peer would decide when this method returns.
         # Iterate over a copy: `_serve_connection` removes a connection when it stops serving.
         for connection in list(self._connections):
             connection.stop()
         server.close()
-        await server.wait_closed()
-        await _wait_closed_compat(server)
+        await self._idle.wait()
 
     async def _listen(self) -> asyncio.Server:
         """Start accepting connections, and only then create the socket path."""
@@ -1085,14 +1099,21 @@ class SocketRPCServer:
 
     async def _serve_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """Serve a single accepted connection, as `asyncio.start_server` expects."""
+        if self._stopping:
+            # The connection was accepted just before the server stopped accepting.
+            writer.close()
+            return
         if self._token is not None:
             _set_nodelay(writer.get_extra_info("socket"))
         connection = RPCServerConnection(self.handler, reader, writer, self._token)
         self._connections.add(connection)
+        self._idle.clear()
         try:
             await connection.serve()
         finally:
             self._connections.discard(connection)
+            if len(self._connections) == 0:
+                self._idle.set()
 
 
 #

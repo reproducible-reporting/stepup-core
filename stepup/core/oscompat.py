@@ -19,6 +19,7 @@ import sys
 __all__ = (
     "abort_signals",
     "af_unix_available",
+    "file_modes_available",
     "forkserver_available",
     "perf_available",
     "raw_terminal_available",
@@ -42,6 +43,15 @@ def abort_signals() -> tuple[signal.Signals, ...]:
 def af_unix_available() -> bool:
     """Whether Unix domain sockets exist, which `asyncio` only supports where `socket` does."""
     return hasattr(socket, "AF_UNIX")
+
+
+def file_modes_available() -> bool:
+    """Whether files have permission bits, of which one makes a file executable.
+
+    Windows has none: `os.chmod` only changes the read-only attribute there,
+    and the mode that `os.stat` reports is derived from that attribute and from the file name.
+    """
+    return sys.platform != "win32"
 
 
 def forkserver_available() -> bool:

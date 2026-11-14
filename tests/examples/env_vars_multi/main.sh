@@ -2,7 +2,9 @@
 source ../example.rc
 
 # Run the example
-export INPS="inp.txt:foo/inp.txt"
+# The separator of a list of paths is that of `PATH`, which is a semicolon on Windows.
+PATHSEP=$(python3 -c "import os; print(os.pathsep)")
+export INPS="inp.txt${PATHSEP}foo/inp.txt"
 sb -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.

@@ -6,7 +6,6 @@ import asyncio
 import contextlib
 import functools
 import signal
-import sys
 from collections.abc import AsyncIterator, Callable, Coroutine, Iterator, Mapping
 from types import FrameType
 from typing import Any, TypeVar
@@ -14,7 +13,6 @@ from typing import Any, TypeVar
 from .path import Path
 
 __all__ = (
-    "_wait_closed_compat",
     "iter_until_stopped",
     "signal_handlers",
     "wait_for_any_event",
@@ -85,20 +83,6 @@ async def wait_for_path(path: Path, stop_event: asyncio.Event) -> bool:
         # The delay is capped because it also bounds how long it takes to notice `stop_event`.
         delay = min(delay + 0.1, MAX_POLL_DELAY)
     return True
-
-
-async def _wait_closed_compat(server: asyncio.Server):
-    """Wait for the connections of a closed server, on the versions where `wait_closed` does not.
-
-    `asyncio.Server.wait_closed` returned without waiting for the connections still being served,
-    which was fixed in Python 3.12.1, see https://github.com/python/cpython/issues/120866.
-    This helper can go when StepUp requires Python 3.12.1 or later.
-    """
-    if sys.version_info >= (3, 12, 1) or server._waiters is None:
-        return
-    waiter = server.get_loop().create_future()
-    server._waiters.append(waiter)
-    await waiter
 
 
 #

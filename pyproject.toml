@@ -123,9 +123,12 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
     "requires_af_unix: skip unless Unix domain sockets (socket.AF_UNIX) are available",
+    "requires_file_modes: skip unless files have permission bits that chmod changes",
     "requires_forkserver: skip unless the forkserver is available and STEPUP_BUILD_FORKSERVER != 0",
     "requires_termios: skip unless POSIX terminal control (termios, pty) is available",
     "requires_suspend: skip unless the job-control signals of Ctrl-Z are available",
+    "requires_symlinks: skip unless the user may create symbolic links",
+    "requires_usr_bin_env: skip unless the file /usr/bin/env exists",
     "requires_windows_console: skip unless the terminal is a Windows console",
 ]
 timeout = 15

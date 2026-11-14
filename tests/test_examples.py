@@ -3,15 +3,21 @@
 """Run examples."""
 
 import asyncio
+import contextlib
+import functools
 import os
 import re
 import shutil
 import signal
+import sys
+from collections.abc import Callable
 
 import pytest
 
+from stepup.core.constants import DIRECTOR_LOG
 from stepup.core.path import Path
 from stepup.core.pytest import EXAMPLE_TIMEOUT, run_example, run_plan
+from stepup.core.utils import is_process_running, query_director_log
 
 pytestmark = pytest.mark.timeout(2 * EXAMPLE_TIMEOUT)
 """Budget for a whole example, which `run_example` already bounds with `EXAMPLE_TIMEOUT`,
@@ -333,16 +339,51 @@ EXAMPLES = [
 # Examples that can only run when StepUp uses the forkserver path.
 EXAMPLES_REQUIRES_FORKSERVER = {"preload_modules"}
 
+# Examples that change the permission bits of a file, or that need a file without executable bit.
+EXAMPLES_REQUIRE_FILE_MODES = {
+    # The plan has no executable bit, which the director refuses.
+    "error_plan_not_executable",
+    # The script of a step has no executable bit, which fails the step.
+    "error_runpy_not_executable",
+    "error_runsh_not_executable",
+    # A step reruns after `chmod` of one of its inputs.
+    "permissions_file_rerun",
+    "restart_mode_change",
+    "watch_mode_change",
+    # A plan or a step fails until `chmod +x` of its script.
+    "permissions_plan_rerun",
+    "permissions_plan_restart",
+    "permissions_step_rerun",
+    "permissions_step_restart",
+}
 
-@pytest.mark.parametrize(
-    "name",
-    [
-        pytest.param(name, marks=pytest.mark.requires_forkserver)
-        if name in EXAMPLES_REQUIRES_FORKSERVER
-        else name
-        for name in EXAMPLES
-    ],
-)
+# Examples in which `main.sh` creates a symbolic link.
+EXAMPLES_REQUIRE_SYMLINKS = {"filter_deps_symlink"}
+
+# Examples that declare `/usr/bin/env` as a static file.
+EXAMPLES_REQUIRE_USR_BIN_ENV = {"static_abs"}
+
+EXAMPLE_MARKERS = {
+    "requires_forkserver": EXAMPLES_REQUIRES_FORKSERVER,
+    "requires_file_modes": EXAMPLES_REQUIRE_FILE_MODES,
+    "requires_symlinks": EXAMPLES_REQUIRE_SYMLINKS,
+    "requires_usr_bin_env": EXAMPLES_REQUIRE_USR_BIN_ENV,
+}
+"""The examples that are skipped without a capability, by the marker of that capability.
+
+The markers are defined by `CAPABILITY_MARKERS` in `conftest.py`.
+"""
+
+
+def _example_param(name: str):
+    """Give an example the markers of the capabilities that it needs."""
+    marks = [
+        getattr(pytest.mark, marker) for marker, names in EXAMPLE_MARKERS.items() if name in names
+    ]
+    return pytest.param(name, marks=marks) if marks else name
+
+
+@pytest.mark.parametrize("name", [_example_param(name) for name in EXAMPLES])
 async def test_example(name: str, path_tmp: Path):
     await run_example(Path("tests/examples") / name, path_tmp, OVERWRITE_EXPECTED)
 
@@ -352,6 +393,13 @@ def test_examples_list_has_all_dirs():
     dirs = {path.name for path in Path("tests/examples").dirs()}
     missing = dirs - set(EXAMPLES)
     assert not missing, f"Example directories not listed in EXAMPLES: {sorted(missing)}"
+
+
+def test_example_markers_name_examples():
+    """Every example that is given a capability marker is listed in `EXAMPLES`."""
+    marked = set().union(*EXAMPLE_MARKERS.values())
+    unknown = marked - set(EXAMPLES)
+    assert not unknown, f"Marked examples that are not listed in EXAMPLES: {sorted(unknown)}"
 
 
 def test_examples_list_has_no_extra():
@@ -384,14 +432,28 @@ async def test_plan(name: str, path_tmp: Path):
 
 HARNESS_PLAN = """\
 #!/usr/bin/env python3
-from stepup.core.api import run
+from stepup.core.api import run, static
 
-run("echo $$ > step.tmp && mv step.tmp step.pid && exec sleep 600", shell=True)
+static("step.py")
+run("./step.py")
 """
-"""A plan whose only step records its pid and then runs until it is stopped.
+"""A plan whose only step records its pid and then runs until it is stopped."""
 
-The step runs in a session of its own,
-so that only the director can stop it, and only when it gets the chance.
+HARNESS_STEP = """\
+#!/usr/bin/env python3
+import os
+import time
+
+with open("step.tmp", "w", encoding="utf-8") as fh:
+    fh.write(str(os.getpid()))
+os.replace("step.tmp", "step.pid")
+time.sleep(600)
+"""
+"""A step that only the director can stop, and only when it gets the chance.
+
+On POSIX, it runs in a session of its own.
+It is a Python script because its pid must be one of the operating system:
+a shell of Git for Windows reports the pid that the MSYS2 runtime gave it instead.
 """
 
 HARNESS_MAIN_FAILS = """\
@@ -437,7 +499,7 @@ def write_harness_example(path_tmp: Path, main: str) -> Path:
     srcdir = path_tmp / "src" / "example"
     srcdir.makedirs_p()
     shutil.copy("tests/examples/example.rc", srcdir.parent / "example.rc")
-    for name, text in ("main.sh", main), ("plan.py", HARNESS_PLAN):
+    for name, text in ("main.sh", main), ("plan.py", HARNESS_PLAN), ("step.py", HARNESS_STEP):
         path = srcdir / name
         path.write_text(text, encoding="utf-8")
         path.chmod(0o755)
@@ -445,10 +507,40 @@ def write_harness_example(path_tmp: Path, main: str) -> Path:
     return srcdir
 
 
-async def assert_nothing_left(workdir: Path):
-    """Check that the process group of `main.sh` is empty and that its step has stopped.
+def _signal_reaches(send: Callable[[int, int], None], pid: int, sig: int) -> bool:
+    """Send a signal to a process or a process group, and tell whether it still existed.
 
+    Parameters
+    ----------
+    send
+        Either `os.kill` or `os.killpg`.
+    pid
+        The process or process group to signal.
+    sig
+        The signal, of which 0 is not delivered: it only checks whether the target exists.
+    """
+    try:
+        send(pid, sig)
+    # `os.killpg` raises `PermissionError` on macOS for a group of zombies,
+    # see `_signal_process_group` in `stepup.core.run`.
+    except (ProcessLookupError, PermissionError):
+        return False
+    return True
+
+
+def _terminate(pid: int):
+    """Terminate a Windows process, which may have exited in the meantime."""
+    with contextlib.suppress(OSError):
+        # `os.kill` terminates a Windows process, whatever the signal.
+        os.kill(pid, signal.SIGTERM)
+
+
+async def assert_nothing_left(workdir: Path):
+    """Check that nothing of an example is running anymore.
+
+    On POSIX, the process group of `main.sh` must be empty and its step must have stopped.
     On macOS, a group with only zombies left counts as empty.
+    Windows has no such group, so the director and its step are checked instead.
     Whatever is still running after `PROCESS_EXIT_WAIT` seconds is killed,
     so that a failing test does not leave it behind either.
 
@@ -457,28 +549,40 @@ async def assert_nothing_left(workdir: Path):
     workdir
         The directory in which the example ran.
     """
-    pgid = int((workdir / "main.pid").read_text(encoding="utf-8"))
     step_pid = int((workdir / "step.pid").read_text(encoding="utf-8"))
+    if sys.platform == "win32":
+        _, director_pid, _ = query_director_log(workdir / DIRECTOR_LOG)
+        assert director_pid is not None, "The director log does not hold the pid of the director."
+        targets = [
+            ("the director", is_process_running, _terminate, director_pid),
+            ("the step", is_process_running, _terminate, step_pid),
+        ]
+    else:
+        pgid = int((workdir / "main.pid").read_text(encoding="utf-8"))
+        targets = [
+            (
+                "the process group of main.sh",
+                functools.partial(_signal_reaches, os.killpg, sig=0),
+                functools.partial(_signal_reaches, os.killpg, sig=signal.SIGKILL),
+                pgid,
+            ),
+            (
+                "the step",
+                functools.partial(_signal_reaches, os.kill, sig=0),
+                functools.partial(_signal_reaches, os.kill, sig=signal.SIGKILL),
+                step_pid,
+            ),
+        ]
     loop = asyncio.get_running_loop()
     deadline = loop.time() + PROCESS_EXIT_WAIT
     survivors = []
-    for label, send, pid in [
-        ("the process group of main.sh", os.killpg, pgid),
-        ("the step", os.kill, step_pid),
-    ]:
-        try:
-            # Signal 0 is not delivered: it only checks whether the target exists.
-            while True:
-                send(pid, 0)
-                if loop.time() > deadline:
-                    survivors.append(label)
-                    send(pid, signal.SIGKILL)
-                    break
-                await asyncio.sleep(0.1)
-        # `os.killpg` raises `PermissionError` on macOS for a group of zombies,
-        # see `_signal_process_group` in `stepup.core.run`.
-        except (ProcessLookupError, PermissionError):
-            pass
+    for label, is_running, kill, pid in targets:
+        while is_running(pid):
+            if loop.time() > deadline:
+                survivors.append(label)
+                kill(pid)
+                break
+            await asyncio.sleep(0.1)
     assert not survivors, f"Still running: {', '.join(survivors)}"
 
 

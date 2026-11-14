@@ -276,6 +276,33 @@ async def test_modified_dir(backend):
     await check(backend, {(Change.UPDATED, "marker.txt")})
 
 
+@pytest.mark.parametrize("recursive", [False, True])
+async def test_modified_dir_with_requested_watch(workdir, recursive):
+    """A directory reported as modified is only taken for a new one when no watch is under way.
+
+    The changes are fed to the backend directly, because Windows decides when it reports them.
+    """
+    change = pytest.importorskip("watchfiles").Change
+    os.mkdir("sub")
+    write("sub/a.txt")
+    top = Path(".")
+    sub = Path("sub")
+    # The backend is not started, so that the requested watch stays requested.
+    backend = WatchfilesBackend(dir_queue=asyncio.Queue(), recursive=recursive)
+    backend.watches.update({top: 1, sub: None})
+    backend._schedule(sub, report_files=False)
+    backend._process_changes(1, {sub: {int(change.modified)}}, {sub: {top}})
+    assert backend._pending == {sub: False}
+    # A directory reported as created has appeared, so its files may be older than its watch.
+    backend._process_changes(1, {sub: {int(change.added)}}, {sub: {top}})
+    assert backend._pending == {sub: True}
+    # Without a requested watch, the directory has appeared unnoticed.
+    backend._pending.clear()
+    backend._process_changes(1, {sub: {int(change.modified)}}, {sub: {top}})
+    assert backend._pending == {sub: True}
+    assert backend.change_queue.empty()
+
+
 async def test_dir_replaced_by_rename(backend):
     if sys.platform == "win32":
         pytest.skip("Windows does not rename a directory over another one.")
