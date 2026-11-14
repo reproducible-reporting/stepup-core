@@ -53,9 +53,10 @@ The module `stepup.core.pytest` holds test utilities that extensions can reuse:
     ```
 
     Set `example_rc = None` in the subclass when the test suite has no integration examples.
-    For the failing assertions to explain themselves,
-    add the following line to `conftest.py`:
+    Add the following line to `conftest.py`,
+    so that the failing assertions explain themselves,
+    and so that pytest reports the output of failed examples legibly on Windows:
 
     ```python
-    pytest.register_assert_rewrite("stepup.core.pytest")
+    pytest_plugins = ("stepup.core.pytest",)
     ```

@@ -23,13 +23,27 @@ from .enums import ReturnCode
 from .oscompat import file_modes_available
 from .path import Path
 from .popen import popen_args
-from .utils import scan_director_log
+from .utils import scan_director_log, write_utf8_unless_terminal
 from .watcher import select_watcher_backend
 
 if sys.platform == "win32":
     from .winapi import JobObject
 
 __all__ = ("ConventionTests", "remove_hashes", "run_example", "run_plan")
+
+
+def pytest_configure():
+    """Make pytest write its report in UTF-8 when it does not go to a terminal.
+
+    This hook only runs when `conftest.py` loads this module as a plugin,
+    see `ConventionTests`.
+    `run_example` prints the output of StepUp, with characters such as `│`,
+    which the locale encoding cannot represent on Windows with Python 3.14 and older.
+    pytest writes a section of its report that it cannot encode with `unicode_escape`,
+    which puts the whole section on a single line.
+    The `stepup` command avoids the locale encoding in the same way.
+    """
+    write_utf8_unless_terminal()
 
 
 def remove_hashes(graph: dict) -> dict:
@@ -565,11 +579,13 @@ class ConventionTests:
         package = "stepup.spam"
     ```
 
-    For the assertions to explain themselves when they fail,
-    the test suite's `conftest.py` must contain:
+    The test suite's `conftest.py` must load this module as a plugin,
+    so that the assertions explain themselves when they fail,
+    and so that pytest reports the output of failed examples legibly on Windows
+    (see `pytest_configure`):
 
     ```python
-    pytest.register_assert_rewrite("stepup.core.pytest")
+    pytest_plugins = ("stepup.core.pytest",)
     ```
     """
 

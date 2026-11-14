@@ -238,7 +238,9 @@ so it needs no interactive session.
 
 ### Encoding of the Standard Streams
 
-`write_utf8_unless_terminal()` (`utils.py`) is called first thing by `stepup` and by the director.
+`write_utf8_unless_terminal()` (`utils.py`) is called first thing by `stepup` and by the director,
+and by pytest through the `pytest_configure` hook of `stepup.core.pytest`,
+whose report would otherwise escape the captured output of a failed example onto a single line.
 A standard output or error that is not a terminal is then written in UTF-8 with `\n` line endings,
 instead of in the locale encoding, which is the ANSI code page on Windows
 with Python 3.14 and older and cannot represent what the reporter prints.

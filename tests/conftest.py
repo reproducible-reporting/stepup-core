@@ -36,7 +36,8 @@ from stepup.core.sqlite3 import DBSession
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
-pytest.register_assert_rewrite("stepup.core.pytest")
+# As a plugin, `stepup.core.pytest` also gets its assertions rewritten.
+pytest_plugins = ("stepup.core.pytest",)
 
 
 def _forkserver_enabled() -> bool:

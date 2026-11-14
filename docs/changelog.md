@@ -84,6 +84,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - The `stepup` command writes its standard output and error in UTF-8 with `\n` line endings
   when they are redirected to a file or a pipe, instead of in the locale encoding.
   Output to a terminal is not affected, and neither is output under a UTF-8 locale.
+- `stepup.core.pytest` is now meant to be loaded as a pytest plugin,
+  with `pytest_plugins = ("stepup.core.pytest",)` in `conftest.py`,
+  instead of `pytest.register_assert_rewrite("stepup.core.pytest")`.
+  The plugin makes pytest write its report in UTF-8 when it is redirected,
+  as the `stepup` command does,
+  so that the output of a failed example is not escaped onto a single line on Windows.
 - When the director ends with an exit code that is not a combination of
   the [return codes](reference/returncode.md) of StepUp,
   e.g. because a program that wraps the director failed,
