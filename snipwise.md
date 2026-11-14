@@ -108,10 +108,10 @@ where the full set of dependencies cannot be determined in advance.
 asyncio
 build automation
 build tool
+cross-platform
 dynamic dependencies
 incremental build
 parallel
-POSIX
 Python
 reproducibility
 reproducible research
