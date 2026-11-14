@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-# Simply check that something works on macOS and Ubuntu
+# Simply check that the documentation examples work on Linux, macOS and Windows.
 name: smoke
 on:
   push:
@@ -16,6 +16,7 @@ on:
       - docs/**
       - stepup/**
       - pyproject.toml
+      - .gitattributes
       - .github/workflows/smoke.yaml
   pull_request:
     # Run tests on pull requests ...
@@ -24,15 +25,23 @@ on:
       - docs/**
       - stepup/**
       - pyproject.toml
+      - .gitattributes
       - .github/workflows/smoke.yaml
+
+# The steps are written for bash, which is the bash of Git for Windows on the Windows runners.
+defaults:
+  run:
+    shell: bash
 
 jobs:
   tests:
     name: Smoke tests (${{ matrix.runner }}, ${{ matrix.python-version }}, ${{ matrix.resolution }})
-    timeout-minutes: 4
+    timeout-minutes: 10
     permissions:
       contents: read
     strategy:
+      # A failure on one platform should not hide the results of the other platforms.
+      fail-fast: false
       matrix:
         include:
           - runner: macos-latest
@@ -46,6 +55,13 @@ jobs:
             resolution: lowest-direct
           - runner: ubuntu-26.04
             python-version: '3.15'
+            resolution: highest
+          - runner: windows-2022
+            python-version: '3.11'
+            resolution: lowest-direct
+          # As of November 2026, PyYAML has no Windows wheel for Python 3.15.
+          - runner: windows-2025
+            python-version: '3.14'
             resolution: highest
     runs-on: ${{ matrix.runner }}
     steps:
@@ -72,12 +88,40 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
         run: brew install graphviz
+      # The package puts shims of the Graphviz programs in Chocolatey's bin directory,
+      # which is on the PATH of the Windows runners.
+      - name: Install Graphviz (Windows)
+        if: runner.os == 'Windows'
+        run: choco install graphviz --yes --no-progress
+      # Some examples let bash start a script with `python3` on its shebang line,
+      # and Windows has no program of that name.
+      - name: Install a python3 wrapper (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          bindir="$(cygpath -u "$RUNNER_TEMP")/python3-wrapper"
+          mkdir -p "$bindir"
+          printf '#!/bin/sh\nexec python "$@"\n' > "$bindir/python3"
+          cygpath -w "$bindir" >> "$GITHUB_PATH"
+      # A missing program is easier to recognize here than in the outputs of the examples.
+      - name: Check the programs needed by the documentation examples
+        run: |
+          dot -V
+          python3 --version
       - name: Install with the dependencies of the documentation examples
         run: uv pip install --system --resolution ${{ matrix.resolution }} -e .[examples]
       - name: Run documentation examples
         run: |
           cd docs
           STEPUP_DEBUG=1 STEPUP_SYNC_RPC_TIMEOUT=10 stepup build -j 1.0
+      # A step that fails inside an example does not fail the build of the examples,
+      # because some examples demonstrate failing steps.
+      # Their committed outputs show which steps are meant to fail.
+      - name: Check that no step of an example fails unexpectedly
+        run: |
+          if git diff -U0 -- 'docs/*stdout*.txt' | grep -E '^\+ *FAIL │'; then
+            echo "These steps failed in the examples, unlike in the committed outputs."
+            exit 1
+          fi
       # The build only reports the lines of the director log that betray a problem,
       # without the tracebacks that follow them.
       - name: Show the director log

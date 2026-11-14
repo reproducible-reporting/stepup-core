@@ -19,7 +19,7 @@ def main():
     path_main, root = sys.argv[1:]
 
     workdir, name_main = Path(path_main).splitpath()
-    run_subprocess(f"./{name_main}", workdir=workdir, check=False)
+    run_subprocess(f"./{name_main}", workdir=workdir)
 
     root = Path(root)
     path_graph = root / ".stepup/" / "graph.db"
