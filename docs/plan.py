@@ -5,7 +5,7 @@
 
 from path import Path
 
-from stepup.core.api import run, static
+from stepup.core.api import run, shq, static
 
 
 def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
@@ -59,7 +59,7 @@ def main():
         inp, root, out = scan_main(path_main)
         static(inp)
         inp.append(path_main)
-        run(f"./run_example.py {path_main} {root}", inp=inp, out=out)
+        run(f"./run_example.py {shq(path_main)} {shq(root)}", inp=inp, out=out)
 
 
 if __name__ == "__main__":

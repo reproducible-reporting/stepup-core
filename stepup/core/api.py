@@ -1922,6 +1922,19 @@ def _check_no_directories(paths: Iterable[Path], workdir: StrPath = "."):
 _COMMAND_PARAM_NAMES = ("inp", "out", "vol")
 
 
+def _command_text(command: StrPath) -> str:
+    """Return a command as a string, converting only a path object to StepUp's spelling.
+
+    A string is a command line, in which a backslash belongs to the command,
+    e.g. as an escape sequence of `printf` or in a regular expression.
+    Only a path object, such as a `pathlib.Path` of a script,
+    has backslashes that are separators on Windows.
+    """
+    if isinstance(command, str) and not is_path_type(type(command)):
+        return str(command)
+    return coerce_str(command)
+
+
 def _resolve_command(
     command: CommandArg,
     su_inp_paths: list[Path],
@@ -1934,7 +1947,7 @@ def _resolve_command(
     ----------
     command
         The `command` argument as given by the user.
-        A path-like object is returned as a string, unmodified.
+        A string is returned unmodified, and a path object in StepUp's spelling.
         A callable is called with the subset of `inp`, `out` and `vol` that it declares.
     su_inp_paths, su_out_paths, su_vol_paths
         The step's input, output and volatile output paths,
@@ -1952,7 +1965,7 @@ def _resolve_command(
         or declares `*args`, `**kwargs` or a positional-only parameter.
     """
     if not callable(command):
-        return coerce_str(command)
+        return _command_text(command)
     # Copies are passed to the callable, so that in-place modifications (e.g. `inp.sort()`)
     # cannot affect the paths sent to the director.
     available = {
@@ -1974,7 +1987,7 @@ def _resolve_command(
                 f"Supported parameters: {', '.join(_COMMAND_PARAM_NAMES)}."
             )
         kwargs[name] = available[name]
-    return coerce_str(command(**kwargs))
+    return _command_text(command(**kwargs))
 
 
 def _resolve_run_command(
@@ -2023,7 +2036,7 @@ def _resolve_run_command(
             su_vol_paths = [subs_env(vol_path, su_workdir) for vol_path in vol_paths]
         command = _resolve_command(command, su_inp_paths, su_out_paths, su_vol_paths)
     else:
-        command = coerce_str(command)
+        command = _command_text(command)
     return command, inp_paths, out_paths, vol_paths
 
 
@@ -2065,7 +2078,7 @@ def _prepare_run_command(
     PathError
         When `need_relative_exe` is `True` and the first word is not a local relative executable.
     """
-    command = coerce_str(command)
+    command = _command_text(command)
     env_overrides, remaining = extract_env_overrides(command)
     if shell:
         # Leading assignments are left in the command for the shell to interpret.

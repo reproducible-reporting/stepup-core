@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # """Run one example and amend (volatile) outputs."""
 
-import subprocess
 import sys
 
 from path import Path
 
 from stepup.core.api import amend
+from stepup.core.extapi import run_subprocess
 from stepup.core.file import FileState
 from stepup.core.sqlite3 import connect
 
@@ -19,7 +19,7 @@ def main():
     path_main, root = sys.argv[1:]
 
     workdir, name_main = Path(path_main).splitpath()
-    subprocess.run(f"./{name_main}", cwd=workdir, check=False)
+    run_subprocess(f"./{name_main}", workdir=workdir, check=False)
 
     root = Path(root)
     path_graph = root / ".stepup/" / "graph.db"

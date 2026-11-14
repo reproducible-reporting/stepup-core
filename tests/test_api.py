@@ -6,6 +6,7 @@ import logging
 import os
 import pathlib
 import re
+import sys
 
 import attrs
 import pytest
@@ -352,6 +353,52 @@ def test_shq_env_var(monkeypatch):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
     monkeypatch.setenv("MYVAR", "sub")
     assert shq("${MYVAR}/a.txt") == "sub/a.txt"
+
+
+BACKSLASH_COMMAND = r'printf "a\nb\n" | grep "\." > out.txt'
+
+
+@pytest.mark.parametrize("platform", ["linux", "win32"])
+@pytest.mark.parametrize("as_callable", [False, True])
+def test_run_keeps_backslashes_in_command(captured_step_kwargs, monkeypatch, platform, as_callable):
+    """A backslash in a command is part of the command, not a path separator, also on Windows."""
+    monkeypatch.setattr(sys, "platform", platform)
+    run((lambda: BACKSLASH_COMMAND) if as_callable else BACKSLASH_COMMAND, shell=True)
+    assert captured_step_kwargs[-1]["command"] == BACKSLASH_COMMAND
+
+
+@pytest.mark.parametrize("platform", ["linux", "win32"])
+def test_plan_keeps_backslashes_in_command(captured_step_kwargs, monkeypatch, platform):
+    monkeypatch.setattr(sys, "platform", platform)
+    plan(r"./plan.py --sep '\t'")
+    assert captured_step_kwargs[-1]["command"] == r"./plan.py --sep '\t'"
+    assert captured_step_kwargs[-1]["inp"] == ["./plan.py"]
+
+
+@pytest.mark.parametrize("platform", ["linux", "win32"])
+@pytest.mark.parametrize("as_callable", [False, True])
+def test_step_keeps_backslashes_in_command(monkeypatch, platform, as_callable):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    monkeypatch.setattr(sys, "platform", platform)
+    info = step((lambda: BACKSLASH_COMMAND) if as_callable else BACKSLASH_COMMAND, shell=True)
+    assert info.command == BACKSLASH_COMMAND
+
+
+@pytest.mark.parametrize("platform", ["linux", "win32"])
+def test_call_keeps_backslashes_in_arguments(monkeypatch, platform):
+    """The JSON of the arguments escapes a line break as a backslash and an `n`."""
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    monkeypatch.setattr(sys, "platform", platform)
+    info = call("./f.py", "main", text="a\nb")
+    assert r'"text": "a\nb"' in info.command
+
+
+def test_run_converts_path_object_command(captured_step_kwargs, monkeypatch):
+    """A path object as command is a path, whose backslashes are separators on Windows."""
+    monkeypatch.setattr(sys, "platform", "win32")
+    run(pathlib.PureWindowsPath(r"sub\script.py"))
+    assert captured_step_kwargs[-1]["command"] == "sub/script.py"
+    assert captured_step_kwargs[-1]["inp"] == ["sub/script.py"]
 
 
 def test_command_callable_step_out(monkeypatch):
