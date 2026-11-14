@@ -87,17 +87,26 @@ class ReporterClient:
     so a task that is not stored here may be garbage-collected before it has sent its batch.
     """
 
+    _progress_ended: bool = attrs.field(init=False, default=False)
+    """Whether progress updates are no longer sent, after `stop_reporting` or `close`.
+
+    Steps and hashes may still end while the director shuts down.
+    Their progress signals are then dropped,
+    because the progress bar is gone and the client may already be closed.
+    """
+
     @classmethod
     @contextlib.asynccontextmanager
     async def socket(cls, path: Path | None) -> AsyncGenerator["ReporterClient", None]:
         if path is None:
-            yield cls(DummyAsyncRPCClient())
+            client = DummyAsyncRPCClient()
         else:
             # The reporter server is hosted in the `stepup build` process, which has no log file.
-            async with SocketAsyncRPCClient(
+            client = SocketAsyncRPCClient(
                 path, server_log_description="the output of `stepup build`"
-            ) as client:
-                yield cls(client)
+            )
+        async with cls(client) as reporter:
+            yield reporter
 
     async def __call__(
         self, tag: str, description: str, pages: list[tuple[str, str]] | None = None
@@ -111,6 +120,8 @@ class ReporterClient:
 
     def job_started(self, job_i: int, letter: str, description: str):
         """Buffer a job-start signal, sent later in a batched `update_running_jobs` RPC call."""
+        if self._progress_ended:
+            return
         self._started_buffer[job_i] = (letter, description)
         self._request_jobs_flush()
 
@@ -120,6 +131,8 @@ class ReporterClient:
         If the matching start is still buffered (started and stopped within the same
         delay window), drop both: the job never needs to appear in the progress bar.
         """
+        if self._progress_ended:
+            return
         if self._started_buffer.pop(job_i, None) is None:
             self._stopped_buffer.add(job_i)
         self._request_jobs_flush()
@@ -147,21 +160,31 @@ class ReporterClient:
         await self.client.call.update_running_jobs(started, stopped)
 
     async def update_progress(self, ndone: int, ntotal: int):
+        if self._progress_ended:
+            return
         await self.client.call.update_progress(ndone, ntotal)
 
     async def warn_about_logs(self):
         await self.client.call.warn_about_logs()
 
-    async def stop_reporting(self):
-        await self.client.call.stop_reporting()
-
-    async def close(self):
+    async def _end_progress(self):
+        """Send the buffered job signals and drop all progress signals from now on."""
+        self._progress_ended = True
         if self._flush_jobs_handle is not None:
             self._flush_jobs_handle.cancel()
             self._flush_jobs_handle = None
         await self._flush_jobs()
         if len(self._flush_tasks) > 0:
             await asyncio.gather(*self._flush_tasks)
+
+    async def stop_reporting(self):
+        """End the progress updates and ask the reporter server to stop."""
+        await self._end_progress()
+        await self.client.call.stop_reporting()
+
+    async def close(self):
+        """End the progress updates and close the client."""
+        await self._end_progress()
         await self.client.close()
 
     async def __aenter__(self):
