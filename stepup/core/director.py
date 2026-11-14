@@ -27,7 +27,7 @@ try:
 except ImportError:
     yappi = None
 
-from .asyncio import signal_handlers, wait_for_any_event
+from .asyncio import signal_handlers, tolerate_proactor_shutdown_errors, wait_for_any_event
 from .builder import Builder
 from .cgroups import get_ncore_from_cgroup
 from .constants import (
@@ -385,6 +385,7 @@ async def async_main(
     returncode
         The exit code of the director process.
     """
+    tolerate_proactor_shutdown_errors()
     logging.basicConfig(
         format="%(asctime)s  %(levelname)8s  %(name)24s  ::  %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",

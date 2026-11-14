@@ -29,7 +29,12 @@ from typing import Self
 
 import attrs
 
-from .asyncio import iter_until_stopped, signal_handlers, wait_for_path
+from .asyncio import (
+    iter_until_stopped,
+    signal_handlers,
+    tolerate_proactor_shutdown_errors,
+    wait_for_path,
+)
 from .cgroups import cgroup_scope_prefix
 from .config_loader import ConfigLoader
 from .constants import (
@@ -396,6 +401,7 @@ async def _async_build(args: argparse.Namespace) -> int:
         or if a requested feature is not available on this platform
         (see `_check_platform_support`).
     """
+    tolerate_proactor_shutdown_errors()
     _check_platform_support(args)
     rpc_transport = select_rpc_transport()
     stepup_root = get_stepup_root()

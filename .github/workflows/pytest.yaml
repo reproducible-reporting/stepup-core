@@ -14,6 +14,7 @@ on:
       - stepup/**
       - tests/**
       - pyproject.toml
+      - .gitattributes
       - .github/workflows/pytest.yaml
   pull_request:
     # Run tests on pull requests ...
@@ -22,6 +23,7 @@ on:
       - stepup/**
       - tests/**
       - pyproject.toml
+      - .gitattributes
       - .github/workflows/pytest.yaml
 
 # The steps are written for bash, which is the bash of Git for Windows on the Windows runners.
@@ -33,7 +35,7 @@ defaults:
 # which are defined in the unit job and reused in the examples job.
 jobs:
   unit:
-    name: unit (${{ matrix.platform.runner }}, ${{ matrix.platform.python-version }}, ${{ matrix.platform.resolution }}, ${{ matrix.platform.watcher }}, ${{ matrix.platform.transport }})
+    name: unit (${{ matrix.platform.runner }}, ${{ matrix.platform.python-version }}, ${{ matrix.platform.resolution }}, ${{ matrix.platform.watcher }}${{ matrix.platform.recursive == '1' && ' recursive' || '' }}, ${{ matrix.platform.transport }})
     permissions:
       contents: read
     env: &env
@@ -42,8 +44,12 @@ jobs:
       # RPC timeout is set shorter to speed up tests in case of failures.
       STEPUP_SYNC_RPC_TIMEOUT: 10
       STEPUP_WATCHER: ${{ matrix.platform.watcher }}
+      # Platform entries without a `recursive` field leave this empty, which selects the default.
+      STEPUP_WATCHER_RECURSIVE: ${{ matrix.platform.recursive }}
       STEPUP_RPC_TRANSPORT: ${{ matrix.platform.transport }}
     strategy:
+      # A failure on one platform should not hide the results of the other platforms.
+      fail-fast: false
       matrix:
         # Every operating system is tested with the oldest supported Python
         # and the oldest versions of the direct dependencies,
@@ -75,6 +81,15 @@ jobs:
             python-version: '3.15'
             resolution: highest
             watcher: watchfiles
+            transport: unix
+            extras: tests,watchfiles
+          # The single recursive watch is the default of watchfiles on Windows only.
+          - &linux-newest-watchfiles-recursive
+            runner: ubuntu-26.04
+            python-version: '3.15'
+            resolution: highest
+            watcher: watchfiles
+            recursive: '1'
             transport: unix
             extras: tests,watchfiles
           - &linux-newest-tcp
@@ -180,14 +195,16 @@ jobs:
 
   # The examples run as separate jobs, because they dominate the run time.
   examples:
-    name: ${{ matrix.suite.name }} (${{ matrix.platform.runner }}, ${{ matrix.platform.python-version }}, ${{ matrix.platform.resolution }}, ${{ matrix.platform.watcher }}, ${{ matrix.platform.transport }})
+    name: ${{ matrix.suite.name }} (${{ matrix.platform.runner }}, ${{ matrix.platform.python-version }}, ${{ matrix.platform.resolution }}, ${{ matrix.platform.watcher }}${{ matrix.platform.recursive == '1' && ' recursive' || '' }}, ${{ matrix.platform.transport }})
     permissions:
       contents: read
     env: *env
     strategy:
+      fail-fast: false
       matrix:
         suite:
-          - name: examples-forkserver
+          - &forkserver
+            name: examples-forkserver
             forkserver: 1
           - name: examples-subprocess
             forkserver: 0
@@ -195,11 +212,21 @@ jobs:
           - *linux-oldest
           - *linux-newest
           - *linux-newest-watchfiles
+          - *linux-newest-watchfiles-recursive
           - *linux-newest-tcp
           - *macos-oldest
           - *macos-newest
           - *windows-oldest
           - *windows-newest
+        exclude:
+          # Windows has no forkserver.
+          - suite: *forkserver
+            platform: *windows-oldest
+          - suite: *forkserver
+            platform: *windows-newest
+          # How the director starts steps does not interact with how it watches files.
+          - suite: *forkserver
+            platform: *linux-newest-watchfiles-recursive
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - *checkout

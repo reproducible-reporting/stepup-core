@@ -4,8 +4,10 @@
 
 import asyncio
 import contextlib
+import logging
 import os
 import signal
+from asyncio import proactor_events
 from functools import partial
 
 import pytest
@@ -15,6 +17,7 @@ from stepup.core.asyncio import (
     MAX_POLL_DELAY,
     iter_until_stopped,
     signal_handlers,
+    tolerate_proactor_shutdown_errors,
     wait_for_any_event,
     wait_for_path,
     wait_for_readable_fd,
@@ -316,3 +319,101 @@ async def test_signal_handlers_restores_after_exception():
 async def test_signal_handlers_without_signals():
     with signal_handlers({}):
         pass
+
+
+#
+# Exception handling
+#
+
+
+class FailingShutdownSocket:
+    """A stand-in for a socket whose shutdown fails, as on Windows after a reset by the peer."""
+
+    def __init__(self):
+        self.closed = False
+
+    def fileno(self) -> int:
+        return -1 if self.closed else 1234
+
+    def shutdown(self, how: int):
+        raise ConnectionResetError(10054, "An existing connection was forcibly closed")
+
+    def close(self):
+        self.closed = True
+
+
+class CountingProtocol(asyncio.Protocol):
+    def __init__(self):
+        self.lost = 0
+
+    def connection_lost(self, exc: Exception | None):
+        self.lost += 1
+
+
+async def _close_proactor_transport() -> tuple[
+    proactor_events._ProactorBaseWritePipeTransport, FailingShutdownSocket, CountingProtocol
+]:
+    """Close a Proactor transport, of which the shutdown of the socket fails.
+
+    The transport class is a base of the one for connected sockets,
+    which can be created without the proactor of the Windows event loop.
+    """
+    sock = FailingShutdownSocket()
+    protocol = CountingProtocol()
+    transport = proactor_events._ProactorBaseWritePipeTransport(
+        asyncio.get_running_loop(), sock, protocol
+    )
+    transport.close()
+    for _ in range(3):
+        await asyncio.sleep(0)
+    return transport, sock, protocol
+
+
+async def test_proactor_shutdown_error_without_handler(caplog: pytest.LogCaptureFixture):
+    # This imitates the failure that tolerate_proactor_shutdown_errors handles.
+    transport, sock, protocol = await _close_proactor_transport()
+    assert "Exception in callback" in caplog.text
+    assert "ConnectionResetError" in caplog.text
+    assert not sock.closed
+    assert protocol.lost == 1
+    # Avoid a ResourceWarning when the transport is collected.
+    transport._sock = None
+
+
+async def test_tolerate_proactor_shutdown_errors(caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.DEBUG)
+    tolerate_proactor_shutdown_errors()
+    transport, sock, protocol = await _close_proactor_transport()
+    assert not [record for record in caplog.records if record.levelno >= logging.WARNING]
+    assert "Closing a socket that failed to shut down" in caplog.text
+    assert sock.closed
+    assert transport._sock is None
+    assert protocol.lost == 1
+    # A later forced close must not notify the protocol again.
+    transport._force_close(None)
+    for _ in range(3):
+        await asyncio.sleep(0)
+    assert protocol.lost == 1
+
+
+def _raise_oserror():
+    raise OSError("unrelated")
+
+
+async def test_tolerate_proactor_shutdown_errors_default(caplog: pytest.LogCaptureFixture):
+    tolerate_proactor_shutdown_errors()
+    asyncio.get_running_loop().call_soon(_raise_oserror)
+    await asyncio.sleep(0)
+    assert "Exception in callback" in caplog.text
+    assert "unrelated" in caplog.text
+
+
+async def test_tolerate_proactor_shutdown_errors_previous():
+    contexts = []
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(lambda loop, context: contexts.append(context))
+    tolerate_proactor_shutdown_errors()
+    loop.call_soon(_raise_oserror)
+    await asyncio.sleep(0)
+    assert len(contexts) == 1
+    assert str(contexts[0]["exception"]) == "unrelated"

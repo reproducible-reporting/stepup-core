@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+# Check out text files with LF line endings on every platform,
+# also where Git converts them to CRLF by default, e.g. on GitHub's Windows runners.
+# The examples in tests/ compare file digests and sizes with expected outputs,
+# and the shell scripts in the repository do not tolerate a carriage return.
+* text=auto eol=lf

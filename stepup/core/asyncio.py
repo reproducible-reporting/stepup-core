@@ -5,7 +5,9 @@
 import asyncio
 import contextlib
 import functools
+import logging
 import signal
+from asyncio import proactor_events
 from collections.abc import AsyncIterator, Callable, Coroutine, Iterator, Mapping
 from types import FrameType
 from typing import Any, TypeVar
@@ -15,10 +17,13 @@ from .path import Path
 __all__ = (
     "iter_until_stopped",
     "signal_handlers",
+    "tolerate_proactor_shutdown_errors",
     "wait_for_any_event",
     "wait_for_path",
     "wait_for_readable_fd",
 )
+
+logger = logging.getLogger(__name__)
 
 MessageType = TypeVar("MessageType")
 
@@ -137,6 +142,73 @@ def _relay_signal(
 ) -> None:
     """Pass a signal on to the event loop, as a handler for `signal.signal`."""
     loop.call_soon_threadsafe(callback)
+
+
+#
+# Exception handling
+#
+
+
+def tolerate_proactor_shutdown_errors() -> None:
+    """Let the running event loop finish closing a connection whose socket fails to shut down.
+
+    When a connection is closed, the Proactor event loop of Windows shuts down its socket
+    before closing it.
+    The shutdown can fail with an `OSError`,
+    e.g. a `ConnectionResetError` when the peer has already reset the connection.
+    The loop then reports an `Exception in callback`
+    and leaves the transport half closed, with an open socket.
+    After this function, the loop closes the socket of such a transport,
+    marks its protocol as notified of the lost connection,
+    and logs the failure at the `DEBUG` level only.
+    The transport stays attached to its `asyncio.Server`,
+    so `Server.wait_closed()` may still wait forever after such a failure.
+
+    Every other exception goes to the handler that the loop had before,
+    or to the default handler.
+    The new handler remains in place for the lifetime of the running loop.
+    It has no effect with other event loops.
+    """
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(
+        functools.partial(_handle_proactor_shutdown_error, loop.get_exception_handler())
+    )
+
+
+# As of Python 3.14.10, the failing call is `self._sock.shutdown(socket.SHUT_RDWR)`
+# in the `finally` block of `_ProactorBasePipeTransport._call_connection_lost`.
+# The `getattr` lets the handler fall back to the default one if a later Python drops the method.
+_CALL_CONNECTION_LOST = getattr(
+    proactor_events._ProactorBasePipeTransport, "_call_connection_lost", None
+)
+
+
+def _handle_proactor_shutdown_error(
+    previous: Callable[[asyncio.AbstractEventLoop, dict[str, Any]], object] | None,
+    loop: asyncio.AbstractEventLoop,
+    context: dict[str, Any],
+) -> None:
+    """Handle an exception of the event loop, as set by `tolerate_proactor_shutdown_errors`."""
+    exception = context.get("exception")
+    callback = getattr(context.get("handle"), "_callback", None)
+    if (
+        _CALL_CONNECTION_LOST is None
+        or not isinstance(exception, OSError)
+        or getattr(callback, "__func__", None) is not _CALL_CONNECTION_LOST
+    ):
+        if previous is None:
+            loop.default_exception_handler(context)
+        else:
+            previous(loop, context)
+        return
+    transport = callback.__self__
+    logger.debug("Closing a socket that failed to shut down: %r", exception)
+    # These are the remaining statements of the `finally` block, except for the detach.
+    # Without `_called_connection_lost`, a later `_force_close` of the transport
+    # would notify the protocol a second time.
+    transport._sock.close()
+    transport._sock = None
+    transport._called_connection_lost = True
 
 
 #
