@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Mirror the compile_typst.py pattern: discover and read an input before amending it.
 
-This step is dispatched concurrently with producer.sh (no declared dependency exists
-yet), so its own start_time is recorded well before producer.sh's stop_time. It waits
-for data.txt to appear, reads it, and only then calls amend(). On the first attempt,
-this is unconditionally flagged "unfresh" (regardless of whether the read actually saw
-complete content) because the check is based on step dispatch/completion timestamps,
-not file content --- so the step is deferred. On the next attempt, its start_time is
-long past producer.sh's completion, so the dynamic input is accepted.
+This step is dispatched concurrently with producer.sh (no declared dependency exists yet),
+so it starts before producer.sh stops.
+It waits for data.txt to appear, reads it, and only then calls amend().
+On the first attempt, data.txt is unconditionally flagged "unfresh",
+regardless of whether the read actually saw complete content,
+because the check compares the order in which the steps started and stopped,
+not the content of the file.
+The step is therefore deferred.
+On the next attempt, it starts after producer.sh has stopped,
+so the dynamic input is accepted.
 """
 
 import time

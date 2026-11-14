@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """The `Scheduler` turns PENDING jobs into RUNNING jobs as the builder requests them."""
 
+import itertools
 import logging
-import time
+from collections.abc import Iterator
 
 import attrs
 
@@ -478,19 +479,29 @@ class Scheduler:
     draining: bool = attrs.field(init=False, default=False)
     """Whether the scheduling of new jobs is temporarily paused, e.g. after a user interrupt."""
 
-    start_times: dict[int, int] = attrs.field(init=False, factory=dict)
-    """Step node id -> `time.monotonic_ns()` at the moment its command started executing.
+    seq_counter: Iterator[int] = attrs.field(init=False, factory=itertools.count)
+    """Source of the sequence numbers in `start_seqs` and `stop_seqs`.
+
+    Every start and stop of a run takes the next number,
+    so the numbers order these events exactly as they happened.
+    A clock cannot guarantee this on every platform:
+    on Windows with Python 3.12 and older, `time.monotonic_ns()` advances in steps of 15.6 ms,
+    so a step dispatched right after another one stopped could get the same reading.
+    """
+
+    start_seqs: dict[int, int] = attrs.field(init=False, factory=dict)
+    """Step node id -> sequence number of the moment its command started executing.
 
     In-memory only (not persisted): used by `ran_concurrently()` to compare
-    against a producer's `stop_times` entry.
+    against a producer's `stop_seqs` entry.
     Populated by `record_run_started()`, pruned by `record_run_stopped()`.
     """
 
-    stop_times: dict[int, int] = attrs.field(init=False, factory=dict)
-    """Step node id -> `time.monotonic_ns()` at the moment it reached SUCCEEDED.
+    stop_seqs: dict[int, int] = attrs.field(init=False, factory=dict)
+    """Step node id -> sequence number of the moment it reached SUCCEEDED.
 
     In-memory only, populated and pruned by `record_run_stopped()`.
-    See `start_times`.
+    See `start_seqs`.
     """
 
     new_durations: dict[int, float] = attrs.field(init=False, factory=dict)
@@ -802,7 +813,7 @@ class Scheduler:
             The node id of the step whose command is about to run.
         """
         self.run_counter += 1
-        self.start_times[step_i] = time.monotonic_ns()
+        self.start_seqs[step_i] = next(self.seq_counter)
 
     def record_run_stopped(self, step_i: int, *, succeeded: bool) -> None:
         """Update start/stop-time bookkeeping after a step reaches a terminal state.
@@ -814,21 +825,21 @@ class Scheduler:
         succeeded
             Whether the step reached SUCCEEDED (True) or PENDING/FAILED (False).
         """
-        self.start_times.pop(step_i, None)
+        self.start_seqs.pop(step_i, None)
         if succeeded:
-            # Record stop times when there can be BUILT outputs to be used by other steps.
+            # Record stops when there can be BUILT outputs to be used by other steps.
             # Only these may be approved by a post-hoc amend(inp=...) call in another step.
-            self.stop_times[step_i] = time.monotonic_ns()
-        if len(self.start_times) == 0:
-            # If there are no more start_times, clear the dict to avoid holding old entries forever.
-            self.stop_times.clear()
+            self.stop_seqs[step_i] = next(self.seq_counter)
+        if len(self.start_seqs) == 0:
+            # If there are no more start_seqs, clear the dict to avoid holding old entries forever.
+            self.stop_seqs.clear()
         else:
-            # Clean up stop_times older than the oldest start_time,
+            # Clean up stop_seqs older than the oldest start_seq,
             # since these will never be relevant for ran_concurrently() anymore.
-            oldest_start = min(self.start_times.values())
-            for other_step_i, stop_time in list(self.stop_times.items()):
-                if stop_time < oldest_start:
-                    del self.stop_times[other_step_i]
+            oldest_start = min(self.start_seqs.values())
+            for other_step_i, stop_seq in list(self.stop_seqs.items()):
+                if stop_seq < oldest_start:
+                    del self.stop_seqs[other_step_i]
 
     def record_job_completed(self, job: Job) -> None:
         """Retire a completed job: drop its id -> step mapping and record its duration."""
@@ -856,15 +867,14 @@ class Scheduler:
         Returns
         -------
         overlapped
-            `True` when the producer's `stop_times` entry and the consumer's `start_times`
-            entry both exist and `start_time <= stop_time`,
-            i.e. the consumer's execution window overlapped the producer's
-            (a tie counts as overlapping: the conservative choice).
-            `False` when either timestamp is missing.
+            `True` when the producer's `stop_seqs` entry and the consumer's `start_seqs`
+            entry both exist and the consumer started before the producer stopped,
+            i.e. the consumer's execution window overlapped the producer's.
+            `False` when either entry is missing.
         """
-        stop_time = self.stop_times.get(producer_i)
-        start_time = self.start_times.get(consumer_i)
-        return stop_time is not None and start_time is not None and start_time <= stop_time
+        stop_seq = self.stop_seqs.get(producer_i)
+        start_seq = self.start_seqs.get(consumer_i)
+        return stop_seq is not None and start_seq is not None and start_seq < stop_seq
 
     #
     # Build phase completion
@@ -893,7 +903,7 @@ class Scheduler:
             self.new_durations.clear()
         async with self.db:
             self._update_meta_after()
-        # Also clear the timings used to detect unfresh inputs (see ran_concurrently).
+        # Also clear the sequence numbers used to detect unfresh inputs (see ran_concurrently).
         # This is safe to do here because the builder is guaranteed to have no RUNNING steps.
-        self.start_times.clear()
-        self.stop_times.clear()
+        self.start_seqs.clear()
+        self.stop_seqs.clear()

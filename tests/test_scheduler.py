@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Unit tests for stepup.core.scheduler."""
 
-import time
-
 import pytest
 from conftest import get_duration_and_tail_time
 
@@ -1849,11 +1847,11 @@ def test_unavailable_input_blocks_on_volatile(con):
 
 
 # -----------------------------------------------------------------------
-# Tests for start_times/stop_times bookkeeping
+# Tests for start_seqs/stop_seqs bookkeeping
 # -----------------------------------------------------------------------
 
 
-async def test_record_run_started_counts_the_run_and_records_a_start_time(wfs: Workflow):
+async def test_record_run_started_counts_the_run_and_records_a_start_seq(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         step = wfs.find(Step, "echo")
@@ -1864,10 +1862,10 @@ async def test_record_run_started_counts_the_run_and_records_a_start_time(wfs: W
     scheduler.record_run_started(step.i)
 
     assert scheduler.run_counter == 1
-    assert step.i in scheduler.start_times
+    assert step.i in scheduler.start_seqs
 
 
-async def test_record_run_stopped_writes_stop_time_and_prunes_start_time(wfs: Workflow):
+async def test_record_run_stopped_writes_stop_seq_and_prunes_start_seq(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "plan")
         plan = wfs.find(Step, "plan")
@@ -1879,14 +1877,14 @@ async def test_record_run_stopped_writes_stop_time_and_prunes_start_time(wfs: Wo
         other.set_state(StepState.RUNNING)
 
         scheduler = Scheduler(wfs, db=wfs.db)
-        scheduler.start_times[step.i] = 100
+        scheduler.record_run_started(step.i)
         # A second step is still running, so record_run_stopped() below must not treat
-        # concurrency as having dropped to zero and prune the stop time it just wrote.
-        scheduler.start_times[other.i] = 200
+        # concurrency as having dropped to zero and prune the stop entry it just wrote.
+        scheduler.record_run_started(other.i)
 
         scheduler.record_run_stopped(step.i, succeeded=True)
-        assert step.i not in scheduler.start_times
-        assert step.i in scheduler.stop_times
+        assert step.i not in scheduler.start_seqs
+        assert step.i in scheduler.stop_seqs
 
 
 async def test_record_run_stopped_no_stop_time_on_failure(wfs: Workflow):
@@ -1896,15 +1894,15 @@ async def test_record_run_stopped_no_stop_time_on_failure(wfs: Workflow):
         step.set_state(StepState.RUNNING)
 
         scheduler = Scheduler(wfs, db=wfs.db)
-        scheduler.start_times[step.i] = 100
+        scheduler.record_run_started(step.i)
 
         scheduler.record_run_stopped(step.i, succeeded=False)
-        assert step.i not in scheduler.start_times
-        assert step.i not in scheduler.stop_times
+        assert step.i not in scheduler.start_seqs
+        assert step.i not in scheduler.stop_seqs
 
 
-async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
-    """Once the last RUNNING step finishes, every stop_times entry is dropped: nothing
+async def test_stop_seqs_cleared_when_no_steps_running(wfs: Workflow):
+    """Once the last RUNNING step finishes, every stop_seqs entry is dropped: nothing
     running means nothing can race with a not-yet-dispatched step."""
     async with wfs.db:
         wfs.define_step(wfs.root, "plan")
@@ -1917,20 +1915,18 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
         step_b.set_state(StepState.RUNNING)
 
         scheduler = Scheduler(wfs, db=wfs.db)
-        # record_run_stopped() now tracks concurrency via start_times, not step DB state
-        # (see pop_next_job()), so populate it the way dispatch would.
-        scheduler.start_times[step_a.i] = time.monotonic_ns()
-        scheduler.start_times[step_b.i] = time.monotonic_ns()
+        scheduler.record_run_started(step_a.i)
+        scheduler.record_run_started(step_b.i)
 
-        # step_a finishes while step_b is still RUNNING: stop_times must survive.
+        # step_a finishes while step_b is still RUNNING: stop_seqs must survive.
         step_a.set_state(StepState.SUCCEEDED)
         scheduler.record_run_stopped(step_a.i, succeeded=True)
-        assert step_a.i in scheduler.stop_times
+        assert step_a.i in scheduler.stop_seqs
 
-        # step_b finishes too: nothing RUNNING anymore, so stop_times is cleared entirely.
+        # step_b finishes too: nothing RUNNING anymore, so stop_seqs is cleared entirely.
         step_b.set_state(StepState.SUCCEEDED)
         scheduler.record_run_stopped(step_b.i, succeeded=True)
-        assert scheduler.stop_times == {}
+        assert scheduler.stop_seqs == {}
 
 
 # -----------------------------------------------------------------------
@@ -2076,34 +2072,40 @@ async def test_second_record_job_completed_overwrites_pending_duration(wfs: Work
 
 async def test_ran_concurrently_true_when_consumer_starts_before_producer_stops(wfs: Workflow):
     scheduler = Scheduler(wfs, db=wfs.db)
-    scheduler.start_times[2] = 100
-    scheduler.stop_times[1] = 200
+    scheduler.record_run_started(1)
+    scheduler.record_run_started(2)
+    scheduler.record_run_stopped(1, succeeded=True)
     assert scheduler.ran_concurrently(1, 2)
 
 
-async def test_ran_concurrently_tie_counts_as_overlapping(wfs: Workflow):
-    scheduler = Scheduler(wfs, db=wfs.db)
-    scheduler.start_times[2] = 150
-    scheduler.stop_times[1] = 150
-    assert scheduler.ran_concurrently(1, 2)
+async def test_ran_concurrently_false_when_consumer_starts_right_after_producer_stops(
+    wfs: Workflow,
+):
+    """A consumer dispatched right after its producer stopped did not overlap with it.
 
-
-async def test_ran_concurrently_false_when_consumer_starts_after_producer_stops(wfs: Workflow):
+    A third step keeps running, so that the stop entry of the producer is not pruned.
+    The start of the consumer must come out later than the stop of the producer,
+    however little time passes between the two.
+    """
     scheduler = Scheduler(wfs, db=wfs.db)
-    scheduler.start_times[2] = 200
-    scheduler.stop_times[1] = 100
+    scheduler.record_run_started(3)
+    scheduler.record_run_started(1)
+    scheduler.record_run_stopped(1, succeeded=True)
+    scheduler.record_run_started(2)
     assert not scheduler.ran_concurrently(1, 2)
 
 
-async def test_ran_concurrently_false_when_producer_stop_time_missing(wfs: Workflow):
+async def test_ran_concurrently_false_when_producer_stop_seq_missing(wfs: Workflow):
     scheduler = Scheduler(wfs, db=wfs.db)
-    scheduler.start_times[2] = 100
+    scheduler.record_run_started(2)
     assert not scheduler.ran_concurrently(1, 2)
 
 
-async def test_ran_concurrently_false_when_consumer_start_time_missing(wfs: Workflow):
+async def test_ran_concurrently_false_when_consumer_start_seq_missing(wfs: Workflow):
     scheduler = Scheduler(wfs, db=wfs.db)
-    scheduler.stop_times[1] = 100
+    scheduler.record_run_started(3)
+    scheduler.record_run_started(1)
+    scheduler.record_run_stopped(1, succeeded=True)
     assert not scheduler.ran_concurrently(1, 2)
 
 
