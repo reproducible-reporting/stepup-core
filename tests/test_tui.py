@@ -442,6 +442,25 @@ def test_reset_stepup_dir_clears_log_files(path_tmp: Path, monkeypatch: pytest.M
     assert (dir_stepup / "other.txt").exists()
 
 
+def test_reset_stepup_dir_empties_director_log_held_open(
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The director log of a previous build is emptied, also while another process reads it.
+
+    This is what `stepup wait` does right after `stepup build &`.
+    Windows refuses to remove a file that is open, so the log must not be removed.
+    """
+    dir_stepup = path_tmp / ".stepup"
+    dir_stepup.makedirs_p()
+    director_log = dir_stepup / "director.log"
+    director_log.write_text(f"SOCKET {path_tmp / 'gone'}\n", encoding="utf-8")
+    monkeypatch.setattr("stepup.core.tui.STEPUP_DIR", dir_stepup)
+    monkeypatch.setattr("stepup.core.tui.DIRECTOR_LOG", director_log)
+    with open(director_log, encoding="utf-8"):
+        _reset_stepup_dir()
+    assert director_log.read_text(encoding="utf-8") == ""
+
+
 def test_reset_stepup_dir_keeps_log_when_director_runs(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

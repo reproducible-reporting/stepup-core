@@ -565,11 +565,17 @@ def _check_no_running_director() -> None:
 
 
 def _reset_stepup_dir() -> None:
-    """Refuse to start next to a running director, then remove the log files in `.stepup`.
+    """Refuse to start next to a running director, then clear the log files in `.stepup`.
 
     The order matters and is the reason these two steps live in one function:
-    the running-director check reads `DIRECTOR_LOG`, which is one of the files removed.
+    the running-director check reads `DIRECTOR_LOG`, which is one of the files cleared.
     Checking second would make the check unconditionally pass.
+
+    `DIRECTOR_LOG` is emptied instead of removed,
+    because other `stepup` commands read it while they wait for the director,
+    e.g. `stepup wait` right after `stepup build &`.
+    Windows does not remove a file that another process has open,
+    but it does let it be emptied.
 
     Raises
     ------
@@ -579,7 +585,11 @@ def _reset_stepup_dir() -> None:
     _check_no_running_director()
     STEPUP_DIR.makedirs_p()
     for path_log in STEPUP_DIR.glob("*.log"):
-        path_log.remove_p()
+        if path_log.name == DIRECTOR_LOG.name:
+            with open(path_log, "w", encoding="utf-8", newline="\n"):
+                pass
+        else:
+            path_log.remove_p()
 
 
 def _build_director_argv(
