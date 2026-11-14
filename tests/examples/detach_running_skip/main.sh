@@ -19,9 +19,11 @@ set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "$(cat out.txt)" == "1" ]] || exit 1
 
 # Second run: the plan no longer fails and recreates work.py identically.
+# With a single job, work.py is only checked after plan.py has finished,
+# so that the order of their lines in the output is deterministic.
 rm trigger_work.txt
 cp plan2.py plan.py
-sb -j 2 -w & # > current_stdout2.txt &
+sb -j 1 -w & # > current_stdout2.txt &
 PID=$!
 
 stepup wait
