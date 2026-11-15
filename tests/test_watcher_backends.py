@@ -433,6 +433,7 @@ async def test_unwatched_symlink_to_watched_dir(backend):
     os.mkdir("real")
     symlink_dir("real", "link")
     await watch(backend, "real")
+    await settle(backend, "link")
     write("real/a.txt")
     await check(backend, {(Change.UPDATED, "real/a.txt")})
 
