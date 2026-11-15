@@ -3,6 +3,10 @@ source ../example.rc
 
 # Phase 1: build "cached" once, outside any hold(), so it gets a stored hash.
 cp plan1.py plan.py
+# Two jobs are needed in phase 2, so the plan step can hold while "cached" is dispatched.
+# In phase 1 they let plan.py and "cached" finish in either order,
+# which is why this example has no expected_stdout.txt.
+# The order of SKIP and START is checked below instead.
 sb -j 2 -w & # > current_stdout.txt &
 
 stepup wait
