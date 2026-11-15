@@ -134,6 +134,8 @@ class WatchfilesBackend(WatcherBackend):
     because inotify then needs a watch for every directory below the working directory,
     also for those StepUp has no interest in,
     and for those that symbolic links below it lead to (observed with watchfiles 1.3.0).
+    Removing such a symbolic link also removes the watch of the directory it leads to,
+    see `STEPUP_WATCHER_RECURSIVE` in `docs/reference/configuration.md`.
     """
 
     watches: dict[Path, int | None] = attrs.field(init=False, factory=dict)

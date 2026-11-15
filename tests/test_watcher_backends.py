@@ -437,6 +437,28 @@ async def test_unwatched_symlink_to_watched_dir(backend):
     await check(backend, {(Change.UPDATED, "real/a.txt")})
 
 
+async def test_removed_symlink_to_watched_dir(request, backend):
+    if isinstance(backend, WatchfilesBackend) and backend.recursive and sys.platform == "linux":
+        # See STEPUP_WATCHER_RECURSIVE in docs/reference/configuration.md.
+        # The strict marker reports when an upgrade of watchfiles has fixed this.
+        request.applymarker(
+            pytest.mark.xfail(
+                strict=True,
+                reason="notify removes the inotify watch that the link shares with the directory.",
+            )
+        )
+    os.mkdir("real")
+    symlink_dir("real", "link")
+    await watch(backend, "real")
+    await settle(backend, "link")
+    os.remove("link")
+    # The file is written after the removal is reported,
+    # because notify removes a watch after passing on the events read along with the removal.
+    await check(backend, {(Change.DELETED, "link")})
+    write("real/a.txt")
+    await check(backend, {(Change.UPDATED, "real/a.txt")})
+
+
 @pytest.mark.parametrize(
     ("reported", "expected"),
     [

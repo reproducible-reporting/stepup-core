@@ -282,6 +282,14 @@ and cannot be configured through config files or command-line options.
     always gets a watch of its own.
     This variable is ignored without watch mode and when `STEPUP_WATCHER` is `asyncinotify`.
 
+    On Linux, a recursive watch follows symbolic links,
+    and removing a symbolic link to a watched directory
+    stops the reports of changes in that directory, and possibly in the directories below it,
+    until StepUp is restarted.
+    This was observed with watchfiles 1.3.0,
+    and is caused by a bug in the Rust library `notify` on which watchfiles builds,
+    see [notify#1038](https://github.com/notify-rs/notify/pull/1038).
+
 ## Settings for All Subcommands
 
 Each entry below lists the config file key, environment variable, and command-line option
