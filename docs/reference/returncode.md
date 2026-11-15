@@ -17,7 +17,8 @@ It can be a sum of the following codes:
 
 - `1` = the build could not be completed for a reason outside the workflow itself,
   e.g. a broken configuration file or an internal error (Python exception)
-- `2` = the build was aborted by Ctrl-C or `SIGTERM`
+- `2` = the build was aborted by Ctrl-C, by `SIGTERM` on Linux and macOS,
+  or by Ctrl-Break on Windows
 - `4` = at least one step failed
 - `8` = some workflow condition caused a warning (other than the following two)
 - `16` = at least one (non-optional) step remained pending

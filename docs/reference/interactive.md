@@ -50,6 +50,7 @@ These commands are defined as follows:
   As soon as no steps are running, StepUp exits.
   If it takes too long for the steps to complete, you can press `q` again to kill them with `SIGINT`.
   Press `q` for a third time to kill the steps with `SIGKILL`. (nuclear option)
+  On Windows, `CTRL_BREAK_EVENT` and `TerminateJobObject` take the place of these signals.
 - `d = drain`:
   StepUp will not start new jobs and lets the running steps finish.
   As soon as no steps are running, StepUp transitions into the *watch phase*.
@@ -72,11 +73,14 @@ and whatever is still running a few seconds later is killed with `SIGKILL`,
 so a single `Ctrl+C` is always enough to get your shell prompt back.
 (Pressing `Ctrl+C` again just skips the waiting.)
 An aborted build sets the `2` bit in the [return code](returncode.md).
+Windows interrupts and kills steps with other means,
+see [Using StepUp in a Windows Console](#using-stepup-in-a-windows-console).
 
 ## Suspending a Build
 
-Pressing `Ctrl+Z` suspends the build and returns you to the shell prompt,
+On Linux and macOS, pressing `Ctrl+Z` suspends the build and returns you to the shell prompt,
 and `fg` resumes it where it left off, with keyboard interaction still working.
+Windows cannot suspend a build.
 
 Running steps are suspended along with StepUp itself,
 so nothing keeps using CPU or writing files while the build is stopped.
@@ -99,6 +103,58 @@ Two caveats:
   so a build left suspended for longer than that may report a failed step.
   A few calls waive that timeout because the director answers them only when the workflow
   is ready for it, `amend()` most notably, and those wait for as long as the suspension lasts.
+
+## Using StepUp in a Windows Console
+
+The keys and `Ctrl+C` work in a Windows console as described above,
+but Windows has no signals as Linux and macOS know them,
+so StepUp stops steps with other means:
+
+- `Ctrl+C` aborts the build, as on Linux and macOS.
+  StepUp sends a `CTRL_BREAK_EVENT` to every running step,
+  and ends whatever is still running a few seconds later with `TerminateJobObject`.
+  The messages name these mechanisms, e.g. `Interrupting running steps (CTRL_BREAK_EVENT).`
+  and `Killing unresponsive steps (TerminateJobObject).`
+  A third `Ctrl+C` ends the director itself, which `stepup build` reports as
+  `Killing the director (TerminateProcess).`
+- `Ctrl+Break` aborts the build as well,
+  but it also reaches the steps directly, at the same moment as StepUp.
+- A step that receives a `CTRL_BREAK_EVENT` ends at once, without cleaning up,
+  unless the program of the step handles that event itself.
+  A Python step gets no `KeyboardInterrupt`,
+  and a `trap` in a shell step does not run with the bash of Git for Windows.
+  The step then fails with exit code 3221225786 (`0xC000013A`).
+- `Ctrl+Z` does not suspend anything.
+  It is an ordinary key without a command, for which StepUp shows the list of keys.
+- There is no `SIGTERM`.
+  `taskkill` without `/F` cannot stop `stepup build`,
+  and reports that the process can only be terminated forcefully.
+  When `stepup build` is killed, e.g. with `taskkill /F`,
+  or when the SSH session in which it runs is closed,
+  the director and all steps are ended at once, without cleanup.
+  A new build can be started right afterwards.
+- Processes that a step leaves running after it has finished end together with `stepup build`.
+  On Linux and macOS, they keep running.
+
+Two situations need some care:
+
+- A program that is started in a new process group ignores `Ctrl+C`,
+  and so does everything that it starts.
+  `stepup build` then only reacts to `Ctrl+Break`.
+  This is the case in an SSH session without a terminal, e.g. `ssh host stepup build`.
+- The keys need a Windows console on the standard input.
+  Windows Terminal, PowerShell and the command prompt provide one,
+  and so does Git Bash with the default settings of Git for Windows,
+  because it runs Windows programs in a pseudo console.
+  The keys and `Ctrl+C` then work as described above,
+  and closing the window of Git Bash ends the build.
+  (This was tested with Git for Windows 2.56.1.)
+  When the pseudo console of Git Bash is turned off with `MSYS=disable_pcon`,
+  StepUp gets no keyboard and runs as in the background.
+  Closing the window then does not end the build:
+  it keeps running unseen, in watch mode until you stop it,
+  as explained in
+  [Interacting With a Background StepUp Process](#interacting-with-a-background-stepup-process).
 
 ## How Watch Mode Observes Changes
 

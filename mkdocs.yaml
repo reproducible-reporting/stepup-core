@@ -62,6 +62,7 @@ theme:
 nav:
   - Home: index.md
   - installation.md
+  - platforms.md
   - Getting Started:
     - getting_started/introduction.md
     - getting_started/first_step.md

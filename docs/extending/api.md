@@ -61,7 +61,9 @@ and the form of the command string:
 
 - **Shell mode** (`shell=True`):
   The full command string is passed to a POSIX shell,
-  which is `/bin/sh` unless the environment variable `STEPUP_SHELL` names another one.
+  which is `/bin/sh` on Linux and macOS
+  and [one that StepUp looks for](../installation.md#posix-shell-on-windows) on Windows,
+  unless the environment variable `STEPUP_SHELL` names another one.
   Shell features such as pipes and redirections are available.
 
 - **Built-in copy** (`shell=False` and the command is exactly `cp -p SRC DST`):

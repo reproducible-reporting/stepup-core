@@ -1,6 +1,15 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Specialized path operations."""
+"""Specialized path operations.
+
+Three members of this module are useful in `plan.py` files:
+
+- [`Path`][stepup.core.path.Path] writes paths with `/` as the only separator, on every platform.
+- [`get_here()`][stepup.core.path.get_here] and [`get_root()`][stepup.core.path.get_root]
+  compute the values of the `HERE` and `ROOT` variables for the current working directory.
+
+All other members are meant for developers of StepUp extension packages.
+"""
 
 import functools
 import ntpath
@@ -39,9 +48,13 @@ __all__ = (
 )
 
 
-# A path-like argument accepted by the user-facing API:
-# either a `str` or any `os.PathLike` (such as a `pathlib.Path`).
 StrPath = str | os.PathLike[str]
+"""The type of a path-like argument: a `str` or any `os.PathLike`, such as a `pathlib.Path`.
+
+Use it in the type hints of functions that accept paths written in a `plan.py`,
+and convert such arguments with [`coerce_path()`][stepup.core.path.coerce_path]
+or one of its variants.
+"""
 
 
 def _nt_to_slash(path: str) -> str:

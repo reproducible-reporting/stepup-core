@@ -28,6 +28,9 @@ it will load its settings in the following order, with later settings overriding
 - Environment variables (`STEPUP_*`)
 - Command-line options
 
+On Windows, `~` is the profile directory of the user, e.g. `C:/Users/me`,
+and `/etc/stepup.toml` lies in the root of the current drive, e.g. `C:/etc/stepup.toml`.
+
 Every setting belongs to a subcommand, e.g. `build`,
 and is placed under a subcommand-specific section,
 e.g. `[build]` (or `[tool.stepup.build]` in `pyproject.toml`).
@@ -205,6 +208,20 @@ and cannot be configured through config files or command-line options.
     Every local user can connect to such a socket,
     so a client must first send a random token,
     which it reads from a file that only the user running `stepup build` can access.
+    Whoever obtains this token can run code as that user.
+
+    On Windows, this file is exactly as private as the temporary directory
+    in which StepUp creates it.
+    Python 3.11.10, 3.12.4 and later versions give that directory access rules of its own,
+    which only admit its owner, SYSTEM and administrators.
+    Older versions let it inherit the access rules of the directory named by `TEMP`
+    (CVE-2024-4030 of Python).
+    These rules are private by default, because `TEMP` lies in the profile of the user,
+    but not when `TEMP` is set to a directory that other users can read,
+    e.g. a directory in the root of a drive, such as `C:\Temp`.
+    Use Python 3.11.10, 3.12.4 or later on Windows,
+    and in particular when `TEMP` has been changed.
+
     Only `stepup build` reads this variable:
     the steps and the other subcommands find out which transport is in use by themselves.
 
@@ -215,6 +232,17 @@ and cannot be configured through config files or command-line options.
     The value is the path of the shell, or its name, which is then looked up in `PATH`.
     StepUp starts it as `SHELL -c COMMAND`.
     The default is `/bin/sh` on Linux and macOS.
+    Windows has no shell of its own, and StepUp then uses the first of:
+
+    1. `sh` on `PATH`, unless it lies in the Windows directory, which holds the launchers of WSL.
+    2. `bin\sh.exe` of the Git installation whose `git` is on `PATH`.
+    3. `bin\sh.exe` of the installation of Git for Windows that is recorded in the registry,
+       for the current user first and for all users second.
+
+    StepUp only searches when a step needs a shell,
+    and when nothing is found, that step fails with a message that lists what was tried.
+    See [POSIX Shell on Windows](../installation.md#posix-shell-on-windows)
+    for the shells that can be used.
     Only `stepup build` and steps that call `run_subprocess()` with `shell=True` read this variable.
     Changing it does not make StepUp rerun steps.
 

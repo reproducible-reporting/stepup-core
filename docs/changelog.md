@@ -21,30 +21,57 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Added
 
-- Watch mode (`--watch` and `--watch-first`) is now also support on macOS, not only on Linux.
+- StepUp runs natively on Windows, without WSL,
+  with the same workflow semantics as on Linux and macOS.
+  [Supported Platforms](platforms.md) explains what differs between the platforms,
+  and what a workflow needs to give the same results on all of them.
+  The extension packages have not been ported to Windows yet.
+  The main points for Windows are:
+
+    - Paths inside StepUp have `/` as their only separator, e.g. `C:/Users/me/project`.
+      A command is passed on as it is written,
+      so a path in a command must be embedded with [`shq()`][stepup.core.api.shq]:
+      a path with backslashes loses them when the command is split into words.
+    - Steps with `shell=True`, and local scripts that run with `sh` or `bash`,
+      need a POSIX shell, which StepUp finds by itself when Git for Windows is installed,
+      see [Installation](installation.md#posix-shell-on-windows).
+      Workflows without such steps need no shell.
+    - A command without a shell runs as on Linux and macOS:
+      a program is looked up on the `PATH` of the step,
+      and a local script runs with the interpreter on its shebang line.
+    - `Ctrl-C` and `Ctrl-Break` abort a build,
+      and the keyboard commands work in a Windows console,
+      see [Interactive Usage](reference/interactive.md#using-stepup-in-a-windows-console).
+      Suspending a build with `Ctrl-Z`, the forkserver, `--cgroup` and `--perf`
+      are not available.
+    - In watch mode, a single recursive watch covers the directory in which StepUp runs,
+      so that the directories of the project can be renamed while StepUp watches them.
+- Watch mode (`--watch` and `--watch-first`) is now also supported on macOS and Windows,
+  not only on Linux.
   Outside Linux, StepUp watches the file system
   with [watchfiles](https://pypi.org/project/watchfiles/),
   which is now a dependency on those platforms.
+  Its limitations are listed in
+  [How Watch Mode Observes Changes](reference/interactive.md#how-watch-mode-observes-changes).
   On Linux, StepUp still uses inotify through asyncinotify,
   because of its lower overhead and better accuracy.
   Developers of StepUp can select the library with the environment variable `STEPUP_WATCHER`,
+  and the way watchfiles watches directories with `STEPUP_WATCHER_RECURSIVE`,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
-
 - The processes of a build can talk to each other over TCP sockets on the loopback interface,
-  as an alternative to Unix domain sockets,
-  which is a preparation for Windows support.
+  as an alternative to Unix domain sockets, which Python does not offer on Windows.
   A client must authenticate with a random token,
   which only the user running `stepup build` can read.
+  On Windows, this requires Python 3.11.10, 3.12.4 or later,
+  or a `TEMP` directory that other users cannot read.
   Unix domain sockets remain the default where the platform supports them.
   Developers of StepUp can select the transport with the environment variable
   `STEPUP_RPC_TRANSPORT`,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
-
 - [`stepup.core.path.Path`][stepup.core.path.Path],
   a subclass of `path.Path` whose only path separator is `/` on every platform.
   All functions of StepUp that return a path now return an instance of this class.
   On Linux and macOS, it behaves exactly like `path.Path`.
-  This is a preparation for Windows support, which is not complete yet.
   Extension packages should import `Path` from `stepup.core.path` instead of from `path`,
   see [Path manipulation](extending/api.md#path-manipulation).
 - `ConventionTests.test_slash_paths` in `stepup.core.pytest`,
@@ -54,11 +81,6 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - The environment variable `STEPUP_SHELL` selects the POSIX shell
   that runs the commands of steps with `shell=True`, instead of `/bin/sh`,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
-- `stepup build` can be controlled from a Windows console:
-  `Ctrl-C` and `Ctrl-Break` abort the build,
-  and the [keyboard commands](reference/interactive.md) work.
-  Suspending a build with `Ctrl-Z` is not possible there.
-  This is a part of Windows support, which is not complete yet.
 
 ### Changed
 
@@ -70,7 +92,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   is now carried out by StepUp itself, without starting the program `cp`.
   The copy still gets the permission bits, the timestamps
   and, when allowed, the owner and group of the source.
-  This is a preparation for Windows support, which has no such program.
+  This is faster, and it also works on Windows, which has no such program.
+  The CPU time of such a copy is spent by StepUp itself,
+  and it is not recorded as CPU time of the step.
 - A carriage return followed by a line feed (`\r\n`) in the output of a step
   is recorded as a single line feed, so that the output is the same on every platform.
 - `run_subprocess()` in `stepup.core.extapi` reads and writes text as UTF-8
