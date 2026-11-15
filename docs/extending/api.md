@@ -34,7 +34,7 @@ The following modules of StepUp Core facilitate the implementation of such new A
 
 - [`stepup.core.path`](../reference/stepup.core.path.md)
   offers higher-level path manipulation utilities
-  (see [Path manipulation](#path-manipulation) below).
+  (see [Path Manipulation](#path-manipulation) below).
 
 - [`stepup.core.exceptions`](../reference/stepup.core.exceptions.md)
   defines the exceptions raised by the functions above,
@@ -90,7 +90,7 @@ prefer `shell=False`:
 either rely on the Python entry point mechanism to benefit from the forkserver,
 or execute external commands directly.
 
-## Extension utilities
+## Extension Utilities
 
 The [`stepup.core.extapi`](../reference/stepup.core.extapi.md) module provides
 some reusable low-level functions for extension developers.
@@ -98,7 +98,7 @@ One of them, `subs_env_vars()`, lives in
 [`stepup.core.api`](../reference/stepup.core.api.md) instead,
 because it is mutually recursive with `amend()`.
 
-### Environment variable substitution
+### Environment Variable Substitution
 
 Use [`subs_env_vars()`][stepup.core.api.subs_env_vars] in any custom API function that
 accepts path arguments that may contain shell variable references (e.g. `${MYDIR}/file.txt`).
@@ -123,7 +123,7 @@ because a trailing slash marks a directory in StepUp.
 An affix introduced by the environment variable itself is preserved as well,
 e.g. when `${MYDIR}` holds `data/`.
 
-### Dependency filtering
+### Dependency Filtering
 
 [`filter_dependencies()`][stepup.core.extapi.filter_dependencies] filters a collection of
 file paths according to the `${STEPUP_PATH_FILTER}` environment variable.
@@ -134,7 +134,7 @@ and needs to report only the relevant subset back to the director.
 return all Python modules currently loaded in `sys.modules` that pass the filter,
 which is useful for scripts that need to amend their Python-import dependencies.
 
-### Recording subprocesses
+### Recording Subprocesses
 
 A common pattern in extension modules is to wrap an external tool in a Python script
 that also handles the communication with StepUp's director process.
@@ -181,7 +181,7 @@ as `run_subprocess()` does,
 so that `HERE` and `ROOT` refer to its own working directory.
 See [`HERE` and `ROOT` Variables](../advanced_topics/here_and_root.md) for more details.
 
-## Path manipulation
+## Path Manipulation
 
 StepUp uses the [`path`](https://pypi.org/project/path/) library instead of the
 built-in `pathlib`, because some path affixes carry meaning that `pathlib` would discard.
@@ -204,7 +204,7 @@ because these produce backslashes on Windows.
 `ConventionTests` in `stepup.core.pytest` contains a test of these rules,
 which a package can skip by setting `native_path_modules = None`.
 
-### Path coercion
+### Path Coercion
 
 While `Path` is used internally, all end-user API functions in `stepup.core.api`
 also accept `os.PathLike` objects (i.e. `pathlib.Path`) as path arguments.
@@ -221,7 +221,7 @@ To facilitate the conversion, the module `stepup.core.path` provides the followi
 - `coerce_str()`:
     converts a single path argument to `str`, preserving any trailing slash.
 
-### Affix handling
+### Affix Handling
 
 A leading `./` or a trailing `/` is significant in StepUp:
 
@@ -235,7 +235,7 @@ Use [`get_affixes()`][stepup.core.path.get_affixes]
 to extract them before transforming a path and
 [`apply_affixes()`][stepup.core.path.apply_affixes] to restore them afterwards.
 
-### Output path construction
+### Output Path Construction
 
 [`make_path_out()`][stepup.core.path.make_path_out] derives an output path from an input
 path, an optional destination, and an optional new extension.
@@ -245,7 +245,7 @@ This is the reusable mechanism behind the `dst` argument of
 [`copy()`][stepup.core.api.copy], and it is handy whenever an API function turns one input
 file into a derived output.
 
-### Director-relative translation
+### Director-Relative Translation
 
 Steps run in their own working directory, while the director tracks paths relative to the
 project root (`STEPUP_ROOT`).
@@ -257,15 +257,18 @@ Use them when an API function exchanges paths with the director on the user's be
 ## Supporting Windows
 
 StepUp Core runs on Windows, see [Supported Platforms](../platforms.md).
-An extension package that wants to do the same must also look at what it does outside StepUp.
-The test of `ConventionTests` for paths (see [The `Path` Class](#the-path-class))
-only finds the usual path mistakes, so check these as well:
+An extension package that should also run on Windows needs more than the
+path test of `ConventionTests` (see [The `Path` Class](#the-path-class)),
+which only finds the most common mistakes.
+Check the following points as well:
 
 - **Native paths.**
   `os.getcwd()`, `tempfile`, `shutil.which()` and `pathlib` give paths with backslashes.
   Wrap them in `Path` before they are stored, compared or put in a command.
   Pass a native path to a program only when the program needs one.
-  `Path.relpath()` fails for two paths on different drives.
+- **Relative paths across drives.**
+  `Path.relpath()` raises a `ValueError` for two paths on different drives.
+  Keep such a path absolute.
 - **Paths in commands.**
   Embed them with [`shq()`][stepup.core.api.shq], never with an f-string around a native path,
   because a backslash in a command is an escape character.
@@ -274,17 +277,22 @@ only finds the usual path mistakes, so check these as well:
   Otherwise Python 3.14 and older use the ANSI code page and `\r\n` on Windows,
   which changes what is read and the digests of what is written.
   Ruff reports a missing encoding with the preview rule `PLW1514`.
-- **Modules and features of POSIX only.**
+- **POSIX-only modules and features.**
   `fcntl`, `termios` and `resource` cannot be imported on Windows,
   and some libraries do not offer every transport there.
-  For example, ZeroMQ has no `ipc` transport in its Windows builds.
+  For example, the Windows wheels of pyzmq have the `ipc` transport disabled
+  (as of pyzmq 26.2).
   Test for the feature, not for the platform.
 - **Shell commands.**
   A step with `shell=True` needs a POSIX shell, which a Windows user must install.
-  A script with a `python3` shebang line needs the wrapper described in the platform page.
+  A script with a `python3` shebang line that is started by a shell command,
+  e.g. `./work.py > out.txt`, needs the `python3` wrapper described in
+  [Shell Commands](../platforms.md#shell-commands).
 - **Tests.**
   Load `stepup.core.pytest` as a pytest plugin in `conftest.py`
   (`pytest_plugins = ("stepup.core.pytest",)`),
-  and add a `.gitattributes` with `* text=auto eol=lf`,
-  so that a Windows checkout does not change line endings, file digests and shell scripts.
+  so that pytest reports the output of failed examples legibly on Windows.
+  Add a `.gitattributes` with `* text=auto eol=lf`,
+  so that a Windows checkout does not change the line endings of files and shell scripts,
+  which would also change their digests.
   `run_example()` already provides a `python3` wrapper for the `main.sh` of an example.

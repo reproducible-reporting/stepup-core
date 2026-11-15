@@ -98,7 +98,9 @@ class WatchfilesBackend(WatcherBackend):
     The first two are due to watchfiles handing over changes as an unordered set
     (as of watchfiles 1.3.0):
 
-    - The changes observed within one batch (about 10 milliseconds)
+    - The changes that follow each other within about 10 milliseconds form one batch,
+      which spans at most 100 milliseconds.
+      The changes observed within one batch
       are reported in a fixed order instead of the order in which they happened.
     - When the changes of a path within one batch contradict each other,
       the current state of the path decides what is reported.

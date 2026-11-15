@@ -19,6 +19,11 @@ The following initial competencies are assumed:
 - Working with a virtual terminal.
 - Editing text files.
 
+The commands in the tutorials are written for a POSIX shell,
+such as Bash on Linux and macOS.
+On Windows, use a POSIX shell such as Git Bash to follow them.
+See [Supported Platforms](../platforms.md) for what else differs on Windows.
+
 Note that the examples in the tutorials are all small and use StepUp
 in serial mode (`-j 1`) and non-interactively.
 We believe this offers the best learning experience.

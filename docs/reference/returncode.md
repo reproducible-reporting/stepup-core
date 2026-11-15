@@ -17,8 +17,8 @@ It can be a sum of the following codes:
 
 - `1` = the build could not be completed for a reason outside the workflow itself,
   e.g. a broken configuration file or an internal error (Python exception)
-- `2` = the build was aborted by Ctrl-C, by `SIGTERM` on Linux and macOS,
-  or by Ctrl-Break on Windows
+- `2` = the build was aborted by `Ctrl+C`, by `SIGTERM` on Linux and macOS,
+  or by `Ctrl+Break` on Windows
 - `4` = at least one step failed
 - `8` = some workflow condition caused a warning (other than the following two)
 - `16` = at least one (non-optional) step remained pending
@@ -40,7 +40,7 @@ There is one exception, where it is combined with the outcome of a complete buil
 when `STEPUP_DEBUG` is set and StepUp finds problems in `.stepup/director.log`
 after the build, see [Configuration](configuration.md).
 
-The second bit (`2`) is likewise set by any subcommand that is stopped with Ctrl-C,
+The second bit (`2`) is likewise set by any subcommand that is stopped with `Ctrl+C`,
 not only by an aborted build.
 
 A few example combinations are:
@@ -52,7 +52,7 @@ A few example combinations are:
 - `20` = at least one step failed and at least one step remained pending.
 - `36` = a step failed and the scheduler was draining,
   which is what a failing step without `--keep-going` produces.
-- `38` = the build was aborted by Ctrl-C (`2`) while a step was running,
+- `38` = the build was aborted by `Ctrl+C` (`2`) while a step was running,
   so that step counted as failed (`4`) and the scheduler was draining (`32`).
 
 To test for a specific flag in Bash, use the bitwise AND operator `&`:

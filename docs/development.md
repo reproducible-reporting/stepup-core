@@ -52,6 +52,8 @@ direnv allow
 
 Alternatively, you can prefix commands with `uv run` (e.g. `uv run pytest`)
 instead of activating the virtual environment.
+The `.envrc` snippet above is written for a POSIX shell,
+so on Windows, use `uv run` and set the environment variables by other means.
 
 Note that `uv.lock` is not committed to the repo.
 For development and CI, the latest versions of dependencies are used instead of some locked versions.
@@ -63,6 +65,18 @@ We use pytest, so you can run the tests as follows:
 ```bash
 pytest -vv
 ```
+
+StepUp Core runs on Linux, macOS and Windows, and the tests are expected to pass on all three.
+The `tools` directory has scripts to run the test suite on the platforms other than your own:
+
+- [`tools/README.md`](https://github.com/reproducible-reporting/stepup-core/blob/main/tools/README.md)
+  gives an overview of all developer scripts.
+- [`tools/winvm/`](https://github.com/reproducible-reporting/stepup-core/blob/main/tools/winvm/README.md)
+  runs the tests in a Windows 11 VM in a rootless Podman container on a Linux host.
+- [`tools/macci/`](https://github.com/reproducible-reporting/stepup-core/blob/main/tools/macci/README.md)
+  runs the tests on a GitHub-hosted macOS runner, using your fork of the repository.
+
+See [Supported Platforms](platforms.md) for what differs between the platforms.
 
 ## Documentation
 

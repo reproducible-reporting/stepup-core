@@ -13,15 +13,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 !!! note
 
-    Changes since StepUp 3.0.0:
-
-    - You have to start the StepUp workflow with `sb` instead of `stepup`.
-
-    Changes since StepUp 2.0.0:
-
-    - The command line options related to interactive usage have changed.
-    - Keyboard interaction is always available, regardless of the command-line options.
-    - The `f` and `t` keys have been removed.
+    - As of `v4`, start the workflow with `sb` or `stepup build`.
+      The command `stepup boot` still works, but it is deprecated.
+    - As of `v3`, start the workflow with `stepup boot` instead of `stepup`.
+    - As of `v2`:
+        - The command line options related to interactive usage have changed.
+        - Keyboard interaction is always available, regardless of the command-line options.
+        - The `f` and `t` keys have been removed.
 
 ## Terminal User Interface
 
@@ -36,7 +34,7 @@ If the key is not associated with a command, the following help message appears:
   g = graph       Write the workflow graph to graph.txt.
   d = drain       Drain the scheduler. (Leaves build phase.)
   j = join        Wait for all steps to complete before shutting down.
-  q = shutdown    Shut down the system. (1st is graceful. 2nd kills steps.)
+  q = shutdown    Shut down StepUp. (1st is graceful. 2nd kills steps.)
   r = rebuild     Restart the builder. (Leaves watch phase.)
 ────────────────────────────────────────────────────────────────────────────────
 ```
@@ -71,9 +69,9 @@ it aborts the build instead of waiting for running steps.
 Every running step is interrupted with `SIGINT`,
 and whatever is still running a few seconds later is killed with `SIGKILL`,
 so a single `Ctrl+C` is always enough to get your shell prompt back.
-(Pressing `Ctrl+C` again just skips the waiting.)
+(A second `Ctrl+C` skips the waiting, and a third one kills the director itself.)
 An aborted build sets the `2` bit in the [return code](returncode.md).
-Windows interrupts and kills steps with other means,
+Windows interrupts and kills steps by other means,
 see [Using StepUp in a Windows Console](#using-stepup-in-a-windows-console).
 
 ## Suspending a Build
@@ -108,14 +106,14 @@ Two caveats:
 
 The keys and `Ctrl+C` work in a Windows console as described above,
 but Windows has no signals as Linux and macOS know them,
-so StepUp stops steps with other means:
+so StepUp stops steps by other means:
 
 - `Ctrl+C` aborts the build, as on Linux and macOS.
   StepUp sends a `CTRL_BREAK_EVENT` to every running step,
   and ends whatever is still running a few seconds later with `TerminateJobObject`.
   The messages name these mechanisms, e.g. `Interrupting running steps (CTRL_BREAK_EVENT).`
   and `Killing unresponsive steps (TerminateJobObject).`
-  A third `Ctrl+C` ends the director itself, which `stepup build` reports as
+  When the third `Ctrl+C` ends the director, `stepup build` reports
   `Killing the director (TerminateProcess).`
 - `Ctrl+Break` aborts the build as well,
   but it also reaches the steps directly, at the same moment as StepUp.
@@ -138,10 +136,9 @@ so StepUp stops steps with other means:
 
 Two situations need some care:
 
-- A program that is started in a new process group ignores `Ctrl+C`,
-  and so does everything that it starts.
-  `stepup build` then only reacts to `Ctrl+Break`.
-  This is the case in an SSH session without a terminal, e.g. `ssh host stepup build`.
+- When `stepup build` is started by a program that runs in a new process group,
+  it ignores `Ctrl+C` and only reacts to `Ctrl+Break`.
+  This happens e.g. in an SSH session without a terminal (`ssh host stepup build`).
 - The keys need a Windows console on the standard input.
   Windows Terminal, PowerShell and the command prompt provide one,
   and so does Git Bash with the default settings of Git for Windows,
@@ -164,9 +161,11 @@ On Linux, it does so with inotify.
 On macOS and Windows, it uses the [watchfiles](https://pypi.org/project/watchfiles/) library,
 which comes with a few limitations:
 
-- Changes are collected in batches of about 10 milliseconds.
+- Changes that follow each other within about 10 milliseconds are collected in one batch,
+  which spans at most 100 milliseconds.
   The changes within one batch are reported in a fixed order,
   which may differ from the order in which they happened.
+  See [watchfiles#148](https://github.com/samuelcolvin/watchfiles/issues/148).
 - When the operating system has to drop changes because too many happen at once,
   StepUp is not told that anything is missing.
   This was observed with watchfiles 1.3.0, which does not pass on such a notice.
@@ -175,11 +174,12 @@ which comes with a few limitations:
   restart `stepup build`, which checks all files of the workflow when it starts.
 - On Windows, a single watch on the directory in which StepUp runs covers everything below it,
   so you can rename and remove directories of the project while StepUp is watching.
-  Two exceptions remain, because Windows does not rename a directory
-  while a program keeps a directory below it open:
-  the parent directories of the directory in which StepUp runs,
-  and the parent directories of a watched directory outside of it,
+  Two kinds of directories still cannot be renamed while StepUp watches:
+  the parents of the directory in which StepUp runs,
+  and the parents of a watched directory outside that directory,
   e.g. `../shared` when the workflow uses `../shared/data/table.csv`.
+  The reason is that Windows does not rename a directory
+  while a program keeps a directory below it open.
 
 ## Interacting With a Background StepUp Process
 

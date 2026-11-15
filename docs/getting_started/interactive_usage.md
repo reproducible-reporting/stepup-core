@@ -51,7 +51,7 @@ to display the supported keys with interactive commands:
   g = graph       Write the workflow graph to graph.txt.
   d = drain       Drain the scheduler. (Leaves build phase.)
   j = join        Wait for all steps to complete before shutting down.
-  q = shutdown    Shut down the system. (1st is graceful. 2nd kills steps.)
+  q = shutdown    Shut down StepUp. (1st is graceful. 2nd kills steps.)
   r = rebuild     Restart the builder. (Leaves watch phase.)
 ────────────────────────────────────────────────────────────────────────────────
 ```

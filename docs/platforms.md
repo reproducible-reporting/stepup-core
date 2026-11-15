@@ -25,7 +25,7 @@ StepUp is platform independent in everything it does itself:
   in the workflow graph, in the results of the API and in the variables `HERE` and `ROOT`.
 - [`copy()`][stepup.core.api.copy] copies a file without starting a program.
 - A local script with a shebang line runs with the interpreter on that line,
-  also without a shell.
+  even when no POSIX shell is installed.
 - The output of a step is recorded as UTF-8 with `\n` line endings.
 - The files that StepUp writes are UTF-8 with `\n` line endings.
   This includes the files in `.stepup/`, `graph.txt`
@@ -87,13 +87,15 @@ The differences you are most likely to run into are:
 | Forkserver for Python steps | on by default | off by default | not available |
 | `--cgroup` | with cgroup v2 and `systemd-run` | not available | not available |
 | `--perf` | available | not available | not available |
-| Suspending with Ctrl-Z | available | available | not available |
+| Suspending with `Ctrl+Z` | available | available | not available |
 | Connections between processes | Unix domain sockets | Unix domain sockets | TCP on `127.0.0.1` |
 
 Enabling a feature on a platform that does not have it is an error,
 which StepUp reports before the build starts.
 The libraries for watch mode are compared in
 [How Watch Mode Observes Changes](reference/interactive.md#how-watch-mode-observes-changes),
+suspending a build is explained in
+[Suspending a Build](reference/interactive.md#suspending-a-build),
 and the other features are explained in [Configuration](reference/configuration.md).
 
 ## Linux
@@ -118,7 +120,8 @@ which differ in some options from the GNU versions on Linux.
 ## Windows
 
 StepUp runs on Windows natively, without WSL.
-Shell steps need a POSIX shell, see [POSIX Shell on Windows](installation.md#posix-shell-on-windows),
+Shell steps need a POSIX shell,
+see [POSIX Shell on Windows](installation.md#posix-shell-on-windows),
 and the [installation](installation.md) lists the minimal version of Python for Windows,
 below which other users of the computer may be able to connect to a running build.
 
@@ -132,7 +135,7 @@ All paths that StepUp returns are instances of [`Path`][stepup.core.path.Path]
 from `stepup.core.path`, which keeps this spelling when you join or change them.
 Import `Path` from `stepup.core.path` instead of from the `path` library,
 because the latter gives mixed separators on Windows:
-`path.Path("sub") / "file.txt"` is `sub\file.txt`.
+`path.Path("data/sub") / "file.txt"` is `data/sub\file.txt`.
 
 You will notice this convention in the following situations:
 
@@ -148,13 +151,13 @@ You will notice this convention in the following situations:
 
     native = pathlib.Path("data") / "table.csv"
     str(native)  # 'data\\table.csv' on Windows
-    Path(native)  # 'data/table.csv' on every platform
+    Path(native)  # Path('data/table.csv') on every platform
+    Path(native) == "data/table.csv"  # True on every platform
     ```
 
 - **Paths in commands.**
   Embed a path in a command with [`shq()`][stepup.core.api.shq],
-  which writes it with `/` on every platform,
-  or with the method `as_posix()` of a `pathlib.Path`.
+  which writes it with `/` on every platform and quotes it when needed.
   A command is text, which StepUp passes on exactly as you wrote it.
   Its words are split with the rules of a POSIX shell,
   also when it runs without a shell,
@@ -187,7 +190,8 @@ You will notice this convention in the following situations:
 
 On Linux and macOS, the operating system finds the program of a command
 and reads the shebang line of a script.
-Windows does neither, so StepUp does it, in the same way:
+Windows does neither, so StepUp does both itself
+and follows the behavior of Linux and macOS where it can:
 
 - A program without a directory, e.g. `typst`,
   is looked up on the `PATH` of the step, with the extensions of `PATHEXT`, e.g. `typst.exe`.
@@ -198,7 +202,8 @@ Windows does neither, so StepUp does it, in the same way:
 - A batch file (`*.bat` or `*.cmd`) runs with `cmd.exe`,
   and StepUp quotes its arguments so that they arrive unchanged.
   An argument with a line break cannot be passed to a batch file, and makes the step fail.
-- A script without such an extension runs with the interpreter on its shebang line.
+- A file whose name has none of the extensions in `PATHEXT`
+  and that starts with a shebang line runs with the interpreter on that line.
   StepUp only uses the name of that interpreter, without its directory,
   and supports `#!/bin/NAME`, `#!/usr/bin/env NAME` and `#!/usr/bin/env -S NAME ARGS`.
   As on Linux, everything after `NAME` is a single argument, except with `env -S`.
@@ -242,15 +247,16 @@ That bash behaves differently from bash on Linux in a few ways:
 
     The wrapper runs the first `python` on `PATH`,
     which is that of the virtual environment while it is activated.
-    Any other directory on the `PATH` of `stepup build` will do as well.
+    The wrapper can also be placed in any other directory on the `PATH` of `stepup build`.
 
 ### Stopping a Build
 
 A Windows console has no signals as Linux and macOS know them,
 which changes how a build is stopped:
 
-- Ctrl-C and Ctrl-Break abort a build, Ctrl-Z does not suspend it,
-  and the keyboard commands need a Windows console.
+- `Ctrl+C` and `Ctrl+Break` abort a build.
+  `Ctrl+Z` does not suspend a build.
+  The keyboard commands only work when StepUp runs in a Windows console.
 - A step that is interrupted ends at once, without cleaning up:
   a Python step gets no `KeyboardInterrupt`, and a `trap` in a shell step does not run.
 - Processes that a step leaves running end together with `stepup build`.

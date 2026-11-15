@@ -19,6 +19,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+First full cross-platform release of StepUp Core, with native support for Windows.
+File watching is supported on all platforms (new on macOS and Windows).
+This work surfaced several smaller robustness and correctness issues on Linux and macOS,
+which are fixed in this release.
+
 ### Added
 
 - StepUp runs natively on Windows, without WSL,
@@ -39,13 +44,17 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
     - A command without a shell runs as on Linux and macOS:
       a program is looked up on the `PATH` of the step,
       and a local script runs with the interpreter on its shebang line.
-    - `Ctrl-C` and `Ctrl-Break` abort a build,
+    - The items of `STEPUP_PATH_FILTER` and of a variable read with `getenv(multi=True)`
+      are separated by `;` on Windows, as in `PATH`, because `:` is part of a path like `C:/data`.
+      On Linux and macOS, the separator is still `:`.
+    - `Ctrl+C` and `Ctrl+Break` abort a build,
       and the keyboard commands work in a Windows console,
       see [Interactive Usage](reference/interactive.md#using-stepup-in-a-windows-console).
-      Suspending a build with `Ctrl-Z`, the forkserver, `--cgroup` and `--perf`
+      Suspending a build with `Ctrl+Z`, the forkserver, `--cgroup` and `--perf`
       are not available.
     - In watch mode, a single recursive watch covers the directory in which StepUp runs,
       so that the directories of the project can be renamed while StepUp watches them.
+
 - Watch mode (`--watch` and `--watch-first`) is now also supported on macOS and Windows,
   not only on Linux.
   Outside Linux, StepUp watches the file system
@@ -61,32 +70,33 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - The processes of a build can talk to each other over TCP sockets on the loopback interface,
   as an alternative to Unix domain sockets, which Python does not offer on Windows.
   A client must authenticate with a random token,
-  which only the user running `stepup build` can read.
-  On Windows, this requires Python 3.11.10, 3.12.4 or later,
-  or a `TEMP` directory that other users cannot read.
+  which is stored in a file that only the user running `stepup build` can read.
+  On Windows, this file is only guaranteed to be private with Python 3.12.4 or later,
+  or with a 3.11 release from 3.11.10 on.
+  With an older Python, it is private when other users cannot read `TEMP`, which is the default.
   Unix domain sockets remain the default where the platform supports them.
   Developers of StepUp can select the transport with the environment variable
   `STEPUP_RPC_TRANSPORT`,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
-- [`stepup.core.path.Path`][stepup.core.path.Path],
+- The new class [`stepup.core.path.Path`][stepup.core.path.Path],
   a subclass of `path.Path` whose only path separator is `/` on every platform.
   All functions of StepUp that return a path now return an instance of this class.
   On Linux and macOS, it behaves exactly like `path.Path`.
   Extension packages should import `Path` from `stepup.core.path` instead of from `path`,
-  see [Path manipulation](extending/api.md#path-manipulation).
-- `ConventionTests.test_slash_paths` in `stepup.core.pytest`,
-  which tests that a package does not use `path.Path`, `os.sep` or `os.path`.
+  see [Path Manipulation](extending/api.md#path-manipulation).
+- The new test `ConventionTests.test_slash_paths` in `stepup.core.pytest`
+  tests that a package does not use `path.Path`, `os.sep` or `os.path`.
   An extension package that subclasses `ConventionTests` gets this test too,
   and can skip it with `native_path_modules = None`.
 - The environment variable `STEPUP_SHELL` selects the POSIX shell
-  that runs the commands of steps with `shell=True`, instead of `/bin/sh`,
+  that runs the commands of steps with `shell=True`,
+  and those of `run_subprocess()` in `stepup.core.extapi` with `shell=True`.
+  The default is still `/bin/sh` on Linux and macOS,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
+- Tested with Python 3.15 on Linux and macOS.
 
 ### Changed
 
-- The items of `STEPUP_PATH_FILTER` and of a variable read with `getenv(multi=True)`
-  are separated by `os.pathsep`.
-  This is still a colon on Linux and macOS.
 - A step with the command `cp -p SRC DST` and without a shell,
   which is what [`copy()`][stepup.core.api.copy] creates,
   is now carried out by StepUp itself, without starting the program `cp`.
@@ -98,8 +108,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - A carriage return followed by a line feed (`\r\n`) in the output of a step
   is recorded as a single line feed, so that the output is the same on every platform.
 - `run_subprocess()` in `stepup.core.extapi` reads and writes text as UTF-8
-  instead of in the locale encoding, and with `shell=True`,
-  it uses the same shell as a step with `shell=True`.
+  instead of in the locale encoding.
 - StepUp reads and writes its own text files in UTF-8 on every platform,
   instead of in the locale encoding,
   and writes them with `\n` line endings.
@@ -121,8 +130,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Fixed
 
-- Enabling the forkserver or `perf` on a platform that does not have it
+- On macOS, enabling `perf` (with `--perf`, `STEPUP_BUILD_PERF` or a config file)
   now fails with a clear error message, before the build starts.
+- In watch mode on Linux, when a directory is replaced by renaming another directory over it,
+  later changes to the files in it are no longer missed.
 - On macOS, the director no longer reports an error when the other side closes a connection
   that the director is still using, which could happen at the end of a build.
 - On macOS, interrupting, suspending or resuming a step that has just exited
@@ -221,7 +232,7 @@ cheaper to run and more transparent to debug and analyze:
     - A mistake the user can fix is a short `ERROR:` message instead of a traceback.
     - Pending steps are summarized by root cause.
     - The output and subprocess invocations of every step are stored for `stepup browse`.
-    - `Ctrl-C`, `Ctrl-Z` and `SIGTERM` just work, without leaving orphaned processes behind.
+    - `Ctrl+C`, `Ctrl+Z` and `SIGTERM` just work, without leaving orphaned processes behind.
 
 Two architectural shifts underpin these improvements.
 
@@ -398,7 +409,7 @@ Note that all changes of the `4.0.0rc*` release candidates are combined below.
   Its existing `--port` option now defaults to `7837` instead of `8000`
   and can also be set with `STEPUP_BROWSE_PORT` or the `[browse]` section of a config file.
   It now also opens the browser for you, and works with text-mode browsers:
-  a graphical browser gets a new tab while the server keeps serving until `Ctrl-C`,
+  a graphical browser gets a new tab while the server keeps serving until `Ctrl+C`,
   and a text-mode browser (such as `lynx` or `w3m`) runs cleanly in the terminal,
   after which the server stops as soon as the user closes it.
   Its pages also show more information about a step:
@@ -558,7 +569,7 @@ Note that all changes of the `4.0.0rc*` release candidates are combined below.
     The first source that yields a usable value is used.
 
 - Every step now runs in a session of its own,
-  so a `Ctrl-C` in the terminal no longer reaches step processes directly.
+  so a `Ctrl+C` in the terminal no longer reaches step processes directly.
   The director is the only thing that stops them, on every route.
   As a result, aborting a build also stops the actual work of a shell step
   that is a pipeline or an `&&`-chain,
@@ -751,7 +762,7 @@ Note that all changes of the `4.0.0rc*` release candidates are combined below.
   in a directory where StepUp had never run.
   Errors that indicate a bug in StepUp keep their full traceback,
   and `STEPUP_DEBUG=1` shows the complete traceback of any error.
-  Stopping a subcommand with `Ctrl-C` is also reported as a message now,
+  Stopping a subcommand with `Ctrl+C` is also reported as a message now,
   and sets the `2` bit of the [return code](reference/returncode.md).
 
 - Two declarations claiming the same file are now reported in terms of the plan
@@ -1000,7 +1011,7 @@ The others surfaced because the test suite grew considerably.
 
 #### Build Execution and Process Control
 
-- `Ctrl-C` and `SIGTERM` now abort the build in an orderly fashion.
+- `Ctrl+C` and `SIGTERM` now abort the build in an orderly fashion.
   The director interrupts all running steps with `SIGINT`,
   kills whatever is still running after a few seconds with `SIGKILL`,
   and only then exits, after writing its logs and final report.
@@ -1023,7 +1034,7 @@ The others surfaced because the test suite grew considerably.
   written) is now reported as an error, and the build carries on.
   Previously this ended `stepup build` with a traceback and discarded the director's return code.
 
-- Pressing `Ctrl-Z` now suspends the whole build, including the running steps.
+- Pressing `Ctrl+Z` now suspends the whole build, including the running steps.
   Previously they kept running, and writing files, while StepUp itself was stopped.
   The director stops them with `SIGSTOP` and continues them on resume,
   and the time spent suspended is no longer recorded as time a step spent working.

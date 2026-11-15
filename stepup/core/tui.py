@@ -1207,7 +1207,7 @@ _KEY_ACTIONS = {
     "q": KeyAction(
         method="shutdown",
         label="shutdown",
-        description="Shut down the system. (1st is graceful. 2nd kills steps.)",
+        description="Shut down StepUp. (1st is graceful. 2nd kills steps.)",
         message="Shutting down.",
     ),
     "r": KeyAction(

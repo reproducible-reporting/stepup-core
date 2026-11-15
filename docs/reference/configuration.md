@@ -202,9 +202,10 @@ and cannot be configured through config files or command-line options.
     and the other `stepup` subcommands talk to each other.
     This is a setting for developers of StepUp, to test both transports on Linux and macOS.
     End users can leave it unset.
-    With `unix`, the default where the platform supports them, Unix domain sockets are used.
-    With `tcp`, the default and the only accepted value on Windows,
-    the director and `stepup build` listen on TCP sockets on the loopback interface (`127.0.0.1`).
+    `unix` selects Unix domain sockets, which is the default on platforms that have them.
+    `tcp` is the default and the only accepted value on Windows.
+    With `tcp`, the director and `stepup build` listen on TCP sockets
+    on the loopback interface (`127.0.0.1`).
     Every local user can connect to such a socket,
     so a client must first send a random token,
     which it reads from a file that only the user running `stepup build` can access.
@@ -212,14 +213,15 @@ and cannot be configured through config files or command-line options.
 
     On Windows, this file is exactly as private as the temporary directory
     in which StepUp creates it.
-    Python 3.11.10, 3.12.4 and later versions give that directory access rules of its own,
+    Python 3.12.4 and later, and 3.11 releases from 3.11.10 on,
+    give that directory access rules of its own,
     which only admit its owner, SYSTEM and administrators.
     Older versions let it inherit the access rules of the directory named by `TEMP`
     (CVE-2024-4030 of Python).
     These rules are private by default, because `TEMP` lies in the profile of the user,
     but not when `TEMP` is set to a directory that other users can read,
     e.g. a directory in the root of a drive, such as `C:\Temp`.
-    Use Python 3.11.10, 3.12.4 or later on Windows,
+    On Windows, use Python 3.12.4 or later, or a 3.11 release from 3.11.10 on,
     and in particular when `TEMP` has been changed.
 
     Only `stepup build` reads this variable:
@@ -232,7 +234,7 @@ and cannot be configured through config files or command-line options.
     The value is the path of the shell, or its name, which is then looked up in `PATH`.
     StepUp starts it as `SHELL -c COMMAND`.
     The default is `/bin/sh` on Linux and macOS.
-    Windows has no shell of its own, and StepUp then uses the first of:
+    When `STEPUP_SHELL` is not set on Windows, StepUp uses the first of:
 
     1. `sh` on `PATH`, unless it lies in the Windows directory, which holds the launchers of WSL.
     2. `bin\sh.exe` of the Git installation whose `git` is on `PATH`.
@@ -259,7 +261,7 @@ and cannot be configured through config files or command-line options.
 `STEPUP_WATCHER`
 
 :   The library that watches the file system in watch mode,
-    i.e. with the `--watch` or `--watch--first` option of `stepup build`.
+    i.e. with the `--watch` or `--watch-first` option of `stepup build`.
     This is a setting for developers of StepUp, to test both libraries on Linux.
     End users can leave it unset.
     On Linux, the default is `asyncinotify`,
@@ -276,7 +278,8 @@ and cannot be configured through config files or command-line options.
     The default is `1` on Windows,
     where a watch on a directory makes it impossible to rename its parent directories,
     and `0` on other platforms.
-    Directories elsewhere always get a watch of their own.
+    A watched directory outside the directory in which StepUp runs
+    always gets a watch of its own.
     This variable is ignored without watch mode and when `STEPUP_WATCHER` is `asyncinotify`.
 
 ## Settings for All Subcommands
