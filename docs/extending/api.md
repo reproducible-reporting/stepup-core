@@ -253,3 +253,38 @@ project root (`STEPUP_ROOT`).
 into a director-relative path, and [`translate_back()`][stepup.core.path.translate_back]
 does the reverse.
 Use them when an API function exchanges paths with the director on the user's behalf.
+
+## Supporting Windows
+
+StepUp Core runs on Windows, see [Supported Platforms](../platforms.md).
+An extension package that wants to do the same must also look at what it does outside StepUp.
+The test of `ConventionTests` for paths (see [The `Path` Class](#the-path-class))
+only finds the usual path mistakes, so check these as well:
+
+- **Native paths.**
+  `os.getcwd()`, `tempfile`, `shutil.which()` and `pathlib` give paths with backslashes.
+  Wrap them in `Path` before they are stored, compared or put in a command.
+  Pass a native path to a program only when the program needs one.
+  `Path.relpath()` fails for two paths on different drives.
+- **Paths in commands.**
+  Embed them with [`shq()`][stepup.core.api.shq], never with an f-string around a native path,
+  because a backslash in a command is an escape character.
+- **Text files.**
+  Open them with `encoding="utf-8"` and write them with `newline="\n"`.
+  Otherwise Python 3.14 and older use the ANSI code page and `\r\n` on Windows,
+  which changes what is read and the digests of what is written.
+  Ruff reports a missing encoding with the preview rule `PLW1514`.
+- **Modules and features of POSIX only.**
+  `fcntl`, `termios` and `resource` cannot be imported on Windows,
+  and some libraries do not offer every transport there.
+  For example, ZeroMQ has no `ipc` transport in its Windows builds.
+  Test for the feature, not for the platform.
+- **Shell commands.**
+  A step with `shell=True` needs a POSIX shell, which a Windows user must install.
+  A script with a `python3` shebang line needs the wrapper described in the platform page.
+- **Tests.**
+  Load `stepup.core.pytest` as a pytest plugin in `conftest.py`
+  (`pytest_plugins = ("stepup.core.pytest",)`),
+  and add a `.gitattributes` with `* text=auto eol=lf`,
+  so that a Windows checkout does not change line endings, file digests and shell scripts.
+  `run_example()` already provides a `python3` wrapper for the `main.sh` of an example.
