@@ -237,6 +237,24 @@ async def test_unwatched_subdir(backend):
     await check(backend, {(Change.UPDATED, "marker2.txt")})
 
 
+async def test_unwatched_subdir_modified_after_removal(workdir):
+    """A directory reported as modified after it is gone is not taken for a file later.
+
+    The changes are fed to the backend directly, because Windows decides when it reports them.
+    """
+    change = pytest.importorskip("watchfiles").Change
+    top = Path(".")
+    old = Path("old")
+    backend = WatchfilesBackend(dir_queue=asyncio.Queue())
+    backend.watches[top] = 1
+    backend.subdirs[top] = {"old"}
+    # The directory "old" does not exist, and its removal comes in a later batch.
+    backend._process_changes(1, {old: {int(change.modified)}}, {old: {top}})
+    backend._process_changes(1, {old: {int(change.deleted)}}, {old: {top}})
+    assert backend.change_queue.empty()
+    assert backend.subdirs[top] == set()
+
+
 async def test_no_changes_lost_while_adding_watches(backend):
     await watch(backend, ".")
     expected = set()

@@ -146,6 +146,10 @@ class WatchfilesBackend(WatcherBackend):
 
     watchfiles does not tell whether a removed path was a directory,
     so it is looked up here.
+    A directory that has vanished stays here until its removal is reported,
+    because Windows reports a directory as modified with a delay,
+    possibly after it is gone and in an earlier batch than its removal
+    (observed on Windows Server 2025 with watchfiles 1.3.0).
     """
 
     _identities: dict[Path, tuple[int, int] | None] = attrs.field(init=False, factory=dict)
@@ -516,7 +520,7 @@ class WatchfilesBackend(WatcherBackend):
         is_dir = mode is not None and stat.S_ISDIR(mode)
         if is_dir:
             known_dirs.add(path.name)
-        else:
+        elif mode is not None or _DELETED in codes:
             known_dirs.discard(path.name)
         if is_dir:
             # Only the file that the directory replaced is reported.
