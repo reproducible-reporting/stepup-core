@@ -187,6 +187,22 @@ async def testrun_work_thread_abandoned():
     assert 14 not in executor.running
 
 
+async def testrun_work_thread_skipped_after_kill():
+    """Work started after a kill could never be stopped, so it is not started at all."""
+    executor = _make_executor()
+    executor.interrupt(StopLevel.KILL)
+    run = _make_worker_run(15)
+    calls = []
+
+    result = await executor._run_work_thread(run, calls.append)
+
+    assert result is None
+    assert calls == []
+    assert run.success is False
+    assert "skipped" in run.outcome.stderr
+    assert 15 not in executor.running
+
+
 class _FakeProcessWorker(Worker):
     """A worker that records the signals it is sent instead of touching a process."""
 
@@ -333,6 +349,59 @@ async def test_run_command_discounts_suspended_time(
     assert executor.suspended_total >= 5.0
     assert run.outcome.usage.wtime == pytest.approx(max(0.0, wtime - executor.suspended_total))
     assert run.outcome.usage.wtime == pytest.approx(expected, abs=0.1)
+
+
+async def test_run_command_not_started_after_kill(monkeypatch: pytest.MonkeyPatch):
+    """A command started after a kill would not be stopped by it."""
+    workflow = SimpleNamespace(create_dirs=lambda paths: None)
+    executor = _make_executor(reporter=_FakeReporter(), db=_NullDB(), workflow=workflow)
+    run = _make_command_run(24)
+
+    async def forbidden_launch_command(*args, **kwargs):
+        raise AssertionError("No command may start after a kill.")
+
+    monkeypatch.setattr("stepup.core.executor.launch_command", forbidden_launch_command)
+    executor.interrupt(StopLevel.KILL)
+    await executor._run_command(run)
+
+    assert run.success is False
+    assert run.outcome.returncode == 1
+    assert "not started" in run.outcome.stderr
+    assert 24 not in executor.running
+
+
+async def test_execute_job_hashes_nothing_after_abandoning_a_copy(wfs: Workflow, monkeypatch):
+    """A copy stuck on a dead mount must not be followed by a hash that gets stuck as well."""
+    async with wfs.db:
+        wfs.define_step(wfs.root, "cp -p a.txt b.txt")
+        step = wfs.find(Step, "cp -p a.txt b.txt")
+    reporter = _FakeReporter()
+    scheduler = SimpleNamespace(
+        draining=False,
+        record_run_started=lambda step_i: None,
+        record_run_stopped=lambda step_i, *, succeeded: None,
+    )
+    executor = _make_executor(reporter=reporter, scheduler=scheduler, workflow=wfs, db=wfs.db)
+    hash_calls = []
+    monkeypatch.setattr(
+        "stepup.core.executor.compute_both_hashes", lambda *args: hash_calls.append(args)
+    )
+
+    with StuckWork() as work:
+        monkeypatch.setattr(run_mod, "_copy_file", work)
+        task = asyncio.create_task(executor.execute_job(1, step, {}, []))
+        await work.wait_started()
+        executor.interrupt(StopLevel.KILL)
+        await asyncio.wait_for(task, 5)
+
+    assert hash_calls == []
+    async with wfs.db:
+        assert step.get_state() == StepState.FAILED
+    tag, _label, pages = reporter.calls[-1]
+    assert tag == "FAIL"
+    stderr = "\n".join(body for title, body in pages if "error" in title.lower())
+    assert "Abandoned the copy to" in stderr
+    assert "Hash computation was skipped" in stderr
 
 
 def test_no_overwrite_dict_allows_insertion_of_new_keys():
@@ -630,6 +699,25 @@ async def test_run_hash_job_abandoned_cancels_future_without_draining(monkeypatc
     assert tag == "ERROR"
     assert label.startswith("Hash abandoned for foo.txt")
     assert -1 not in executor.running
+
+
+async def test_run_hash_job_skipped_after_kill(monkeypatch):
+    calls = []
+    monkeypatch.setattr(FileHash, "refreshed", lambda *args: calls.append(args))
+    reporter = _FakeReporter()
+    scheduler = SimpleNamespace(draining=False)
+    executor = _make_executor(reporter=reporter, scheduler=scheduler)
+    executor.interrupt(StopLevel.KILL)
+    hash_job = HashJob("foo.txt", FileHash.unknown(), -1)
+
+    await executor.run_hash_job(hash_job)  # must not raise
+
+    assert calls == []
+    assert hash_job.future.cancelled()
+    assert scheduler.draining is False
+    tag, label, _pages = reporter.calls[-1]
+    assert tag == "ERROR"
+    assert label.startswith("Hash skipped for foo.txt")
 
 
 async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workflow, monkeypatch):

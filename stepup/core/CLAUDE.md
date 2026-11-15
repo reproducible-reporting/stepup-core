@@ -166,6 +166,8 @@ which `Worker._stop` turns into what the platform offers:
 `describe_stop_level()` names the mechanism in the messages for the user.
 A `ThreadWorker` cancels its computation at every level,
 and at `KILL` the director also stops waiting for its thread.
+From `KILL` on, the `Executor` starts no new command or thread,
+which would escape the stop that was just delivered.
 
 ### POSIX: Sessions and Process Groups
 

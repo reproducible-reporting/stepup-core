@@ -160,6 +160,9 @@ class Executor:
     _suspend_start: float | None = attrs.field(init=False, default=None)
     """`time.perf_counter()` when `suspend` stopped the steps, or `None` when not suspended."""
 
+    _killed: bool = attrs.field(init=False, default=False)
+    """Whether `interrupt` was called with `StopLevel.KILL`."""
+
     #
     # Cached properties
     #
@@ -192,7 +195,14 @@ class Executor:
         run.success = False
 
     def interrupt(self, level: StopLevel):
-        """Ask all currently running step commands to stop, and cancel the running hashes."""
+        """Ask all currently running step commands to stop, and cancel the running hashes.
+
+        From `StopLevel.KILL` on, the executor starts no new command or thread,
+        because these would escape the stop that was just delivered.
+        A step or a hash that would start one fails instead.
+        """
+        if level == StopLevel.KILL:
+            self._killed = True
         for run in list(self.running.values()):
             if run.worker is not None:
                 run.worker.interrupt(level)
@@ -543,10 +553,15 @@ class Executor:
     async def _run_work_thread(self, run: Run, work: Callable[[threading.Event], Any]) -> Any:
         """Run a GIL-releasing computation in a thread.
 
-        Returns `None` if the computation was cancelled or abandoned by an interrupted shutdown
-        (see `Executor.interrupt`) or failed outright,
+        Returns `None` if the computation was cancelled, abandoned or skipped
+        by an interrupted shutdown (see `Executor.interrupt`) or failed outright,
         in which case `run` has already been marked failed.
         """
+        if self._killed:
+            self._fail_run_with_message(
+                run, "Hash computation was skipped because the steps are being killed."
+            )
+            return None
         with self._track_running(run):
             worker = ThreadWorker(work=work, job_i=run.job_i)
             run.worker = worker
@@ -623,6 +638,12 @@ class Executor:
         Does not reuse `_run_work_thread`: that helper requires a `Run` (step-bound) and
         writes a child outcome into `run.outcome`, neither of which applies to a `HashJob`.
         """
+        if self._killed:
+            hash_job.future.cancel()
+            await self.reporter(
+                "ERROR", f"Hash skipped for {hash_job.path} because the steps are being killed"
+            )
+            return
         worker = ThreadWorker(
             work=functools.partial(FileHash.refreshed, hash_job.old_hash, hash_job.path),
             job_i=hash_job.job_i,
@@ -851,10 +872,15 @@ class Executor:
         # Note: the variables defined here must be listed in `RESERVED_ENV_VARS`.
 
         suspended_before = self.suspended_total
-        with self._track_running(run):
-            outcome = await launch_command(
-                command, shell=shell, env=env, cwd=workdir, mp_ctx=self.mp_ctx, run=run
-            )
+        # Checked after the last `await` before the launch, which a kill may have interrupted.
+        if self._killed:
+            stderr = "The command was not started because the steps are being killed.\n"
+            outcome = ChildOutcome(1, "", stderr)
+        else:
+            with self._track_running(run):
+                outcome = await launch_command(
+                    command, shell=shell, env=env, cwd=workdir, mp_ctx=self.mp_ctx, run=run
+                )
         # A suspension stops the child but not the monotonic clock, on either launch path,
         # so it would otherwise be recorded as time the step spent working.
         # This assumes a stopped step makes no progress,
