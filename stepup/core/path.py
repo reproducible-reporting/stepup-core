@@ -188,6 +188,20 @@ class _NtPath(BasePath):
     so that this class can be instantiated and tested everywhere.
     """
 
+    # Two properties of this class are easy to break:
+    #
+    # - `os.fspath()` returns an instance of a `str` subclass unchanged,
+    #   so `pathlib` and `ntpath` call `str` methods on the instance itself.
+    #   `path.Path` overrides `replace`, `__add__` and `__radd__` to return a new path,
+    #   which passes through the normalizing constructor.
+    #   `replace` therefore builds its result without normalization,
+    #   or `p.replace("/", "\\")` would return `p`,
+    #   and `pathlib.Path(p)` would be parsed incorrectly.
+    #   For the same reason, the `ntpath` variant converts its arguments to plain strings.
+    # - Methods of `path.Path` compare results of the path module with parts of instances
+    #   (e.g. `relpathto` with `normcase`),
+    #   so the module and the constructor must produce the same spelling.
+
     module = _make_nt_slash_module()
 
     def __new__(cls, other: Any = ".") -> Self:

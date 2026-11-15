@@ -10,7 +10,7 @@ import sys
 
 from core_common import EchoHandler
 
-from stepup.core.rpc import SocketRPCServer
+from stepup.core.rpc.server import SocketRPCServer
 
 
 async def main():

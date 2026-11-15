@@ -5,12 +5,10 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Documentation
 
-Note that docstrings are written in Markdown, not reStructuredText!
-The docstring conventions themselves are in the top-level `CLAUDE.md`.
-
 ## Documentation Examples
 
-Each `docs/getting_started/<example>/` directory contains a `main.sh`
+Each example directory under `docs/getting_started/`, `docs/advanced_topics/`
+and `docs/deprecated/` contains a `main.sh`
 that generates `stdout.txt` (the terminal output shown in the tutorial page).
 To regenerate after changing example scripts, run:
 

@@ -24,6 +24,6 @@ assert any(row[1] != 0 for row in rows), rows
 # Every recorded step spent measurable wall and CPU time in its child process. This must hold
 # for the failing step too, which burns enough CPU (see fail.py) to stay well above the clock
 # granularity: the accounting must not collapse to zero on the failure path, as it did when
-# _forkserver_entry snapshotted getrusage() outside a `finally`.
+# forkserver_entry snapshotted getrusage() outside a `finally`.
 assert all(row[4] > 0.0 for row in rows), rows
 assert all(row[2] + row[3] > 0.0 for row in rows), rows

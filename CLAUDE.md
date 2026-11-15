@@ -22,10 +22,13 @@ The rules below that exist for Windows are in [Platforms](#platforms).
 
 Guidance that applies to only part of the repo lives next to the code it governs:
 
-- `stepup/core/CLAUDE.md`: process model, workflow-graph invariants, database conventions.
-- `tests/CLAUDE.md`: test layout and the integration-example suite.
+- `stepup/core/CLAUDE.md`: layering of the subpackages, process model, path conventions,
+  and the `__all__` import contract.
+- `stepup/core/*/CLAUDE.md`: the design of each subpackage,
+  e.g. the workflow-graph invariants and database conventions in `stepup/core/graph/CLAUDE.md`.
+- `tests/CLAUDE.md`: test layout, test timeouts and the integration-example suite.
 - `docs/CLAUDE.md`: regenerating the tutorial output and social card.
-- `.claude/skills/release/SKILL.md`: the release procedure.
+- `docs/development.md`: the release procedure, under "How to Make a Release".
 
 ## Non-Negotiables
 
@@ -34,7 +37,7 @@ Guidance that applies to only part of the repo lives next to the code it governs
 - **The workflow graph must be a deterministic function of the source files and the
   plan/step code, never of scheduling order or job count.**
   Running the same project with `-j1` and `-j16` must produce the same graph.
-  Rationale and consequences in `stepup/core/CLAUDE.md`.
+  Rationale and consequences in `stepup/core/graph/CLAUDE.md`.
 
 ## Commands
 
@@ -67,23 +70,6 @@ The following test command completes quickly as it skips the integration tests:
 ```bash
 pytest -k "not test_example"
 ```
-
-Every test is bounded by `pytest-timeout`, configured in `pyproject.toml`.
-Setup, call and teardown of one test share a budget of 15 seconds,
-which is very generous for this selection.
-Without it, a test can hang forever instead of failing,
-because the asynchronous RPC client takes no timeout
-and the director waits for its steps without a deadline.
-`tests/test_interrupt.py` and `tests/test_examples.py` raise the budget with a
-module-level `timeout` marker, because their tests police their own deadlines.
-Keep those markers above the deadline the module enforces itself,
-so that a failure is reported by the assertion that knows what went wrong.
-
-The budget is not a complete safety net.
-`pytest-timeout` cancels the timer of a test as soon as pytest reports a failure,
-which leaves the teardown of a test whose setup failed entirely unguarded.
-A fixture that waits for a subprocess must therefore bound that wait itself,
-as the `client` fixture does with `SHUTDOWN_TIMEOUT`.
 
 It may also be useful to run a small number of integration tests,
 to get a first quick feedback on the overall system:
@@ -119,8 +105,6 @@ The VM shares the CPUs of the host,
 so the rule above against concurrent `pytest` runs applies to it as well.
 A complete run of the examples takes about 10 minutes there.
 Run the fast suite and a few examples first, and the complete example suite as a final check only.
-Besides the fast suite, run `tests/test_paths.py` there after changing `stepup/core/path.py`,
-with the oldest and the newest supported Python (`WINVM_PYTHON`).
 Leave `create` and `destroy` to the user,
 because they download or delete several gigabytes.
 
@@ -139,7 +123,8 @@ so it may run at the same time as a local `pytest` run.
 
 Code in `stepup/` must work on Linux, macOS and Windows, and a change is not finished
 when it passes on the platform it was written on.
-The rules that matter most, with their reasons in `stepup/core/CLAUDE.md`:
+The rules that matter most, with their reasons in `stepup/core/CLAUDE.md`
+and `stepup/core/platform/CLAUDE.md`:
 
 - **A path inside StepUp is a string with `/` as its only separator, also on Windows.**
   Import `Path` from `stepup.core.path`, never write `os.sep`, and avoid `os.path`.
@@ -147,7 +132,7 @@ The rules that matter most, with their reasons in `stepup/core/CLAUDE.md`:
 - **A command is text that StepUp never rewrites.**
   Paths are embedded in a command with `shq()`.
 - **Test for a feature, not for a platform.**
-  Use the predicates of `stepup/core/oscompat.py`,
+  Use the predicates of `stepup/core/platform/oscompat.py`,
   and the matching capability markers in tests (`tests/CLAUDE.md`).
 - **Do not rely on the line endings or the permission bits of the checkout.**
   `.gitattributes` makes every platform check out LF.
@@ -204,7 +189,8 @@ Stale prose is worse than no prose. When writing comments, docstrings, or other 
   and it drifts out of sync silently.
 - **Repetitive and duplicate comments.**
   If a remark is repeated in multiple places, it will rot in one place when updated in another.
-  Factor out the common remark into a single function or class docstring, or a Markdown file in `docs/`.
+  Factor out the common remark into a single function or class docstring,
+  or a Markdown file in `docs/`.
 - **Timeless phrasing for point-in-time claims.** An empirical observation about an external
   tool or environment (e.g. "SQLite's planner never picks this index") can stop being true
   after a version upgrade, with nothing to flag the comment as outdated.
@@ -274,35 +260,6 @@ Section headings (`##`, `###`, ...) use **Title Case**
 (capitalize nouns, verbs, adjectives, and adverbs; lowercase articles,
 coordinating conjunctions, and prepositions regardless of length, e.g. "from", "with").
 Inline code spans (e.g. `` `run()` ``) keep their own casing and are never title-cased.
-
-### `__all__`
-
-Wildcard imports are banned (ruff `F403`), so `__all__` does not describe a star-import
-surface here. It is the module's **import contract**: the names that code outside the module
-is meant to import.
-
-- Every module in `stepup/core/` declares `__all__`, placed directly after the imports and
-  before `logger`. It is a tuple of string literals, sorted (enforced by ruff `RUF022`).
-- List a name when it is imported by another `stepup` module, a downstream extension package,
-  a user's `plan.py`, or a `pyproject.toml` entry point (e.g. `build_subcommand`).
-- Do not list module-internal names, even when they lack a leading underscore:
-  `logger`, SQL constants (`*_SCHEMA`, `SELECT_*`, ...), helpers used only within the module.
-  A public-looking name is not a claim that the name is exported.
-- Tests may import names that are not in `__all__`; white-box testing does not make a name
-  part of the contract.
-- Do not re-export: a name in `__all__` must be defined in that same module.
-  Import a name from the module that defines it, not from a module that happens to import it.
-- `__all__ = ()` is a real claim that nothing outside the module may import from it,
-  and is correct only for leaf modules.
-
-Consequence, enforced by `ConventionTests` in `stepup/core/pytest.py`
-(subclassed in `tests/test_conventions.py`): any `from .mod import X` inside
-`stepup/` requires `X` to be in `mod.__all__`, with no exemption for underscore-prefixed names.
-The same holds for a name imported from another package in the `stepup` namespace,
-which is how an extension package inherits this convention.
-When a module needs something private from another one,
-move that name to a module both may depend on (`utils.py` is often the right home),
-or promote it to part of the defining module's contract.
 
 ### Data Classes
 

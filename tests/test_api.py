@@ -37,7 +37,7 @@ from stepup.core.constants import DIRECTOR_SOCKET_SENTINEL
 from stepup.core.exceptions import AmendWhileHoldingError, PathError, StepUpError
 from stepup.core.nglob import NamedGlob
 from stepup.core.path import Path, make_path_out
-from stepup.core.rpc import DummySyncRPCClient
+from stepup.core.rpc.client import DummySyncRPCClient
 
 
 def noop_amend(*_args, **_kwargs):
@@ -536,7 +536,7 @@ def test_amend_raises_while_holding(monkeypatch):
 def test_amend_noop_does_not_raise_while_holding(monkeypatch):
     """An `amend()` call with nothing to amend must not trip the hold() guard.
 
-    `run.py`/`render_jinja.py` call `amend(inp=get_local_import_paths())` unconditionally
+    `launch/`/`render_jinja.py` call `amend(inp=get_local_import_paths())` unconditionally
     after a Python step runs, and that list can be empty. If such a no-op call tripped the
     guard, an unrelated held step could fail through no fault of its own code.
     """

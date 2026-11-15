@@ -32,11 +32,20 @@ from stepup.core.tracebacks import (
 Frame = tuple[str, str, str]
 """A frame to fabricate: the module name it reports, its file name and its function name."""
 
-FORKSERVER: Frame = ("stepup.core.run", "stepup/core/run.py", "_forkserver_entry")
-LAUNCH_COMMAND: Frame = ("stepup.core.run", "stepup/core/run.py", "launch_command")
+FORKSERVER: Frame = (
+    "stepup.core.launch.forkserver",
+    "stepup/core/launch/forkserver.py",
+    "forkserver_entry",
+)
+LAUNCH_COMMAND: Frame = (
+    "stepup.core.launch.command",
+    "stepup/core/launch/command.py",
+    "launch_command",
+)
 RUNPY: Frame = ("runpy", "<frozen runpy>", "_run_code")
 BOOTSTRAP: Frame = ("importlib._bootstrap", "<frozen importlib._bootstrap>", "_load_unlocked")
-# `PYCODE_WRAPPER` (`run.py`) is fed to `python -` through stdin, so its frame is `<stdin>`.
+# `PYCODE_WRAPPER` (`launch/command.py`) is fed to `python -` through stdin,
+# so its frame is `<stdin>`.
 # Only the file name matters here: the real frame is a module-level one, which cannot be
 # fabricated with a function name.
 WRAPPER: Frame = ("__main__", "<stdin>", "wrapper")
@@ -131,7 +140,7 @@ def test_keep_frames_keeps_a_stdin_frame_that_is_not_the_outermost():
 
 
 def test_keep_frames_only_treats_forkserver_entry_as_a_launcher():
-    """The rule is about `_forkserver_entry`, not about `run.py` as a whole."""
+    """The rule is about `forkserver_entry`, not about `launch/forkserver.py` as a whole."""
     exc = _raise_through([LAUNCH_COMMAND, PLAN], RuntimeError("bug"))
     keep, dropped_internal = _keep_frames(exc)
     assert keep == [True, True]

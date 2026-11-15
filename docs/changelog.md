@@ -133,6 +133,15 @@ which are fixed in this release.
   which shortens the startup of plans and steps that do not use YAML.
   For the same reason, `yaml_converter` in `stepup.core.cattrs`
   is replaced by the function `get_yaml_converter()`.
+- The modules of `stepup.core` are reorganized into the subpackages
+  `platform`, `rpc`, `graph`, `watch`, `launch`, `director` and `cli`.
+  The modules for plans, steps and extensions keep their names:
+  `api`, `extapi`, `call`, `script`, `render_jinja`, `stepinfo`, `path`, `nglob`,
+  `exceptions`, `enums`, `constants`, `cattrs`, `utils`, `hash` and `pytest`.
+  An extension that adds a tool imports `ToolFunc` from `stepup.core.cli.tool`
+  and `ConfigLoader` from `stepup.core.cli.config_loader`,
+  see [Adding a Tool](extending/tool.md).
+  `ConventionTests` in `stepup.core.pytest` now also tests the modules of subpackages.
 
 ### Fixed
 

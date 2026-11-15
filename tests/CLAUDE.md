@@ -9,6 +9,40 @@ How the test suite is laid out.
 The commands for *running* tests, and the constraints on how to invoke `pytest`,
 are in the top-level `CLAUDE.md`.
 
+## Layout
+
+The test modules mirror the layout of `stepup/core/`:
+the tests of a subpackage are in the directory of the same name
+(`tests/graph/`, `tests/cli/`, ...),
+and those of the top-level modules are in `tests/` itself, together with `test_examples.py`.
+A test follows the code it tests, also when that code moves to another module.
+
+The directories have no `__init__.py`,
+so the file name of every test module must be unique in the whole suite.
+Fixtures are defined in `tests/conftest.py`.
+Helpers that tests import, such as `fake_hash` or `ConsoleHost`, are in `tests/core_common.py`,
+which every test module can import because `pythonpath = ["tests"]` in `pyproject.toml`.
+Import such helpers from `core_common`, never from `conftest`.
+
+## Timeouts
+
+Every test is bounded by `pytest-timeout`, configured in `pyproject.toml`.
+Setup, call and teardown of one test share a budget of 15 seconds,
+which is very generous for the fast selection (`-k "not test_example"`).
+Without it, a test can hang forever instead of failing,
+because the asynchronous RPC client takes no timeout
+and the director waits for its steps without a deadline.
+`tests/cli/test_interrupt.py` and `tests/test_examples.py` raise the budget with a
+module-level `timeout` marker, because their tests police their own deadlines.
+Keep those markers above the deadline the module enforces itself,
+so that a failure is reported by the assertion that knows what went wrong.
+
+The budget is not a complete safety net.
+`pytest-timeout` cancels the timer of a test as soon as pytest reports a failure,
+which leaves the teardown of a test whose setup failed entirely unguarded.
+A fixture that waits for a subprocess must therefore bound that wait itself,
+as the `client` fixture does with `SHUTDOWN_TIMEOUT`.
+
 ## Coding Conventions
 
 `tests/test_conventions.py` is a two-line subclass of `ConventionTests`,
@@ -20,8 +54,9 @@ unless it can only ever apply to StepUp Core.
 
 ## Terminal Tests
 
-`tests/test_interrupt.py` and `tests/test_console.py` run `stepup build` as a real process
-on a terminal of its own, to test Ctrl-C, Ctrl-Z and the keyboard commands end to end.
+`tests/cli/test_interrupt.py` and `tests/cli/test_console.py`
+run `stepup build` as a real process on a terminal of its own,
+to test Ctrl-C, Ctrl-Z and the keyboard commands end to end.
 The first uses a pseudo terminal and only runs on POSIX (`requires_termios`).
 The second uses a new console and only runs on Windows (`requires_windows_console`),
 with `ConsoleHost` in `tests/core_common.py` playing the user of that console.
@@ -33,7 +68,7 @@ The suite runs on Linux, macOS and Windows.
 A test that needs something that not every platform offers carries a marker,
 instead of a `skipif` on `sys.platform`.
 `CAPABILITY_MARKERS` in `tests/conftest.py` maps each marker to the predicate that tests for it
-(mostly those of `stepup/core/oscompat.py`) and to the reason shown for a skipped test.
+(mostly those of `stepup/core/platform/oscompat.py`) and to the reason shown for a skipped test.
 Register a new marker under `markers` in `pyproject.toml` as well.
 
 Write a test so that it runs everywhere before reaching for a marker.
@@ -73,12 +108,6 @@ Keep that README the single source of truth: do not restate its rules here.
 
 What belongs here instead, because it concerns `tests/test_examples.py` itself:
 
-- Register each new example in the `EXAMPLES` list at the top of the module,
-  from which `test_example` is parametrized.
-  Add the name to the `test_plan` parametrize list as well
-  if the plan should also run standalone.
-  The guard tests `test_examples_list_has_all_dirs` / `test_examples_list_has_no_extra`
-  fail when `EXAMPLES` is out of sync with the directories under `tests/examples/`.
 - An example that needs something that not every platform or configuration offers
   is added to the set named after that capability.
   `EXAMPLE_MARKERS` maps each set to a marker of `CAPABILITY_MARKERS` in `tests/conftest.py`,

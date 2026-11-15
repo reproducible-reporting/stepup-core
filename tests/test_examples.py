@@ -14,10 +14,10 @@ from collections.abc import Callable
 
 import pytest
 
+from stepup.core.cli.director_log import is_process_running, query_director_log
 from stepup.core.constants import DIRECTOR_LOG
 from stepup.core.path import Path
 from stepup.core.pytest import EXAMPLE_TIMEOUT, run_example, run_plan
-from stepup.core.utils import is_process_running, query_director_log
 
 pytestmark = pytest.mark.timeout(2 * EXAMPLE_TIMEOUT)
 """Budget for a whole example, which `run_example` already bounds with `EXAMPLE_TIMEOUT`,
@@ -522,7 +522,7 @@ def _signal_reaches(send: Callable[[int, int], None], pid: int, sig: int) -> boo
     try:
         send(pid, sig)
     # `os.killpg` raises `PermissionError` on macOS for a group of zombies,
-    # see `_signal_process_group` in `stepup.core.run`.
+    # see `_signal_process_group` in `stepup.core.launch.worker`.
     except (ProcessLookupError, PermissionError):
         return False
     return True

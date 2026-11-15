@@ -17,7 +17,7 @@ from rich.console import Console
 from .api import loadns
 from .cattrs import json_converter
 from .path import Path
-from .utils import rich_legacy_windows
+from .platform.stdio import rich_legacy_windows
 
 __all__ = ("driver",)
 

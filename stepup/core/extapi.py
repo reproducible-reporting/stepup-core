@@ -17,9 +17,8 @@ from collections.abc import Iterable, Iterator, Mapping
 from .api import get_job_i, get_rpc_client, getenv
 from .exceptions import StepUpError
 from .path import Path, StrPath, get_here, get_root, get_stepup_root, translate
-from .popen import popen_args
-from .step import truncate_output
-from .utils import extract_env_overrides
+from .platform.popen import popen_args
+from .utils import extract_env_overrides, truncate_output
 
 __all__ = (
     "child_env",

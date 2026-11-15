@@ -18,16 +18,17 @@ from typing import TextIO
 
 import pytest
 
+from .cli.director_log import scan_director_log
 from .constants import DIRECTOR_LOG, STEPUP_DIR
 from .enums import ReturnCode
-from .oscompat import file_modes_available
 from .path import Path
-from .popen import popen_args
-from .utils import scan_director_log, write_utf8_unless_terminal
-from .watcher import select_watcher_backend
+from .platform.oscompat import file_modes_available
+from .platform.popen import popen_args
+from .platform.stdio import write_utf8_unless_terminal
+from .watch.select import select_watcher_backend
 
 if sys.platform == "win32":
-    from .winapi import JobObject
+    from .platform.winapi import JobObject
 
 __all__ = ("ConventionTests", "remove_hashes", "run_example", "run_plan")
 
@@ -166,7 +167,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     On POSIX, it leads the process group of a session of its own,
     whose remaining members get `SIGTERM`,
     and `SIGKILL` if they are still there `EXAMPLE_STOP_GRACE` seconds later.
-    On Windows, it runs with the bash of `stepup.core.popen.find_shell`,
+    On Windows, it runs with the bash of `stepup.core.platform.popen.find_shell`,
     in a hidden console and a Job Object of its own, which is terminated.
 
     All files in the srcdir starting with `expected_` will be compared to corresponding files
@@ -174,7 +175,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     When the file watcher is `watchfiles`,
     the order of consecutive `UPDATED` and `DELETED` lines is not compared,
     because the changes observed together are reported in sorted order,
-    see `stepup.core.watcher_watchfiles.WatchfilesBackend`.
+    see `stepup.core.watch.watchfiles.WatchfilesBackend`.
     On a platform without permission bits of files,
     the file modes and the digests of step hashes are not compared, see `mask_file_modes`.
 
@@ -392,7 +393,7 @@ async def _stop_process_group(pgid: int):
                 await asyncio.sleep(0.1)
                 os.killpg(pgid, 0)
         # macOS raises `PermissionError` for a group of zombies,
-        # see `_signal_process_group` in `stepup.core.run`.
+        # see `_signal_process_group` in `stepup.core.launch.worker`.
         except (ProcessLookupError, PermissionError):
             return
 
@@ -411,7 +412,7 @@ async def _run_main_windows(workdir: Path, env: dict[str, str], main_log: TextIO
     """
     env = env | {"PATH": f"{_write_python3_shim(workdir.parent / 'bin')};{env.get('PATH', '')}"}
     # Windows cannot run a script, and `asyncio` cannot start a command line,
-    # which is what the bash of Git for Windows needs, see `stepup.core.popen`.
+    # which is what the bash of Git for Windows needs, see `stepup.core.platform.popen`.
     args = popen_args(["./main.sh"], shell=False, env=env, cwd=workdir)
     job = JobObject.create()
     try:
@@ -520,8 +521,8 @@ def _parse(path: Path) -> ast.Module:
 
 
 @functools.cache
-def _find_module_paths(package: str) -> tuple[Path, ...]:
-    """The source files of the top-level modules of a package, sorted by name.
+def _find_package_dir(package: str) -> Path:
+    """The directory of a package.
 
     Raises
     ------
@@ -531,7 +532,46 @@ def _find_module_paths(package: str) -> tuple[Path, ...]:
     spec = importlib.util.find_spec(package)
     if spec is None or not spec.submodule_search_locations:
         raise ModuleNotFoundError(f"Not an importable package: {package}")
-    return tuple(sorted(Path(spec.submodule_search_locations[0]).glob("*.py")))
+    return Path(spec.submodule_search_locations[0])
+
+
+@functools.cache
+def _find_module_paths(package: str) -> tuple[Path, ...]:
+    """The source files of the modules of a package and its subpackages, sorted by path.
+
+    Raises
+    ------
+    ModuleNotFoundError
+        When the package cannot be imported.
+    """
+    return tuple(sorted(_find_package_dir(package).walkfiles("*.py")))
+
+
+def _resolve_import(package: str, module_path: Path, node: ast.ImportFrom) -> str | None:
+    """The dotted name of the module that an `ImportFrom` node imports from.
+
+    Parameters
+    ----------
+    package
+        The package that contains `module_path`.
+    module_path
+        The source file in which the import appears.
+    node
+        The import statement.
+
+    Returns
+    -------
+    module
+        The absolute dotted name,
+        or `None` for an absolute import from outside the `stepup` namespace.
+    """
+    if node.level == 0:
+        return node.module if node.module.startswith("stepup.") else None
+    parts = [package, *module_path.relpath(_find_package_dir(package)).parent.splitall()[1:]]
+    parts = parts[: len(parts) - node.level + 1]
+    if node.module is not None:
+        parts.append(node.module)
+    return ".".join(parts)
 
 
 @functools.cache
@@ -590,7 +630,7 @@ class ConventionTests:
     """
 
     package: str | None = None
-    """The dotted name of the package whose top-level modules are tested."""
+    """The dotted name of the package whose modules, including those of subpackages, are tested."""
 
     example_rc: str | None = "examples/example.rc"
     """The shell boilerplate of the integration examples, relative to the test module.
@@ -599,7 +639,9 @@ class ConventionTests:
     """
 
     native_path_modules: tuple[str, ...] | None = ()
-    """The file names of the modules that may handle paths in the spelling of the operating system.
+    """The modules that may handle paths in the spelling of the operating system.
+
+    Each module is given by its file path relative to the package directory, e.g. `path.py`.
 
     All other modules must write paths with `/` as the only separator, on every platform:
     they take `Path` from `stepup.core.path` instead of the `path` library,
@@ -610,17 +652,21 @@ class ConventionTests:
     """
 
     def pytest_generate_tests(self, metafunc):
-        """Parametrize the per-module tests over the top-level modules of `package`."""
+        """Parametrize the per-module tests over the modules of `package`."""
         if "module_path" in metafunc.fixturenames:
             if self.package is None:
                 raise ValueError(f"{type(self).__name__} does not define the package to test.")
             paths = _find_module_paths(self.package)
-            metafunc.parametrize("module_path", paths, ids=[path.name for path in paths])
+            metafunc.parametrize("module_path", paths, ids=[self._rel(path) for path in paths])
+
+    def _rel(self, module_path: Path) -> str:
+        """The path of a module relative to the package directory, e.g. `sub/mod.py`."""
+        return str(module_path.relpath(_find_package_dir(self.package)))
 
     def test_dunder_all_declared(self, module_path: Path):
         """Every module declares `__all__`, even when it exports nothing."""
         assert _get_dunder_all(module_path) is not None, (
-            f"{module_path.name} does not declare __all__"
+            f"{self._rel(module_path)} does not declare __all__"
         )
 
     def test_dunder_all_defined_here(self, module_path: Path):
@@ -636,7 +682,7 @@ class ConventionTests:
                 defined.add(node.id)
         for name in _get_dunder_all(module_path) or ():
             assert name in defined or name not in imported, (
-                f"{module_path.name} re-exports {name}: "
+                f"{self._rel(module_path)} re-exports {name}: "
                 f"import it from the module that defines it instead"
             )
 
@@ -651,22 +697,19 @@ class ConventionTests:
         for node in ast.walk(_parse(module_path)):
             if not isinstance(node, ast.ImportFrom) or node.module is None:
                 continue
-            if node.level == 1:
-                module = f"{self.package}.{node.module}"
-            elif node.level == 0 and node.module.startswith("stepup."):
-                module = node.module
-            else:
+            module = _resolve_import(self.package, module_path, node)
+            if module is None:
                 continue
             path = _find_module_path(module)
             if path is None:
                 continue
             exported = _get_dunder_all(path)
             assert exported is not None, (
-                f"{module_path.name} imports from {module}, which has no __all__"
+                f"{self._rel(module_path)} imports from {module}, which has no __all__"
             )
             for alias in node.names:
                 assert alias.name in exported, (
-                    f"{module_path.name} imports {alias.name} from {module}, "
+                    f"{self._rel(module_path)} imports {alias.name} from {module}, "
                     f"which does not list it in __all__"
                 )
 
@@ -679,7 +722,7 @@ class ConventionTests:
         """
         if self.native_path_modules is None:
             pytest.skip("The path conventions are not tested for this package.")
-        if module_path.name in self.native_path_modules:
+        if self._rel(module_path) in self.native_path_modules:
             return
         native_modules = {"path", "os.path", "ntpath", "posixpath"}
         native_attrs = {"sep", "altsep", "path"}
@@ -706,7 +749,7 @@ class ConventionTests:
             ):
                 found.add(f"os.{node.attr}")
         assert not found, (
-            f"{module_path.name} uses {sorted(found)}: "
+            f"{self._rel(module_path)} uses {sorted(found)}: "
             "import Path from stepup.core.path, write '/' as the separator "
             "and use the methods of Path instead of os.path"
         )

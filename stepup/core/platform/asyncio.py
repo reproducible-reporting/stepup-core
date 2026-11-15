@@ -1,0 +1,331 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+"""Asyncio utilities used in StepUp."""
+
+import asyncio
+import contextlib
+import functools
+import logging
+import signal
+from asyncio import proactor_events
+from collections.abc import AsyncIterator, Callable, Coroutine, Iterator, Mapping
+from types import FrameType
+from typing import Any, TypeVar
+
+from ..path import Path
+
+__all__ = (
+    "is_aborted_accept",
+    "iter_until_stopped",
+    "signal_handlers",
+    "tolerate_proactor_connection_errors",
+    "wait_for_any_event",
+    "wait_for_path",
+    "wait_for_readable_fd",
+)
+
+logger = logging.getLogger(__name__)
+
+MessageType = TypeVar("MessageType")
+
+
+#
+# Waiting for a condition
+#
+
+
+async def wait_for_readable_fd(fd: int) -> None:
+    """Wait until file descriptor `fd` becomes readable."""
+    loop = asyncio.get_running_loop()
+    future = loop.create_future()
+
+    def _on_readable():
+        if not future.done():
+            future.set_result(None)
+
+    loop.add_reader(fd, _on_readable)
+    try:
+        await future
+    finally:
+        loop.remove_reader(fd)
+
+
+async def wait_for_any_event(*events: asyncio.Event) -> None:
+    """Wait until at least one of the events is set."""
+    tasks = [asyncio.create_task(event.wait(), name="wait_for_event") for event in events]
+    try:
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        for task in tasks:
+            task.cancel()
+
+
+MAX_POLL_DELAY = 0.5
+"""The upper limit of the polling interval of `wait_for_path`, in seconds."""
+
+
+async def wait_for_path(path: Path, stop_event: asyncio.Event) -> bool:
+    """Wait until the path exists or `stop_event` is set.
+
+    Parameters
+    ----------
+    path
+        The path to wait for.
+    stop_event
+        Give up waiting when this event is set.
+
+    Returns
+    -------
+    exists
+        `True` when the path exists,
+        `False` when `stop_event` was set before the path appeared.
+    """
+    delay = 0.0
+    while not path.exists():
+        if stop_event.is_set():
+            return False
+        if delay > 0:
+            await asyncio.sleep(delay)
+        # The delay is capped because it also bounds how long it takes to notice `stop_event`.
+        delay = min(delay + 0.1, MAX_POLL_DELAY)
+    return True
+
+
+#
+# Signals
+#
+
+
+@contextlib.contextmanager
+def signal_handlers(callbacks: Mapping[signal.Signals, Callable[[], object]]) -> Iterator[None]:
+    """Handle signals in the running event loop, for the duration of a `with` block.
+
+    A callback runs in the event loop, like any other callback,
+    and not in between two arbitrary instructions, as a handler of `signal.signal` does.
+    It can therefore use everything that `asyncio` offers.
+
+    This works with every event loop,
+    also with the Proactor event loop of Windows, which has no `add_signal_handler`.
+    The block must be entered and left in the main thread.
+
+    Parameters
+    ----------
+    callbacks
+        The function to call without arguments for each signal to handle.
+        Use `functools.partial` when it takes arguments.
+    """
+    loop = asyncio.get_running_loop()
+    added = []
+    replaced = {}
+    try:
+        for sig, callback in callbacks.items():
+            try:
+                loop.add_signal_handler(sig, callback)
+                added.append(sig)
+            except NotImplementedError:
+                # The interpreter runs the handler in the main thread, after the event loop
+                # has been woken up through its wake-up socket (`signal.set_wakeup_fd`).
+                replaced[sig] = signal.signal(sig, functools.partial(_relay_signal, loop, callback))
+        yield
+    finally:
+        for sig in added:
+            loop.remove_signal_handler(sig)
+        for sig, previous in replaced.items():
+            # `None` stands for a handler that was not installed from Python.
+            signal.signal(sig, signal.SIG_DFL if previous is None else previous)
+
+
+def _relay_signal(
+    loop: asyncio.AbstractEventLoop,
+    callback: Callable[[], object],
+    signum: int,
+    frame: FrameType | None,
+) -> None:
+    """Pass a signal on to the event loop, as a handler for `signal.signal`."""
+    loop.call_soon_threadsafe(callback)
+
+
+#
+# Exception handling
+#
+
+
+ERROR_NETNAME_DELETED = 64
+"""The Windows error with which an accept fails when the peer has reset the connection."""
+
+
+def is_aborted_accept(exc: BaseException) -> bool:
+    """Test whether an accept failed because of its connection, not because of the listener.
+
+    After such a failure, the listening socket can go on accepting other connections.
+    It happens when a peer resets its connection before the connection is accepted.
+    On Windows, the Proactor event loop then raises an `OSError`
+    with `winerror` equal to `ERROR_NETNAME_DELETED`,
+    as observed with Python 3.11.18 and 3.14.10.
+    Other event loops raise a `ConnectionAbortedError` or a `ConnectionResetError`.
+    """
+    if isinstance(exc, (ConnectionAbortedError, ConnectionResetError)):
+        return True
+    return isinstance(exc, OSError) and getattr(exc, "winerror", None) == ERROR_NETNAME_DELETED
+
+
+def tolerate_proactor_connection_errors() -> None:
+    """Let the running event loop cope with connections that fail on the Proactor event loop.
+
+    The Proactor event loop of Windows reports two failures that are harmless to a server,
+    and handles the first one incompletely:
+
+    - When a connection is closed, the loop shuts down its socket before closing it.
+      The shutdown can fail with an `OSError`,
+      e.g. a `ConnectionResetError` when the peer has already reset the connection.
+      The loop then reports an `Exception in callback`
+      and leaves the transport half closed, with an open socket.
+      After this function, the loop closes the socket of such a transport,
+      marks its protocol as notified of the lost connection,
+      and logs the failure at the `DEBUG` level only.
+      The transport stays attached to its `asyncio.Server`,
+      so `Server.wait_closed()` may still wait forever after such a failure.
+    - When an accept fails because of the connection, see `is_aborted_accept`,
+      the failure also ends a task of the loop's own, which nobody awaits.
+      The loop reports it as `Task exception was never retrieved`
+      when the task is collected.
+      After this function, that report is logged at the `DEBUG` level only.
+      What the failed accept means for the listening socket is up to the code that accepts.
+
+    Every other exception goes to the handler that the loop had before,
+    or to the default handler.
+    The new handler remains in place for the lifetime of the running loop.
+    It has no effect with other event loops.
+    """
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(
+        functools.partial(_handle_proactor_connection_error, loop.get_exception_handler())
+    )
+
+
+def _handle_proactor_connection_error(
+    previous: Callable[[asyncio.AbstractEventLoop, dict[str, Any]], object] | None,
+    loop: asyncio.AbstractEventLoop,
+    context: dict[str, Any],
+) -> None:
+    """Handle an exception of the event loop, as set by `tolerate_proactor_connection_errors`."""
+    if _tolerate_failed_shutdown(context) or _tolerate_failed_accept(context):
+        return
+    if previous is None:
+        loop.default_exception_handler(context)
+    else:
+        previous(loop, context)
+
+
+# As of Python 3.14.10, the failing call is `self._sock.shutdown(socket.SHUT_RDWR)`
+# in the `finally` block of `_ProactorBasePipeTransport._call_connection_lost`.
+# The `getattr` lets the handler fall back to the default one if a later Python drops the method.
+_CALL_CONNECTION_LOST = getattr(
+    proactor_events._ProactorBasePipeTransport, "_call_connection_lost", None
+)
+
+
+def _tolerate_failed_shutdown(context: dict[str, Any]) -> bool:
+    """Finish closing a transport whose socket failed to shut down, if the context is about that.
+
+    Returns
+    -------
+    handled
+        Whether the context was about such a failure.
+    """
+    exception = context.get("exception")
+    callback = getattr(context.get("handle"), "_callback", None)
+    if (
+        _CALL_CONNECTION_LOST is None
+        or not isinstance(exception, OSError)
+        or getattr(callback, "__func__", None) is not _CALL_CONNECTION_LOST
+    ):
+        return False
+    transport = callback.__self__
+    logger.debug("Closing a socket that failed to shut down: %r", exception)
+    # These are the remaining statements of the `finally` block, except for the detach.
+    # Without `_called_connection_lost`, a later `_force_close` of the transport
+    # would notify the protocol a second time.
+    transport._sock.close()
+    transport._sock = None
+    transport._called_connection_lost = True
+    return True
+
+
+# As of Python 3.14.10, `IocpProactor.accept` wraps the future of every accept in a task
+# that runs this coroutine, which re-raises a failure of the accept.
+# The name is compared as a string, because the class only exists on Windows.
+_ACCEPT_CORO_QUALNAME = "IocpProactor.accept.<locals>.accept_coro"
+
+
+def _tolerate_failed_accept(context: dict[str, Any]) -> bool:
+    """Log the unretrieved failure of an aborted accept quietly, if the context is about that.
+
+    Returns
+    -------
+    handled
+        Whether the context was about such a failure.
+    """
+    exception = context.get("exception")
+    task = context.get("future")
+    if (
+        exception is None
+        or not is_aborted_accept(exception)
+        or not isinstance(task, asyncio.Task)
+        or getattr(task.get_coro(), "__qualname__", None) != _ACCEPT_CORO_QUALNAME
+    ):
+        return False
+    logger.debug("Ignoring an accept that failed because of the connection: %r", exception)
+    return True
+
+
+#
+# Stoppable iteration
+#
+
+
+async def iter_until_stopped(
+    get_next: Callable[[], Coroutine[Any, Any, MessageType]], stop_event: asyncio.Event
+) -> AsyncIterator[MessageType]:
+    """Iterate over the messages returned by `get_next`, until `stop_event` is set.
+
+    Parameters
+    ----------
+    get_next
+        A coroutine function producing the next message.
+        Use `functools.partial` when it takes arguments.
+    stop_event
+        When this event is set, the loop is interrupted.
+
+    Notes
+    -----
+    The stop event competes with the next message,
+    so messages that are already available when `stop_event` is set are still yielded.
+    The iteration ends at the first message that does not arrive
+    before the stop event is noticed.
+    This race is not a way to drain the remaining messages:
+    a consumer that may not lose messages must keep reading until the source is exhausted.
+
+    A consumer that may break out of the iteration should wrap it in `contextlib.aclosing`.
+    The tasks waiting for the stop event and the next message are then cleaned up right away,
+    instead of when the garbage collector finalizes the iterator,
+    which may never happen when the event loop is already shutting down.
+    """
+    stop_task = asyncio.create_task(stop_event.wait(), name="stop_task")
+    next_task = None
+    try:
+        while True:
+            next_task = asyncio.create_task(get_next(), name="next_task")
+            done, _ = await asyncio.wait(
+                [next_task, stop_task], return_when=asyncio.FIRST_COMPLETED
+            )
+            if next_task not in done:
+                break
+            yield await next_task
+    finally:
+        # Also needed when the consumer stops iterating early or is cancelled:
+        # `asyncio.wait` leaves both tasks pending, and an abandoned pending task
+        # ends up in the director log as a symptom of a bug.
+        stop_task.cancel()
+        if next_task is not None:
+            next_task.cancel()

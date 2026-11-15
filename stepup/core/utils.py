@@ -2,23 +2,17 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Small utilities used throughout."""
 
-import contextlib
-import io
+import decimal
 import logging
 import os
 import re
 import shlex
 import stat
-import sys
 from collections.abc import Iterable
-from typing import TextIO
+from decimal import Decimal
 
-from .constants import DIRECTOR_LOG_PID_PREFIX, DIRECTOR_LOG_SOCKET_PREFIX
 from .exceptions import NotARegularFileError, StepUpError
-from .path import Path, StrPath, coerce_str
-
-if sys.platform == "win32":
-    from .winapi import is_console, is_process_alive
+from .path import StrPath, coerce_str
 
 __all__ = (
     "as_list",
@@ -26,18 +20,14 @@ __all__ = (
     "extract_env_overrides",
     "format_subprocess",
     "is_debug",
-    "is_process_running",
-    "is_terminal",
     "merge_resources",
     "open_regular_file",
     "parse_resources",
-    "query_director_log",
-    "rich_legacy_windows",
-    "scan_director_log",
+    "positive_decimal",
+    "positive_int",
     "to_bool",
-    "write_utf8_unless_terminal",
+    "truncate_output",
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -258,60 +248,6 @@ def merge_resources(base: str | None, override: str | None) -> str:
     return ",".join(f"{k}:{v}" for k, v in merged.items())
 
 
-def is_terminal(stream: TextIO | None) -> bool:
-    """Check whether a standard stream of this process is connected to a terminal.
-
-    On Windows, this is stricter than `isatty()`, which is also true for other character devices,
-    e.g. for a stream that is redirected from or to `NUL`.
-    """
-    if stream is None:
-        return False
-    if sys.platform == "win32":
-        try:
-            fd = stream.fileno()
-        except OSError:
-            # The stream is not backed by a file descriptor.
-            return False
-        return is_console(fd)
-    return stream.isatty()
-
-
-def rich_legacy_windows(stream: TextIO | None) -> bool | None:
-    """Decide the `legacy_windows` argument of a `rich` console that writes to a stream.
-
-    Left to itself, `rich` takes every stream that is not a modern Windows console
-    for a legacy one, a file or a pipe included,
-    and then makes its lines one character shorter than the width it was given.
-    Observed with rich 15.0 on Windows 11 24H2.
-
-    Returns
-    -------
-    legacy_windows
-        `False` for a stream that is not a terminal,
-        so that redirected output has the same layout on every platform,
-        and `None` for a terminal, which leaves the detection to `rich`.
-    """
-    return None if is_terminal(stream) else False
-
-
-def write_utf8_unless_terminal() -> None:
-    """Make the standard output and error write UTF-8 and `\\n`, unless they are a terminal.
-
-    Output that does not go to a terminal is otherwise written in the locale encoding,
-    e.g. the ANSI code page on Windows with Python 3.14 and older,
-    which cannot represent everything that StepUp prints,
-    and with the line endings of the platform.
-    A terminal is left alone, because Python already writes to it in the encoding it expects.
-
-    An environment variable such as `PYTHONIOENCODING` is no alternative,
-    because every child process would inherit it.
-    """
-    for stream in (sys.stdout, sys.stderr):
-        if isinstance(stream, io.TextIOWrapper) and not is_terminal(stream):
-            # Without an explicit `errors`, `reconfigure` would reset that of `stderr` to `strict`.
-            stream.reconfigure(encoding="utf-8", errors=stream.errors, newline="\n")
-
-
 _IRREGULAR_FILE_KINDS = (
     (stat.S_ISDIR, "a directory"),
     (stat.S_ISFIFO, "a FIFO"),
@@ -366,144 +302,6 @@ def open_regular_file(path: StrPath, flags: int, mode: int = 0o777) -> int:
         os.close(fd)
         raise
     return fd
-
-
-def is_process_running(pid: int) -> bool:
-    """Check whether a process with this pid exists. (It may or may not be the director.)
-
-    Together with `query_director_log`, this tells a live director from a stale socket.
-
-    A pid can be recycled, so a `True` answer does not prove the process is the director.
-    Treat it conservatively: waiting for a director or refusing to start a build is harmless,
-    two directors on one database are not.
-    """
-    if sys.platform == "win32":
-        # `os.kill(pid, 0)` is no liveness check on Windows,
-        # where signal 0 is `CTRL_C_EVENT` and is sent to the console instead.
-        return is_process_alive(pid)
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        # The process exists but belongs to another user.
-        return True
-    return True
-
-
-def query_director_log(director_log: Path) -> tuple[Path | None, int | None, str]:
-    """Look up the director's socket and pid in `DIRECTOR_LOG`.
-
-    Parameters
-    ----------
-    director_log
-        The path of the director log to read from.
-
-    Returns
-    -------
-    socket_path
-        The socket path advertised by the director if it exists on disk, and `None` otherwise.
-        It is a Unix domain socket or an endpoint file, see `stepup.core.rpc`.
-    pid
-        The pid advertised by the director,
-        or `None` when the log holds no usable `PID` line.
-    message
-        An explanation of why no existing socket was found, empty when one was.
-    """
-    try:
-        with open(director_log, encoding="utf-8") as fh:
-            line_socket = fh.readline()
-            line_pid = fh.readline()
-    except OSError as exc:
-        return None, None, f"File {director_log} could not be read: {exc}"
-
-    # Validate the header and return socket_path only if validated.
-    # PID can be useful even if the socket is stale, so it is returned regardless.
-    pid = None
-    if line_pid.startswith(DIRECTOR_LOG_PID_PREFIX):
-        with contextlib.suppress(ValueError):
-            pid = int(line_pid.removeprefix(DIRECTOR_LOG_PID_PREFIX))
-    if not line_socket.startswith(DIRECTOR_LOG_SOCKET_PREFIX):
-        return None, pid, f"File {director_log} does not start with SOCKET line."
-
-    socket_path = Path(line_socket.removeprefix(DIRECTOR_LOG_SOCKET_PREFIX).strip())
-    if socket_path and socket_path.exists():
-        return socket_path, pid, ""
-    message = f"Socket {socket_path} read from {director_log} does not exist. StepUp not running?"
-    return None, pid, message
-
-
-DIRECTOR_LOG_CHECKS = (
-    # The name is a `__qualname__`, so it contains dots for methods and nested functions.
-    (re.compile(r"coroutine '[^']+' was never awaited"), "Unawaited coroutine"),
-    (re.compile(r"\w+ exception was never retrieved"), "Unretrieved exception"),
-    (re.compile("Task was destroyed but it is pending!"), "Abandoned pending task"),
-    (re.compile("Exception in callback"), "Exception in callback"),
-    (re.compile("Exception in thread"), "Exception in thread"),
-    (re.compile("Exception ignored"), "Ignored exception"),
-    (
-        re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\s+(?:ERROR|CRITICAL)\s"),
-        "Logged error",
-    ),
-)
-"""Patterns for lines in `DIRECTOR_LOG` that betray an internal problem, each with a label.
-
-All but the last are verbatim CPython wordings for work that was left dangling:
-a coroutine that was never awaited,
-a `Future` or `Task` collected while holding an unhandled exception,
-a task destroyed while still pending,
-and an exception that escaped a callback, a thread or a `__del__`
-(the unraisable hook prints `Exception ignored ...`).
-None of these make the director exit with a non-zero return code,
-which is precisely why the log must be scanned for them after the fact.
-They are matched case-sensitively, since they are copied from CPython's sources.
-
-The last pattern is of a different nature:
-it matches any log record at level `ERROR` or `CRITICAL`,
-following the `format`/`datefmt` that `async_main` (`director.py`) hands to `logging.basicConfig`.
-Matching the level field rather than the word anywhere in the line
-is what keeps the director's own header lines out of it:
-`LOG_LEVEL ERROR` is not an error, it is a build started with `--log-level=ERROR`.
-It comes last because `scan_director_log` labels a line with the first check that matches,
-and the messages above are also logged at `ERROR` level when `asyncio` reports them,
-in which case the specific label is the more informative one.
-
-Warning categories that any third-party module can raise
-(`DeprecationWarning`, `ResourceWarning`, ...) are deliberately absent:
-they are ignored by Python's default filters,
-so a match would say more about the warning filter than about StepUp.
-"""
-
-
-def scan_director_log(path_director_log: Path) -> list[str]:
-    """Collect the lines in the director log that match one of `DIRECTOR_LOG_CHECKS`.
-
-    Parameters
-    ----------
-    path_director_log
-        The path of the director log to read from.
-        A log that cannot be opened (most commonly because it does not exist)
-        yields no findings.
-
-    Returns
-    -------
-    findings
-        One `"{label}: {line}"` string per matching line, in the order of the log.
-        Empty when the director log is clean, which is the expected outcome of every build.
-    """
-    # As in `query_director_log`, the log is opened without testing for its existence first,
-    # because a director starting up in parallel may remove it between the test and the open.
-    findings = []
-    try:
-        with open(path_director_log, encoding="utf-8") as fh:
-            for line in fh:
-                for pattern, label in DIRECTOR_LOG_CHECKS:
-                    if pattern.search(line) is not None:
-                        findings.append(f"{label}: {line.strip()}")
-                        break
-    except OSError:
-        return []
-    return findings
 
 
 def as_list(values: Iterable[str] | str) -> list[str]:
@@ -562,3 +360,77 @@ def is_debug() -> bool:
     and because a step's environment is not the director's.
     """
     return to_bool(os.getenv("STEPUP_DEBUG", "0"))
+
+
+def truncate_output(content: str, max_bytes: int | None = None) -> str:
+    """Truncate `content` to at most `max_bytes` UTF-8 bytes, appending a sentinel if cut.
+
+    A `max_bytes` of `0` (or any non-positive value) means unlimited: the content is
+    returned unchanged. Otherwise the cut is made on a valid UTF-8 character boundary
+    (`decode(..., "ignore")` drops a trailing partial multi-byte sequence), so the result
+    is always valid text.
+
+    Parameters
+    ----------
+    content
+        The captured text to (possibly) truncate.
+    max_bytes
+        Maximum number of UTF-8 bytes to keep, or `0` (or any non-positive value) for
+        unlimited.
+        The default `None` takes the budget from `${STEPUP_MAX_OUTPUT_SIZE}`,
+        which is unlimited when unset.
+
+    Returns
+    -------
+    truncated
+        The original content if within the budget or unlimited, otherwise the content cut
+        to `max_bytes` bytes with a sentinel line appended.
+    """
+    if max_bytes is None:
+        # The variable is read on every call, not cached,
+        # because a test may change it and because a step's environment is not the director's.
+        max_bytes = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
+    if max_bytes <= 0:
+        return content
+    encoded = content.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return content
+    truncated = encoded[:max_bytes].decode("utf-8", "ignore")
+    return f"{truncated}\n[output truncated at {max_bytes} bytes]\n"
+
+
+def positive_int(value: str | int) -> int:
+    """Convert a command-line or config value to an integer, requiring it to be strictly positive.
+
+    Raises
+    ------
+    ValueError
+        If the value is not an integer or is not strictly positive.
+    """
+    number = int(value)
+    if number <= 0:
+        raise ValueError(f"'{value}' is not strictly positive.")
+    return number
+
+
+def positive_decimal(value: str | float) -> Decimal:
+    """Convert a command-line or config value to a strictly positive `Decimal`.
+
+    The value is converted through its string form,
+    so that the number of digits after the decimal point is preserved:
+    `Decimal(3.0)` is `Decimal("3")` while `Decimal("3.0")` keeps the digit,
+    and a setting may give that digit a meaning of its own.
+    A config file may hold a TOML float here, unlike the command line, which is always a string.
+
+    Raises
+    ------
+    ValueError
+        If the value is not a number or is not strictly positive.
+    """
+    try:
+        number = Decimal(str(value))
+    except decimal.InvalidOperation as exc:
+        raise ValueError(f"not a number: {value!r}") from exc
+    if number <= 0:
+        raise ValueError(f"must be strictly positive: {value!r}")
+    return number

@@ -317,7 +317,7 @@ class StopLevel(IntEnum):
     """How forcefully the director asks the running steps to stop.
 
     The levels are portable, the way they reach a step is not:
-    `stepup.core.run` maps each level to what the platform offers.
+    `stepup.core.launch.worker` maps each level to what the platform offers.
     """
 
     INTERRUPT = 71

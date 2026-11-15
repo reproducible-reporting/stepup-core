@@ -42,6 +42,7 @@ The module `stepup.core.pytest` holds test utilities that extensions can reuse:
 - `ConventionTests` collects the tests for the coding conventions of the StepUp packages,
   most importantly that every module declares `__all__`
   and that no module imports a name another module does not export.
+  The tests cover the modules of subpackages as well.
   Subclass it in a test module and name the package to be tested:
 
     ```python

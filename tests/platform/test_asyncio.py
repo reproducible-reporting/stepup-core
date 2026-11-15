@@ -1,0 +1,486 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+"""Unit tests for stepup.core.platform.asyncio"""
+
+import asyncio
+import contextlib
+import errno
+import gc
+import logging
+import os
+import signal
+from asyncio import proactor_events
+from functools import partial
+
+import pytest
+from core_common import settled_task_names
+
+from stepup.core.path import Path
+from stepup.core.platform.asyncio import (
+    ERROR_NETNAME_DELETED,
+    MAX_POLL_DELAY,
+    is_aborted_accept,
+    iter_until_stopped,
+    signal_handlers,
+    tolerate_proactor_connection_errors,
+    wait_for_any_event,
+    wait_for_path,
+    wait_for_readable_fd,
+)
+
+#
+# Waiting for a condition
+#
+
+
+@pytest.mark.requires_forkserver
+async def test_wait_for_readable_fd():
+    read_fd, write_fd = os.pipe()
+    try:
+        task = asyncio.create_task(wait_for_readable_fd(read_fd), name="readable")
+        await asyncio.sleep(0)
+        assert not task.done()
+        os.write(write_fd, b"x")
+        await asyncio.wait_for(task, timeout=5)
+        assert os.read(read_fd, 1) == b"x"
+    finally:
+        os.close(read_fd)
+        os.close(write_fd)
+    assert await settled_task_names() == []
+
+
+@pytest.mark.requires_forkserver
+async def test_wait_for_readable_fd_cancelled():
+    """A cancelled wait must unregister its reader, or the next one is refused."""
+    read_fd, write_fd = os.pipe()
+    try:
+        task = asyncio.create_task(wait_for_readable_fd(read_fd), name="readable")
+        await asyncio.sleep(0)
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        os.write(write_fd, b"x")
+        await asyncio.wait_for(wait_for_readable_fd(read_fd), timeout=5)
+    finally:
+        os.close(read_fd)
+        os.close(write_fd)
+    assert await settled_task_names() == []
+
+
+async def test_wait_for_any_event_already_set():
+    first = asyncio.Event()
+    second = asyncio.Event()
+    second.set()
+    await asyncio.wait_for(wait_for_any_event(first, second), timeout=5)
+    assert await settled_task_names() == []
+
+
+async def test_wait_for_any_event_set_later():
+    first = asyncio.Event()
+    second = asyncio.Event()
+    task = asyncio.create_task(wait_for_any_event(first, second), name="any_event")
+    await asyncio.sleep(0)
+    assert not task.done()
+    first.set()
+    await asyncio.wait_for(task, timeout=5)
+    assert await settled_task_names() == []
+
+
+async def test_wait_for_any_event_none_set():
+    first = asyncio.Event()
+    second = asyncio.Event()
+    with pytest.raises(TimeoutError):
+        await asyncio.wait_for(wait_for_any_event(first, second), timeout=0.1)
+    assert await settled_task_names() == []
+
+
+async def test_wait_for_path_exists(path_tmp: Path):
+    path = path_tmp / "there"
+    path.touch()
+    assert await wait_for_path(path, asyncio.Event())
+
+
+async def test_wait_for_path_appears(path_tmp: Path):
+    path = path_tmp / "later"
+    stop_event = asyncio.Event()
+    task = asyncio.create_task(wait_for_path(path, stop_event), name="wait_for_path")
+    await asyncio.sleep(0)
+    assert not task.done()
+    path.touch()
+    assert await asyncio.wait_for(task, timeout=5)
+    assert await settled_task_names() == []
+
+
+async def test_wait_for_path_stopped(path_tmp: Path):
+    stop_event = asyncio.Event()
+    stop_event.set()
+    assert not await wait_for_path(path_tmp / "never", stop_event)
+
+
+async def test_wait_for_path_delay_is_capped(monkeypatch: pytest.MonkeyPatch, path_tmp: Path):
+    """The polling interval must stop growing, or a late path is noticed even later."""
+    path = path_tmp / "later"
+    delays = []
+
+    async def fake_sleep(delay: float) -> None:
+        delays.append(delay)
+        if len(delays) == 20:
+            path.touch()
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+    assert await wait_for_path(path, asyncio.Event())
+    assert delays[0] == pytest.approx(0.1)
+    assert max(delays) == pytest.approx(MAX_POLL_DELAY)
+
+
+#
+# Stoppable iteration
+#
+
+
+async def test_iter_until_stopped_yields_all_messages():
+    queue = asyncio.Queue()
+    for item in "abc":
+        queue.put_nowait(item)
+    stop_event = asyncio.Event()
+    items = []
+    async for item in iter_until_stopped(queue.get, stop_event):
+        items.append(item)
+        if len(items) == 3:
+            stop_event.set()
+    assert items == ["a", "b", "c"]
+    assert await settled_task_names() == []
+
+
+async def test_iter_until_stopped_stops_without_messages():
+    queue = asyncio.Queue()
+    stop_event = asyncio.Event()
+    stop_event.set()
+    items = [item async for item in iter_until_stopped(queue.get, stop_event)]
+    assert items == []
+    assert await settled_task_names() == []
+
+
+async def test_iter_until_stopped_yields_message_that_already_arrived():
+    """A message available before the stop event is set is still yielded.
+
+    The queue is empty after that message, so the next round is decided by the stop event.
+    """
+    queue = asyncio.Queue()
+    queue.put_nowait("a")
+    stop_event = asyncio.Event()
+    stop_event.set()
+    items = [item async for item in iter_until_stopped(queue.get, stop_event)]
+    assert items == ["a"]
+    assert await settled_task_names() == []
+
+
+async def test_iter_until_stopped_partial():
+    """A `get_next` that takes arguments is bound with `functools.partial`."""
+
+    async def get_next(prefix: str, queue: asyncio.Queue) -> str:
+        return prefix + await queue.get()
+
+    queue = asyncio.Queue()
+    queue.put_nowait("a")
+    stop_event = asyncio.Event()
+    si = iter_until_stopped(partial(get_next, "x", queue), stop_event)
+    async with contextlib.aclosing(si):
+        assert await anext(si) == "xa"
+    assert await settled_task_names() == []
+
+
+async def test_iter_until_stopped_propagates_exception():
+    async def get_next() -> str:
+        raise ValueError("boom")
+
+    stop_event = asyncio.Event()
+    si = iter_until_stopped(get_next, stop_event)
+    with pytest.raises(ValueError, match="boom"):
+        async for _ in si:
+            pass
+    assert await settled_task_names() == []
+
+
+async def test_iter_until_stopped_break_leaves_no_pending_tasks():
+    """Regression test: an iterator that a consumer walks away from must not leak tasks.
+
+    Both RPC receive loops in `stepup.core.rpc` break out of the iteration
+    when the peer closes the connection.
+    Without cleanup, the task waiting for the stop event stays pending forever
+    and eventually shows up in the director log as `Task was destroyed but it is pending!`,
+    which `DIRECTOR_LOG_CHECKS` reports as a bug in StepUp.
+    """
+    queue = asyncio.Queue()
+    for item in "abc":
+        queue.put_nowait(item)
+    stop_event = asyncio.Event()
+    si = iter_until_stopped(queue.get, stop_event)
+    async with contextlib.aclosing(si):
+        async for item in si:
+            if item == "b":
+                break
+    assert await settled_task_names() == []
+
+
+async def test_iter_until_stopped_finalized_leaves_no_pending_tasks():
+    """The cleanup also happens without `aclosing`, when the iterator is finalized."""
+    queue = asyncio.Queue()
+    for item in "abc":
+        queue.put_nowait(item)
+    stop_event = asyncio.Event()
+
+    async def consume():
+        async for item in iter_until_stopped(queue.get, stop_event):
+            if item == "b":
+                break
+
+    await consume()
+    assert await settled_task_names() == []
+
+
+async def test_iter_until_stopped_cancel_leaves_no_pending_tasks():
+    """Regression test: cancelling the consumer must not leak the tasks it was waiting for.
+
+    `asyncio.wait` leaves the tasks it was given pending when the task awaiting it is cancelled.
+    """
+    queue = asyncio.Queue()
+    stop_event = asyncio.Event()
+
+    async def consume():
+        async for _ in iter_until_stopped(queue.get, stop_event):
+            pass
+
+    task = asyncio.create_task(consume(), name="consume")
+    await asyncio.sleep(0)
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+    assert await settled_task_names() == []
+
+
+#
+# Signals
+#
+
+
+TEST_SIGNAL = getattr(signal, "SIGBREAK", None) or signal.SIGUSR1
+"""A signal that this process can raise in itself and that pytest does not use, on any platform."""
+
+
+async def _raise_and_collect(received: list[str]) -> None:
+    """Raise `TEST_SIGNAL` in this process and wait until a callback has recorded something."""
+    signal.raise_signal(TEST_SIGNAL)
+    # The callback must go through the event loop, so it cannot have run yet.
+    assert received == []
+    async with asyncio.timeout(5):
+        while received == []:
+            await asyncio.sleep(0.01)
+
+
+async def test_signal_handlers_calls_back_in_the_event_loop():
+    before = signal.getsignal(TEST_SIGNAL)
+    received = []
+    with signal_handlers({TEST_SIGNAL: partial(received.append, "seen")}):
+        await _raise_and_collect(received)
+    assert received == ["seen"]
+    assert signal.getsignal(TEST_SIGNAL) == before
+
+
+async def test_signal_handlers_without_add_signal_handler(monkeypatch: pytest.MonkeyPatch):
+    """An event loop without `add_signal_handler`, like the Proactor loop, is served as well."""
+    loop = asyncio.get_running_loop()
+
+    def not_implemented(sig, callback, *args):
+        raise NotImplementedError
+
+    monkeypatch.setattr(loop, "add_signal_handler", not_implemented)
+
+    def fail_remove(sig):
+        raise AssertionError("Nothing was added to the event loop, so nothing may be removed.")
+
+    monkeypatch.setattr(loop, "remove_signal_handler", fail_remove)
+    marker = signal.signal(TEST_SIGNAL, signal.SIG_IGN)
+    try:
+        received = []
+        with signal_handlers({TEST_SIGNAL: partial(received.append, "seen")}):
+            assert signal.getsignal(TEST_SIGNAL) != signal.SIG_IGN
+            await _raise_and_collect(received)
+        assert received == ["seen"]
+        # The handler that was replaced is back, whatever it was.
+        assert signal.getsignal(TEST_SIGNAL) == signal.SIG_IGN
+    finally:
+        signal.signal(TEST_SIGNAL, marker)
+
+
+async def test_signal_handlers_restores_after_exception():
+    before = signal.getsignal(TEST_SIGNAL)
+    with pytest.raises(RuntimeError, match="boom"), signal_handlers({TEST_SIGNAL: print}):
+        raise RuntimeError("boom")
+    assert signal.getsignal(TEST_SIGNAL) == before
+
+
+async def test_signal_handlers_without_signals():
+    with signal_handlers({}):
+        pass
+
+
+#
+# Exception handling
+#
+
+
+class FailingShutdownSocket:
+    """A stand-in for a socket whose shutdown fails, as on Windows after a reset by the peer."""
+
+    def __init__(self):
+        self.closed = False
+
+    def fileno(self) -> int:
+        return -1 if self.closed else 1234
+
+    def shutdown(self, how: int):
+        raise ConnectionResetError(10054, "An existing connection was forcibly closed")
+
+    def close(self):
+        self.closed = True
+
+
+class CountingProtocol(asyncio.Protocol):
+    def __init__(self):
+        self.lost = 0
+
+    def connection_lost(self, exc: Exception | None):
+        self.lost += 1
+
+
+async def _close_proactor_transport() -> tuple[
+    proactor_events._ProactorBaseWritePipeTransport, FailingShutdownSocket, CountingProtocol
+]:
+    """Close a Proactor transport, of which the shutdown of the socket fails.
+
+    The transport class is a base of the one for connected sockets,
+    which can be created without the proactor of the Windows event loop.
+    """
+    sock = FailingShutdownSocket()
+    protocol = CountingProtocol()
+    transport = proactor_events._ProactorBaseWritePipeTransport(
+        asyncio.get_running_loop(), sock, protocol
+    )
+    transport.close()
+    for _ in range(3):
+        await asyncio.sleep(0)
+    return transport, sock, protocol
+
+
+async def test_proactor_shutdown_error_without_handler(caplog: pytest.LogCaptureFixture):
+    # This imitates the failure that tolerate_proactor_connection_errors handles.
+    transport, sock, protocol = await _close_proactor_transport()
+    assert "Exception in callback" in caplog.text
+    assert "ConnectionResetError" in caplog.text
+    assert not sock.closed
+    assert protocol.lost == 1
+    # Avoid a ResourceWarning when the transport is collected.
+    transport._sock = None
+
+
+async def test_tolerate_proactor_connection_errors_shutdown(caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.DEBUG)
+    tolerate_proactor_connection_errors()
+    transport, sock, protocol = await _close_proactor_transport()
+    assert not [record for record in caplog.records if record.levelno >= logging.WARNING]
+    assert "Closing a socket that failed to shut down" in caplog.text
+    assert sock.closed
+    assert transport._sock is None
+    assert protocol.lost == 1
+    # A later forced close must not notify the protocol again.
+    transport._force_close(None)
+    for _ in range(3):
+        await asyncio.sleep(0)
+    assert protocol.lost == 1
+
+
+def _raise_oserror():
+    raise OSError("unrelated")
+
+
+async def test_tolerate_proactor_connection_errors_default(caplog: pytest.LogCaptureFixture):
+    tolerate_proactor_connection_errors()
+    asyncio.get_running_loop().call_soon(_raise_oserror)
+    await asyncio.sleep(0)
+    assert "Exception in callback" in caplog.text
+    assert "unrelated" in caplog.text
+
+
+async def test_tolerate_proactor_connection_errors_previous():
+    contexts = []
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(lambda loop, context: contexts.append(context))
+    tolerate_proactor_connection_errors()
+    loop.call_soon(_raise_oserror)
+    await asyncio.sleep(0)
+    assert len(contexts) == 1
+    assert str(contexts[0]["exception"]) == "unrelated"
+
+
+def _windows_error(winerror: int) -> OSError:
+    """Create an `OSError` with a Windows error code, also on other platforms."""
+    exc = OSError(errno.EINVAL, "The specified network name is no longer available")
+    exc.winerror = winerror
+    return exc
+
+
+@pytest.mark.parametrize(
+    ("exc", "result"),
+    [
+        (ConnectionResetError("reset"), True),
+        (ConnectionAbortedError("aborted"), True),
+        (_windows_error(ERROR_NETNAME_DELETED), True),
+        (_windows_error(10022), False),
+        (OSError(errno.EMFILE, "Too many open files"), False),
+        (ValueError("unrelated"), False),
+    ],
+)
+def test_is_aborted_accept(exc: BaseException, result: bool):
+    assert is_aborted_accept(exc) is result
+
+
+async def _accept_coro():
+    raise _windows_error(ERROR_NETNAME_DELETED)
+
+
+# The name of the coroutine in which the Proactor event loop re-raises a failed accept.
+_accept_coro.__qualname__ = "IocpProactor.accept.<locals>.accept_coro"
+
+
+async def _other_coro():
+    raise _windows_error(ERROR_NETNAME_DELETED)
+
+
+async def _collect_unretrieved_failure(coro_func) -> list[dict]:
+    """Let a task fail without retrieving its exception, and return what reaches the handler.
+
+    The handler set before `tolerate_proactor_connection_errors` collects the contexts.
+    """
+    contexts = []
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(lambda loop, context: contexts.append(context))
+    tolerate_proactor_connection_errors()
+    task = asyncio.create_task(coro_func())
+    await asyncio.wait([task])
+    del task
+    gc.collect()
+    return contexts
+
+
+async def test_tolerate_proactor_connection_errors_accept(caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.DEBUG)
+    contexts = await _collect_unretrieved_failure(_accept_coro)
+    assert contexts == []
+    assert "Ignoring an accept that failed because of the connection" in caplog.text
+
+
+async def test_tolerate_proactor_connection_errors_other_task():
+    contexts = await _collect_unretrieved_failure(_other_coro)
+    assert len(contexts) == 1
+    assert contexts[0]["message"] == "Task exception was never retrieved"

@@ -53,7 +53,12 @@ from typing import Any
 import attrs
 
 from .cattrs import get_yaml_converter, json_converter
-from .constants import DIRECTOR_LOG_DESCRIPTION, DIRECTOR_SOCKET_SENTINEL, RENDER_JINJA_MODES
+from .constants import (
+    DIRECTOR_LOG_DESCRIPTION,
+    DIRECTOR_SOCKET_SENTINEL,
+    RENDER_JINJA_MODES,
+    RESERVED_ENV_VARS,
+)
 from .enums import Need
 from .exceptions import (
     AmendWhileHoldingError,
@@ -79,8 +84,7 @@ from .path import (
     translate,
     translate_back,
 )
-from .rpc import NO_RPC_TIMEOUT, BaseSyncRPCClient, DummySyncRPCClient, SocketSyncRPCClient
-from .step import RESERVED_ENV_VARS
+from .rpc.client import NO_RPC_TIMEOUT, BaseSyncRPCClient, DummySyncRPCClient, SocketSyncRPCClient
 from .stepinfo import StepInfo
 from .tracebacks import install_excepthook
 from .utils import as_list, extract_env_overrides, parse_resources
@@ -967,7 +971,7 @@ def amend(
     vol_paths = coerce_paths(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_deps, out_paths, vol_paths]):
         # Nothing is actually being amended:
-        # e.g. `run.py`/`render_jinja.py` call `amend(inp=get_local_import_paths())`
+        # e.g. `launch/`/`render_jinja.py` call `amend(inp=get_local_import_paths())`
         # unconditionally after a Python step runs, and that list can be empty.
         # Such a no-op call must not trip the hold() guard below,
         # or an unrelated held step could fail through no fault of its own code.
@@ -1484,7 +1488,7 @@ def getenv(
     compute = _COMPUTED_ENV_VARS.get(name)
     value = os.getenv(name, default) if compute is None else str(compute())
     # Do not amend environment variables set for the step by the executor.
-    # See `stepup.core.executor.Executor._run_command`.
+    # See `stepup.core.director.executor.Executor._run_command`.
     if name not in RESERVED_ENV_VARS:
         amend(env=name)
 

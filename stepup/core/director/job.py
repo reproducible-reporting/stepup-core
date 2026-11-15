@@ -1,0 +1,185 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+"""Definition of jobs to be executed by the executor, and the `--joblog` record format."""
+
+import csv
+from time import monotonic_ns, perf_counter
+from typing import TYPE_CHECKING
+
+import attrs
+
+from ..constants import JOBLOG_CSV
+
+if TYPE_CHECKING:
+    from ..graph.step import Step
+    from ..hash import FileHash, StepHash
+    from .executor import Executor
+
+
+__all__ = ("Job", "RunJob", "ValidateDynamicJob", "append_joblog_record", "init_joblog")
+
+
+JOBLOG_COLUMNS = (
+    "time_ns",
+    "job_i",
+    "event",
+    "description",
+)
+"""Column names of the `--joblog` CSV file, in on-disk order."""
+
+
+def init_joblog(njob: int) -> None:
+    """(Re)create `JOBLOG_CSV`, writing its CSV header and an initial `INIT` record.
+
+    Any records of a previous build phase are discarded.
+    """
+    row = (monotonic_ns(), 0, "INIT", f"maximum concurrent jobs: {njob}")
+    with open(JOBLOG_CSV, "w", encoding="utf-8", newline="") as fh:
+        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerows([JOBLOG_COLUMNS, row])
+
+
+def append_joblog_record(event: str, job_i: int, description: str) -> None:
+    """Append one job-execution event to `JOBLOG_CSV` as a CSV row.
+
+    This is the single place that fixes the row format, so every call site stays consistent.
+
+    Parameters
+    ----------
+    event
+        The kind of event, e.g. `"CREATED"`, `"STARTED"`, `"ENDED"`, `"COMPLETED"`.
+    job_i
+        The unique job identifier.
+    description
+        A human-readable description of the job or step, truncated to 100 characters.
+
+    Notes
+    -----
+    The file is opened and closed for every call,
+    so the write reaches disk synchronously
+    and events stay correctly ordered even when jobs complete only milliseconds apart.
+    Fields are quoted with `QUOTE_NONNUMERIC`, so `event` and `description` are always quoted
+    (and thus unambiguous even if a description contains a comma or looks numeric),
+    while the numeric columns stay bare.
+    """
+    row = (monotonic_ns(), job_i, event, description[:100])
+    with open(JOBLOG_CSV, "a", encoding="utf-8", newline="") as fh:
+        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerow(row)
+
+
+@attrs.define(frozen=True)
+class Job:
+    """A job to be executed by the executor."""
+
+    step: "Step" = attrs.field()
+    """The step related to this job."""
+
+    inp_hashes: dict[str, "FileHash"] = attrs.field()
+    """The input hashes of the step, keyed by path."""
+
+    env_deps: list[str] = attrs.field()
+    """The names of (externally defined) environment variables that are used by the step."""
+
+    step_hash: "StepHash | None" = attrs.field()
+    """The hash of the step if it was previously executed, or `None` if it was not."""
+
+    create_time: float = attrs.field(factory=perf_counter)
+    """The creation time of the job, used for scheduling optimization."""
+
+    job_i: int = attrs.field(kw_only=True)
+    """Unique id of this job, assigned by `Scheduler` when the job is created.
+
+    Unlike `step.i`, which stays the same across every (re)attempt of a deferred step,
+    this id is unique per job,
+    so RPC calls can be matched to the attempt that made them.
+    """
+
+    @property
+    def name(self) -> str:
+        """A name for the job for logging purposes."""
+        return f"{self.prefix}: {self.label}"
+
+    @property
+    def label(self) -> str:
+        """The description of the job shown in the progress bar, i.e. the step's label."""
+        return self.step.label
+
+    @property
+    def letter(self) -> str:
+        """The single character identifying the job kind, first letter of prefix."""
+        return self.prefix[0]
+
+    @property
+    def prefix(self) -> str:
+        """The kind of job, spelled out in full for log lines such as `RUN: echo hi`."""
+        raise NotImplementedError
+
+    @property
+    def runs_command(self) -> bool:
+        """Whether carrying out this job executes the step's command."""
+        return False
+
+    def coro(self, executor: "Executor"):
+        """Return a coroutine that carries out this job on `executor`."""
+        raise NotImplementedError
+
+    def duration(self) -> float:
+        """Return the time elapsed since the job was created."""
+        return perf_counter() - self.create_time
+
+
+@attrs.define(frozen=True)
+class ValidateDynamicJob(Job):
+    """Validate that the dynamic inputs are still up to date, or enforce a full rerun.
+
+    This job checks whether the inputs of a step have changed since the last run,
+    because such a change may have made the dynamic inputs outdated.
+    When the inputs have changed:
+
+    - The step cannot be skipped and the step hash should be discarded.
+    - The dynamic inputs need to be recreated by running the step.
+    """
+
+    @property
+    def prefix(self) -> str:
+        return "VALIDATE_DYNAMIC"
+
+    def coro(self, executor: "Executor"):
+        inner = executor.validate_dynamic_job(
+            self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
+        )
+        return _run_job_with_log(self.job_i, self.name, inner) if executor.write_joblog else inner
+
+
+@attrs.define(frozen=True)
+class RunJob(Job):
+    """Skip or execute a job.
+
+    When `step_hash` is set, the job is skipped if that hash is still valid,
+    i.e. if the inputs, the environment variables and the outputs have not changed.
+    """
+
+    @property
+    def prefix(self) -> str:
+        return "RUN" if self.runs_command else "SKIP"
+
+    @property
+    def runs_command(self) -> bool:
+        return self.step_hash is None
+
+    def coro(self, executor: "Executor"):
+        if self.runs_command:
+            inner = executor.execute_job(self.job_i, self.step, self.inp_hashes, self.env_deps)
+        else:
+            inner = executor.try_skip_job(
+                self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
+            )
+        return _run_job_with_log(self.job_i, self.name, inner) if executor.write_joblog else inner
+
+
+async def _run_job_with_log(job_i: int, description: str, coro):
+    """Await `coro`, recording `--joblog` `STARTED`/`ENDED` events around it."""
+    append_joblog_record("STARTED", job_i, description)
+    try:
+        return await coro
+    finally:
+        append_joblog_record("ENDED", job_i, description)

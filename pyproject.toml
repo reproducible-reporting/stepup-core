@@ -105,18 +105,18 @@ sb = "stepup.core.__main__:sb_main"
 sc-render-jinja = "stepup.core.render_jinja:main"
 
 [project.entry-points."stepup.tools"]
-boot = "stepup.core.tui:add_boot_subcommand"
-browse = "stepup.core.browse:add_browse_subcommand"
-build = "stepup.core.tui:add_build_subcommand"
-clean = "stepup.core.clean:add_clean_subcommand"
-drain = "stepup.core.interact:add_drain_subcommand"
-rebuild = "stepup.core.interact:add_rebuild_subcommand"
-graph = "stepup.core.interact:add_graph_subcommand"
-wait = "stepup.core.interact:add_wait_subcommand"
-join = "stepup.core.interact:add_join_subcommand"
-config = "stepup.core.config_tool:add_config_subcommand"
-shutdown = "stepup.core.interact:add_shutdown_subcommand"
-status = "stepup.core.status:add_status_subcommand"
+boot = "stepup.core.cli.build:add_boot_subcommand"
+browse = "stepup.core.cli.browse:add_browse_subcommand"
+build = "stepup.core.cli.build:add_build_subcommand"
+clean = "stepup.core.cli.clean:add_clean_subcommand"
+drain = "stepup.core.cli.interact:add_drain_subcommand"
+rebuild = "stepup.core.cli.interact:add_rebuild_subcommand"
+graph = "stepup.core.cli.interact:add_graph_subcommand"
+wait = "stepup.core.cli.interact:add_wait_subcommand"
+join = "stepup.core.cli.interact:add_join_subcommand"
+config = "stepup.core.cli.config:add_config_subcommand"
+shutdown = "stepup.core.cli.interact:add_shutdown_subcommand"
+status = "stepup.core.cli.status:add_status_subcommand"
 
 [tool.pytest.ini_options]
 addopts = "-n auto --dist worksteal -W error -W ignore::ResourceWarning"
@@ -134,6 +134,8 @@ markers = [
     "requires_windows_console: skip unless the terminal is a Windows console",
 ]
 timeout = 15
+# The test modules in subdirectories import helpers from `tests/core_common.py`.
+pythonpath = ["tests"]
 
 [tool.ruff]
 line-length = 100
@@ -169,8 +171,8 @@ ignore = [
     "TRY301",  # https://docs.astral.sh/ruff/rules/raise-within-try/
 ]
 
-[tool.setuptools]
-packages = ["stepup.core"]
+[tool.setuptools.packages.find]
+include = ["stepup.core", "stepup.core.*"]
 
 [tool.setuptools_scm]
 version_scheme = "post-release"

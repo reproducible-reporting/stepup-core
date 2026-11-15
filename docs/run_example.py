@@ -8,9 +8,9 @@ import sys
 from path import Path
 
 from stepup.core.api import amend
+from stepup.core.enums import FileState
 from stepup.core.extapi import run_subprocess
-from stepup.core.file import FileState
-from stepup.core.sqlite3 import connect
+from stepup.core.graph.sqlite3 import connect
 
 SQL = "SELECT label, state FROM node JOIN file ON node.i = file.node"
 

@@ -1,0 +1,363 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+"""Unit tests for the director, `stepup.core.director`."""
+
+import asyncio
+import contextlib
+import signal
+import time
+from collections.abc import Generator
+from decimal import Decimal
+
+import attrs
+import pytest
+
+import stepup.core.director.handler as handler_mod
+import stepup.core.director.serve as serve_mod
+from stepup.core.director.handler import DirectorHandler
+from stepup.core.director.reporter import ReporterClient
+from stepup.core.director.serve import SCHEDULER_CPU_ENV_VARS, interpret_jobs
+from stepup.core.enums import StopLevel
+from stepup.core.exceptions import CgroupError
+from stepup.core.path import Path
+
+
+@pytest.fixture(autouse=True)
+def _no_scheduler_env(monkeypatch):
+    """Prevent scheduler environment variables from leaking into the tests."""
+    for var in SCHEDULER_CPU_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _no_cgroup(monkeypatch):
+    """Disable cgroup v2 detection so it doesn't shadow the env var/affinity tests below.
+
+    Individual tests that want to exercise the cgroup path override this again.
+    """
+
+    def _raise():
+        raise CgroupError("disabled for tests")
+
+    monkeypatch.setattr(serve_mod, "get_ncore_from_cgroup", _raise)
+
+
+def test_interpret_jobs_integer():
+    assert interpret_jobs(Decimal("4")) == 4
+
+
+def test_interpret_jobs_fraction_affinity(monkeypatch):
+    monkeypatch.setattr("os.sched_getaffinity", lambda pid: set(range(8)), raising=False)
+    result = interpret_jobs(Decimal("1.5"))
+    assert result == 12
+
+
+def test_interpret_jobs_fraction_process_cpu_count(monkeypatch):
+    monkeypatch.delattr("os.sched_getaffinity", raising=False)
+    monkeypatch.setattr("os.process_cpu_count", lambda: 8, raising=False)
+    monkeypatch.setattr("os.cpu_count", lambda: 16)
+    result = interpret_jobs(Decimal("1.5"))
+    assert result == 12
+
+
+def test_interpret_jobs_fraction_cpu_count(monkeypatch):
+    monkeypatch.delattr("os.sched_getaffinity", raising=False)
+    monkeypatch.delattr("os.process_cpu_count", raising=False)
+    monkeypatch.setattr("os.cpu_count", lambda: 8)
+    result = interpret_jobs(Decimal("1.5"))
+    assert result == 12
+
+
+@pytest.mark.parametrize("var", SCHEDULER_CPU_ENV_VARS)
+def test_interpret_jobs_scheduler_env(monkeypatch, var):
+    monkeypatch.setattr("os.sched_getaffinity", lambda pid: set(range(8)), raising=False)
+    monkeypatch.setenv(var, "6")
+    result = interpret_jobs(Decimal("1.5"))
+    assert result == 9
+
+
+def test_interpret_jobs_scheduler_env_priority(monkeypatch):
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "6")
+    monkeypatch.setenv("PBS_NUM_PPN", "100")
+    monkeypatch.setenv("NCPUS", "100")
+    result = interpret_jobs(Decimal("1.5"))
+    assert result == 9
+
+
+def test_interpret_jobs_cgroup_priority(monkeypatch):
+    monkeypatch.setattr(serve_mod, "get_ncore_from_cgroup", lambda: 4)
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "100")
+    monkeypatch.setattr("os.sched_getaffinity", lambda pid: set(range(100)), raising=False)
+    result = interpret_jobs(Decimal("1.5"))
+    assert result == 6
+
+
+def test_interpret_jobs_cgroup_error_falls_back_to_env(monkeypatch):
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "6")
+    result = interpret_jobs(Decimal("1.5"))
+    assert result == 9
+
+
+#
+# Terminal signal handling and shutdown escalation
+#
+
+
+@attrs.define
+class FakeScheduler:
+    draining: bool = attrs.field(default=False)
+
+
+@attrs.define
+class FakeExecutor:
+    """Records the stop levels delivered to running steps."""
+
+    signals: list[StopLevel] = attrs.field(init=False, factory=list)
+
+    def interrupt(self, level: StopLevel) -> None:
+        self.signals.append(level)
+
+
+@attrs.define
+class FakeBuilder:
+    """Stands in for the builder, with control over whether steps are still running."""
+
+    running_tasks: list = attrs.field(factory=list)
+
+
+async def await_interrupt(handler: DirectorHandler) -> None:
+    """Wait for the in-flight interrupt task, which `serve()` cancels in its teardown instead."""
+    await handler._interrupt_task
+
+
+@attrs.define
+class FakeWatcher:
+    """Stands in for the watcher, with the events and sets that a waiting RPC call consults."""
+
+    busy_watching: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    files_changed_events: set[asyncio.Event] = attrs.field(init=False, factory=set)
+    updated: set[str] = attrs.field(init=False, factory=set)
+    deleted: set[str] = attrs.field(init=False, factory=set)
+
+    @contextlib.contextmanager
+    def subscribe_changes(self) -> Generator[asyncio.Event]:
+        """Provide an event that is set on every recorded change, as the watcher does."""
+        event = asyncio.Event()
+        self.files_changed_events.add(event)
+        try:
+            yield event
+        finally:
+            self.files_changed_events.discard(event)
+
+    def notify_update(self, path: Path) -> None:
+        """Record an observed update and wake up the waiters, as the watcher does."""
+        self.updated.add(path)
+        for event in self.files_changed_events:
+            event.set()
+
+
+def make_director_handler(nrunning: int = 0, watcher: FakeWatcher | None = None) -> DirectorHandler:
+    """Create a `DirectorHandler` with just enough collaborators for shutdown tests."""
+    return DirectorHandler(
+        scheduler=FakeScheduler(),
+        workflow=None,
+        db=None,
+        reporter=ReporterClient(),
+        executor=FakeExecutor(),
+        builder=FakeBuilder(list(range(nrunning))),
+        watcher=watcher,
+        stop_event=asyncio.Event(),
+    )
+
+
+async def test_shutdown_first_call_is_graceful():
+    """The first `q` press only stops scheduling: running steps are left alone."""
+    handler = make_director_handler(nrunning=1)
+    await handler.shutdown()
+    assert handler.stop_event.is_set()
+    assert handler.scheduler.draining
+    assert handler.executor.signals == []
+
+
+async def test_shutdown_drains_the_scheduler_before_reporting():
+    """`q` must stop dispatch before it awaits the reporter, not after."""
+    handler = make_director_handler(nrunning=1)
+    draining_when_reported = []
+
+    async def fake_report(tag, description, pages=None):
+        draining_when_reported.append(handler.scheduler.draining)
+
+    handler.reporter = fake_report
+    await handler.shutdown()
+    assert draining_when_reported == [True]
+
+
+async def test_shutdown_escalates_to_sigint_then_sigkill():
+    """The documented `q` ladder: graceful, SIGINT, SIGKILL."""
+    handler = make_director_handler(nrunning=1)
+    await handler.shutdown()
+    await handler.shutdown()
+    assert handler.executor.signals == [StopLevel.INTERRUPT]
+    await handler.shutdown()
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL]
+    # Any further press stays at the nuclear option.
+    await handler.shutdown()
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL, StopLevel.KILL]
+
+
+async def test_interrupt_aborts_without_waiting():
+    """A terminal signal aborts the build instead of waiting for running steps."""
+    handler = make_director_handler(nrunning=0)
+    handler.interrupt(signal.SIGINT)
+    await await_interrupt(handler)
+    assert handler.stop_event.is_set()
+    assert handler.scheduler.draining
+    assert handler.executor.signals == [StopLevel.INTERRUPT]
+
+
+async def test_interrupt_then_shutdown_escalates_straight_to_sigkill():
+    """A `q` press after a terminal signal escalates, instead of re-sending `SIGINT`."""
+    handler = make_director_handler(nrunning=0)
+    handler.interrupt(signal.SIGINT)
+    await await_interrupt(handler)
+    assert handler.executor.signals == [StopLevel.INTERRUPT]
+    await handler.shutdown()
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL]
+
+
+async def test_interrupt_kills_steps_after_grace(monkeypatch):
+    """A step that ignores the interrupt is killed, so StepUp can always exit."""
+    monkeypatch.setattr(handler_mod, "INTERRUPT_GRACE", 0.2)
+    handler = make_director_handler(nrunning=1)
+    handler.interrupt(signal.SIGTERM)
+    await await_interrupt(handler)
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL]
+
+
+async def test_interrupt_second_signal_skips_the_grace(monkeypatch):
+    """A second Ctrl-C cuts the grace period short instead of adding a rung."""
+    monkeypatch.setattr(handler_mod, "INTERRUPT_GRACE", 30.0)
+    handler = make_director_handler(nrunning=1)
+    time_start = time.monotonic()
+    handler.interrupt(signal.SIGINT)
+    handler.interrupt(signal.SIGINT)
+    await await_interrupt(handler)
+    assert handler.executor.signals == [StopLevel.INTERRUPT, StopLevel.KILL]
+    assert time.monotonic() - time_start < 5.0
+
+
+async def test_cancel_interrupt_cancels_a_pending_grace(monkeypatch):
+    """When the build ends in time, shutdown must not wait out the grace period."""
+    monkeypatch.setattr(handler_mod, "INTERRUPT_GRACE", 30.0)
+    handler = make_director_handler(nrunning=1)
+    time_start = time.monotonic()
+    handler.interrupt(signal.SIGINT)
+    # Let the interrupt task reach its grace period, as it would while the build winds down.
+    await asyncio.sleep(0.05)
+    await handler.cancel_interrupt()
+    assert time.monotonic() - time_start < 5.0
+    assert handler.executor.signals == [StopLevel.INTERRUPT]
+
+
+#
+# Interactive use
+#
+
+
+async def test_drain_does_not_wait_for_running_steps():
+    """`d` only stops dispatch, so the keystroke loop stays responsive while steps finish.
+
+    The handler has no watcher and an unset `stop_event`,
+    i.e. the build phase never ends here,
+    so a `drain` that waits for it can only time out.
+    """
+    handler = make_director_handler(nrunning=1)
+    await asyncio.wait_for(handler.drain(), timeout=5.0)
+    assert handler.scheduler.draining
+    # Unlike shutdown, draining leaves the build phase to end on its own.
+    assert not handler.stop_event.is_set()
+
+
+async def start_wait_for_update(handler: DirectorHandler, path: str) -> asyncio.Task:
+    """Start a `wait_for_update` call and return once it waits for a file change."""
+    task = asyncio.create_task(handler.wait_for_update(path))
+
+    async def registered():
+        while len(handler.watcher.files_changed_events) == 0:
+            await asyncio.sleep(0)
+
+    await asyncio.wait_for(registered(), timeout=5.0)
+    return task
+
+
+async def test_wait_for_update_returns_when_the_file_changes():
+    """The plain case: `stepup wait --update` returns as soon as the watcher sees the change."""
+    handler = make_director_handler(watcher=FakeWatcher())
+    handler.watcher.busy_watching.set()
+    task = await start_wait_for_update(handler, "foo.txt")
+    handler.watcher.notify_update(Path("foo.txt"))
+    await asyncio.wait_for(task, timeout=5.0)
+    assert len(handler.watcher.files_changed_events) == 0
+
+
+async def test_wait_for_update_gives_up_when_stopping():
+    """A file that never changes must not hold the call after the director has stopped."""
+    handler = make_director_handler(watcher=FakeWatcher())
+    handler.watcher.busy_watching.set()
+    task = await start_wait_for_update(handler, "foo.txt")
+    handler.stop_event.set()
+    await asyncio.wait_for(task, timeout=5.0)
+    assert len(handler.watcher.files_changed_events) == 0
+
+
+async def start_watch_first_loop(handler: DirectorHandler) -> asyncio.Task:
+    """Start `watch_first_loop` and return once it has subscribed to file changes."""
+    task = asyncio.create_task(
+        serve_mod.watch_first_loop(handler.watcher, handler, handler.stop_event)
+    )
+
+    async def subscribed():
+        while len(handler.watcher.files_changed_events) == 0:
+            await asyncio.sleep(0)
+
+    await asyncio.wait_for(subscribed(), timeout=5.0)
+    return task
+
+
+async def test_watch_first_loop_stops_outside_the_watch_phase():
+    """`-W` must not hold up the shutdown when `q` is pressed during a build phase.
+
+    The watcher is not watching here,
+    and it never will be again after a shutdown,
+    so a loop that waits for the watch phase alone never ends.
+    """
+    handler = make_director_handler(watcher=FakeWatcher())
+    task = await start_watch_first_loop(handler)
+    handler.stop_event.set()
+    await asyncio.wait_for(task, timeout=5.0)
+
+
+async def test_watch_first_loop_stops_during_the_watch_phase():
+    """A `q` press while nothing changes must also end the loop."""
+    handler = make_director_handler(watcher=FakeWatcher())
+    handler.watcher.busy_watching.set()
+    task = await start_watch_first_loop(handler)
+    handler.stop_event.set()
+    await asyncio.wait_for(task, timeout=5.0)
+
+
+async def test_watch_first_loop_starts_a_build_phase_after_a_change(monkeypatch):
+    """The point of `-W`: an observed change restarts the builder without a keystroke."""
+    started = asyncio.Event()
+
+    async def fake_start_build_phase(self):
+        started.set()
+
+    monkeypatch.setattr(DirectorHandler, "start_build_phase", fake_start_build_phase)
+    handler = make_director_handler(watcher=FakeWatcher())
+    handler.watcher.busy_watching.set()
+    task = await start_watch_first_loop(handler)
+    handler.watcher.notify_update(Path("foo.txt"))
+    await asyncio.wait_for(started.wait(), timeout=5.0)
+    handler.stop_event.set()
+    await asyncio.wait_for(task, timeout=5.0)

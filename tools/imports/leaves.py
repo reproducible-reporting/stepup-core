@@ -23,8 +23,9 @@ def get_module_name(file_path: Path, root_dir: Path) -> str:
 class ImportVisitor(ast.NodeVisitor):
     """AST Visitor to collect imported module names."""
 
-    def __init__(self, current_module: str, all_modules: set[str]):
+    def __init__(self, current_module: str, all_modules: set[str], is_package: bool = False):
         self.current_module = current_module
+        self.is_package = is_package
         self.all_modules = all_modules
         self.dependencies = set()
 
@@ -49,8 +50,9 @@ class ImportVisitor(ast.NodeVisitor):
         if node.module:
             # Handle relative imports vs absolute imports
             if node.level > 0:
-                # Resolving relative import depth
-                pkg_parts = self.current_module.split(".")
+                # Resolving relative import depth.
+                # The `__init__.py` of a package is the package itself, one level deeper.
+                pkg_parts = self.current_module.split(".") + ([""] if self.is_package else [])
                 base_parts = pkg_parts[: -node.level] if len(pkg_parts) >= node.level else []
                 resolved_base = ".".join(base_parts)
                 target = f"{resolved_base}.{node.module}" if resolved_base else node.module
@@ -75,8 +77,8 @@ class ImportVisitor(ast.NodeVisitor):
 
 
 def parse_package(pkg_dir: Path):
-    """Scans all .py files and constructs the dependency adjacency graph."""
-    py_files = list(pkg_dir.glob("*.py"))
+    """Scans all .py files, including those of subpackages, and constructs the dependency graph."""
+    py_files = list(pkg_dir.walkfiles("*.py"))
 
     # 1. Collect all valid internal module dot-paths
     all_modules = {get_module_name(f, pkg_dir.parent) for f in py_files}
@@ -87,7 +89,7 @@ def parse_package(pkg_dir: Path):
         mod_name = get_module_name(f, pkg_dir.parent)
         try:
             tree = ast.parse(f.read_text(encoding="utf-8"), filename=str(f))
-            visitor = ImportVisitor(mod_name, all_modules)
+            visitor = ImportVisitor(mod_name, all_modules, f.name == "__init__.py")
             visitor.visit(tree)
             graph[mod_name] = visitor.dependencies
         except (SyntaxError, UnicodeDecodeError):

@@ -101,7 +101,7 @@ Include ~/.local/share/stepup-winvm/ssh_config
   Strip it before passing them to `-k` or as node ids, or the `pytest-xdist` workers crash.
 - Pytest shows captured output escaped in the VM (`\n`, `\uXXXX`),
   because an SSH session has no UTF-8 console.
-- Tests that need a console (`tests/test_console.py`) create one of their own,
+- Tests that need a console (`tests/cli/test_console.py`) create one of their own,
   so they work from an SSH session.
   Programs that need the desktop, such as `mintty`, do not:
   SSH sessions run in session 0, where they start nothing.

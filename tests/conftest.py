@@ -3,26 +3,25 @@
 """Fixtures for testing StepUp."""
 
 import asyncio
-import concurrent.futures
 import contextlib
-import hashlib
 import os
 import stat
 import tempfile
-import threading
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Iterator
-from typing import Self, TypeVar
 
-import attrs
 import pytest
 import pytest_asyncio
+from core_common import declare_static
 
 from stepup.core.constants import GRAPH_DB
-from stepup.core.director import ServeConfig, serve
-from stepup.core.enums import HashUpdateCause, Need
-from stepup.core.file import File
-from stepup.core.hash import FileHash
-from stepup.core.oscompat import (
+from stepup.core.director.reporter import ReporterClient
+from stepup.core.director.serve import ServeConfig, serve
+from stepup.core.enums import Need
+from stepup.core.graph.sqlite3 import DBSession
+from stepup.core.graph.step import Step
+from stepup.core.graph.workflow import Workflow
+from stepup.core.path import Path
+from stepup.core.platform.oscompat import (
     af_unix_available,
     file_modes_available,
     forkserver_available,
@@ -30,13 +29,9 @@ from stepup.core.oscompat import (
     suspend_available,
     windows_console_available,
 )
-from stepup.core.path import Path
-from stepup.core.popen import find_shell
-from stepup.core.reporter import ReporterClient
-from stepup.core.rpc import SocketAsyncRPCClient, select_rpc_transport
-from stepup.core.sqlite3 import DBSession
-from stepup.core.step import Step
-from stepup.core.workflow import Workflow
+from stepup.core.platform.popen import find_shell
+from stepup.core.rpc.client import SocketAsyncRPCClient
+from stepup.core.rpc.transport import select_rpc_transport
 
 # As a plugin, `stepup.core.pytest` also gets its assertions rewritten.
 pytest_plugins = ("stepup.core.pytest",)
@@ -102,7 +97,7 @@ def _unset_stepup_debug(monkeypatch: pytest.MonkeyPatch):
     """Pin `STEPUP_DEBUG` off, because unit tests inherit the developer's environment.
 
     Several code paths read the variable at call time
-    (`_raise_remote_error` in `rpc.py`, `_shorten` in `tracebacks.py`),
+    (`_raise_remote_error` in `rpc/client.py`, `_shorten` in `tracebacks.py`),
     and `docs/development.md` recommends exporting it while working on StepUp,
     so without this fixture those tests would assert different things for different people.
     Tests that exercise the debug path set the variable themselves.
@@ -230,52 +225,6 @@ def clean_env(monkeypatch, path_tmp):
     monkeypatch.setenv("HOME", path_tmp)
 
 
-def fake_hash(path):
-    digest = b"d" if path.endswith("/") else hashlib.sha256(path.encode("utf8")).digest()
-    mtime = sum(bytearray(digest)) ** 0.5
-    mode = 0o755 if path.endswith("/") else 0o644
-    return FileHash(digest, mode, len(path) ** 2, mtime, len(path))
-
-
-def chmod(file_hash: FileHash) -> FileHash:
-    """Return `file_hash` with a different mode, as a file change that leaves the content alone.
-
-    The graph printout shows only the digest,
-    so a test can use this to change a file without invalidating a literal graph it compares to.
-    """
-    return attrs.evolve(file_hash, mode=file_hash.mode ^ 0o111)
-
-
-def declare_static(workflow, creator, paths):
-    """Declare a list of static files and confirm them.
-
-    This a heavily simplified version of the stepup.core.api.static function.
-    This is solely used for testing the workflow.
-    """
-    unconfirmed = workflow.declare_static_files(creator, paths)
-    for path in unconfirmed:
-        workflow.update_file_hash(path, fake_hash(path), cause=HashUpdateCause.OBSERVED)
-    return [workflow.find(File, path) for path in paths]
-
-
-def amend_step(workflow, step, **kwargs):
-    """Call `Workflow.amend_step`, defaulting `ran_concurrently` to never overlapping.
-
-    Most tests don't exercise the freshness check, so they have no real
-    `Scheduler.ran_concurrently` to pass. This is solely used for testing the workflow.
-    """
-    kwargs.setdefault("ran_concurrently", lambda producer_i, consumer_i: False)
-    return workflow.amend_step(step, **kwargs)
-
-
-async def get_duration_and_tail_time(db: DBSession, step: Step) -> tuple[float, float, int]:
-    async with db:
-        duration, tail_time, check_after = db.execute(
-            "SELECT duration, _tail_time, _check_after FROM step WHERE node = ?", (step.i,)
-        ).fetchone()
-    return duration, tail_time, check_after
-
-
 @pytest_asyncio.fixture
 async def wfs_factory() -> AsyncIterator[Callable[..., Awaitable[Workflow]]]:
     """Create workflows from scratch, no plan.py, and tear all of them down together.
@@ -344,91 +293,3 @@ async def wfp_factory(wfs_factory) -> Callable[..., Awaitable[Workflow]]:
 async def wfp(wfp_factory) -> Workflow:
     """A single workflow with a boot step plan.py"""
     return await wfp_factory()
-
-
-class TrippingEvent(threading.Event):
-    """A cancel event whose `is_set` starts returning True after `trip_after` polls."""
-
-    def __init__(self, trip_after: int):
-        super().__init__()
-        self.trip_after = trip_after
-        self.polls = 0
-
-    def is_set(self) -> bool:
-        self.polls += 1
-        if self.polls > self.trip_after:
-            self.set()
-        return super().is_set()
-
-
-STUCK_DEADLINE = 5.0
-"""Seconds within which a `StuckWork` must start or end, well within the budget of a test."""
-
-
-class StuckWork:
-    """The work of a `ThreadWorker` that ignores its cancel event, like a stuck system call.
-
-    It returns `"released"` or raises `error` once `release` is set.
-    Use it as a context manager, which sets `release` at the end and joins the thread,
-    so that the thread does not outlive the test.
-    """
-
-    def __init__(self, error: Exception | None = None):
-        self.error = error
-        self.started = threading.Event()
-        self.release = threading.Event()
-        self.thread: threading.Thread | None = None
-
-    def __call__(self, *args) -> str:
-        self.thread = threading.current_thread()
-        self.started.set()
-        self.release.wait(2 * STUCK_DEADLINE)
-        if self.error is not None:
-            raise self.error
-        return "released"
-
-    async def wait_started(self) -> None:
-        """Wait until the work runs in its thread."""
-        assert await asyncio.to_thread(self.started.wait, STUCK_DEADLINE)
-
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(self, *exc_info) -> None:
-        self.release.set()
-        if self.thread is not None:
-            self.thread.join(STUCK_DEADLINE)
-            assert not self.thread.is_alive()
-
-
-FIFO_DEADLINE = 5.0
-"""Seconds after which a call counts as blocked on a FIFO, well within the budget of a test."""
-
-T = TypeVar("T")
-
-
-def call_with_fifo_guard(fifo: str, func: Callable[..., T], *args) -> T:
-    """Call a function in a thread, and fail when it waits for the other side of a FIFO.
-
-    A test that would hang when a regression makes `func` wait for the FIFO
-    then fails with its own message, instead of on the timeout of the whole test.
-    The thread is released by opening both sides of the FIFO, so that it does not outlive the test.
-
-    Returns
-    -------
-    result
-        The result of `func`, whose exception is raised again.
-    """
-    with concurrent.futures.ThreadPoolExecutor(1) as pool:
-        future = pool.submit(func, *args)
-        try:
-            return future.result(timeout=FIFO_DEADLINE)
-        except TimeoutError:
-            # Opening for reading does not wait with `O_NONBLOCK`,
-            # and it lets the opening for writing succeed.
-            fd_read = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
-            try:
-                os.close(os.open(fifo, os.O_WRONLY | os.O_NONBLOCK))
-            finally:
-                os.close(fd_read)
-            pytest.fail(f"Waited more than {FIFO_DEADLINE} s for the other side of {fifo}")

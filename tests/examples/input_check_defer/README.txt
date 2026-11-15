@@ -5,6 +5,6 @@ of its own already-declared, already-hashed inputs.
 
 A step that corrupts its own declared input should arguably be failed
 immediately, not deferred. main.sh asserts that desired outcome, so a
-failing main.sh here documents a known gap in stepup/core/executor.py's
+failing main.sh here documents a known gap in stepup/core/director/executor.py's
 execute_job (wants_defer is checked before run.success), not an
 environment problem.

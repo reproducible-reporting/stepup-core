@@ -8,7 +8,7 @@ from hashlib import sha256
 
 import attrs
 import pytest
-from conftest import TrippingEvent, call_with_fifo_guard
+from core_common import TrippingEvent, call_with_fifo_guard
 
 from stepup.core.exceptions import HashCancelledError, HashFailedError, NotARegularFileError
 from stepup.core.hash import (

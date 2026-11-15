@@ -7,16 +7,13 @@ import sys
 from importlib.metadata import entry_points
 from importlib.metadata import version as get_version
 
-from .config_loader import (
-    ConfigLoader,
-    format_config_problems,
-    print_config_problems,
-)
+from .cli.config_loader import ConfigLoader, format_config_problems, print_config_problems
+from .cli.tool import print_error
 from .enums import ReturnCode
 from .exceptions import ConfigError, UsageError
 from .path import get_stepup_root
-from .tool import print_error
-from .utils import is_debug, write_utf8_unless_terminal
+from .platform.stdio import write_utf8_unless_terminal
+from .utils import is_debug
 
 __all__ = ("main", "sb_main")
 

@@ -37,7 +37,7 @@ The examples below assume that you want to add a tool called `fancy` to the Step
 
     The `args` argument is a `Namespace` object that contains the command-line arguments
     passed to the tool.
-    This signature is also available as the type alias `stepup.core.tool.ToolFunc`.
+    This signature is also available as the type alias `stepup.core.cli.tool.ToolFunc`.
 
     A tool does not return a return code.
     It reports a mistake that the user can fix by raising `ToolError`,
@@ -66,8 +66,8 @@ The examples below assume that you want to add a tool called `fancy` to the Step
 
     ```python
     import argparse
-    from stepup.core.config_loader import ConfigLoader
-    from stepup.core.tool import ToolFunc
+    from stepup.core.cli.config_loader import ConfigLoader
+    from stepup.core.cli.tool import ToolFunc
 
 
     def fancy_subcommand(subparsers, loader: ConfigLoader) -> ToolFunc:
@@ -83,7 +83,7 @@ The examples below assume that you want to add a tool called `fancy` to the Step
 
     The `subparsers` argument is the sub-parsers object from the main `stepup` argument parser.
     The `loader` argument is a `ConfigLoader` instance that can be used to patch the parser
-    with configuration file values (see existing tools in `stepup.core` for examples).
+    with configuration file values (see existing tools in `stepup.core.cli` for examples).
     The section it reads is the last word of the parser's `prog`, here `[fancy]`.
     Patching never raises on a bad configuration:
     the problems are collected and reported by `stepup` itself,

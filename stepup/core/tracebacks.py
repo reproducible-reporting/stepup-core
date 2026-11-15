@@ -3,7 +3,7 @@
 """Print a step's traceback without the frames that only show how StepUp launched it.
 
 When a step fails, the frames that matter are the user's.
-The frames that launched the step (`_forkserver_entry`, `runpy`, ...) never do,
+The frames that launched the step (`forkserver_entry`, `runpy`, ...) never do,
 and StepUp's own frames only matter when the failure is a StepUp bug.
 This module always removes the former, and removes the latter only for a `UsageError`,
 which is by definition a mistake in the user's code rather than in StepUp.
@@ -213,9 +213,12 @@ def _is_launcher_frame(frame: types.FrameType, outermost: bool) -> bool:
     module_name = frame.f_globals.get("__name__")
     if module_name in LAUNCHER_MODULES:
         return True
-    if module_name == "stepup.core.run" and frame.f_code.co_name == "_forkserver_entry":
+    if (
+        module_name == "stepup.core.launch.forkserver"
+        and frame.f_code.co_name == "forkserver_entry"
+    ):
         return True
-    # `PYCODE_WRAPPER` (`run.py`) is fed to `python -` through stdin,
+    # `PYCODE_WRAPPER` (`launch/command.py`) is fed to `python -` through stdin,
     # so its module-level frame is reported as `<stdin>`.
     # Only the outermost frame can be that wrapper, and requiring it is what keeps this rule
     # from also dropping a step's own frames when the step compiles or pipes in code that

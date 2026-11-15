@@ -18,7 +18,9 @@ __all__ = (
     "JOBLOG_CSV",
     "PERF_DATA",
     "PLAN_PY",
+    "PROGRESS_REFRESH_DELAY",
     "RENDER_JINJA_MODES",
+    "RESERVED_ENV_VARS",
     "SQLLOG_CSV",
     "SQLLOG_JSON",
     "STEPUP_DIR",
@@ -102,3 +104,12 @@ so setting one by hand configures nothing and is most likely a mistake.
 `stepup config` therefore lists them in a group of their own,
 apart from the variables that nothing reads at all.
 """
+
+# Seconds over which updates of the progress display are coalesced.
+PROGRESS_REFRESH_DELAY = 0.3
+
+# Environment variables that StepUp sets for each step (see Executor._run_command).
+# These are managed by StepUp and can never be declared as (initial/dynamic) dependencies by a step.
+RESERVED_ENV_VARS = frozenset(
+    {"HERE", "ROOT", "STEPUP_JOB_I", "STEPUP_STEP_INP_DIGEST", "STEPUP_STEP_NEED"}
+)

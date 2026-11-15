@@ -27,7 +27,7 @@ import subprocess
 import sys
 from ctypes import wintypes
 
-from stepup.core.winapi import KEY_EVENT, InputRecord
+from stepup.core.platform.winapi import KEY_EVENT, InputRecord
 
 GENERIC_READ = 0x80000000
 GENERIC_WRITE = 0x40000000

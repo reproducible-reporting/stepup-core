@@ -3,19 +3,31 @@
 """Utilities used by multiple test modules."""
 
 import asyncio
+import concurrent.futures
+import hashlib
+import os
 import socket
 import subprocess
 import sys
-from typing import Self
+import threading
+from collections.abc import Callable
+from typing import Self, TypeVar
 
 import attrs
+import pytest
 
+from stepup.core.enums import HashUpdateCause
 from stepup.core.exceptions import CyclicError
+from stepup.core.graph.file import File
+from stepup.core.graph.sqlite3 import DBSession
+from stepup.core.graph.step import Step
+from stepup.core.hash import FileHash
 from stepup.core.path import Path
-from stepup.core.rpc import TCP_HOST, TOKEN_SIZE, _TCPEndpoint, allow_rpc
+from stepup.core.rpc.server import TCP_HOST, TOKEN_SIZE, allow_rpc
+from stepup.core.rpc.transport import TCPEndpoint
 
 if sys.platform == "win32":
-    from stepup.core.winapi import JobObject
+    from stepup.core.platform.winapi import JobObject
 
 
 async def settled_task_names() -> list[str]:
@@ -39,7 +51,7 @@ def create_socket_path(path: Path, transport: str):
         with socket.socket(socket.AF_UNIX) as sock:
             sock.bind(path)
     else:
-        _TCPEndpoint(TCP_HOST, 1, bytes(TOKEN_SIZE)).write(path)
+        TCPEndpoint(TCP_HOST, 1, bytes(TOKEN_SIZE)).write(path)
 
 
 @attrs.define
@@ -168,3 +180,137 @@ class ConsoleHost:
         self.job.close()
         self.process.stdin.close()
         self.process.wait()
+
+
+def fake_hash(path):
+    digest = b"d" if path.endswith("/") else hashlib.sha256(path.encode("utf8")).digest()
+    mtime = sum(bytearray(digest)) ** 0.5
+    mode = 0o755 if path.endswith("/") else 0o644
+    return FileHash(digest, mode, len(path) ** 2, mtime, len(path))
+
+
+def chmod(file_hash: FileHash) -> FileHash:
+    """Return `file_hash` with a different mode, as a file change that leaves the content alone.
+
+    The graph printout shows only the digest,
+    so a test can use this to change a file without invalidating a literal graph it compares to.
+    """
+    return attrs.evolve(file_hash, mode=file_hash.mode ^ 0o111)
+
+
+def declare_static(workflow, creator, paths):
+    """Declare a list of static files and confirm them.
+
+    This a heavily simplified version of the stepup.core.api.static function.
+    This is solely used for testing the workflow.
+    """
+    unconfirmed = workflow.declare_static_files(creator, paths)
+    for path in unconfirmed:
+        workflow.update_file_hash(path, fake_hash(path), cause=HashUpdateCause.OBSERVED)
+    return [workflow.find(File, path) for path in paths]
+
+
+def amend_step(workflow, step, **kwargs):
+    """Call `Workflow.amend_step`, defaulting `ran_concurrently` to never overlapping.
+
+    Most tests don't exercise the freshness check, so they have no real
+    `Scheduler.ran_concurrently` to pass. This is solely used for testing the workflow.
+    """
+    kwargs.setdefault("ran_concurrently", lambda producer_i, consumer_i: False)
+    return workflow.amend_step(step, **kwargs)
+
+
+async def get_duration_and_tail_time(db: DBSession, step: Step) -> tuple[float, float, int]:
+    async with db:
+        duration, tail_time, check_after = db.execute(
+            "SELECT duration, _tail_time, _check_after FROM step WHERE node = ?", (step.i,)
+        ).fetchone()
+    return duration, tail_time, check_after
+
+
+class TrippingEvent(threading.Event):
+    """A cancel event whose `is_set` starts returning True after `trip_after` polls."""
+
+    def __init__(self, trip_after: int):
+        super().__init__()
+        self.trip_after = trip_after
+        self.polls = 0
+
+    def is_set(self) -> bool:
+        self.polls += 1
+        if self.polls > self.trip_after:
+            self.set()
+        return super().is_set()
+
+
+STUCK_DEADLINE = 5.0
+"""Seconds within which a `StuckWork` must start or end, well within the budget of a test."""
+
+
+class StuckWork:
+    """The work of a `ThreadWorker` that ignores its cancel event, like a stuck system call.
+
+    It returns `"released"` or raises `error` once `release` is set.
+    Use it as a context manager, which sets `release` at the end and joins the thread,
+    so that the thread does not outlive the test.
+    """
+
+    def __init__(self, error: Exception | None = None):
+        self.error = error
+        self.started = threading.Event()
+        self.release = threading.Event()
+        self.thread: threading.Thread | None = None
+
+    def __call__(self, *args) -> str:
+        self.thread = threading.current_thread()
+        self.started.set()
+        self.release.wait(2 * STUCK_DEADLINE)
+        if self.error is not None:
+            raise self.error
+        return "released"
+
+    async def wait_started(self) -> None:
+        """Wait until the work runs in its thread."""
+        assert await asyncio.to_thread(self.started.wait, STUCK_DEADLINE)
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        self.release.set()
+        if self.thread is not None:
+            self.thread.join(STUCK_DEADLINE)
+            assert not self.thread.is_alive()
+
+
+FIFO_DEADLINE = 5.0
+"""Seconds after which a call counts as blocked on a FIFO, well within the budget of a test."""
+
+T = TypeVar("T")
+
+
+def call_with_fifo_guard(fifo: str, func: Callable[..., T], *args) -> T:
+    """Call a function in a thread, and fail when it waits for the other side of a FIFO.
+
+    A test that would hang when a regression makes `func` wait for the FIFO
+    then fails with its own message, instead of on the timeout of the whole test.
+    The thread is released by opening both sides of the FIFO, so that it does not outlive the test.
+
+    Returns
+    -------
+    result
+        The result of `func`, whose exception is raised again.
+    """
+    with concurrent.futures.ThreadPoolExecutor(1) as pool:
+        future = pool.submit(func, *args)
+        try:
+            return future.result(timeout=FIFO_DEADLINE)
+        except TimeoutError:
+            # Opening for reading does not wait with `O_NONBLOCK`,
+            # and it lets the opening for writing succeed.
+            fd_read = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
+            try:
+                os.close(os.open(fifo, os.O_WRONLY | os.O_NONBLOCK))
+            finally:
+                os.close(fd_read)
+            pytest.fail(f"Waited more than {FIFO_DEADLINE} s for the other side of {fifo}")
