@@ -36,7 +36,9 @@ Create a subdirectory `src/` with two files: `src/foo.txt` and `src/bar.txt`.
 Also, create a `plan.py` file with the following contents:
 
 ```python
-{% include 'getting_started/static_patterns/plan.py' %}
+--8<--
+getting_started/static_patterns/plan.py
+--8<--
 ```
 
 Make the plan executable and run it non-interactively:
@@ -49,7 +51,9 @@ sb -j 1
 This should produce the following output:
 
 ```text
-{% include 'getting_started/static_patterns/stdout.txt' %}
+--8<--
+getting_started/static_patterns/stdout.txt
+--8<--
 ```
 
 ## Patterns Make Steps React to New and Deleted Files
@@ -173,5 +177,5 @@ but the call to `static()` will fail in case of a missing file even when using a
 
     In StepUp 3, `static()` only accepted literal paths:
     a pattern had to be passed to `glob()`, which declared its matches as a side effect.
-    See [`static()` and `glob()` Have New Roles](../migration/from_3x_to_40.md#static-and-glob-have-new-roles)
+    See [`static()` and `glob()` Have New Roles](../migration/from_3x_to_4x.md#static-and-glob-have-new-roles)
     for the (usually one-word) edit this requires.

@@ -22,9 +22,9 @@ render = "{{ content | unwrap }}"
 
 # The meta description that every documentation page carries.
 [[targets]]
-patterns = ["mkdocs.yaml"]
+patterns = ["zensical.toml"]
 scanner = "regex"
-regex = '(?m)^site_description: (?P<content>.*)$'
+regex = '(?m)^site_description = "(?P<content>[^"]*)"$'
 snippets = ["tagline"]
 render = "{{ content | unwrap }}"
 

@@ -17,7 +17,7 @@ which search engines do treat as a redirect that passes ranking signals.
 Usage
 -----
 ```bash
-mkdocs build --strict
+zensical build --clean
 python tools/docs/make_stable_redirects.py site
 ```
 
@@ -58,7 +58,7 @@ REDIRECT_TEMPLATE = """<!DOCTYPE html>
 
 
 def read_page_urls(sitemap_path: Path) -> list[str]:
-    """Collect the page URLs from a sitemap written by MkDocs.
+    """Collect the page URLs from a sitemap written by Zensical.
 
     Parameters
     ----------
@@ -83,7 +83,7 @@ def write_redirects(site_dir: Path) -> int:
     Parameters
     ----------
     site_dir
-        The output directory of `mkdocs build`.
+        The output directory of `zensical build`.
 
     Returns
     -------

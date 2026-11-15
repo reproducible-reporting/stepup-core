@@ -5,7 +5,7 @@
 # The Pages source of the repository must be set to "GitHub Actions",
 # not to a branch, for the deploy job to have any effect.
 
-name: mkdocs
+name: docs
 on:
   push:
     branches:
@@ -20,9 +20,9 @@ on:
       - docs/**
       - overrides/**
       - tools/docs/make_stable_redirects.py
-      - mkdocs.yaml
+      - zensical.toml
       - pyproject.toml
-      - .github/workflows/mkdocs.yaml
+      - .github/workflows/docs.yaml
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
@@ -52,8 +52,8 @@ jobs:
           cache-dependency-glob: pyproject.toml
       - name: Install development version
         run: uv pip install --system -e .[dev]
-      - name: Build mkdocs site
-        run: mkdocs build --strict
+      - name: Build the site with Zensical
+        run: zensical build --clean
       # The documentation used to be published per version with mike,
       # and search engines were pointed at the stable alias.
       # See tools/docs/make_stable_redirects.py for when these stubs can be dropped.

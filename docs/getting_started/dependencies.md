@@ -20,7 +20,9 @@ Example source files: [`docs/getting_started/dependencies/`](https://github.com/
 The following `plan.py` defines two steps, with the second making use of the output from the first.
 
 ```python
-{% include 'getting_started/dependencies/plan.py' %}
+--8<--
+getting_started/dependencies/plan.py
+--8<--
 ```
 
 The command is sent to the director exactly as written: StepUp does not scan it for
@@ -62,7 +64,9 @@ sb -j 2
 You will see the following output:
 
 ```text
-{% include 'getting_started/dependencies/stdout.txt' %}
+--8<--
+getting_started/dependencies/stdout.txt
+--8<--
 ```
 
 Although StepUp allows 2 steps to run in parallel, it executes your `run` steps sequentially,
@@ -78,7 +82,9 @@ The `plan.py` script writes a few files to analyze and visualize the graphs Step
 The file `graph.txt` is a detailed human-readable version of `.stepup/graph.db`:
 
 ```text
-{% include 'getting_started/dependencies/graph.txt' %}
+--8<--
+getting_started/dependencies/graph.txt
+--8<--
 ```
 
 This text format may not always be the most convenient way

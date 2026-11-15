@@ -9,7 +9,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   {#
     Open Graph and Twitter metadata for link previews.
     The title and description follow the same fallbacks as the `htmltitle` and `site_meta`
-    blocks of the Material base template, so a preview shows what the browser tab shows.
+    blocks of the base template, so a preview shows what the browser tab shows.
   #}
   {% if page.meta and page.meta.title %}
     {% set social_title = page.meta.title ~ " - " ~ config.site_name %}
@@ -31,7 +31,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   {% endif %}
   {#
     Scrapers do not resolve relative image URLs reliably, so the card needs an absolute one.
-    MkDocs normalizes `site_url` to end with a slash.
+    Zensical normalizes `site_url` to end with a slash.
   #}
   {% if config.site_url %}
     <meta property="og:image" content="{{ config.site_url }}social-card.jpg">

@@ -7,7 +7,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 [![release](https://github.com/reproducible-reporting/stepup-core/actions/workflows/release.yaml/badge.svg?branch=main)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/release.yaml)
 [![pytest](https://github.com/reproducible-reporting/stepup-core/actions/workflows/pytest.yaml/badge.svg?branch=main)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/pytest.yaml)
-[![mkdocs](https://github.com/reproducible-reporting/stepup-core/actions/workflows/mkdocs.yaml/badge.svg?branch=main)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/mkdocs.yaml)
+[![docs](https://github.com/reproducible-reporting/stepup-core/actions/workflows/docs.yaml/badge.svg?branch=main)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/docs.yaml)
 [![PyPI Version](https://img.shields.io/pypi/v/stepup)](https://pypi.org/project/stepup/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22018869.svg)](https://doi.org/10.5281/zenodo.22018869)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/stepup)

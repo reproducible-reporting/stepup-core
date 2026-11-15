@@ -84,13 +84,11 @@ watchfiles = [
 ]
 dev = [
     "stepup[tests,examples,watchfiles]",
-    "mkdocs",
-    "mkdocstrings[python]",
-    "mkdocs-macros-plugin",
-    "mkdocs-material",
+    "mkdocstrings-python",
     "reuse",
     "snipwise<2.0a0",
     "yappi",
+    "zensical",
 ]
 
 [project.urls]
@@ -186,7 +184,7 @@ mode.strict-config = true
 extensions.front-matter.enabled = true
 # Rule md007 (ul-indent) expects a list nested in an ordered list item
 # to be indented to the parent's content column, i.e. three spaces for a `1. ` item.
-# Python-Markdown, and therefore MkDocs, only nests such a list when it is indented four spaces.
+# Python-Markdown, and therefore Zensical, only nests such a list when it is indented four spaces.
 plugins.md007.enabled = false
 plugins.md013.line_length = 100
 plugins.md013.heading_line_length = 100

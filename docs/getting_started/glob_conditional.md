@@ -53,7 +53,9 @@ Plan B is to use the results of the extraction from a previous run and declare t
 Create the following `plan.py`:
 
 ```python
-{% include 'getting_started/glob_conditional/plan.py' %}
+--8<--
+getting_started/glob_conditional/plan.py
+--8<--
 ```
 
 For this example, the script `expensive.py` is not expensive at all.
@@ -63,13 +65,17 @@ In this example, `expensive.py` just computes the average of all numbers in `dat
 and writes out the result to `average.txt`:
 
 ```python
-{% include 'getting_started/glob_conditional/expensive.py' %}
+--8<--
+getting_started/glob_conditional/expensive.py
+--8<--
 ```
 
 Now put some values in `dataset/bigfile.txt`, e.g.:
 
 ```text
-{% include 'getting_started/glob_conditional/dataset/bigfile.txt' %}
+--8<--
+getting_started/glob_conditional/dataset/bigfile.txt
+--8<--
 ```
 
 To run the example, make the scripts executable and fire up StepUp:
@@ -82,7 +88,9 @@ sb -j 1
 You should get the following output:
 
 ```text
-{% include 'getting_started/glob_conditional/stdout1.txt' %}
+--8<--
+getting_started/glob_conditional/stdout1.txt
+--8<--
 ```
 
 Now, simulate the situation where the dataset is absent by renaming the directory:
@@ -96,7 +104,9 @@ The new output reveals that the dataset is completely ignored
 while the file `average.txt` is still used:
 
 ```text
-{% include 'getting_started/glob_conditional/stdout2.txt' %}
+--8<--
+getting_started/glob_conditional/stdout2.txt
+--8<--
 ```
 
 Since the file `average.txt` did not change, the step `cat average.txt` is skipped.

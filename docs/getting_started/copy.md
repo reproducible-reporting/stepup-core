@@ -23,7 +23,9 @@ Example source files: [`docs/getting_started/copy/`](https://github.com/reproduc
 Create a file `plan.py` with the following contents:
 
 ```python
-{% include 'getting_started/copy/plan.py' %}
+--8<--
+getting_started/copy/plan.py
+--8<--
 ```
 
 Make it executable and run it with StepUp as follows:
@@ -36,7 +38,9 @@ sb -j 1
 You should get the following output:
 
 ```text
-{% include 'getting_started/copy/stdout.txt' %}
+--8<--
+getting_started/copy/stdout.txt
+--8<--
 ```
 
 ## Notes

@@ -1,0 +1,166 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+[project]
+site_name = "StepUp Core"
+site_url = "https://reproducible-reporting.github.io/stepup-core/"
+site_description = "A dynamic Python build tool for reproducible workflows"
+site_author = "Toon Verstraelen"
+copyright = "&copy; 2024-2026 Toon Verstraelen"
+repo_url = "https://github.com/reproducible-reporting/stepup-core"
+edit_uri = "edit/main/docs/"
+strict = true
+# The API reference is generated from the docstrings in the package.
+# Zensical does not watch the mkdocstrings path `.` because it is the project root.
+watch = ["stepup"]
+
+# The example directories contain more than what the tutorial pages show.
+# Their Markdown files are inputs of the examples, not pages of the documentation.
+exclude_docs = """
+social-card.svg
+CLAUDE.md
+*/*/ch*/*.md
+*/*/public/*.md
+"""
+
+nav = [
+  { "Home" = "index.md" },
+  "installation.md",
+  "platforms.md",
+  { "Getting Started" = [
+    "getting_started/introduction.md",
+    "getting_started/first_step.md",
+    "getting_started/first_runpy.md",
+    "getting_started/dependencies.md",
+    "getting_started/copy.md",
+    "getting_started/workdir.md",
+    "getting_started/static_files.md",
+    "getting_started/static_patterns.md",
+    "getting_started/static_tree.md",
+    "getting_started/glob.md",
+    "getting_started/glob_conditional.md",
+    "getting_started/named_glob.md",
+    "getting_started/interactive_usage.md",
+    "getting_started/failing_steps.md",
+    "getting_started/call.md",
+    "getting_started/no_rules.md",
+    "getting_started/distributed_plans.md",
+    "getting_started/load_namespace.md",
+    "getting_started/automatic_cleaning.md",
+  ] },
+  { "Advanced Topics" = [
+    "advanced_topics/introduction.md",
+    "advanced_topics/optional_steps.md",
+    "advanced_topics/build_targets.md",
+    "advanced_topics/resources.md",
+    "advanced_topics/duration_and_hold.md",
+    "advanced_topics/blocked_steps.md",
+    "advanced_topics/environment_variables.md",
+    "advanced_topics/volatile_outputs.md",
+    "advanced_topics/dynamic_dependencies.md",
+    "advanced_topics/dynamic_static_inputs.md",
+    "advanced_topics/variable_substitution.md",
+    "advanced_topics/here_and_root.md",
+    "advanced_topics/stepup_root.md",
+    "advanced_topics/render_jinja.md",
+    "advanced_topics/cyclic_dependencies.md",
+    "advanced_topics/manual_cleaning.md",
+    "advanced_topics/step_info.md",
+  ] },
+  { "Migration" = [
+    "migration/from_3x_to_4x.md",
+  ] },
+  { "Reference" = [
+    "reference/stepup.core.api.md",
+    "reference/stepup.core.call.md",
+    "reference/stepup.core.exceptions.md",
+    "reference/stepup.core.extapi.md",
+    "reference/stepup.core.nglob.md",
+    "reference/stepup.core.path.md",
+    "reference/stepup.core.render_jinja.md",
+    "reference/stepup.core.stepinfo.md",
+    "reference/interactive.md",
+    "reference/returncode.md",
+    "reference/configuration.md",
+  ] },
+  { "Extending StepUp" = [
+    "extending/introduction.md",
+    "extending/api.md",
+    "extending/console_scripts.md",
+    "extending/tool.md",
+  ] },
+  { "Deprecated" = [
+    "deprecated/introduction.md",
+    "deprecated/script_single.md",
+    "deprecated/script_multiple.md",
+    "deprecated/stepup.core.script.md",
+  ] },
+  { "Development" = [
+    "development.md",
+    "changelog.md",
+    "license.md",
+  ] },
+]
+
+[project.theme]
+language = "en"
+logo = "logo.svg"
+favicon = "logo.svg"
+custom_dir = "overrides"
+features = [
+  "content.action.edit",
+  "content.code.copy",
+  "navigation.footer",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[project.plugins.search]
+# This is the default separator of Zensical 0.1.1,
+# extended with a split before a camel-case hump,
+# so that a part of a class name such as `StepUpError` can be found.
+separator = '[\s\-_,:!=\[\]()\\"`/]+|\.(?!\d)|(?!\b)(?=[A-Z][a-z])'
+
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["."]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "numpy"
+docstring_section_style = "list"
+show_root_heading = true
+
+[project.markdown_extensions]
+admonition = {}
+attr_list = {}
+def_list = {}
+smarty = {}
+toc.permalink = true
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.line_spans = "__span"
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+# The tutorial pages include the sources and the output of the examples in `docs/`.
+pymdownx.snippets.base_path = ["docs"]
+pymdownx.snippets.check_paths = true
+pymdownx.superfences = {}

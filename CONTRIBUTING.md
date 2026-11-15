@@ -15,8 +15,8 @@ and a minimal example that reproduces the problem.
 
 ## Setting up a Development Environment
 
-The [developer notes](https://reproducible-reporting.github.io/stepup-core/development/)
-explain how to install the development environment with
+The [developer guide](https://reproducible-reporting.github.io/stepup-core/development/)
+explains how to install the development environment with
 [uv](https://docs.astral.sh/uv/) and [pre-commit](https://pre-commit.com/),
 how to run the tests, and how to build the documentation locally.
 

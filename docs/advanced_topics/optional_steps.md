@@ -83,19 +83,25 @@ of the [logistic map](https://en.wikipedia.org/wiki/Logistic_map)
 for different values of the parameter *r*:
 
 ```python
-{% include 'advanced_topics/optional_steps/generate.py' %}
+--8<--
+advanced_topics/optional_steps/generate.py
+--8<--
 ```
 
 Then, write a `plot.py` script that plots only one of these sequences:
 
 ```python
-{% include 'advanced_topics/optional_steps/plot.py' %}
+--8<--
+advanced_topics/optional_steps/plot.py
+--8<--
 ```
 
 The `plan.py` file adds steps for both scripts, but makes the data generation optional:
 
 ```python
-{% include 'advanced_topics/optional_steps/plan.py' %}
+--8<--
+advanced_topics/optional_steps/plan.py
+--8<--
 ```
 
 Finally, make the scripts executable and run StepUp:
@@ -108,7 +114,9 @@ sb -j 1
 You should get the following output:
 
 ```text
-{% include 'advanced_topics/optional_steps/stdout.txt' %}
+--8<--
+advanced_topics/optional_steps/stdout.txt
+--8<--
 ```
 
 Note that, in this case, it would be trivial to modify the `generate.py` script

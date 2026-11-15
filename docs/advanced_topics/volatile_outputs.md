@@ -29,7 +29,9 @@ Example source files: [`docs/advanced_topics/volatile_outputs/`](https://github.
 Create the following `plan.py`, with a single step that produces a trivially volatile output:
 
 ```python
-{% include 'advanced_topics/volatile_outputs/plan.py' %}
+--8<--
+advanced_topics/volatile_outputs/plan.py
+--8<--
 ```
 
 Make the plan executable and run it as follows:
@@ -43,7 +45,9 @@ The file `date.txt` will contain the current time.
 You should get the following terminal output:
 
 ```text
-{% include 'advanced_topics/volatile_outputs/stdout.txt' %}
+--8<--
+advanced_topics/volatile_outputs/stdout.txt
+--8<--
 ```
 
 ## Try the Following

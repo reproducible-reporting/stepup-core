@@ -1531,7 +1531,7 @@ def script(
         [Call](../getting_started/call.md) interface.
         See [the migration guide][sc] for a step-by-step walkthrough.
 
-        [sc]: ../migration/from_3x_to_40.md#optional-migration-from-script-to-call
+        [sc]: ../migration/from_3x_to_4x.md#optional-migration-from-script-to-call
 
     Parameters
     ----------

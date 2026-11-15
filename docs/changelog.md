@@ -274,7 +274,7 @@ Two architectural shifts underpin these improvements.
 The whole redesign is backed by a test suite with more than four times as many unit tests
 and over 1.5 times as many integration examples.
 
-A [migration guide](migration/from_3x_to_40.md) shows the way up from StepUp 3.
+A [migration guide](migration/from_3x_to_4x.md) shows the way up from StepUp 3.
 
 Note that all changes of the `4.0.0rc*` release candidates are combined below.
 
@@ -497,7 +497,7 @@ Note that all changes of the `4.0.0rc*` release candidates are combined below.
 
 - Documentation has been updated to reflect the API changes and to clarify some other points:
     - All tutorials have been updated to reflect the new API and workflow.
-    - A [migration guide](migration/from_3x_to_40.md) has been added
+    - A [migration guide](migration/from_3x_to_4x.md) has been added
       to help users migrate from StepUp 3 to StepUp 4.
 
 - `cattrs` was added as a runtime dependency.
@@ -539,7 +539,7 @@ Note that all changes of the `4.0.0rc*` release candidates are combined below.
 
 - Return codes have changed.
   The new return code bits are documented in [StepUp Return Codes](reference/returncode.md).
-  The changes compared to StepUp 3 are summarized in the [migration guide](migration/from_3x_to_40.md#return-codes-have-been-renumbered).
+  The changes compared to StepUp 3 are summarized in the [migration guide](migration/from_3x_to_4x.md#return-codes-have-been-renumbered).
 
 - The `--log-level` / `-l` option has moved from the `stepup` command to its `build`
   subcommand, which is the only one acting on it:
@@ -555,7 +555,7 @@ Note that all changes of the `4.0.0rc*` release candidates are combined below.
 
 - Several environment variables have been renamed for consistency.
   See [Configuration files](reference/configuration.md) for the current names
-  and [Changed Environment Variable Names](migration/from_3x_to_40.md#changed-environment-variable-names)
+  and [Changed Environment Variable Names](migration/from_3x_to_4x.md#changed-environment-variable-names)
   in the migration guide for the full mapping.
 
 #### Build Execution and Process Control
@@ -635,8 +635,8 @@ Note that all changes of the `4.0.0rc*` release candidates are combined below.
     - `static()` returns a sorted list of the files it declared
       and the static tree roots it registered, where it used to return nothing.
 
-    See [`static()` and `glob()` Have New Roles](migration/from_3x_to_40.md#static-and-glob-have-new-roles)
-    and [Directory Handling](migration/from_3x_to_40.md#directory-handling)
+    See [`static()` and `glob()` Have New Roles](migration/from_3x_to_4x.md#static-and-glob-have-new-roles)
+    and [Directory Handling](migration/from_3x_to_4x.md#directory-handling)
     in the migration guide for details.
 
 - The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
@@ -944,7 +944,7 @@ Note that all changes of the `4.0.0rc*` release candidates are combined below.
 - The `pool` feature has been removed,
   replaced by the more powerful `resources` feature.
   See [Resources](advanced_topics/resources.md)
-  and [Resource Constraints](migration/from_3x_to_40.md#resource-constraints-replacement-for-pools-and-blocked-steps)
+  and [Resource Constraints](migration/from_3x_to_4x.md#resource-constraints-replacement-for-pools-and-blocked-steps)
   in the migration guide for details.
 
 #### Workflow API

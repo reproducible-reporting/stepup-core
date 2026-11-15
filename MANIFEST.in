@@ -13,7 +13,7 @@ exclude .editorconfig
 exclude .gitignore
 exclude .markdownlint-cli2.jsonc
 exclude .pre-commit-config.yaml
-exclude mkdocs.yaml
+exclude zensical.toml
 
 # Exclude tests for now. (Could be useful later for conda package.)
 prune tests

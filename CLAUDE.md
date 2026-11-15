@@ -292,4 +292,4 @@ so CI repeats the suite with them (`.github/workflows/pytest.yaml`):
 See `docs/reference/configuration.md` for the full list of `STEPUP_*` / `STEPUP_BUILD_*`
 variables.
 Most StepUp-3-era `STEPUP_*` variables gained a `STEPUP_BUILD_` prefix in the 4.0 migration;
-see `docs/migration/from_3x_to_40.md` before assuming an old name still applies.
+see `docs/migration/from_3x_to_4x.md` before assuming an old name still applies.

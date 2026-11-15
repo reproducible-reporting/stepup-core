@@ -31,7 +31,9 @@ In a real-world scenario, you would typically have multiple configuration files 
 Create a file `plan.py` with the following contents:
 
 ```python
-{% include 'getting_started/load_namespace/plan.py' %}
+--8<--
+getting_started/load_namespace/plan.py
+--8<--
 ```
 
 It calls a script `print_sentence.py`, which loads a configuration file `config.toml` and
@@ -40,13 +42,17 @@ prints a sentence to the standard output.
 Create the script `print_sentence.py` with the following contents:
 
 ```python
-{% include 'getting_started/load_namespace/print_sentence.py' %}
+--8<--
+getting_started/load_namespace/print_sentence.py
+--8<--
 ```
 
 Finally, create the configuration file `config.toml` with the following contents:
 
 ```toml
-{% include 'getting_started/load_namespace/config.toml' %}
+--8<--
+getting_started/load_namespace/config.toml
+--8<--
 ```
 
 Make the appropriate files executable and run the plan:
@@ -59,7 +65,9 @@ sb -j 1
 You should get the following screen output:
 
 ```text
-{% include 'getting_started/load_namespace/stdout.txt' %}
+--8<--
+getting_started/load_namespace/stdout.txt
+--8<--
 ```
 
 As you can see, the sentence contains elements from the configuration file.

@@ -36,13 +36,17 @@ Example source files: [`docs/advanced_topics/variable_substitution/`](https://gi
 Create a `plan.py` with the following contents:
 
 ```python
-{% include 'advanced_topics/variable_substitution/plan.py' %}
+--8<--
+advanced_topics/variable_substitution/plan.py
+--8<--
 ```
 
 In addition, create a script `step.py` as follows:
 
 ```python
-{% include 'advanced_topics/variable_substitution/step.py' %}
+--8<--
+advanced_topics/variable_substitution/step.py
+--8<--
 ```
 
 Make the Python scripts executable and run them as follows:
@@ -55,13 +59,17 @@ MYVAR=foo sb -j 1
 You should get the following terminal output:
 
 ```text
-{% include 'advanced_topics/variable_substitution/stdout.txt' %}
+--8<--
+advanced_topics/variable_substitution/stdout.txt
+--8<--
 ```
 
 The file `dst_foo.txt` will contain the following:
 
 ```text
-{% include 'advanced_topics/variable_substitution/dst_foo.txt' %}
+--8<--
+advanced_topics/variable_substitution/dst_foo.txt
+--8<--
 ```
 
 As shown in this example, the function [`getenv()`][stepup.core.api.getenv]

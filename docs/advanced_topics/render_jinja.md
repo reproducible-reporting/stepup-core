@@ -26,19 +26,25 @@ Example source files: [`docs/advanced_topics/render_jinja/`](https://github.com/
 Create a file `plan.py` with the following contents:
 
 ```python
-{% include 'advanced_topics/render_jinja/plan.py' %}
+--8<--
+advanced_topics/render_jinja/plan.py
+--8<--
 ```
 
 Prepare a template file `email_template.txt` with the following contents:
 
 ```jinja
-{% include 'advanced_topics/render_jinja/email_include.txt' %}
+--8<--
+advanced_topics/render_jinja/email_template.txt
+--8<--
 ```
 
 Finally, create the `config.yaml` configuration file with the following contents:
 
 ```yaml
-{% include 'advanced_topics/render_jinja/config.yaml' %}
+--8<--
+advanced_topics/render_jinja/config.yaml
+--8<--
 ```
 
 Make the plan executable and run StepUp:
@@ -51,22 +57,24 @@ sb -j 1
 You should see the following output:
 
 ```text
-{% include 'advanced_topics/render_jinja/stdout.txt' %}
+--8<--
+advanced_topics/render_jinja/stdout.txt
+--8<--
 ```
 
 The result is a rendered email template with the values from the configuration file,
 written to `email.txt`:
 
 ```text
-{% include 'advanced_topics/render_jinja/email.txt' %}
+--8<--
+advanced_topics/render_jinja/email.txt
+--8<--
 ```
 
 ## Supported Delimiters
 
 With the `mode` option, [`render_jinja()`][stepup.core.api.render_jinja]
 supports the following delimiters for Jinja templates:
-
-{% raw %}
 
 - The default Jinja delimiters (`mode="plain"`):
     - `{{ variable }}`
@@ -76,8 +84,6 @@ supports the following delimiters for Jinja templates:
     - `<< variable >>`
     - `<% statement %>`
     - `<# comment #>`
-
-{% endraw %}
 
 The default is `mode="auto"`, which sets the delimiters automatically based on the file extension
 (`mode="latex"` for `.tex` templates and `mode="plain"` otherwise).

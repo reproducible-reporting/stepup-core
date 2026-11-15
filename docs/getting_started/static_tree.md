@@ -26,7 +26,9 @@ Create a subdirectory `data/` with one file: `somefile.txt`.
 Also, create a `plan.py` file with the following contents:
 
 ```python
-{% include 'getting_started/static_tree/plan.py' %}
+--8<--
+getting_started/static_tree/plan.py
+--8<--
 ```
 
 Make the plan executable and run it non-interactively:
@@ -39,7 +41,9 @@ sb -j 1
 This should produce the following output:
 
 ```text
-{% include 'getting_started/static_tree/stdout.txt' %}
+--8<--
+getting_started/static_tree/stdout.txt
+--8<--
 ```
 
 Under the hood, StepUp will not immediately declare all files in the `data/` directory as static.

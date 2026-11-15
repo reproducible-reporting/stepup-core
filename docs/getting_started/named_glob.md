@@ -127,7 +127,9 @@ ch4/sec4_1_summary.txt
 Create the following `plan.py`:
 
 ```python
-{% include 'getting_started/named_glob/plan.py' %}
+--8<--
+getting_started/named_glob/plan.py
+--8<--
 ```
 
 Note that the substrings matching the named glob patterns are accessible as attributes of
@@ -144,7 +146,9 @@ sb -j 1
 You should get the following output:
 
 ```text
-{% include 'getting_started/named_glob/stdout.txt' %}
+--8<--
+getting_started/named_glob/stdout.txt
+--8<--
 ```
 
 ## Notes on `static()`

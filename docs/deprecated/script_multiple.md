@@ -18,7 +18,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     You are encouraged to migrate your `plan.py` files to the new API.
     See [the migration guide][sc] for a step-by-step walkthrough.
 
-    [sc]: ../migration/from_3x_to_40.md#optional-migration-from-script-to-call
+    [sc]: ../migration/from_3x_to_4x.md#optional-migration-from-script-to-call
 
 In the [previous tutorial](script_single.md), the script protocol and driver
 were illustrated with a single use case of a script.
@@ -99,13 +99,17 @@ the airports of Brussels and Ostend in February 2024, downloaded from the
 Create a script `plan.py` that just calls the plotting script:
 
 ```python
-{% include 'deprecated/script_multiple/plan.py' %}
+--8<--
+deprecated/script_multiple/plan.py
+--8<--
 ```
 
 The script `plot.py` uses the script driver with multiple cases:
 
 ```python
-{% include 'deprecated/script_multiple/plot.py' %}
+--8<--
+deprecated/script_multiple/plot.py
+--8<--
 ```
 
 Make the scripts executable and run StepUp to get the results:
@@ -118,7 +122,9 @@ sb -j 1
 You should see the following terminal output with the plan and run steps of the plotting script:
 
 ```text
-{% include 'deprecated/script_multiple/stdout.txt' %}
+--8<--
+deprecated/script_multiple/stdout.txt
+--8<--
 ```
 
 This produces the following figures:
@@ -154,10 +160,8 @@ This produces the following figures:
 
     you will get a list of different ways to execute the script's `run()` function:
 
-{% macro incl() %}
-{% include "deprecated/script_multiple/cases_out.txt" %}
-{% endmacro %}
-
     ```bash
-    {{ incl() | indent(width=4) }}
+    --8<--
+    deprecated/script_multiple/cases_out.txt
+    --8<--
     ```

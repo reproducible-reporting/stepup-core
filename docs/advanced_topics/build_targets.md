@@ -68,7 +68,9 @@ Create the following `plan.py`, which copies `input.txt` to three different outp
 one of which is optional:
 
 ```python
-{% include 'advanced_topics/build_targets/plan.py' %}
+--8<--
+advanced_topics/build_targets/plan.py
+--8<--
 ```
 
 Make the plan executable and build only `report.txt`:
@@ -81,7 +83,9 @@ sb report.txt -j 1
 You should get the following terminal output:
 
 ```text
-{% include 'advanced_topics/build_targets/stdout.txt' %}
+--8<--
+advanced_topics/build_targets/stdout.txt
+--8<--
 ```
 
 Only `report.txt` is created; `extra.txt` and `debug.txt` are left untouched, and no warning is printed,

@@ -31,7 +31,9 @@ amends the step with that file as a dynamic input,
 and then opens it to print it to the standard output.
 
 ```python
-{% include 'advanced_topics/dynamic_static_inputs/plan.py' %}
+--8<--
+advanced_topics/dynamic_static_inputs/plan.py
+--8<--
 ```
 
 Also create a `config.txt` file with some contents.
@@ -51,5 +53,7 @@ sb -j 1
 You should get the following terminal output:
 
 ```text
-{% include 'advanced_topics/dynamic_static_inputs/stdout.txt' %}
+--8<--
+advanced_topics/dynamic_static_inputs/stdout.txt
+--8<--
 ```

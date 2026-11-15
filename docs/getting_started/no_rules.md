@@ -33,7 +33,9 @@ Here, we show a simple example of a custom rule to convert a text file to upperc
 Create the following `plan.py`:
 
 ```python
-{% include 'getting_started/no_rules/plan.py' %}
+--8<--
+getting_started/no_rules/plan.py
+--8<--
 ```
 
 In addition, make two text files `lower1.txt` and `lower2.txt` with some random contents.
@@ -47,5 +49,7 @@ sb -j 1
 This will show the following output:
 
 ```text
-{% include 'getting_started/no_rules/stdout.txt' %}
+--8<--
+getting_started/no_rules/stdout.txt
+--8<--
 ```

@@ -25,7 +25,9 @@ in the provenance graph and cannot be introduced accidentally by the user.
 Create the following `plan.py`, which is StepUp's equivalent of a snake biting its own tail:
 
 ```python
-{% include 'advanced_topics/cyclic_dependencies/plan.py' %}
+--8<--
+advanced_topics/cyclic_dependencies/plan.py
+--8<--
 ```
 
 Make the plan executable and give it a try as follows:
@@ -38,5 +40,7 @@ sb -j 1
 You will get the following terminal output showing that this plan won't work.
 
 ```text
-{% include 'advanced_topics/cyclic_dependencies/stdout.txt' %}
+--8<--
+advanced_topics/cyclic_dependencies/stdout.txt
+--8<--
 ```

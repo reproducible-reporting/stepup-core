@@ -27,7 +27,9 @@ Example source files: [`docs/advanced_topics/environment_variables/`](https://gi
 Create the following `plan.py`:
 
 ```python
-{% include 'advanced_topics/environment_variables/plan.py' %}
+--8<--
+advanced_topics/environment_variables/plan.py
+--8<--
 ```
 
 Make it executable and run StepUp with a specific value of the variable:
@@ -40,7 +42,9 @@ MYVAR=foo sb -j 1
 You will see the following output:
 
 ```text
-{% include 'advanced_topics/environment_variables/stdout.txt' %}
+--8<--
+advanced_topics/environment_variables/stdout.txt
+--8<--
 ```
 
 The variable substitution is performed in the step's execution environment.

@@ -31,13 +31,17 @@ Example source files: [`docs/getting_started/static_files/`](https://github.com/
 Create a file `limerick.txt` with the following contents:
 
 ```text
-{% include 'getting_started/static_files/limerick.txt' %}
+--8<--
+getting_started/static_files/limerick.txt
+--8<--
 ```
 
 Also create the following `plan.py`:
 
 ```python
-{% include 'getting_started/static_files/plan.py' %}
+--8<--
+getting_started/static_files/plan.py
+--8<--
 ```
 
 The [`static()`][stepup.core.api.static] function declares a static file,
@@ -53,7 +57,9 @@ sb -j 1
 You should get the following output:
 
 ```text
-{% include 'getting_started/static_files/stdout.txt' %}
+--8<--
+getting_started/static_files/stdout.txt
+--8<--
 ```
 
 As expected, StepUp does not wait for another step to create `limerick.txt` because the file is static.

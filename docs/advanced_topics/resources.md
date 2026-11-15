@@ -52,7 +52,9 @@ The example illustrates three steps with different resource requirements.
 Create the following `plan.py`:
 
 ```python
-{% include 'advanced_topics/resources/plan.py' %}
+--8<--
+advanced_topics/resources/plan.py
+--8<--
 ```
 
 The `sleep` command ensures each step lasts long enough to guarantee
@@ -72,7 +74,9 @@ sb -j 4
 You should get the following output:
 
 ```text
-{% include 'advanced_topics/resources/stdout.txt' %}
+--8<--
+advanced_topics/resources/stdout.txt
+--8<--
 ```
 
 Steps A and B start immediately in parallel.

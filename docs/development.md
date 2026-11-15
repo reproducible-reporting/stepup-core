@@ -4,14 +4,14 @@ description: >-
   and find out how to run the tests and build the documentation.
 ---
 
-# Developer Notes
+# Developer Guide
 
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-If you would like to contribute, please read [CONTRIBUTING.md](https://github.com/reproducible-reporting/.github/blob/main/CONTRIBUTING.md).
+If you would like to contribute, please read [CONTRIBUTING.md](https://github.com/reproducible-reporting/stepup-core/blob/main/CONTRIBUTING.md).
 
 ## Development Environment
 
@@ -80,19 +80,40 @@ See [Supported Platforms](platforms.md) for what differs between the platforms.
 
 ## Documentation
 
-The documentation is created using [MkDocs](https://www.mkdocs.org/).
+The documentation is created using [Zensical](https://zensical.org/),
+configured in `zensical.toml`.
 Only the current version is published:
 every commit on the main branch republishes the site with GitHub Pages.
 
 Edit the documentation Markdown files with a live preview by running:
 
 ```bash
-mkdocs serve
+zensical serve
 ```
 
 (Keep this running.)
-Then open the live preview in your browser at [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+Then open the live preview in your browser at
+[http://localhost:8000/stepup-core/](http://localhost:8000/stepup-core/)
 and edit Markdown files in your IDE.
+
+The tutorial pages include the sources and the outputs of the examples
+with the block form of the [Snippets](https://facelessuser.github.io/pymdown-extensions/extensions/snippets/)
+extension, using paths relative to `docs/`:
+
+<!-- The leading semicolons escape the snippet markers and do not appear on the page. -->
+
+````markdown
+```python
+;--8<--
+getting_started/first_step/plan.py
+;--8<--
+```
+````
+
+Do not use the single-line form `--8<-- "path"` in a Python code block,
+because Ruff formats the code blocks in Markdown files and rewrites that line
+as if it were a Python expression.
+The block form is not valid Python, so Ruff leaves it alone.
 
 Please use [Semantic Line Breaks](https://sembr.org/)
 because it results in cleaner file diffs when editing documentation.

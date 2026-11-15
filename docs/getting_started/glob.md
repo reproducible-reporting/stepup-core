@@ -30,7 +30,9 @@ Create a subdirectory `src/` with three files:
 Also, create a `plan.py` file with the following contents:
 
 ```python
-{% include 'getting_started/glob/plan.py' %}
+--8<--
+getting_started/glob/plan.py
+--8<--
 ```
 
 Make the plan executable and run it non-interactively:
@@ -43,7 +45,9 @@ sb -j 1
 This should produce the following output:
 
 ```text
-{% include 'getting_started/glob/stdout.txt' %}
+--8<--
+getting_started/glob/stdout.txt
+--8<--
 ```
 
 ## Overlapping Queries

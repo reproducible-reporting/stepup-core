@@ -23,14 +23,18 @@ Example source files: [`docs/getting_started/distributed_plans/`](https://github
 Create a simple example with a top-level `plan.py` as follows:
 
 ```python
-{% include 'getting_started/distributed_plans/plan.py' %}
+--8<--
+getting_started/distributed_plans/plan.py
+--8<--
 ```
 
 The top-level plan defines a few static files and then calls another plan in `sub/`.
 Create a file `sub/plan.py` as follows:
 
 ```python
-{% include 'getting_started/distributed_plans/sub/plan.py' %}
+--8<--
+getting_started/distributed_plans/sub/plan.py
+--8<--
 ```
 
 Also create two files `part1.txt` and `sub/part2.txt` with a bit of text.
@@ -43,7 +47,9 @@ chmod +x plan.py sub/plan.py
 You will get the following output:
 
 ```text
-{% include 'getting_started/distributed_plans/stdout.txt' %}
+--8<--
+getting_started/distributed_plans/stdout.txt
+--8<--
 ```
 
 The main advantage over `run()` is that `plan()` will give your additional `plan.py` steps

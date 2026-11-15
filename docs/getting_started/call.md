@@ -155,14 +155,18 @@ the airports of Brussels and Ostend in February 2024, downloaded from the
 Add the following `plan.py`:
 
 ```python
-{% include 'getting_started/call/plan.py' %}
+--8<--
+getting_started/call/plan.py
+--8<--
 ```
 
 And `plot.py` with both a `plan()` and a `run()` function,
 and a `driver()` entry point:
 
 ```python
-{% include 'getting_started/call/plot.py' %}
+--8<--
+getting_started/call/plot.py
+--8<--
 ```
 
 It is assumed that the input files `ebbr.csv`, `ebos.csv`, and `matplotlibrc`
@@ -177,7 +181,9 @@ sb -j 1
 You should see output like:
 
 ```text
-{% include 'getting_started/call/stdout.txt' %}
+--8<--
+getting_started/call/stdout.txt
+--8<--
 ```
 
 This produces the following figures:

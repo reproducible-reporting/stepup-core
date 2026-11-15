@@ -18,7 +18,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     You are encouraged to migrate your `plan.py` files to the new API.
     See [the migration guide][sc] for a step-by-step walkthrough.
 
-    [sc]: ../migration/from_3x_to_40.md#optional-migration-from-script-to-call
+    [sc]: ../migration/from_3x_to_4x.md#optional-migration-from-script-to-call
 
 StepUp Core implements a simple *script protocol*
 for defining scripts that combine planning and execution in a single source file.
@@ -141,19 +141,25 @@ For this example, the configuration contains a number of steps and a frequency i
 serialized in a JSON file:
 
 ```json
-{% include 'deprecated/script_single/config.json' %}
+--8<--
+deprecated/script_single/config.json
+--8<--
 ```
 
 This file is used in a script `generate.py` as follows:
 
 ```python
-{% include 'deprecated/script_single/generate.py' %}
+--8<--
+deprecated/script_single/generate.py
+--8<--
 ```
 
 Also, add the following `plan.py` file:
 
 ```python
-{% include 'deprecated/script_single/plan.py' %}
+--8<--
+deprecated/script_single/plan.py
+--8<--
 ```
 
 Finally, make the Python scripts executable and give StepUp a spin:
@@ -166,7 +172,9 @@ sb -j 1
 You should see the following output on screen:
 
 ```text
-{% include 'deprecated/script_single/stdout.txt' %}
+--8<--
+deprecated/script_single/stdout.txt
+--8<--
 ```
 
 As expected, this creates two files: `cos.npy` and `sin.npy`.

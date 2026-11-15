@@ -80,7 +80,9 @@ makes the scheduler compare all four by tail time as soon as the block releases,
 so both free slots go to the slow steps instead, even though they were declared last.
 
 ```python
-{% include 'advanced_topics/duration_and_hold/plan.py' %}
+--8<--
+advanced_topics/duration_and_hold/plan.py
+--8<--
 ```
 
 To run the example, make the plan executable and run it:
@@ -93,7 +95,9 @@ sb -j 3
 You should get the following terminal output:
 
 ```text
-{% include 'advanced_topics/duration_and_hold/stdout.txt' %}
+--8<--
+advanced_topics/duration_and_hold/stdout.txt
+--8<--
 ```
 
 Notice that **both slow steps start together, right alongside `plan.py` itself**,

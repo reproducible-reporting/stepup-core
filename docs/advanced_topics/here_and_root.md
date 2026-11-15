@@ -97,14 +97,18 @@ due to the inherent complexity of out-of-source builds.
 Create a `source/` directory with the following `source/plan.py`:
 
 ```python
-{% include 'advanced_topics/here_and_root/source/plan.py' %}
+--8<--
+advanced_topics/here_and_root/source/plan.py
+--8<--
 ```
 
 Also create a `source/sub/` directory with a file `source/sub/example.txt` (arbitrary contents)
 and the following `source/sub/plan.py`:
 
 ```python
-{% include 'advanced_topics/here_and_root/source/sub/plan.py' %}
+--8<--
+advanced_topics/here_and_root/source/sub/plan.py
+--8<--
 ```
 
 Make the scripts executable and run everything as follows:
@@ -117,7 +121,9 @@ sb -j 1
 You should get the following terminal output:
 
 ```text
-{% include 'advanced_topics/here_and_root/stdout.txt' %}
+--8<--
+advanced_topics/here_and_root/stdout.txt
+--8<--
 ```
 
 The top-level `plan.py` provides some infrastructure:

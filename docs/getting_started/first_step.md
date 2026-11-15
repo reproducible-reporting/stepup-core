@@ -23,7 +23,9 @@ Example source files: [`docs/getting_started/first_step/`](https://github.com/re
 Create a file `plan.py` with the following contents:
 
 ```python
-{% include 'getting_started/first_step/plan.py' %}
+--8<--
+getting_started/first_step/plan.py
+--8<--
 ```
 
 Make this file executable with `chmod +x plan.py`.
@@ -62,7 +64,9 @@ sb -j 1
 You should see the following output, with colors if your virtual terminal supports them:
 
 ```text
-{% include 'getting_started/first_step/stdout1.txt' %}
+--8<--
+getting_started/first_step/stdout1.txt
+--8<--
 ```
 
 Let's analyze the output:
@@ -90,7 +94,9 @@ sb -j 1
 You will see a slightly different output:
 
 ```text
-{% include 'getting_started/first_step/stdout2.txt' %}
+--8<--
+getting_started/first_step/stdout2.txt
+--8<--
 ```
 
 The startup sequence is now a bit longer because StepUp loads the workflow from `.stepup/graph.db`,
@@ -154,12 +160,10 @@ and reserve spaces for the contents of files rather than their names.
   process when `plan.py` is executed by `stepup`.
   You should get the following screen output.
 
-{% macro incl() %}
-{% include "getting_started/first_step/stdout3.txt" %}
-{% endmacro %}
-
-    ```
-    {{ incl() | indent(width=4) }}
+    ```text
+    --8<--
+    getting_started/first_step/stdout3.txt
+    --8<--
     ```
 
     This output contains internal details of StepUp,

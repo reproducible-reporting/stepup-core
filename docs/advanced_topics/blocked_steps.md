@@ -60,7 +60,9 @@ Note that the copy commands are too cheap to justify blocking,
 so this is just an example illustrating the mechanism.
 
 ```python
-{% include 'advanced_topics/blocked_steps/plan.py' %}
+--8<--
+advanced_topics/blocked_steps/plan.py
+--8<--
 ```
 
 Make this plan executable and run it with StepUp:
@@ -73,7 +75,9 @@ sb -j 1
 You should get the following terminal output:
 
 ```text
-{% include 'advanced_topics/blocked_steps/stdout.txt' %}
+--8<--
+advanced_topics/blocked_steps/stdout.txt
+--8<--
 ```
 
 ## Try the Following

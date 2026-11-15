@@ -4,7 +4,7 @@ description: >-
   stepup build replaces stepup boot, and the graph database format changed.
 ---
 
-# Migration from StepUp 3.X to 4.0
+# Migration from StepUp 3.X to 4.X
 
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>

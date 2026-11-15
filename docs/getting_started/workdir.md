@@ -31,7 +31,9 @@ Example source files: [`docs/getting_started/workdir/`](https://github.com/repro
 Create a top-level `plan.py` as follows:
 
 ```python
-{% include 'getting_started/workdir/plan.py' %}
+--8<--
+getting_started/workdir/plan.py
+--8<--
 ```
 
 Make the scripts executable and run everything as follows:
@@ -45,7 +47,9 @@ sb -j 1
 Expected Terminal Output:
 
 ```text
-{% include 'getting_started/workdir/stdout.txt' %}
+--8<--
+getting_started/workdir/stdout.txt
+--8<--
 ```
 
 This will create an output file `out/hello.txt`

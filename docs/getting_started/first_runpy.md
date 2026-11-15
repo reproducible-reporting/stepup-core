@@ -24,19 +24,25 @@ The script file itself is also automatically added as an input dependency.
 The following example `plan.py` file shows how to run a Python script with StepUp.
 
 ```python
-{% include 'getting_started/first_runpy/plan.py' %}
+--8<--
+getting_started/first_runpy/plan.py
+--8<--
 ```
 
 Create a `work.py` script that can be executed:
 
 ```python
-{% include 'getting_started/first_runpy/work.py' %}
+--8<--
+getting_started/first_runpy/work.py
+--8<--
 ```
 
 Finally, create a `helper.py` script that is imported by `work.py`:
 
 ```python
-{% include 'getting_started/first_runpy/helper.py' %}
+--8<--
+getting_started/first_runpy/helper.py
+--8<--
 ```
 
 Make the appropriate scripts executable and run StepUp:
@@ -49,7 +55,9 @@ sb -j 1
 You should see the following output:
 
 ```text
-{% include 'getting_started/first_runpy/stdout.txt' %}
+--8<--
+getting_started/first_runpy/stdout.txt
+--8<--
 ```
 
 ## Try the Following

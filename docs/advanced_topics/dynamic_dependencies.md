@@ -130,14 +130,18 @@ Create the following `plan.py`,
 where the first step is a script that discovers that it needs an additional input.
 
 ```python
-{% include 'advanced_topics/dynamic_dependencies/plan.py' %}
+--8<--
+advanced_topics/dynamic_dependencies/plan.py
+--8<--
 ```
 
 In addition, create a file `input.txt`
 with some arbitrary contents and the following `step.py` script:
 
 ```python
-{% include 'advanced_topics/dynamic_dependencies/step.py' %}
+--8<--
+advanced_topics/dynamic_dependencies/step.py
+--8<--
 ```
 
 Make the scripts executable and fire up StepUp to see how it deals with the amended step:
@@ -150,7 +154,9 @@ sb -j 1
 You should get the following terminal output:
 
 ```text
-{% include 'advanced_topics/dynamic_dependencies/stdout.txt' %}
+--8<--
+advanced_topics/dynamic_dependencies/stdout.txt
+--8<--
 ```
 
 The output shows that `./step.py` first stops early due to the missing file `input.txt`.
