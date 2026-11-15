@@ -54,13 +54,13 @@ import stat
 import sys
 import tempfile
 import traceback
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from functools import cache, partial
-from typing import Any, NoReturn, TypeVar
+from typing import Any, NoReturn, Self, TypeVar
 
 import attrs
 
-from .asyncio import iter_until_stopped
+from .asyncio import is_aborted_accept, iter_until_stopped
 from .exceptions import ConfigError, RPCClientUnusableError, RPCError, UsageError
 from .oscompat import af_unix_available
 from .path import Path, StrPath
@@ -1000,6 +1000,119 @@ class RPCServerConnection:
 
 
 @attrs.define(eq=False)
+class _TCPAcceptor:
+    """Accept connections on a listening TCP socket, instead of `asyncio.start_server`.
+
+    The Proactor event loop of Windows closes the listening socket of `asyncio.start_server`
+    when one accept fails because the peer reset its connection before it was accepted,
+    after which every client is refused (CPython gh-93821, observed with 3.11.18 and 3.14.10).
+    This class accepts with `loop.sock_accept()`, which leaves the listening socket open,
+    and skips such a failed accept.
+    On any other failure, it stops accepting, as `asyncio.start_server` does.
+
+    Remove this class and listen with `asyncio.start_server` again
+    once every supported Python version has the fix.
+    It was merged into the 3.14 and 3.15 branches on 2026-11-04,
+    after the releases 3.14.10 and 3.15.2, and it was not backported to 3.13 or older.
+    Check then whether `tolerate_proactor_connection_errors` in `asyncio.py`
+    still needs to handle failed accepts.
+    """
+
+    sock: socket.socket = attrs.field()
+    """The listening socket, in non-blocking mode."""
+
+    handle: Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]] = attrs.field()
+    """The coroutine function that serves an accepted connection,
+    with the same signature as the callback of `asyncio.start_server`."""
+
+    _accept_task: asyncio.Task | None = attrs.field(init=False, default=None)
+    """The task that accepts connections."""
+
+    _connection_tasks: set[asyncio.Task] = attrs.field(init=False, factory=set)
+    """The tasks that serve accepted connections, kept until they are done."""
+
+    @classmethod
+    def listen(
+        cls,
+        host: str,
+        handle: Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]],
+    ) -> Self:
+        """Listen on a free port of `host` and start accepting connections."""
+        sock = socket.create_server((host, 0))
+        try:
+            sock.setblocking(False)
+            acceptor = cls(sock, handle)
+        except BaseException:
+            sock.close()
+            raise
+        acceptor._accept_task = asyncio.create_task(acceptor._accept_loop(), name="rpc-accept")
+        return acceptor
+
+    @property
+    def port(self) -> int:
+        """The port on which connections are accepted."""
+        return self.sock.getsockname()[1]
+
+    async def stop(self):
+        """Stop accepting connections and close the listening socket.
+
+        The connections that were accepted already are served until they end.
+        """
+        if self._accept_task is not None:
+            self._accept_task.cancel()
+            # Unlike awaiting the task, this does not raise its cancellation in the caller.
+            await asyncio.wait([self._accept_task])
+
+    async def _accept_loop(self):
+        """Accept connections and serve each of them in a task of its own."""
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                try:
+                    conn, _ = await loop.sock_accept(self.sock)
+                except OSError as exc:
+                    if is_aborted_accept(exc):
+                        logger.debug(
+                            "Skipping an accept that failed because of the connection: %r", exc
+                        )
+                        continue
+                    loop.call_exception_handler(
+                        {
+                            "message": "Accept failed on a socket",
+                            "exception": exc,
+                            "socket": self.sock,
+                        }
+                    )
+                    return
+                task = asyncio.create_task(self._serve(conn), name="rpc-connection")
+                self._connection_tasks.add(task)
+                task.add_done_callback(self._connection_done)
+        finally:
+            self.sock.close()
+
+    async def _serve(self, conn: socket.socket):
+        """Serve one accepted connection."""
+        try:
+            reader, writer = await asyncio.open_connection(sock=conn)
+        except BaseException:
+            conn.close()
+            raise
+        await self.handle(reader, writer)
+
+    def _connection_done(self, task: asyncio.Task):
+        """Forget a served connection, and report how it failed, as `asyncio.start_server` does."""
+        self._connection_tasks.discard(task)
+        if not task.cancelled() and task.exception() is not None:
+            asyncio.get_running_loop().call_exception_handler(
+                {
+                    "message": "Unhandled exception while serving a connection",
+                    "exception": task.exception(),
+                    "task": task,
+                }
+            )
+
+
+@attrs.define(eq=False)
 class SocketRPCServer:
     """Accept connections on a socket and serve the RPC calls they carry.
 
@@ -1049,31 +1162,41 @@ class SocketRPCServer:
             and then stops the connections that are still open.
         """
         self._idle.set()
-        server = await self._listen()
+        stop_listening = await self._listen()
         await stop_event.wait()
         self._stopping = True
-        # Closing the server only stops it from accepting,
+        # Listening is stopped below, which does not end the connections being served,
         # so a connection whose peer keeps its side open keeps being served,
         # and such a peer would decide when this method returns.
         # Iterate over a copy: `_serve_connection` removes a connection when it stops serving.
         for connection in list(self._connections):
             connection.stop()
-        server.close()
+        await stop_listening()
         await self._idle.wait()
 
-    async def _listen(self) -> asyncio.Server:
-        """Start accepting connections, and only then create the socket path."""
+    async def _listen(self) -> Callable[[], Awaitable[None]]:
+        """Start accepting connections, and only then create the socket path.
+
+        Returns
+        -------
+        stop_listening
+            A coroutine function that stops accepting connections.
+        """
         if self.transport == "unix":
-            return await self._listen_unix()
+            server = await self._listen_unix()
+
+            async def stop_listening():
+                server.close()
+
+            return stop_listening
         self._token = secrets.token_bytes(TOKEN_SIZE)
-        server = await asyncio.start_server(self._serve_connection, TCP_HOST, 0)
+        acceptor = _TCPAcceptor.listen(TCP_HOST, self._serve_connection)
         try:
-            port = server.sockets[0].getsockname()[1]
-            _TCPEndpoint(TCP_HOST, port, self._token).write(self.socket_path)
+            _TCPEndpoint(TCP_HOST, acceptor.port, self._token).write(self.socket_path)
         except BaseException:
-            server.close()
+            await acceptor.stop()
             raise
-        return server
+        return acceptor.stop
 
     async def _listen_unix(self) -> asyncio.Server:
         """Listen on a Unix domain socket that appears at the socket path once it listens."""

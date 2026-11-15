@@ -32,7 +32,7 @@ import attrs
 from .asyncio import (
     iter_until_stopped,
     signal_handlers,
-    tolerate_proactor_shutdown_errors,
+    tolerate_proactor_connection_errors,
     wait_for_path,
 )
 from .cgroups import cgroup_scope_prefix
@@ -401,7 +401,7 @@ async def _async_build(args: argparse.Namespace) -> int:
         or if a requested feature is not available on this platform
         (see `_check_platform_support`).
     """
-    tolerate_proactor_shutdown_errors()
+    tolerate_proactor_connection_errors()
     _check_platform_support(args)
     rpc_transport = select_rpc_transport()
     stepup_root = get_stepup_root()

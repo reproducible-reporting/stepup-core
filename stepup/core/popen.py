@@ -39,7 +39,9 @@ __all__ = ("find_shell", "popen_args")
 POSIX_SHELL = "/bin/sh"
 """The shell of POSIX systems, which is also what `subprocess` runs there with `shell=True`."""
 
-SHELL_DOCS_URL = "https://reproducible-reporting.github.io/stepup-core/installation/"
+SHELL_DOCS_URL = (
+    "https://reproducible-reporting.github.io/stepup-core/installation/#posix-shell-on-windows"
+)
 """Where the documentation explains how to install a POSIX shell on Windows."""
 
 DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD"

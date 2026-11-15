@@ -15,9 +15,10 @@ from typing import Any, TypeVar
 from .path import Path
 
 __all__ = (
+    "is_aborted_accept",
     "iter_until_stopped",
     "signal_handlers",
-    "tolerate_proactor_shutdown_errors",
+    "tolerate_proactor_connection_errors",
     "wait_for_any_event",
     "wait_for_path",
     "wait_for_readable_fd",
@@ -149,20 +150,47 @@ def _relay_signal(
 #
 
 
-def tolerate_proactor_shutdown_errors() -> None:
-    """Let the running event loop finish closing a connection whose socket fails to shut down.
+ERROR_NETNAME_DELETED = 64
+"""The Windows error with which an accept fails when the peer has reset the connection."""
 
-    When a connection is closed, the Proactor event loop of Windows shuts down its socket
-    before closing it.
-    The shutdown can fail with an `OSError`,
-    e.g. a `ConnectionResetError` when the peer has already reset the connection.
-    The loop then reports an `Exception in callback`
-    and leaves the transport half closed, with an open socket.
-    After this function, the loop closes the socket of such a transport,
-    marks its protocol as notified of the lost connection,
-    and logs the failure at the `DEBUG` level only.
-    The transport stays attached to its `asyncio.Server`,
-    so `Server.wait_closed()` may still wait forever after such a failure.
+
+def is_aborted_accept(exc: BaseException) -> bool:
+    """Test whether an accept failed because of its connection, not because of the listener.
+
+    After such a failure, the listening socket can go on accepting other connections.
+    It happens when a peer resets its connection before the connection is accepted.
+    On Windows, the Proactor event loop then raises an `OSError`
+    with `winerror` equal to `ERROR_NETNAME_DELETED`,
+    as observed with Python 3.11.18 and 3.14.10.
+    Other event loops raise a `ConnectionAbortedError` or a `ConnectionResetError`.
+    """
+    if isinstance(exc, (ConnectionAbortedError, ConnectionResetError)):
+        return True
+    return isinstance(exc, OSError) and getattr(exc, "winerror", None) == ERROR_NETNAME_DELETED
+
+
+def tolerate_proactor_connection_errors() -> None:
+    """Let the running event loop cope with connections that fail on the Proactor event loop.
+
+    The Proactor event loop of Windows reports two failures that are harmless to a server,
+    and handles the first one incompletely:
+
+    - When a connection is closed, the loop shuts down its socket before closing it.
+      The shutdown can fail with an `OSError`,
+      e.g. a `ConnectionResetError` when the peer has already reset the connection.
+      The loop then reports an `Exception in callback`
+      and leaves the transport half closed, with an open socket.
+      After this function, the loop closes the socket of such a transport,
+      marks its protocol as notified of the lost connection,
+      and logs the failure at the `DEBUG` level only.
+      The transport stays attached to its `asyncio.Server`,
+      so `Server.wait_closed()` may still wait forever after such a failure.
+    - When an accept fails because of the connection, see `is_aborted_accept`,
+      the failure also ends a task of the loop's own, which nobody awaits.
+      The loop reports it as `Task exception was never retrieved`
+      when the task is collected.
+      After this function, that report is logged at the `DEBUG` level only.
+      What the failed accept means for the listening socket is up to the code that accepts.
 
     Every other exception goes to the handler that the loop had before,
     or to the default handler.
@@ -171,8 +199,22 @@ def tolerate_proactor_shutdown_errors() -> None:
     """
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(
-        functools.partial(_handle_proactor_shutdown_error, loop.get_exception_handler())
+        functools.partial(_handle_proactor_connection_error, loop.get_exception_handler())
     )
+
+
+def _handle_proactor_connection_error(
+    previous: Callable[[asyncio.AbstractEventLoop, dict[str, Any]], object] | None,
+    loop: asyncio.AbstractEventLoop,
+    context: dict[str, Any],
+) -> None:
+    """Handle an exception of the event loop, as set by `tolerate_proactor_connection_errors`."""
+    if _tolerate_failed_shutdown(context) or _tolerate_failed_accept(context):
+        return
+    if previous is None:
+        loop.default_exception_handler(context)
+    else:
+        previous(loop, context)
 
 
 # As of Python 3.14.10, the failing call is `self._sock.shutdown(socket.SHUT_RDWR)`
@@ -183,12 +225,14 @@ _CALL_CONNECTION_LOST = getattr(
 )
 
 
-def _handle_proactor_shutdown_error(
-    previous: Callable[[asyncio.AbstractEventLoop, dict[str, Any]], object] | None,
-    loop: asyncio.AbstractEventLoop,
-    context: dict[str, Any],
-) -> None:
-    """Handle an exception of the event loop, as set by `tolerate_proactor_shutdown_errors`."""
+def _tolerate_failed_shutdown(context: dict[str, Any]) -> bool:
+    """Finish closing a transport whose socket failed to shut down, if the context is about that.
+
+    Returns
+    -------
+    handled
+        Whether the context was about such a failure.
+    """
     exception = context.get("exception")
     callback = getattr(context.get("handle"), "_callback", None)
     if (
@@ -196,11 +240,7 @@ def _handle_proactor_shutdown_error(
         or not isinstance(exception, OSError)
         or getattr(callback, "__func__", None) is not _CALL_CONNECTION_LOST
     ):
-        if previous is None:
-            loop.default_exception_handler(context)
-        else:
-            previous(loop, context)
-        return
+        return False
     transport = callback.__self__
     logger.debug("Closing a socket that failed to shut down: %r", exception)
     # These are the remaining statements of the `finally` block, except for the detach.
@@ -209,6 +249,34 @@ def _handle_proactor_shutdown_error(
     transport._sock.close()
     transport._sock = None
     transport._called_connection_lost = True
+    return True
+
+
+# As of Python 3.14.10, `IocpProactor.accept` wraps the future of every accept in a task
+# that runs this coroutine, which re-raises a failure of the accept.
+# The name is compared as a string, because the class only exists on Windows.
+_ACCEPT_CORO_QUALNAME = "IocpProactor.accept.<locals>.accept_coro"
+
+
+def _tolerate_failed_accept(context: dict[str, Any]) -> bool:
+    """Log the unretrieved failure of an aborted accept quietly, if the context is about that.
+
+    Returns
+    -------
+    handled
+        Whether the context was about such a failure.
+    """
+    exception = context.get("exception")
+    task = context.get("future")
+    if (
+        exception is None
+        or not is_aborted_accept(exception)
+        or not isinstance(task, asyncio.Task)
+        or getattr(task.get_coro(), "__qualname__", None) != _ACCEPT_CORO_QUALNAME
+    ):
+        return False
+    logger.debug("Ignoring an accept that failed because of the connection: %r", exception)
+    return True
 
 
 #

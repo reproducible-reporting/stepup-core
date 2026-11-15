@@ -1145,6 +1145,12 @@ def shq(paths: StrPath | Iterable[StrPath]) -> str:
 
     Notes
     -----
+    The paths are written with `/` as their only separator, on every platform,
+    also when they are given as a `pathlib.Path`, which has backslashes on Windows.
+    Embed paths in a command with this function rather than with `str()` or an f-string,
+    because the words of a command are split with the quoting rules of a POSIX shell,
+    in which a backslash escapes the next character.
+
     Environment variables in `paths` are substituted immediately,
     and the variables referenced are added to the calling step's `env_deps` list.
     These substitutions are based on the state of `os.environ` in the calling script,
@@ -1187,7 +1193,10 @@ def run(
 
         - If `shell=True`: the command is passed to a POSIX shell, on every platform.
           Shell features like pipes and redirections are supported.
-          The shell is `/bin/sh`, or the one that the environment variable `STEPUP_SHELL` names.
+          The shell is `/bin/sh` on Linux and macOS,
+          a shell that StepUp looks for on Windows
+          (see [Installation](../installation.md#posix-shell-on-windows)),
+          or the one that the environment variable `STEPUP_SHELL` names.
         - If `shell=False` and the command is exactly `cp -p SRC DST`:
           StepUp copies the file itself, as [`copy()`][stepup.core.api.copy] explains.
         - If `shell=False` and the first word ends in `.py`:

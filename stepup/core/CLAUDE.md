@@ -66,10 +66,18 @@ tell the transports apart by the file type at the socket path,
 so they need no setting, and `STEPUP_DIRECTOR_SOCKET` and the `SOCKET` line of the
 director log have the same shape for both.
 
+A TCP server accepts connections with `_TCPAcceptor` instead of `asyncio.start_server`,
+which the Proactor event loop of Windows stops after one connection reset before its accept.
+Its docstring says when it can be dropped.
+
 The request bodies are unpickled, so whoever can connect can run code in the server.
 A TCP client therefore sends the token before anything else,
 and the server reads nothing more from a connection with a wrong token.
 The private temporary directory is the trust boundary for both transports.
+On Windows, the mode of the endpoint file has no effect,
+and the directory only has access rules of its own from Python 3.11.10 and 3.12.4 on
+(CVE-2024-4030, checked in the VM on 2026-11-15).
+With older versions, it inherits those of `TEMP`, which are private only by default.
 Never put the token in an environment variable or on a command line.
 
 Naming gotcha, two similar flags with different meanings:

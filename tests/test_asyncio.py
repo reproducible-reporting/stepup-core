@@ -4,6 +4,8 @@
 
 import asyncio
 import contextlib
+import errno
+import gc
 import logging
 import os
 import signal
@@ -14,10 +16,12 @@ import pytest
 from core_common import settled_task_names
 
 from stepup.core.asyncio import (
+    ERROR_NETNAME_DELETED,
     MAX_POLL_DELAY,
+    is_aborted_accept,
     iter_until_stopped,
     signal_handlers,
-    tolerate_proactor_shutdown_errors,
+    tolerate_proactor_connection_errors,
     wait_for_any_event,
     wait_for_path,
     wait_for_readable_fd,
@@ -370,7 +374,7 @@ async def _close_proactor_transport() -> tuple[
 
 
 async def test_proactor_shutdown_error_without_handler(caplog: pytest.LogCaptureFixture):
-    # This imitates the failure that tolerate_proactor_shutdown_errors handles.
+    # This imitates the failure that tolerate_proactor_connection_errors handles.
     transport, sock, protocol = await _close_proactor_transport()
     assert "Exception in callback" in caplog.text
     assert "ConnectionResetError" in caplog.text
@@ -380,9 +384,9 @@ async def test_proactor_shutdown_error_without_handler(caplog: pytest.LogCapture
     transport._sock = None
 
 
-async def test_tolerate_proactor_shutdown_errors(caplog: pytest.LogCaptureFixture):
+async def test_tolerate_proactor_connection_errors_shutdown(caplog: pytest.LogCaptureFixture):
     caplog.set_level(logging.DEBUG)
-    tolerate_proactor_shutdown_errors()
+    tolerate_proactor_connection_errors()
     transport, sock, protocol = await _close_proactor_transport()
     assert not [record for record in caplog.records if record.levelno >= logging.WARNING]
     assert "Closing a socket that failed to shut down" in caplog.text
@@ -400,20 +404,83 @@ def _raise_oserror():
     raise OSError("unrelated")
 
 
-async def test_tolerate_proactor_shutdown_errors_default(caplog: pytest.LogCaptureFixture):
-    tolerate_proactor_shutdown_errors()
+async def test_tolerate_proactor_connection_errors_default(caplog: pytest.LogCaptureFixture):
+    tolerate_proactor_connection_errors()
     asyncio.get_running_loop().call_soon(_raise_oserror)
     await asyncio.sleep(0)
     assert "Exception in callback" in caplog.text
     assert "unrelated" in caplog.text
 
 
-async def test_tolerate_proactor_shutdown_errors_previous():
+async def test_tolerate_proactor_connection_errors_previous():
     contexts = []
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(lambda loop, context: contexts.append(context))
-    tolerate_proactor_shutdown_errors()
+    tolerate_proactor_connection_errors()
     loop.call_soon(_raise_oserror)
     await asyncio.sleep(0)
     assert len(contexts) == 1
     assert str(contexts[0]["exception"]) == "unrelated"
+
+
+def _windows_error(winerror: int) -> OSError:
+    """Create an `OSError` with a Windows error code, also on other platforms."""
+    exc = OSError(errno.EINVAL, "The specified network name is no longer available")
+    exc.winerror = winerror
+    return exc
+
+
+@pytest.mark.parametrize(
+    ("exc", "result"),
+    [
+        (ConnectionResetError("reset"), True),
+        (ConnectionAbortedError("aborted"), True),
+        (_windows_error(ERROR_NETNAME_DELETED), True),
+        (_windows_error(10022), False),
+        (OSError(errno.EMFILE, "Too many open files"), False),
+        (ValueError("unrelated"), False),
+    ],
+)
+def test_is_aborted_accept(exc: BaseException, result: bool):
+    assert is_aborted_accept(exc) is result
+
+
+async def _accept_coro():
+    raise _windows_error(ERROR_NETNAME_DELETED)
+
+
+# The name of the coroutine in which the Proactor event loop re-raises a failed accept.
+_accept_coro.__qualname__ = "IocpProactor.accept.<locals>.accept_coro"
+
+
+async def _other_coro():
+    raise _windows_error(ERROR_NETNAME_DELETED)
+
+
+async def _collect_unretrieved_failure(coro_func) -> list[dict]:
+    """Let a task fail without retrieving its exception, and return what reaches the handler.
+
+    The handler set before `tolerate_proactor_connection_errors` collects the contexts.
+    """
+    contexts = []
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(lambda loop, context: contexts.append(context))
+    tolerate_proactor_connection_errors()
+    task = asyncio.create_task(coro_func())
+    await asyncio.wait([task])
+    del task
+    gc.collect()
+    return contexts
+
+
+async def test_tolerate_proactor_connection_errors_accept(caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.DEBUG)
+    contexts = await _collect_unretrieved_failure(_accept_coro)
+    assert contexts == []
+    assert "Ignoring an accept that failed because of the connection" in caplog.text
+
+
+async def test_tolerate_proactor_connection_errors_other_task():
+    contexts = await _collect_unretrieved_failure(_other_coro)
+    assert len(contexts) == 1
+    assert contexts[0]["message"] == "Task exception was never retrieved"

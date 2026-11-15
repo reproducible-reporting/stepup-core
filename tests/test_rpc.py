@@ -6,20 +6,23 @@ import asyncio
 import contextlib
 import copy
 import errno
+import gc
 import logging
 import os
 import pickle
 import secrets
 import socket
 import stat
+import struct
 import sys
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 import pytest
 import pytest_asyncio
 from core_common import EchoHandler, settled_task_names
 
-from stepup.core.asyncio import wait_for_path
+from stepup.core.asyncio import tolerate_proactor_connection_errors, wait_for_path
 from stepup.core.exceptions import (
     ConfigError,
     CyclicError,
@@ -191,6 +194,105 @@ async def test_serve_returns_without_the_connection_count_of_asyncio(
             assert await client.call.echo("hello") == "idle: hello"
         stop_event.set()
         await server_task
+
+
+def _reset_connection(address: tuple[str, int]):
+    """Connect to a server and reset the connection at once, instead of closing it."""
+    sock = socket.create_connection(address)
+    # The fields of `struct linger` are `u_short` on Windows and `int` on POSIX.
+    linger = struct.pack("HH" if sys.platform == "win32" else "ii", 1, 0)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, linger)
+    sock.close()
+
+
+@contextlib.asynccontextmanager
+async def _serve_tcp(socket_path: Path) -> AsyncIterator[_TCPEndpoint]:
+    """Run a `SocketRPCServer` on the TCP transport and yield where it listens."""
+    stop_event = asyncio.Event()
+    server_task = asyncio.create_task(
+        SocketRPCServer(EchoHandler("tcp"), str(socket_path), "tcp").serve(stop_event)
+    )
+    try:
+        while not socket_path.exists():
+            await asyncio.sleep(0.01)
+        yield _read_endpoint(socket_path)
+    finally:
+        stop_event.set()
+        await server_task
+
+
+async def test_tcp_server_survives_a_reset_before_the_accept(dir_sockets):
+    """A client that resets its connection before it is accepted may not stop the server.
+
+    The event loop is blocked while one client takes the pending accept
+    and a second one connects and resets its connection, so that it waits in the backlog.
+    The next accept then fails on the reset connection.
+    On Windows, the Proactor event loop closed the listening socket of `asyncio.start_server`
+    after this failure (CPython gh-93821), so the last client was refused.
+    """
+    contexts = []
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(lambda loop, context: contexts.append(context))
+    tolerate_proactor_connection_errors()
+    async with asyncio.timeout(10):
+        socket_path = dir_sockets / "socket"
+        async with _serve_tcp(socket_path) as endpoint:
+            address = (endpoint.host, endpoint.port)
+            # These calls block the event loop on purpose.
+            with socket.create_connection(address) as first:
+                first.sendall(endpoint.token)
+                _reset_connection(address)
+                time.sleep(0.1)
+                await asyncio.sleep(0.2)
+            async with SocketAsyncRPCClient(socket_path) as client:
+                assert await client.call.echo("hello") == "tcp: hello"
+    gc.collect()
+    assert contexts == []
+
+
+async def test_tcp_server_skips_an_aborted_accept(
+    dir_sockets, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    caplog.set_level(logging.DEBUG)
+    loop = asyncio.get_running_loop()
+    real_sock_accept = loop.sock_accept
+    failures = [ConnectionResetError("reset before the accept")]
+
+    async def sock_accept(sock):
+        if failures:
+            raise failures.pop()
+        return await real_sock_accept(sock)
+
+    monkeypatch.setattr(loop, "sock_accept", sock_accept)
+    async with asyncio.timeout(5):
+        socket_path = dir_sockets / "socket"
+        async with _serve_tcp(socket_path), SocketAsyncRPCClient(socket_path) as client:
+            assert await client.call.echo("hello") == "tcp: hello"
+    assert failures == []
+    assert "Skipping an accept that failed because of the connection" in caplog.text
+
+
+async def test_tcp_server_stops_accepting_after_another_failure(
+    dir_sockets, monkeypatch: pytest.MonkeyPatch
+):
+    contexts = []
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(lambda loop, context: contexts.append(context))
+
+    async def sock_accept(sock):
+        raise OSError(errno.EMFILE, "Too many open files")
+
+    monkeypatch.setattr(loop, "sock_accept", sock_accept)
+    async with asyncio.timeout(5):
+        socket_path = dir_sockets / "socket"
+        async with _serve_tcp(socket_path) as endpoint:
+            while len(contexts) == 0:
+                await asyncio.sleep(0.01)
+            # The listening socket is closed, as `asyncio.start_server` does after such a failure.
+            with pytest.raises(ConnectionRefusedError):
+                socket.create_connection((endpoint.host, endpoint.port)).close()
+    assert [context["message"] for context in contexts] == ["Accept failed on a socket"]
+    assert contexts[0]["exception"].errno == errno.EMFILE
 
 
 def test_sync_socket_rpc_client(socket_server_path):
