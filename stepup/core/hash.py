@@ -19,6 +19,7 @@ import attrs
 from .cattrs import json_converter
 from .exceptions import ConsistencyError, HashCancelledError, HashFailedError
 from .path import Path
+from .utils import open_regular_file
 
 __all__ = (
     "HASH_CHUNK_SIZE",
@@ -137,6 +138,9 @@ def compute_file_digest(
     HashFailedError
         When `path` is a directory,
         including a followed symbolic link that points to one.
+    NotARegularFileError
+        When `path` is another file that is not a regular file, such as a FIFO or a device,
+        which is refused without waiting for it.
     OSError
         When the file cannot be opened,
         e.g. a followed symbolic link whose target does not exist.
@@ -156,7 +160,7 @@ def compute_file_digest(
     # With buffering=0, readinto performs at most one syscall,
     # so nread may be smaller than the buffer for pipes or network file systems;
     # only nread == 0 means EOF.
-    with open(path, "rb", buffering=0) as fh:
+    with open(path, "rb", buffering=0, opener=open_regular_file) as fh:
         while True:
             if cancel_event is not None and cancel_event.is_set():
                 raise HashCancelledError(path)
@@ -303,6 +307,9 @@ class FileHash:
             When `cancel_event` was set before the whole file was hashed.
         HashFailedError
             When `path` is an existing directory.
+        NotARegularFileError
+            When `path` is another file that is not a regular file, such as a FIFO or a device,
+            which is refused without waiting for it.
         """
         # Check for cancellation early.
         if cancel_event is not None and cancel_event.is_set():

@@ -8,12 +8,13 @@ import logging
 import os
 import re
 import shlex
+import stat
 import sys
 from collections.abc import Iterable
 from typing import TextIO
 
 from .constants import DIRECTOR_LOG_PID_PREFIX, DIRECTOR_LOG_SOCKET_PREFIX
-from .exceptions import StepUpError
+from .exceptions import NotARegularFileError, StepUpError
 from .path import Path, StrPath, coerce_str
 
 if sys.platform == "win32":
@@ -28,6 +29,7 @@ __all__ = (
     "is_process_running",
     "is_terminal",
     "merge_resources",
+    "open_regular_file",
     "parse_resources",
     "query_director_log",
     "rich_legacy_windows",
@@ -308,6 +310,62 @@ def write_utf8_unless_terminal() -> None:
         if isinstance(stream, io.TextIOWrapper) and not is_terminal(stream):
             # Without an explicit `errors`, `reconfigure` would reset that of `stderr` to `strict`.
             stream.reconfigure(encoding="utf-8", errors=stream.errors, newline="\n")
+
+
+_IRREGULAR_FILE_KINDS = (
+    (stat.S_ISDIR, "a directory"),
+    (stat.S_ISFIFO, "a FIFO"),
+    (stat.S_ISCHR, "a character device"),
+    (stat.S_ISBLK, "a block device"),
+    (stat.S_ISSOCK, "a socket"),
+)
+"""The kinds of files that are not regular files, with their names in error messages."""
+
+
+def open_regular_file(path: StrPath, flags: int, mode: int = 0o777) -> int:
+    """Open a file like `os.open`, but only when it is a regular file.
+
+    A FIFO or a device is opened without waiting for the other side, and then refused.
+    Use it as the `opener` of `open()`, which adds the flags that the platform needs,
+    such as `O_BINARY` on Windows.
+
+    Parameters
+    ----------
+    path, flags, mode
+        As in `os.open`.
+
+    Returns
+    -------
+    fd
+        The file descriptor of the regular file, in blocking mode.
+
+    Raises
+    ------
+    NotARegularFileError
+        When the file is not a regular file.
+    OSError
+        When the file cannot be opened,
+        e.g. a FIFO without a reader that is opened for writing fails with `ENXIO`.
+    """
+    # Windows has no `O_NONBLOCK`, and no FIFOs in the file system either.
+    nonblocking = getattr(os, "O_NONBLOCK", 0)
+    fd = os.open(path, flags | nonblocking, mode)
+    try:
+        st_mode = os.fstat(fd).st_mode
+        if not stat.S_ISREG(st_mode):
+            kind = next(
+                (kind for test, kind in _IRREGULAR_FILE_KINDS if test(st_mode)),
+                "a file of another kind",
+            )
+            raise NotARegularFileError(f"Not a regular file but {kind}: {path}")
+        if nonblocking:
+            # Later reads and writes are ordinary ones, also on a FUSE file system,
+            # which would pass the flag on to its daemon.
+            os.set_blocking(fd, True)
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
 
 
 def is_process_running(pid: int) -> bool:

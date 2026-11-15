@@ -14,6 +14,7 @@ __all__ = (
     "HashError",
     "HashFailedError",
     "InputNotFoundError",
+    "NotARegularFileError",
     "PathError",
     "RPCClientUnusableError",
     "RPCError",
@@ -143,6 +144,14 @@ class CgroupError(RuntimeError):
 
 class RunError(RuntimeError):
     """An error raised by the `run` module while executing a command."""
+
+
+class NotARegularFileError(OSError):
+    """A file whose content must be read or written is not a regular file.
+
+    A FIFO or a device is a stream rather than content, so it cannot be hashed or copied.
+    `OSError` is the base, because the file cannot be used, just like one that cannot be opened.
+    """
 
 
 class HashError(Exception):

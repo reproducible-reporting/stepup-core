@@ -8,9 +8,9 @@ from hashlib import sha256
 
 import attrs
 import pytest
-from conftest import TrippingEvent
+from conftest import TrippingEvent, call_with_fifo_guard
 
-from stepup.core.exceptions import HashCancelledError, HashFailedError
+from stepup.core.exceptions import HashCancelledError, HashFailedError, NotARegularFileError
 from stepup.core.hash import (
     HASH_CHUNK_SIZE,
     FileHash,
@@ -85,6 +85,29 @@ def test_hash_symbolic_link_dir(path_tmp: Path):
     with pytest.raises(HashFailedError):
         compute_file_digest(path_symlink)
     assert compute_file_digest(path_symlink, follow_symlinks=False) == sha256(b"sub").digest()
+
+
+HASH_FUNCTIONS = [
+    pytest.param(compute_file_digest, id="compute_file_digest"),
+    pytest.param(lambda path: FileHash.unknown().refreshed(path), id="refreshed"),
+]
+
+
+@pytest.mark.requires_fifo
+@pytest.mark.parametrize("hash_function", HASH_FUNCTIONS)
+def test_hash_refuses_a_fifo(hash_function, path_tmp: Path):
+    fifo = path_tmp / "fifo"
+    os.mkfifo(fifo)
+    with pytest.raises(NotARegularFileError) as excinfo:
+        call_with_fifo_guard(fifo, hash_function, fifo)
+    assert str(excinfo.value) == f"Not a regular file but a FIFO: {fifo}"
+
+
+@pytest.mark.parametrize("hash_function", HASH_FUNCTIONS)
+def test_hash_refuses_a_device(hash_function):
+    with pytest.raises(NotARegularFileError) as excinfo:
+        hash_function(Path(os.devnull))
+    assert str(excinfo.value) == f"Not a regular file but a character device: {Path(os.devnull)}"
 
 
 def test_digest_cancelled_before_reading(path_tmp: Path):

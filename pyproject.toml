@@ -124,6 +124,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
     "requires_af_unix: skip unless Unix domain sockets (socket.AF_UNIX) are available",
+    "requires_fifo: skip unless FIFOs can be created in the file system (os.mkfifo)",
     "requires_file_modes: skip unless files have permission bits that chmod changes",
     "requires_forkserver: skip unless the forkserver is available and STEPUP_BUILD_FORKSERVER != 0",
     "requires_termios: skip unless POSIX terminal control (termios, pty) is available",

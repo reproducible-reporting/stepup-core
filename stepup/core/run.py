@@ -42,7 +42,7 @@ from .path import Path
 from .popen import popen_args
 from .step import Step
 from .tracebacks import print_step_traceback
-from .utils import escape_control_chars
+from .utils import escape_control_chars, open_regular_file
 
 if sys.platform == "win32":
     from .winapi import JobObject
@@ -1170,6 +1170,8 @@ def _copy_file(src: Path, dst: Path, cancel_event: threading.Event) -> bool:
     Like `cp`, this follows symbolic links, copies into `dst` when that is a directory,
     overwrites an existing destination in place,
     and silently keeps the owner of the copy when it may not be changed.
+    Unlike `cp`, it refuses a source or a destination that is not a regular file,
+    such as a FIFO or a device, instead of reading or writing its stream.
     Unlike `shutil.copystat`, it leaves extended attributes alone,
     which include the security context of SELinux.
 
@@ -1190,6 +1192,8 @@ def _copy_file(src: Path, dst: Path, cancel_event: threading.Event) -> bool:
 
     Raises
     ------
+    NotARegularFileError
+        When `src` or `dst` is not a regular file, which is refused without waiting for it.
     OSError
         When the file cannot be copied.
     """
@@ -1197,7 +1201,7 @@ def _copy_file(src: Path, dst: Path, cancel_event: threading.Event) -> bool:
         raise IsADirectoryError(errno.EISDIR, "The source is a directory", str(src))
     if dst.is_dir():
         dst = dst / src.name
-    with open(src, "rb", buffering=0) as fsrc:
+    with open(src, "rb", buffering=0, opener=open_regular_file) as fsrc:
         src_stat = os.fstat(fsrc.fileno())
         # Opening the destination truncates it, which would destroy the source.
         if dst.exists() and dst.samefile(src):
@@ -1205,7 +1209,9 @@ def _copy_file(src: Path, dst: Path, cancel_event: threading.Event) -> bool:
                 errno.EINVAL, "The source and the destination are the same file", str(src)
             )
         # A new destination is private until it gets the permission bits of the source.
-        opener = functools.partial(os.open, mode=stat.S_IRUSR | stat.S_IWUSR)
+        # The truncation by `"wb"` happens before the opener checks the kind of file,
+        # which is harmless, because it has no effect on a FIFO or a device.
+        opener = functools.partial(open_regular_file, mode=stat.S_IRUSR | stat.S_IWUSR)
         with open(dst, "wb", opener=opener) as fdst:
             buf = bytearray(COPY_CHUNK_SIZE)
             view = memoryview(buf)

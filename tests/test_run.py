@@ -3,6 +3,7 @@
 """Unit tests for stepup.core.run"""
 
 import asyncio
+import errno
 import json
 import multiprocessing
 import os
@@ -18,10 +19,11 @@ import time
 from types import SimpleNamespace
 
 import pytest
+from conftest import call_with_fifo_guard
 
 import stepup.core.run as run_mod
 from stepup.core.enums import StopLevel
-from stepup.core.exceptions import RunError
+from stepup.core.exceptions import NotARegularFileError, RunError
 from stepup.core.outcome import ResourceUsage
 from stepup.core.path import Path
 from stepup.core.run import (
@@ -879,6 +881,46 @@ def test_copy_file_refuses_to_copy_a_file_onto_itself(tmp_path):
     assert src.read_bytes() == data
 
 
+@pytest.mark.requires_fifo
+def test_copy_file_refuses_a_fifo_as_source(tmp_path):
+    fifo = Path(tmp_path / "src.fifo")
+    os.mkfifo(fifo)
+    dst = Path(tmp_path / "dst.bin")
+    with pytest.raises(NotARegularFileError, match="FIFO"):
+        call_with_fifo_guard(fifo, _copy_file, fifo, dst, threading.Event())
+    assert not dst.exists()
+
+
+@pytest.mark.requires_fifo
+@pytest.mark.parametrize("reader", [False, True])
+def test_copy_file_refuses_a_fifo_as_destination(reader: bool, tmp_path):
+    """A FIFO without a reader fails to open, a FIFO with a reader is refused once it is open."""
+    src = Path(tmp_path / "src.bin")
+    _write_source(src, 100)
+    fifo = Path(tmp_path / "dst.fifo")
+    os.mkfifo(fifo)
+    fd_read = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK) if reader else None
+    try:
+        with pytest.raises(OSError) as excinfo:
+            call_with_fifo_guard(fifo, _copy_file, src, fifo, threading.Event())
+        if reader:
+            assert isinstance(excinfo.value, NotARegularFileError)
+            assert os.read(fd_read, 1) == b""
+        else:
+            assert excinfo.value.errno == errno.ENXIO
+    finally:
+        if fd_read is not None:
+            os.close(fd_read)
+    assert stat.S_ISFIFO(fifo.lstat().st_mode)
+
+
+def test_copy_file_refuses_a_device_as_source(tmp_path):
+    dst = Path(tmp_path / "dst.bin")
+    with pytest.raises(NotARegularFileError, match="character device"):
+        _copy_file(Path(os.devnull), dst, threading.Event())
+    assert not dst.exists()
+
+
 def test_builtin_copy_success(tmp_path):
     src = tmp_path / "src.bin"
     data = _write_source(src, 100)
@@ -906,6 +948,18 @@ def test_builtin_copy_failure(problem: str, tmp_path):
     assert outcome.stderr.startswith(f"Failed to copy {Path(src)} to {Path(dst)}: ")
     assert outcome.stderr.endswith("\n")
     assert not dst.exists()
+
+
+@pytest.mark.requires_fifo
+def test_builtin_copy_refuses_a_fifo(tmp_path):
+    fifo = Path(tmp_path / "src.fifo")
+    os.mkfifo(fifo)
+    dst = Path(tmp_path / "dst.bin")
+    outcome = call_with_fifo_guard(fifo, _builtin_copy, fifo, dst, threading.Event())
+    assert outcome.returncode == 1
+    assert outcome.stderr == (
+        f"Failed to copy {fifo} to {dst}: Not a regular file but a FIFO: {fifo}\n"
+    )
 
 
 class _CountdownEvent(threading.Event):

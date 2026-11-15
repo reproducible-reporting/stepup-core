@@ -34,6 +34,8 @@ StepUp runs as two process types:
   one thread per hash computation inside the director process, see `run.py`.
   The chunked digest loop releases the GIL and checks a cancel event between 256 KiB chunks,
   so hashes are concurrent and promptly interruptible.
+  Only regular files are hashed, and a FIFO or a device is refused without waiting for it
+  (`utils.open_regular_file`).
   The pure functions `compute_inp_hashes` / `compute_out_hashes` / `compute_both_hashes` are
   what actually runs inside a `ThreadWorker`; `Executor` wraps them via `_run_work_thread`.
 - **TUI** (`tui.py`):

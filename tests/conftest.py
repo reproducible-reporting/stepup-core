@@ -3,6 +3,7 @@
 """Fixtures for testing StepUp."""
 
 import asyncio
+import concurrent.futures
 import contextlib
 import hashlib
 import os
@@ -10,6 +11,7 @@ import stat
 import tempfile
 import threading
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Iterator
+from typing import TypeVar
 
 import attrs
 import pytest
@@ -55,6 +57,11 @@ def _symlinks_available() -> bool:
     return True
 
 
+def _fifo_available() -> bool:
+    """Whether FIFOs can be created in the file system, which Windows does not offer."""
+    return hasattr(os, "mkfifo")
+
+
 def _usr_bin_env_available() -> bool:
     """Whether `/usr/bin/env` exists, as it does on every POSIX system."""
     return Path("/usr/bin/env").is_file()
@@ -62,6 +69,7 @@ def _usr_bin_env_available() -> bool:
 
 CAPABILITY_MARKERS = {
     "requires_af_unix": (af_unix_available, "requires Unix domain sockets (socket.AF_UNIX)"),
+    "requires_fifo": (_fifo_available, "requires FIFOs in the file system (os.mkfifo)"),
     "requires_file_modes": (file_modes_available, "requires permission bits of files (chmod)"),
     "requires_forkserver": (
         _forkserver_enabled,
@@ -351,3 +359,36 @@ class TrippingEvent(threading.Event):
         if self.polls > self.trip_after:
             self.set()
         return super().is_set()
+
+
+FIFO_DEADLINE = 5.0
+"""Seconds after which a call counts as blocked on a FIFO, well within the budget of a test."""
+
+T = TypeVar("T")
+
+
+def call_with_fifo_guard(fifo: str, func: Callable[..., T], *args) -> T:
+    """Call a function in a thread, and fail when it waits for the other side of a FIFO.
+
+    A test that would hang when a regression makes `func` wait for the FIFO
+    then fails with its own message, instead of on the timeout of the whole test.
+    The thread is released by opening both sides of the FIFO, so that it does not outlive the test.
+
+    Returns
+    -------
+    result
+        The result of `func`, whose exception is raised again.
+    """
+    with concurrent.futures.ThreadPoolExecutor(1) as pool:
+        future = pool.submit(func, *args)
+        try:
+            return future.result(timeout=FIFO_DEADLINE)
+        except TimeoutError:
+            # Opening for reading does not wait with `O_NONBLOCK`,
+            # and it lets the opening for writing succeed.
+            fd_read = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
+            try:
+                os.close(os.open(fifo, os.O_WRONLY | os.O_NONBLOCK))
+            finally:
+                os.close(fd_read)
+            pytest.fail(f"Waited more than {FIFO_DEADLINE} s for the other side of {fifo}")

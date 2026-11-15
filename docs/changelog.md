@@ -141,6 +141,9 @@ which are fixed in this release.
 - A `stepup` command that contacts a director that is still starting up,
   e.g. `stepup wait` right after `stepup build &`,
   no longer fails now and then with `Connection refused`.
+- An input or output that is not a regular file, such as a FIFO or a device,
+  makes the step fail with an error message,
+  instead of StepUp waiting for it forever when it tries to hash or copy the file.
 
 ## [4.0.3][] - 2026-09-19 {: #v4.0.3 }
 
