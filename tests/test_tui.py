@@ -1959,7 +1959,7 @@ def test_iter_keystrokes_yields_from_pty(monkeypatch: pytest.MonkeyPatch) -> Non
     `read()` until a newline arrives).
 
     Neither fd is closed at the end: `_iter_keystrokes`' background reader thread stays
-    blocked in `sys.stdin.read(1)` after the generator closes (see its own docstring), and
+    blocked in a read of the slave after the generator closes (see its own docstring), and
     closing the master out from under it, unlike the real process exit that normally ends
     it, turns that blocking read into an `OSError` raised on a daemon thread pytest has no
     test to attribute it to.

@@ -1298,6 +1298,7 @@ _CONSOLE_POLL_INTERVAL = 0.1
 async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, None]:
     """Yield keystrokes from stdin, one at a time, until `stop_event` is set.
 
+    Keystrokes come from the stream that is `sys.stdin` when the iteration starts.
     A POSIX terminal must already be in raw mode, see `RawTerminal`.
     A Windows console needs no preparation, see `read_console_keys`.
 
@@ -1308,7 +1309,7 @@ async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, Non
     which breaks `print` and `rich.print` for large output.
     On Windows, the event loop cannot wait for console input.
 
-    On POSIX, the background thread may still be blocked in `sys.stdin.read(1)`
+    On POSIX, the background thread may still be blocked in a read of stdin
     after this generator closes,
     since there is no portable way to interrupt a blocking read on stdin from another thread.
     It is daemonic and the process is about to exit anyway,
@@ -1317,10 +1318,13 @@ async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, Non
     """
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue()
+    # The POSIX thread may outlive this generator,
+    # so it must not read from a stream that replaces `sys.stdin` later.
+    stdin = sys.stdin
 
     def _stdin_loop():
         while True:
-            ch = sys.stdin.read(1)
+            ch = stdin.read(1)
             # read() keeps returning an empty string when stdin is closed, without blocking.
             if ch == "":
                 break
@@ -1329,7 +1333,7 @@ async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, Non
     stop_reading = threading.Event()
 
     def _console_loop():
-        fd = sys.stdin.fileno()
+        fd = stdin.fileno()
         # Without a console that can be read, there are no keys to wait for,
         # which is no reason to disturb the build.
         with contextlib.suppress(OSError):
