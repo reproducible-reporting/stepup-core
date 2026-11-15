@@ -11,7 +11,7 @@ import stat
 import tempfile
 import threading
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Iterator
-from typing import TypeVar
+from typing import Self, TypeVar
 
 import attrs
 import pytest
@@ -359,6 +359,46 @@ class TrippingEvent(threading.Event):
         if self.polls > self.trip_after:
             self.set()
         return super().is_set()
+
+
+STUCK_DEADLINE = 5.0
+"""Seconds within which a `StuckWork` must start or end, well within the budget of a test."""
+
+
+class StuckWork:
+    """The work of a `ThreadWorker` that ignores its cancel event, like a stuck system call.
+
+    It returns `"released"` or raises `error` once `release` is set.
+    Use it as a context manager, which sets `release` at the end and joins the thread,
+    so that the thread does not outlive the test.
+    """
+
+    def __init__(self, error: Exception | None = None):
+        self.error = error
+        self.started = threading.Event()
+        self.release = threading.Event()
+        self.thread: threading.Thread | None = None
+
+    def __call__(self, *args) -> str:
+        self.thread = threading.current_thread()
+        self.started.set()
+        self.release.wait(2 * STUCK_DEADLINE)
+        if self.error is not None:
+            raise self.error
+        return "released"
+
+    async def wait_started(self) -> None:
+        """Wait until the work runs in its thread."""
+        assert await asyncio.to_thread(self.started.wait, STUCK_DEADLINE)
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        self.release.set()
+        if self.thread is not None:
+            self.thread.join(STUCK_DEADLINE)
+            assert not self.thread.is_alive()
 
 
 FIFO_DEADLINE = 5.0

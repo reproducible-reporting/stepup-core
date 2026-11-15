@@ -25,7 +25,7 @@ from typing import Any
 import attrs
 
 from .enums import FileState, HashUpdateCause, StepState, StopLevel
-from .exceptions import HashCancelledError
+from .exceptions import HashCancelledError, WorkAbandonedError
 from .file import File
 from .hash import (
     FileHash,
@@ -543,7 +543,7 @@ class Executor:
     async def _run_work_thread(self, run: Run, work: Callable[[threading.Event], Any]) -> Any:
         """Run a GIL-releasing computation in a thread.
 
-        Returns `None` if the computation was cancelled by an interrupted shutdown
+        Returns `None` if the computation was cancelled or abandoned by an interrupted shutdown
         (see `Executor.interrupt`) or failed outright,
         in which case `run` has already been marked failed.
         """
@@ -555,6 +555,11 @@ class Executor:
             except HashCancelledError:
                 self._fail_run_with_message(
                     run, "Hash computation was cancelled because the build is shutting down."
+                )
+                return None
+            except WorkAbandonedError:
+                self._fail_run_with_message(
+                    run, "Hash computation was abandoned because it did not stop when asked."
                 )
                 return None
             except Exception as exc:  # noqa: BLE001
@@ -629,6 +634,15 @@ class Executor:
             except HashCancelledError:
                 hash_job.future.cancel()
                 await self.reporter("ERROR", f"Hash cancelled for {hash_job.path}")
+                return
+            except WorkAbandonedError:
+                # Like a cancelled hash, and unlike one that failed,
+                # this says nothing about the file, so the scheduler is not drained.
+                hash_job.future.cancel()
+                await self.reporter(
+                    "ERROR",
+                    f"Hash abandoned for {hash_job.path} because it did not stop when asked",
+                )
                 return
             except Exception as exc:  # noqa: BLE001
                 # E.g. a `PermissionError` from `stat()`,

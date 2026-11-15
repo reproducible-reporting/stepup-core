@@ -146,6 +146,12 @@ which are fixed in this release.
 - An input or output that is not a regular file, such as a FIFO or a device,
   makes the step fail with an error message,
   instead of StepUp waiting for it forever when it tries to hash or copy the file.
+- When a hash or a copy made by `copy()` is stuck in the operating system,
+  e.g. on an unresponsive network file system,
+  the last stage of stopping a build no longer waits for it,
+  i.e. the third `q`, or the end of the grace period after `Ctrl+C`.
+  The step fails and StepUp exits normally,
+  instead of not exiting after `q` or being killed after `Ctrl+C`.
 
 ## [4.0.3][] - 2026-09-19 {: #v4.0.3 }
 

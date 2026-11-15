@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 import attrs
 import pytest
+from conftest import StuckWork
 
 import stepup.core.run as run_mod
 from stepup.core.enums import HashUpdateCause, Need, StepState, StopLevel
@@ -141,7 +142,7 @@ async def testrun_work_thread_interrupt():
     task = asyncio.ensure_future(executor._run_work_thread(run, work))
     await asyncio.to_thread(started.wait, 10)
 
-    # Exercises the ThreadWorker branch in interrupt(); the stop level is ignored there.
+    # Exercises the ThreadWorker branch in interrupt(), which cancels the work at every level.
     executor.interrupt(StopLevel.TERMINATE)
 
     # Must not propagate as a task exception: any error from the work callable fails
@@ -168,6 +169,22 @@ async def testrun_work_thread_exception():
     assert "boom" in run.outcome.stderr
     assert run.worker is None
     assert 13 not in executor.running
+
+
+async def testrun_work_thread_abandoned():
+    executor = _make_executor()
+    run = _make_worker_run(14)
+    with StuckWork() as work:
+        task = asyncio.create_task(executor._run_work_thread(run, work))
+        await work.wait_started()
+        executor.interrupt(StopLevel.KILL)
+        result = await asyncio.wait_for(task, 5)
+
+    assert result is None
+    assert run.success is False
+    assert "abandoned" in run.outcome.stderr
+    assert run.worker is None
+    assert 14 not in executor.running
 
 
 class _FakeProcessWorker(Worker):
@@ -592,6 +609,27 @@ async def test_run_hash_job_cancelled_cancels_future_without_raising(monkeypatch
     await executor.run_hash_job(hash_job)  # must not raise
 
     assert hash_job.future.cancelled()
+
+
+async def test_run_hash_job_abandoned_cancels_future_without_draining(monkeypatch):
+    """An abandoned hash says nothing about the file, unlike one that failed."""
+    reporter = _FakeReporter()
+    scheduler = SimpleNamespace(draining=False)
+    executor = _make_executor(reporter=reporter, scheduler=scheduler)
+    hash_job = HashJob("foo.txt", FileHash.unknown(), -1)
+    with StuckWork() as work:
+        monkeypatch.setattr(FileHash, "refreshed", work)
+        task = asyncio.create_task(executor.run_hash_job(hash_job))
+        await work.wait_started()
+        executor.interrupt(StopLevel.KILL)
+        await asyncio.wait_for(task, 5)  # must not raise
+
+    assert hash_job.future.cancelled()
+    assert scheduler.draining is False
+    tag, label, _pages = reporter.calls[-1]
+    assert tag == "ERROR"
+    assert label.startswith("Hash abandoned for foo.txt")
+    assert -1 not in executor.running
 
 
 async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workflow, monkeypatch):

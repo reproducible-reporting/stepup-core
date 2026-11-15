@@ -22,6 +22,7 @@ __all__ = (
     "StepUpError",
     "ToolError",
     "UsageError",
+    "WorkAbandonedError",
 )
 
 
@@ -144,6 +145,13 @@ class CgroupError(RuntimeError):
 
 class RunError(RuntimeError):
     """An error raised by the `run` module while executing a command."""
+
+
+class WorkAbandonedError(Exception):
+    """The director stopped waiting for a `ThreadWorker`, whose thread did not stop when asked.
+
+    A thread cannot be killed, so it may still be running after this is raised.
+    """
 
 
 class NotARegularFileError(OSError):

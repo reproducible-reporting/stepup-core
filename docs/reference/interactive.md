@@ -49,6 +49,8 @@ These commands are defined as follows:
   If it takes too long for the steps to complete, you can press `q` again to kill them with `SIGINT`.
   Press `q` for a third time to kill the steps with `SIGKILL`. (nuclear option)
   On Windows, `CTRL_BREAK_EVENT` and `TerminateJobObject` take the place of these signals.
+  A copy or a hash that StepUp carries out itself cannot be killed,
+  so StepUp then stops waiting for it and marks the step as failed.
 - `d = drain`:
   StepUp will not start new jobs and lets the running steps finish.
   As soon as no steps are running, StepUp transitions into the *watch phase*.
@@ -70,6 +72,8 @@ Every running step is interrupted with `SIGINT`,
 and whatever is still running a few seconds later is killed with `SIGKILL`,
 so a single `Ctrl+C` is always enough to get your shell prompt back.
 (A second `Ctrl+C` skips the waiting, and a third one kills the director itself.)
+A copy or a hash that StepUp carries out itself is not killed,
+but StepUp stops waiting for it, as with the third `q`.
 An aborted build sets the `2` bit in the [return code](returncode.md).
 Windows interrupts and kills steps by other means,
 see [Using StepUp in a Windows Console](#using-stepup-in-a-windows-console).

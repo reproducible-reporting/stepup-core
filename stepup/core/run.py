@@ -34,7 +34,7 @@ import attrs
 from .api import amend
 from .asyncio import wait_for_readable_fd
 from .enums import StopLevel
-from .exceptions import ConfigError, RunError
+from .exceptions import ConfigError, RunError, WorkAbandonedError
 from .extapi import get_local_import_paths
 from .oscompat import suspend_available
 from .outcome import ChildOutcome, ResourceUsage
@@ -190,30 +190,66 @@ class ThreadWorker(Worker):
     _future: asyncio.Future = attrs.field(init=False)
     """The future that will be resolved with the result of `work` or its exception."""
 
+    _exited: asyncio.Future = attrs.field(init=False)
+    """The future that is resolved when `work` has returned or raised."""
+
+    _abandoned: asyncio.Future = attrs.field(init=False)
+    """The future that is resolved when `interrupt` gives up waiting for the thread."""
+
     _thread: threading.Thread = attrs.field(init=False)
     """The dedicated thread that runs `work`."""
 
     def __attrs_post_init__(self):
         self._loop = asyncio.get_running_loop()
         self._future = self._loop.create_future()
+        self._exited = self._loop.create_future()
+        self._abandoned = self._loop.create_future()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
     async def run_in_thread(self) -> Any:
-        """Start the thread, wait for its result and return it, re-raising its exception."""
+        """Start the thread, wait for its result and return it, re-raising its exception.
+
+        When the waiting task is cancelled, the thread is still waited for,
+        until it returns or until it is abandoned.
+
+        Raises
+        ------
+        WorkAbandonedError
+            When `interrupt` abandoned the thread before it returned.
+        """
         self._thread.start()
         try:
-            return await self._future
+            await asyncio.wait({self._future, self._abandoned}, return_when=asyncio.FIRST_COMPLETED)
+            if not self._future.done():
+                raise WorkAbandonedError(
+                    f"Abandoned the background compute thread of job {self.job_i}."
+                )
+            return self._future.result()
         finally:
             self._cancel_event.set()
-            # Try to join without waiting, or join in a thread pool if needed.
-            self._thread.join(timeout=0)
-            if self._thread.is_alive():
-                await asyncio.get_running_loop().run_in_executor(None, self._thread.join)
+            # Unlike awaiting it, `asyncio.wait` leaves the future pending when the task is
+            # cancelled, and a result that arrives after this is dropped by `_resolve`.
+            self._future.cancel()
+            if not (self._exited.done() or self._abandoned.done()):
+                await asyncio.wait(
+                    {self._exited, self._abandoned}, return_when=asyncio.FIRST_COMPLETED
+                )
 
     def interrupt(self, level: StopLevel) -> None:
-        """Cancel the computation, whatever the level, because a thread cannot be killed."""
+        """Cancel the computation, and at `StopLevel.KILL` also stop waiting for the thread.
+
+        A thread cannot be killed.
+        An abandoned thread keeps running until it notices the cancellation,
+        e.g. when a system call that blocks it returns, or until the director exits.
+        """
         logger.info("Cancelling background compute thread for job %d", self.job_i)
         self._cancel_event.set()
+        if level == StopLevel.KILL and not self._abandoned.done():
+            if self._thread.is_alive():
+                logger.warning(
+                    "Abandoning the unresponsive background compute thread for job %d", self.job_i
+                )
+            self._abandoned.set_result(None)
 
     def suspend(self) -> None:
         """Ignore the suspend call.
@@ -233,17 +269,15 @@ class ThreadWorker(Worker):
             outcome, error = self.work(self._cancel_event), None
         except BaseException as exc:  # noqa: BLE001
             outcome, error = None, exc
-        # The loop is guaranteed to still be running:
-        # `run_in_thread` joins this thread in its `finally` clause
-        # before the coroutine (and thus the loop) can wind down.
-        # Suppressing `RuntimeError` is cheap insurance against abnormal loop teardown.
+        # An abandoned thread may outlive the event loop,
+        # whose `call_soon_threadsafe` then raises `RuntimeError`.
         with contextlib.suppress(RuntimeError):
             self._loop.call_soon_threadsafe(self._resolve, outcome, error)
 
     def _resolve(self, outcome: Any, error: BaseException | None) -> None:
-        # The future may already be cancelled
-        # if the surrounding asyncio task was cancelled independently;
-        # `set_result`/`set_exception` would then raise `InvalidStateError`.
+        self._exited.set_result(None)
+        # The future is cancelled when `run_in_thread` stopped waiting for the result,
+        # and `set_result`/`set_exception` would then raise `InvalidStateError`.
         if self._future.done():
             return
         if error is None:
@@ -1467,6 +1501,9 @@ async def _run_builtin_copy(src: str, dst: str, cwd: Path, run: Run) -> ChildOut
     run.worker = worker
     try:
         return await worker.run_in_thread()
+    except WorkAbandonedError:
+        stderr = f"Abandoned the copy to {cwd / dst}, which did not stop when asked.\n"
+        return ChildOutcome(1, "", stderr)
     finally:
         run.worker = None
 

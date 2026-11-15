@@ -4,6 +4,7 @@
 
 import asyncio
 import errno
+import gc
 import json
 import multiprocessing
 import os
@@ -19,11 +20,11 @@ import time
 from types import SimpleNamespace
 
 import pytest
-from conftest import call_with_fifo_guard
+from conftest import StuckWork, call_with_fifo_guard
 
 import stepup.core.run as run_mod
 from stepup.core.enums import StopLevel
-from stepup.core.exceptions import NotARegularFileError, RunError
+from stepup.core.exceptions import NotARegularFileError, RunError, WorkAbandonedError
 from stepup.core.outcome import ResourceUsage
 from stepup.core.path import Path
 from stepup.core.run import (
@@ -505,6 +506,66 @@ def test_worker_without_job_control_is_not_suspended(monkeypatch: pytest.MonkeyP
     worker.suspend()
     worker.resume()
     assert worker.signals == []
+
+
+#
+# Threads
+#
+
+
+async def test_thread_worker_waits_for_a_slow_thread_below_kill():
+    """A thread that does not stop at once may still finish cleanly."""
+    with StuckWork() as work:
+        worker = ThreadWorker(work=work, job_i=1)
+        task = asyncio.create_task(worker.run_in_thread())
+        await work.wait_started()
+        for level in StopLevel.INTERRUPT, StopLevel.TERMINATE:
+            worker.interrupt(level)
+            await asyncio.sleep(0.2)
+            assert not task.done()
+        work.release.set()
+        assert await asyncio.wait_for(task, 5) == "released"
+
+
+async def test_thread_worker_abandons_a_stuck_thread_at_kill(caplog):
+    with StuckWork() as work:
+        worker = ThreadWorker(work=work, job_i=1)
+        task = asyncio.create_task(worker.run_in_thread())
+        await work.wait_started()
+        worker.interrupt(StopLevel.KILL)
+        with pytest.raises(WorkAbandonedError):
+            await asyncio.wait_for(task, 5)
+    assert "Abandoning the unresponsive background compute thread for job 1" in caplog.text
+
+
+async def test_thread_worker_cancelled_waits_for_the_thread_until_kill():
+    with StuckWork() as work:
+        worker = ThreadWorker(work=work, job_i=1)
+        task = asyncio.create_task(worker.run_in_thread())
+        await work.wait_started()
+        task.cancel()
+        await asyncio.sleep(0.2)
+        assert not task.done()
+        worker.interrupt(StopLevel.KILL)
+        await asyncio.wait({task}, timeout=5)
+        assert task.cancelled()
+
+
+async def test_thread_worker_drops_an_error_after_it_was_abandoned(caplog):
+    """An error that nobody waits for any more must not show up as a never retrieved one."""
+    with StuckWork(ValueError("too late")) as work:
+        worker = ThreadWorker(work=work, job_i=1)
+        task = asyncio.create_task(worker.run_in_thread())
+        await work.wait_started()
+        worker.interrupt(StopLevel.KILL)
+        await asyncio.wait({task}, timeout=5)
+        assert isinstance(task.exception(), WorkAbandonedError)
+    # The context manager has joined the thread, which then hands its error to the loop.
+    await asyncio.wait_for(worker._exited, 5)
+    # The traceback of the error refers to the worker, and with it to its future.
+    del work, worker, task
+    gc.collect()
+    assert "never retrieved" not in caplog.text
 
 
 #
@@ -1214,6 +1275,25 @@ async def test_launch_command_copy_interrupted(monkeypatch, tmp_path):
     outcome = await asyncio.wait_for(task, 10)
     assert outcome.returncode == 1
     assert "Interrupted" in outcome.stderr
+    assert run.worker is None
+
+
+async def test_launch_command_copy_abandoned(monkeypatch, tmp_path):
+    """A copy that ignores the request to stop is abandoned at `StopLevel.KILL`."""
+    with StuckWork() as work:
+        monkeypatch.setattr(run_mod, "_copy_file", work)
+        run = _make_run()
+        task = asyncio.create_task(
+            launch_command(
+                "cp -p a.txt b.txt", shell=False, env={}, cwd=Path(tmp_path), mp_ctx=None, run=run
+            )
+        )
+        await work.wait_started()
+        run.worker.interrupt(StopLevel.KILL)
+        outcome = await asyncio.wait_for(task, 5)
+    assert outcome.returncode == 1
+    assert outcome.stderr.startswith("Abandoned the copy to ")
+    assert outcome.stderr.endswith("/b.txt, which did not stop when asked.\n")
     assert run.worker is None
 
 

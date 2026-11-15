@@ -164,7 +164,8 @@ which `Worker._stop` turns into what the platform offers:
 | `KILL` | `SIGKILL` to the process group | `TerminateJobObject` |
 
 `describe_stop_level()` names the mechanism in the messages for the user.
-A `ThreadWorker` cancels its computation at every level.
+A `ThreadWorker` cancels its computation at every level,
+and at `KILL` the director also stops waiting for its thread.
 
 ### POSIX: Sessions and Process Groups
 
