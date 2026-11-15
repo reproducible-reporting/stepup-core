@@ -6,6 +6,7 @@ import logging
 import os
 import pathlib
 import re
+import subprocess
 import sys
 
 import attrs
@@ -185,6 +186,13 @@ def test_loadns_json(path_tmp, monkeypatch):
     monkeypatch.setenv("STEPUP_LOADNS_JSON_FOO", "foo")
     ns = loadns(path_tmp / "${STEPUP_LOADNS_JSON_FOO}.json")
     assert ns.a == 10
+
+
+@pytest.mark.parametrize("module", ["stepup.core.api", "stepup.core.call"])
+def test_import_without_yaml(module):
+    """Plans and steps import PyYAML only when they read or write a YAML file."""
+    code = f"import sys, {module}; sys.exit('yaml' in sys.modules)"
+    subprocess.run([sys.executable, "-c", code], check=True)
 
 
 @pytest.fixture

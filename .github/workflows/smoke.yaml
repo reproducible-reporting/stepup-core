@@ -59,9 +59,8 @@ jobs:
           - runner: windows-2022
             python-version: '3.11'
             resolution: lowest-direct
-          # As of November 2026, PyYAML has no Windows wheel for Python 3.15.
           - runner: windows-2025
-            python-version: '3.14'
+            python-version: '3.15'
             resolution: highest
     runs-on: ${{ matrix.runner }}
     steps:
@@ -108,6 +107,9 @@ jobs:
           dot -V
           python3 --version
       - name: Install with the dependencies of the documentation examples
+        env:
+          # See the install step in pytest.yaml.
+          PYYAML_FORCE_LIBYAML: '0'
         run: uv pip install --system --resolution ${{ matrix.resolution }} -e .[examples]
       - name: Run documentation examples
         run: |

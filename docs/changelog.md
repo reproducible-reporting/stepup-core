@@ -129,6 +129,10 @@ which are fixed in this release.
   the [return codes](reference/returncode.md) of StepUp,
   e.g. because a program that wraps the director failed,
   `stepup build` now reports that code and returns `1`, instead of passing the code on.
+- PyYAML is imported only when a YAML file is read or written,
+  which shortens the startup of plans and steps that do not use YAML.
+  For the same reason, `yaml_converter` in `stepup.core.cattrs`
+  is replaced by the function `get_yaml_converter()`.
 
 ### Fixed
 

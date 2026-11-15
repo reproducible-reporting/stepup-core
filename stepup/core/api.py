@@ -47,13 +47,12 @@ import sys
 import tomllib
 from collections.abc import Callable, Iterable, Iterator
 from runpy import run_path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import attrs
-import yaml
 
-from .cattrs import json_converter, yaml_converter
+from .cattrs import get_yaml_converter, json_converter
 from .constants import DIRECTOR_LOG_DESCRIPTION, DIRECTOR_SOCKET_SENTINEL, RENDER_JINJA_MODES
 from .enums import Need
 from .exceptions import (
@@ -1633,7 +1632,7 @@ def loadns(
                 variables.update(tomllib.load(fh))
         elif path_var.suffix in (".yaml", ".yml"):
             with open(path_var, encoding="utf-8") as fh:
-                variables.update(yaml.safe_load(fh))
+                variables.update(_import_yaml().safe_load(fh))
         elif path_var.suffix == ".py":
             dir_py = path_var.parent.normpath()
             fn_py = path_var.name
@@ -1700,11 +1699,18 @@ def _dumpns(
             json.dump(unstructured, fh, indent=2)
             fh.write("\n")
     elif su_path.suffix in (".yaml", ".yml"):
-        unstructured = yaml_converter.unstructure(data)
+        unstructured = get_yaml_converter().unstructure(data)
         with open(su_path, "w", encoding="utf-8", newline="\n") as fh:
-            yaml.dump(unstructured, fh)
+            _import_yaml().dump(unstructured, fh)
     else:
         raise StepUpError(f"dumpns: unsupported file format: {su_path.suffix!r}")
+
+
+def _import_yaml() -> ModuleType:
+    """Import PyYAML on first use, for the reason given in `get_yaml_converter()`."""
+    import yaml  # noqa: PLC0415
+
+    return yaml
 
 
 def render_jinja(

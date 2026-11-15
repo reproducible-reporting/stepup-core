@@ -127,10 +127,9 @@ jobs:
             watcher: watchfiles
             transport: tcp
             extras: tests
-          # As of November 2026, PyYAML has no Windows wheel for Python 3.15.
           - &windows-newest
             runner: windows-2025
-            python-version: '3.14'
+            python-version: '3.15'
             resolution: highest
             watcher: watchfiles
             transport: tcp
@@ -173,6 +172,12 @@ jobs:
       - &install
         name: Install with the test dependencies
         timeout-minutes: 3
+        env:
+          # As of November 2026, PyYAML has no wheels for Python 3.15,
+          # so it is built from source without its C extension, which StepUp does not use.
+          # With the extension enabled, the build failed on Windows without a C compiler
+          # instead of falling back to pure Python (PyYAML 6.0.3, setuptools 84.2.1).
+          PYYAML_FORCE_LIBYAML: '0'
         run: uv pip install --system --resolution ${{ matrix.platform.resolution }} -e .[${{ matrix.platform.extras }}]
       - &prune-uv-cache
         name: Prune the uv cache

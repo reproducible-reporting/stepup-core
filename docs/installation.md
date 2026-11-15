@@ -35,6 +35,16 @@ The core package can be installed with:
 pip install stepup
 ```
 
+On Windows with Python 3.15, as of November 2026,
+the dependency PyYAML has no wheels yet,
+and building it from source fails without a C compiler.
+Its C extension, which StepUp does not use, can be left out of that build:
+
+```powershell
+$env:PYYAML_FORCE_LIBYAML = "0"
+pip install stepup
+```
+
 The [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/) extension
 (for reproducible reporting) is installed with:
 

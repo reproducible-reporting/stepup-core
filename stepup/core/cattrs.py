@@ -3,14 +3,14 @@
 """cattrs converters preconfigured for StepUp, and the hooks they register."""
 
 from enum import Enum
+from functools import cache
 
 import cattrs.preconf.json
-import cattrs.preconf.pyyaml
 
 from .nglob import NamedGlob
 from .path import Path, is_path_type
 
-__all__ = ("json_converter", "yaml_converter")
+__all__ = ("get_yaml_converter", "json_converter")
 
 
 def _unstructure_str(value: str) -> str:
@@ -74,7 +74,21 @@ json_converter = cattrs.preconf.json.make_converter()
 _register_path_hooks(json_converter)
 _register_nglob_hooks(json_converter)
 
-yaml_converter = cattrs.preconf.pyyaml.make_converter()
 
-_register_path_hooks(yaml_converter)
-_register_nglob_hooks(yaml_converter)
+@cache
+def get_yaml_converter() -> cattrs.Converter:
+    """Return the converter for data written to YAML files.
+
+    The converter is created on first use, so that importing this module does not import PyYAML.
+    """
+    # PyYAML is imported here instead of at the top,
+    # because importing it slows down the startup of every plan and step,
+    # also when they never read or write YAML.
+    # As of November 2026, it took about 10% of the import time of `stepup.core.api`,
+    # measured on Linux with Python 3.14 and `python -X importtime`.
+    from cattrs.preconf import pyyaml  # noqa: PLC0415
+
+    converter = pyyaml.make_converter()
+    _register_path_hooks(converter)
+    _register_nglob_hooks(converter)
+    return converter

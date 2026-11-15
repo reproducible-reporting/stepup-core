@@ -110,7 +110,9 @@ Include ~/.local/share/stepup-winvm/ssh_config
   Use it with `WINVM_PYTHON` to test the oldest and the newest supported version.
 - The VM has no C compiler, so a dependency without a Windows wheel for the chosen Python
   fails to install.
-  Before adding a Python version to the CI matrix, check that it has wheels for all dependencies.
+  Before adding a Python version to the CI matrix,
+  check that all dependencies have wheels for it or build without a compiler,
+  as PyYAML does with `PYYAML_FORCE_LIBYAML=0` (see `.github/workflows/pytest.yaml`).
 
 ## Managing the VM
 

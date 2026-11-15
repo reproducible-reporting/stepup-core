@@ -9,13 +9,13 @@ import path as path_lib
 import pytest
 import yaml
 
-from stepup.core.cattrs import json_converter, yaml_converter
+from stepup.core.cattrs import get_yaml_converter, json_converter
 from stepup.core.nglob import NamedGlob
 from stepup.core.path import Path
 
 CONVERTERS = [
     pytest.param(json_converter, json.dumps, json.loads, id="json"),
-    pytest.param(yaml_converter, yaml.safe_dump, yaml.safe_load, id="yaml"),
+    pytest.param(get_yaml_converter(), yaml.safe_dump, yaml.safe_load, id="yaml"),
 ]
 
 
