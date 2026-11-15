@@ -132,7 +132,8 @@ class WatchfilesBackend(WatcherBackend):
     The recursive watch only has that effect on the parents of the working directory.
     On Linux, a recursive watch is the more expensive one,
     because inotify then needs a watch for every directory below the working directory,
-    also for those StepUp has no interest in.
+    also for those StepUp has no interest in,
+    and for those that symbolic links below it lead to (observed with watchfiles 1.3.0).
     """
 
     watches: dict[Path, int | None] = attrs.field(init=False, factory=dict)
@@ -169,7 +170,7 @@ class WatchfilesBackend(WatcherBackend):
     """The number of the latest generation requested from the reader thread."""
 
     _real_paths: dict[Path, str] = attrs.field(init=False, factory=dict)
-    """The path under which `RustNotify` reports the changes of each watched directory."""
+    """The resolved path of each watched directory, as it was when its watch was installed."""
 
     _rebuild_needed: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Set when directories have been added to `_pending`."""
@@ -642,7 +643,7 @@ class _Generation:
     """The instances, some of which may also have been part of the previous generation."""
 
     dirs: dict[str, list[Path]] = attrs.field()
-    """The watched directories, keyed by the path under which `RustNotify` reports them.
+    """The watched directories, keyed by their resolved paths.
 
     Symbolic links can lead to the same directory from more than one path,
     so each value is a list of directories as `WatchfilesBackend` knows them.
@@ -653,7 +654,8 @@ class _Generation:
     ) -> tuple[dict[Path, set[int]], dict[Path, set[Path]]]:
         """Express a batch of changes from `RustNotify.watch` in the paths of `WatchfilesBackend`.
 
-        Only the changes of watched directories and of their entries are kept.
+        Only the changes of watched directories and of their entries are kept,
+        also when they are reported under a path through a symbolic link.
 
         Returns
         -------
@@ -664,20 +666,49 @@ class _Generation:
         """
         codes: dict[Path, set[int]] = {}
         sources: dict[Path, set[Path]] = {}
+        resolved: dict[Path, Path] = {}
         for code, reported in changes:
             # The constructor converts the separators that Windows reports.
             real_path = Path(reported)
-            parent, name = real_path.splitpath()
-            # A change inside a watched directory, or of a watched directory itself.
-            pairs = [
-                (directory, (directory / name).normpath())
-                for directory in self.dirs.get(parent, ())
-            ]
-            pairs.extend((directory, directory) for directory in self.dirs.get(real_path, ()))
+            pairs = self._match(real_path)
+            if len(pairs) == 0:
+                # A recursive inotify watch follows symbolic links,
+                # and reports the changes of a directory with more than one path to it
+                # under only one of them, which depends on the order of the directory listings
+                # (observed with watchfiles 1.3.0).
+                # The entry itself is not resolved, because it may be a symbolic link,
+                # which is an entry of its own and not the directory it points to.
+                parent, name = real_path.splitpath()
+                if parent not in resolved:
+                    resolved[parent] = parent.realpath()
+                if resolved[parent] != parent:
+                    pairs = self._match(resolved[parent] / name)
             for directory, path in pairs:
                 codes.setdefault(path, set()).add(code)
                 sources.setdefault(path, set()).add(directory)
         return codes, sources
+
+    def _match(self, real_path: Path) -> list[tuple[Path, Path]]:
+        """Find the watched directories through which a change of a path is seen.
+
+        Parameters
+        ----------
+        real_path
+            A path whose parent directory has no symbolic links.
+
+        Returns
+        -------
+        pairs
+            For each watched directory through which the change is seen,
+            the directory and the changed path as `WatchfilesBackend` knows it.
+            The changed path is an entry of the directory or the directory itself.
+        """
+        parent, name = real_path.splitpath()
+        pairs = [
+            (directory, (directory / name).normpath()) for directory in self.dirs.get(parent, ())
+        ]
+        pairs.extend((directory, directory) for directory in self.dirs.get(real_path, ()))
+        return pairs
 
 
 @attrs.define(frozen=True)
@@ -711,8 +742,7 @@ def _create_generation(
     number
         The number of the new generation.
     keep
-        The directories that are watched already,
-        with the paths under which `RustNotify` reports them.
+        The directories that are watched already, with their resolved paths.
     new
         The directories to watch from now on.
     recursive
@@ -729,12 +759,12 @@ def _create_generation(
         The new generation.
     scans
         The entries of the new directories, listed after their watches were installed,
-        each with the path under which `RustNotify` reports the directory.
+        each with the resolved path of the directory.
     missing
         The directories that could not be watched, because they no longer exist.
     """
-    # The paths are resolved, because that is how the changes below a recursive watch,
-    # which does not follow symbolic links, are matched with the directories they belong to.
+    # The paths are resolved, so that a directory is watched once, however many paths lead to it,
+    # and so that `_divide_dirs` can tell which directories lie below the working directory.
     real_paths = dict(keep)
     real_paths.update((path, path.realpath()) for path in new if path.is_dir())
     root = Path.cwd().realpath() if recursive else None

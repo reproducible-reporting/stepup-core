@@ -16,8 +16,10 @@ from stepup.core.path import Path
 from stepup.core.pytest import sort_change_runs
 from stepup.core.watcher import _import_backend_class, select_watcher_backend
 from stepup.core.watcher_watchfiles import (
+    _ADDED,
     WatchfilesBackend,
     _divide_dirs,
+    _Generation,
     select_recursive_watch,
 )
 
@@ -425,6 +427,41 @@ async def test_symlink_to_watched_dir(backend):
     await watch(backend, "real", "link")
     write("real/a.txt")
     await check(backend, {(Change.UPDATED, "real/a.txt"), (Change.UPDATED, "link/a.txt")})
+
+
+async def test_unwatched_symlink_to_watched_dir(backend):
+    os.mkdir("real")
+    symlink_dir("real", "link")
+    await watch(backend, "real")
+    write("real/a.txt")
+    await check(backend, {(Change.UPDATED, "real/a.txt")})
+
+
+@pytest.mark.parametrize(
+    ("reported", "expected"),
+    [
+        ("sub/real/a.txt", ["sub/real/a.txt", "link/a.txt"]),
+        ("link/a.txt", ["sub/real/a.txt", "link/a.txt"]),
+        ("parent/real/a.txt", ["sub/real/a.txt", "link/a.txt"]),
+        ("sub/real", ["sub/real", "link"]),
+        ("parent/real", ["sub/real", "link"]),
+        # A symbolic link is an entry of its own, not the directory it points to.
+        ("link", []),
+    ],
+)
+def test_translate_through_symlink(workdir, reported, expected):
+    """A change is matched with a watched directory under every path that leads to it.
+
+    A recursive inotify watch reports the changes of a directory under only one of these paths,
+    which depends on the order of the directory listings.
+    """
+    os.makedirs("sub/real")
+    symlink_dir("sub/real", "link")
+    symlink_dir("sub", "parent")
+    root = workdir.realpath()
+    generation = _Generation(1, [], {root / "sub/real": [Path("sub/real"), Path("link")]})
+    codes, _ = generation.translate({(_ADDED, root / reported)})
+    assert codes == {Path(path): {_ADDED} for path in expected}
 
 
 @pytest.fixture
