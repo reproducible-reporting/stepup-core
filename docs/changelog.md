@@ -19,6 +19,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.1.0rc1][] - 2026-11-15 {: #v4.1.0rc1 }
+
 First full cross-platform release of StepUp Core, with native support for Windows.
 File watching is supported on all platforms (new on macOS and Windows).
 This work surfaced several smaller robustness and correctness issues on Linux and macOS,
@@ -1879,6 +1883,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.1.0rc1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc1
 [4.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.3
 [4.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.2
 [4.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.1
