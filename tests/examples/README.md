@@ -26,10 +26,12 @@ When writing new examples, the following conventions ensure that they are proper
   If its `plan.py` should also be exercised
   standalone (without StepUp), add the name to the `test_plan` list as well.
 
-- CI runs the whole example suite twice, once with `STEPUP_BUILD_FORKSERVER=1` and once with
-  `STEPUP_BUILD_FORKSERVER=0`, so an example must pass under **both** the forkserver and the
+- CI runs the whole example suite twice on Linux and macOS,
+  once with `STEPUP_BUILD_FORKSERVER=1` and once with `STEPUP_BUILD_FORKSERVER=0`,
+  so an example must pass under **both** the forkserver and the
   plain-subprocess execution paths. Do not pin `forkserver` in a per-example `stepup.toml`
   unless the example is specifically about one path.
+  Windows has no forkserver, so the examples run there once, with plain subprocesses.
 
 - To facilitate debugging, the shebang line runs bash in verbose mode: `#!/usr/bin/env -S bash -x`.
 
@@ -50,6 +52,12 @@ When writing new examples, the following conventions ensure that they are proper
       Windows ends lines with `\r\n` otherwise, which changes the digests in the expected output.
     - Take the separator of a list of paths from `os.pathsep`, as in `env_vars_multi`,
       when StepUp or a script splits the list.
+    - Files are checked out with LF line endings on every platform, because of `.gitattributes`.
+      Do not remove it: with CRLF, file digests and sizes in the expected output differ,
+      and `main.sh` itself fails in bash.
+    - Git for Windows also converts POSIX-looking arguments of a native program,
+      such as `/opt` or `--prefix=/usr`, to Windows paths.
+      An example that needs the literal text sets `MSYS_NO_PATHCONV=1` for that command.
     - Git for Windows converts POSIX paths in the environment of a Windows program,
       such as `${PWD}`, to Windows paths, also in a list of paths separated by colons.
       It leaves a list with an empty item alone, so write

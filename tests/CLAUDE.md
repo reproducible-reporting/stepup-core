@@ -27,6 +27,37 @@ The second uses a new console and only runs on Windows (`requires_windows_consol
 with `ConsoleHost` in `tests/core_common.py` playing the user of that console.
 A scenario about terminal signals or keys that makes sense on both platforms belongs in both.
 
+## Platforms and Capability Markers
+
+The suite runs on Linux, macOS and Windows.
+A test that needs something that not every platform offers carries a marker,
+instead of a `skipif` on `sys.platform`.
+`CAPABILITY_MARKERS` in `tests/conftest.py` maps each marker to the predicate that tests for it
+(mostly those of `stepup/core/oscompat.py`) and to the reason shown for a skipped test.
+Register a new marker under `markers` in `pyproject.toml` as well.
+
+Write a test so that it runs everywhere before reaching for a marker.
+Behavior that is only observable on one platform, such as the spelling of Windows paths,
+is tested on every platform by calling the platform-specific code directly,
+or by patching `sys.platform` or an `oscompat` predicate.
+Such a test is necessary but not sufficient, as `stepup/core/CLAUDE.md` explains for paths:
+the final check is a run on the real platform.
+
+- `tools/winvm/winvm.sh test ARGS` runs the suite on Windows, see `tools/winvm/README.md`.
+  The VM copies the Linux working tree, so it never sees what Git does to the files on a runner.
+  The CRLF checkout of GitHub's Windows runners is the example:
+  `.gitattributes` makes every platform check out LF.
+- `tools/macci/macci.sh test ARGS` runs it on a GitHub-hosted macOS runner.
+- `.github/workflows/pytest.yaml` runs a unit job and an example job per platform,
+  with a matrix of the oldest and newest Python,
+  of the watcher backends and of the RPC transports.
+  A setting that selects another code path (`STEPUP_WATCHER`, `STEPUP_WATCHER_RECURSIVE`,
+  `STEPUP_RPC_TRANSPORT`, `STEPUP_BUILD_FORKSERVER`) is tested through an entry of that matrix,
+  not by a test that sets it, so that the whole suite covers it.
+- Windows has no forkserver and one watcher backend, so the examples run once there.
+- A complete run of the examples takes about 10 minutes on Windows,
+  against about 5 minutes on Linux.
+
 ## Integration Examples
 
 `tests/examples/*/` contains integration test cases,
@@ -54,7 +85,8 @@ What belongs here instead, because it concerns `tests/test_examples.py` itself:
   which skips the example where the capability is missing:
     - `EXAMPLES_REQUIRES_FORKSERVER`: skipped without a forkserver,
       which includes `STEPUP_BUILD_FORKSERVER=0`.
-      CI runs the suite twice, with `STEPUP_BUILD_FORKSERVER=1` and `=0`.
+      CI runs the suite twice on Linux and macOS, with `STEPUP_BUILD_FORKSERVER=1` and `=0`,
+      and once on Windows, which has no forkserver.
     - `EXAMPLES_REQUIRE_FILE_MODES`: the example changes permission bits with `chmod`,
       or needs a file without executable bit.
     - `EXAMPLES_REQUIRE_SYMLINKS`: `main.sh` creates a symbolic link,
@@ -68,6 +100,21 @@ What belongs here instead, because it concerns `tests/test_examples.py` itself:
 
 `stepup/core/pytest.py` holds the pytest helpers that drive these workflows,
 including the comparison of `current_*` against `expected_*` files.
+`run_example` runs `main.sh` through `_run_main`, which has an implementation per platform,
+both of which stop whatever the example leaves behind:
+on POSIX, `main.sh` runs in a session of its own that is signaled afterwards,
+and on Windows, with the bash of Git for Windows in a hidden console of its own,
+inside a Job Object that is terminated afterwards.
+It also normalizes what differs between platforms before the comparison,
+so that one `expected_*` file serves all of them:
+the separators in the `File "..."` lines of a traceback,
+and, where files have no permission bits, the file modes and the digests of step hashes
+(`mask_file_modes`, which leaves the digests of files alone).
+On Windows, it puts a shell script `python3` on the `PATH` of `main.sh`
+(`_write_python3_shim`), because Windows has no such program.
+Users need the same wrapper for shell steps that start a script with a `python3` shebang,
+which `docs/platforms.md` describes.
+A failing comparison prints a unified diff, together with `main.log` and the logs under `.stepup/`.
 The functions that normalize the output before that comparison
 are unit-tested in `tests/test_pytest.py`, not in `tests/test_examples.py`:
 the fast selection `-k "not test_example"` also deselects every test in a module of that name.

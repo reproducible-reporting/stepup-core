@@ -22,6 +22,16 @@ bash main.sh
 This runs StepUp locally and captures the output via `sed -f ../../clean_stdout.sed`.
 Commit the updated `stdout.txt` alongside any source changes.
 
+The smoke test (`.github/workflows/smoke.yaml`) builds all examples on Linux, macOS and Windows
+with `stepup build` in `docs/`, where `run_example.py` runs every `main.sh`.
+A failing command in `main.sh` fails the build, and the workflow also fails
+when a regenerated `stdout*.txt` gains a `FAIL` line.
+Examples with an intended failure run with `-j 1`, so that their `FAIL` lines stay in place.
+The scripts of the examples run in the bash of Git for Windows there,
+so they follow the rules for portable scripts in `tests/examples/README.md`,
+and need Graphviz (`dot`) and a `python3` wrapper,
+which `smoke.yaml` installs and `docs/platforms.md` describes for the wrapper.
+
 ## Social Card
 
 `docs/social-card.svg` is the editable source of the link preview image

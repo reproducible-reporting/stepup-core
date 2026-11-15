@@ -80,6 +80,26 @@ and the directory only has access rules of its own from Python 3.11.10 and 3.12.
 With older versions, it inherits those of `TEMP`, which are private only by default.
 Never put the token in an environment variable or on a command line.
 
+### Features That Depend on the Platform (`oscompat.py`)
+
+StepUp runs on Linux, macOS and Windows,
+and the user-facing statement of what differs is `docs/platforms.md`.
+Keep that page in step with any change to the table below.
+
+`oscompat.py` holds one predicate per optional feature
+(`af_unix_available`, `forkserver_available`, `file_modes_available`, `perf_available`,
+`raw_terminal_available`, `suspend_available`, `windows_console_available`, ...),
+which tests for the feature itself instead of for `sys.platform` where Python allows it.
+Code that depends on such a feature calls the predicate,
+and a feature that the user asks for without having it fails with a `UsageError`.
+The tests use the same predicates for the capability markers of `tests/conftest.py`,
+see `tests/CLAUDE.md`.
+
+Do not write `sys.platform == "win32"` for a feature that has a predicate,
+and add a predicate when a new feature has none.
+A plain platform test is fine for what is a property of the platform as such,
+e.g. the spelling of the paths in `path.py` or the choice of a Windows API in `run.py`.
+
 Naming gotcha, two similar flags with different meanings:
 
 - `keep_going` (CLI `-k` / `--keep-going`, env `STEPUP_BUILD_KEEP_GOING`):
@@ -244,7 +264,42 @@ which is how Python reports the console control events of Ctrl-C and Ctrl-Break.
 It runs `stepup build` in a new console and generates the events and keys in it,
 so it needs no interactive session.
 
+### Windows: The Proactor Event Loop (`asyncio.py`)
+
+Windows runs `asyncio` on the Proactor event loop, which mishandles two failures
+that are harmless to a server, both caused by a peer that resets its connection:
+
+- The shutdown of a socket in `_ProactorBasePipeTransport._call_connection_lost` fails,
+  and the loop leaves a half closed transport behind.
+  This traceback shows up at the end of a build, and under `STEPUP_DEBUG`
+  `scan_director_log` makes it fatal, which would make the tests flaky.
+- An accept fails with `ERROR_NETNAME_DELETED`,
+  after which `BaseProactorEventLoop._start_serving` closes the listening socket (CPython gh-93821),
+  so that every later client of the director is refused.
+  Upstream fixed this in Python 3.14 and 3.15 only.
+
+`tolerate_proactor_connection_errors()` is called by `async_main` (`director.py`)
+and `_async_build` (`tui.py`), before they start any server or connection.
+It sets an exception handler on the running loop that finishes the closing of the transport
+(mimicking what the skipped statements would have done),
+and keeps the failure of an aborted accept (`is_aborted_accept`) out of the log.
+The accept itself is handled by `_TCPAcceptor` in `rpc.py`.
+
+Both depend on private details of `asyncio`,
+which the code names in comments together with the Python version where they were observed.
+`tests/test_asyncio.py` runs them against the real transport class around a fake socket,
+so a Python release that changes these details makes a test fail instead of a build.
+Check them when adding a Python version to the CI matrix.
+The handler recognizes only these two cases,
+and passes everything else to the handler that was set before it.
+
 ### Encoding of the Standard Streams
+
+`rich` takes redirected output on Windows for a legacy console and then makes its lines
+one column narrower, so that the layout of the reporter would depend on the platform.
+A `rich` console that prints reporter-style output to standard output
+(`reporter.py`, `clean.py` and `call.py`) therefore passes `utils.rich_legacy_windows(stream)`
+as its `legacy_windows` argument.
 
 `write_utf8_unless_terminal()` (`utils.py`) is called first thing by `stepup` and by the director,
 and by pytest through the `pytest_configure` hook of `stepup.core.pytest`,
@@ -266,6 +321,15 @@ which is `cmd.exe` on Windows.
   The search skips a `sh` in the Windows directory, because that one starts WSL.
   The search is lazy, so that a build without shell steps needs no shell,
   and a failed search fails the step that needed it, not the director.
+  The error message links to `SHELL_DOCS_URL`,
+  which points to an anchor of `docs/installation.md`: keep both in step when that section moves.
+- A command is text, and StepUp never rewrites it.
+  `api.py` passes a string through unchanged (`_command_text`)
+  and converts only a path object to StepUp's spelling,
+  because a backslash in a string belongs to the command (an escape sequence, a regular expression).
+  A path that is embedded in a command must therefore pass through `shq()`,
+  which writes `/` on every platform.
+  `shlex.split` would otherwise take a native Windows separator for an escape.
 - On POSIX, nothing else is translated,
   because the kernel finds programs and reads shebang lines.
 - On Windows, `popen.py` does that work.
@@ -474,6 +538,49 @@ Trigger names follow the same `<table>_<purpose>` convention as indexes, with no
 `WHEN` clauses that depend on enum values are generated via f-string interpolation against
 the enum (e.g. `{StepState.SUCCEEDED.value}`) rather than hardcoded literals,
 so they can never drift from `enums.py`.
+
+## Watching the File System (`watcher*.py`)
+
+`Watcher` (`watcher.py`) runs the watch phases and knows nothing about libraries.
+A `WatcherBackend` (`watcher_backend.py`) turns the directories on its `dir_queue`
+into watches, and file events into `(Change, path)` items on its `change_queue`.
+`select_watcher_backend()` picks one with `STEPUP_WATCHER`:
+
+- `asyncinotify` (`watcher_inotify.py`): the default on Linux, and only available there.
+- `watchfiles` (`watcher_watchfiles.py`): the default on macOS and Windows.
+  It is a regular dependency outside Linux and an optional extra on Linux.
+
+Rules that every backend must follow, and that `tests/test_watcher_backends.py`
+checks for all of them with one set of tests:
+
+- Only changes of files are reported, apart from the removal of a watched directory.
+- A directory that does not exist yet is recorded without a watch,
+  and its nearest existing ancestor is watched until it appears.
+  Nothing created in the gap may be missed.
+- A change must not be reported when nothing changed.
+  Windows reports a directory as modified lazily and without a cause that StepUp can use,
+  so `_dir_changed` rescans only a directory that was reported as added.
+
+Platform differences that shaped `WatchfilesBackend`,
+as observed with watchfiles 1.3.0 (Windows 11 24H2 and macOS 26):
+
+- watchfiles cannot add a path to a running watcher.
+  A new *generation* of `RustNotify` instances therefore replaces the old one
+  whenever directories are added, and takes over the instances that still fit.
+  One thread owns the instances and translates their batches.
+- On Windows, a watch keeps its directory open, which blocks the rename of every parent of it.
+  `STEPUP_WATCHER_RECURSIVE` (default `1` on Windows, `0` elsewhere)
+  replaces the watches of all directories below the working directory by one recursive watch,
+  which leaves only the parents of the working directory locked.
+  The changes in directories that StepUp has no interest in are dropped,
+  so the reported changes are the same in both modes.
+  The documented limitations for users are in "How Watch Mode Observes Changes"
+  in `docs/reference/interactive.md`.
+- Windows does not report the removal, rename or creation of a watched directory itself,
+  but only a watch on its parent does.
+  Linux does report the removal.
+- Windows compares paths without regard to case, StepUp does not,
+  so a file declared with another case than on disk gets no reports.
 
 ## Directory Creation and Removal
 

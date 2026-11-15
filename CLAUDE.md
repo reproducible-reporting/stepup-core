@@ -16,6 +16,10 @@ dispatches jobs to a **step executor**,
 and reacts to file system changes (via inotify on Linux, watchfiles elsewhere)
 to re-run only outdated steps.
 
+StepUp Core runs on Linux, macOS and Windows,
+and what differs between them for users is stated in `docs/platforms.md`.
+The rules below that exist for Windows are in [Platforms](#platforms).
+
 Guidance that applies to only part of the repo lives next to the code it governs:
 
 - `stepup/core/CLAUDE.md`: process model, workflow-graph invariants, database conventions.
@@ -113,6 +117,10 @@ When the VM exists, `tools/winvm/winvm.sh test ARGS` copies the working tree int
 and runs `uv run pytest ARGS` there.
 The VM shares the CPUs of the host,
 so the rule above against concurrent `pytest` runs applies to it as well.
+A complete run of the examples takes about 10 minutes there.
+Run the fast suite and a few examples first, and the complete example suite as a final check only.
+Besides the fast suite, run `tests/test_paths.py` there after changing `stepup/core/path.py`,
+with the oldest and the newest supported Python (`WINVM_PYTHON`).
 Leave `create` and `destroy` to the user,
 because they download or delete several gigabytes.
 
@@ -126,6 +134,27 @@ The runner does not use the CPUs of the host,
 so it may run at the same time as a local `pytest` run.
 
 ## Coding Conventions
+
+### Platforms
+
+Code in `stepup/` must work on Linux, macOS and Windows, and a change is not finished
+when it passes on the platform it was written on.
+The rules that matter most, with their reasons in `stepup/core/CLAUDE.md`:
+
+- **A path inside StepUp is a string with `/` as its only separator, also on Windows.**
+  Import `Path` from `stepup.core.path`, never write `os.sep`, and avoid `os.path`.
+  `ConventionTests.test_slash_paths` enforces this.
+- **A command is text that StepUp never rewrites.**
+  Paths are embedded in a command with `shq()`.
+- **Test for a feature, not for a platform.**
+  Use the predicates of `stepup/core/oscompat.py`,
+  and the matching capability markers in tests (`tests/CLAUDE.md`).
+- **Do not rely on the line endings or the permission bits of the checkout.**
+  `.gitattributes` makes every platform check out LF.
+  Text written by StepUp itself uses `\n`, see [Text Files](#text-files).
+- **Keep `docs/platforms.md` true.**
+  It is the user-facing list of what differs per platform,
+  so a change to a limitation or to a feature that depends on the platform updates that page too.
 
 ### Semantic Line Breaks
 
@@ -296,6 +325,12 @@ it makes the default log level of `stepup build` `DEBUG` and makes internal cons
 fatal instead of self-correcting.
 Profiling output (`STEPUP_BUILD_PERF`, `STEPUP_BUILD_SQLLOG`, `STEPUP_BUILD_JOBLOG`)
 can be analyzed with `tools/perf/analyze_perf.py`.
+
+Three settings select a code path that the default test run does not cover,
+so CI repeats the suite with them (`.github/workflows/pytest.yaml`):
+`STEPUP_RPC_TRANSPORT` (Unix socket or TCP), `STEPUP_WATCHER` and `STEPUP_WATCHER_RECURSIVE`
+(the file watcher library and its mode), and `STEPUP_BUILD_FORKSERVER`.
+`STEPUP_SHELL` names the POSIX shell for shell steps, which matters mostly on Windows.
 
 See `docs/reference/configuration.md` for the full list of `STEPUP_*` / `STEPUP_BUILD_*`
 variables.
