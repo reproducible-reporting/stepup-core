@@ -358,8 +358,10 @@ The command `cp -p SRC DST` without a shell, which is what `copy()` creates, sta
 Starting a process for every copy is slow without a forkserver, and Windows has no `cp`.
 The command stays what it is on every platform,
 and with it the step label, the step hash and the expected outputs of the examples.
-The copy follows `cp -p`, not `shutil.copystat` (see `_copy_file`),
-and checks its cancel event between chunks, like the hashing in `hash.py`.
+The copy follows `cp -p`, not `shutil.copystat` (see `_copy_file`).
+Like GNU `cp`, it tries to clone the whole file first, then `copy_file_range`
+and last a read/write loop, and for a sparse source it only copies the data segments.
+The last two check the cancel event between chunks, like the hashing in `hash.py`.
 
 ### Captured Output
 

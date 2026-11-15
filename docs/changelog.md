@@ -103,6 +103,8 @@ which are fixed in this release.
   The copy still gets the permission bits, the timestamps
   and, when allowed, the owner and group of the source.
   This is faster, and it also works on Windows, which has no such program.
+  Like GNU `cp`, the copy shares its data with the source on file systems that support it,
+  such as Btrfs and XFS, and it keeps the holes of sparse files.
   The CPU time of such a copy is spent by StepUp itself,
   and it is not recorded as CPU time of the step.
 - A carriage return followed by a line feed (`\r\n`) in the output of a step

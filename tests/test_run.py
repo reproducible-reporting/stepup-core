@@ -36,6 +36,7 @@ from stepup.core.run import (
     ThreadWorker,
     Worker,
     _builtin_copy,
+    _clone_file,
     _communicate,
     _copy_file,
     _decode,
@@ -46,6 +47,7 @@ from stepup.core.run import (
     _forkserver_entry,
     _is_builtin_copy,
     _lost_child_outcome,
+    _may_be_sparse,
     describe_stop_level,
     launch_command,
 )
@@ -986,8 +988,24 @@ def test_builtin_copy_interrupted_before_it_starts(tmp_path):
     assert dst.stat().st_size == 0
 
 
-def test_builtin_copy_interrupted_between_chunks(tmp_path):
+def _disable_cloning(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make a copy go in chunks, also where `tmp_path` is on a file system that clones."""
+    monkeypatch.setattr(run_mod, "_clone_file", lambda fsrc, fdst: False)
+
+
+def _select_in_kernel(monkeypatch: pytest.MonkeyPatch, in_kernel: bool) -> None:
+    """Make a copy go through `os.copy_file_range` or through reads and writes."""
+    if not in_kernel:
+        monkeypatch.delattr(os, "copy_file_range", raising=False)
+    elif not hasattr(os, "copy_file_range"):
+        pytest.skip("os.copy_file_range does not exist")
+
+
+@pytest.mark.parametrize("in_kernel", [True, False])
+def test_builtin_copy_interrupted_between_chunks(in_kernel: bool, monkeypatch, tmp_path):
     """The cancel event is checked before every chunk, so a large copy stops promptly."""
+    _disable_cloning(monkeypatch)
+    _select_in_kernel(monkeypatch, in_kernel)
     src = tmp_path / "src.bin"
     data = _write_source(src, 5 * COPY_CHUNK_SIZE)
     dst = tmp_path / "dst.bin"
@@ -995,6 +1013,135 @@ def test_builtin_copy_interrupted_between_chunks(tmp_path):
     assert outcome.returncode == 1
     assert "Interrupted" in outcome.stderr
     assert dst.read_bytes() == data[: 2 * COPY_CHUNK_SIZE]
+
+
+class _FakeCopyFileRange:
+    """A stand-in for `os.copy_file_range` that copies with plain reads and writes.
+
+    The call with number `bad_call`, counting from 1, misbehaves instead:
+    it returns 0 when `bad_errno` is 0, and raises an `OSError` with that number otherwise.
+    """
+
+    def __init__(self, bad_call: int = 0, bad_errno: int = 0):
+        self.bad_call = bad_call
+        self.bad_errno = bad_errno
+        self.ncall = 0
+
+    def __call__(self, fdsrc: int, fddst: int, count: int, offset_src: int, offset_dst: int):
+        self.ncall += 1
+        if self.ncall == self.bad_call:
+            if self.bad_errno == 0:
+                return 0
+            raise OSError(self.bad_errno, os.strerror(self.bad_errno))
+        os.lseek(fdsrc, offset_src, os.SEEK_SET)
+        data = os.read(fdsrc, count)
+        os.lseek(fddst, offset_dst, os.SEEK_SET)
+        return os.write(fddst, data)
+
+
+@pytest.mark.parametrize(
+    ("bad_call", "bad_errno", "in_kernel"),
+    [(0, 0, True), (1, 0, False), (1, errno.EXDEV, False), (1, errno.EOPNOTSUPP, False)],
+)
+def test_copy_file_in_kernel_or_not(
+    bad_call: int, bad_errno: int, in_kernel: bool, monkeypatch, tmp_path
+):
+    """The first call of `os.copy_file_range` decides whether the copy falls back."""
+    _disable_cloning(monkeypatch)
+    fake = _FakeCopyFileRange(bad_call, bad_errno)
+    monkeypatch.setattr(os, "copy_file_range", fake, raising=False)
+    src = tmp_path / "src.bin"
+    data = _write_source(src, 2 * COPY_CHUNK_SIZE + 17)
+    dst = tmp_path / "dst.bin"
+    assert _copy_file(Path(src), Path(dst), threading.Event())
+    assert dst.read_bytes() == data
+    assert (fake.ncall > 1) is in_kernel
+
+
+@pytest.mark.parametrize(
+    ("bad_call", "bad_errno"), [(1, errno.ENOSPC), (2, errno.ENOSPC), (2, errno.EXDEV)]
+)
+def test_copy_file_in_kernel_fails(bad_call: int, bad_errno: int, monkeypatch, tmp_path):
+    """A full disk is an error at every call of `os.copy_file_range`, and so is any later error."""
+    _disable_cloning(monkeypatch)
+    monkeypatch.setattr(
+        os, "copy_file_range", _FakeCopyFileRange(bad_call, bad_errno), raising=False
+    )
+    src = tmp_path / "src.bin"
+    _write_source(src, 2 * COPY_CHUNK_SIZE + 17)
+    with pytest.raises(OSError) as excinfo:
+        _copy_file(Path(src), Path(tmp_path / "dst.bin"), threading.Event())
+    assert excinfo.value.errno == bad_errno
+
+
+SPARSE_SIZE = 1 << 22
+SPARSE_BLOCK = 1 << 16
+"""The size of a sparse file to copy, and that of each of its blocks of data."""
+
+
+@pytest.mark.parametrize("in_kernel", [True, False])
+@pytest.mark.parametrize(
+    "offsets", [(), (1 << 20, 1 << 21), (0, SPARSE_SIZE - SPARSE_BLOCK)], ids=str
+)
+def test_copy_file_keeps_holes(offsets: tuple[int, ...], in_kernel: bool, monkeypatch, tmp_path):
+    _disable_cloning(monkeypatch)
+    _select_in_kernel(monkeypatch, in_kernel)
+    src = tmp_path / "src.bin"
+    with open(src, "wb") as fh:
+        fh.truncate(SPARSE_SIZE)
+        for offset in offsets:
+            fh.seek(offset)
+            fh.write(os.urandom(SPARSE_BLOCK))
+    if not _may_be_sparse(src.stat()):
+        pytest.skip("The file system of tmp_path has no holes that StepUp can find.")
+    dst = tmp_path / "dst.bin"
+    assert _copy_file(Path(src), Path(dst), threading.Event())
+    assert dst.read_bytes() == src.read_bytes()
+    assert dst.stat().st_blocks <= src.stat().st_blocks
+
+
+def test_clone_file(tmp_path):
+    """A clone has the content of the source, and writing to it leaves the source alone."""
+    src = tmp_path / "src.bin"
+    data = _write_source(src, 2 * COPY_CHUNK_SIZE + 17)
+    dst = tmp_path / "dst.bin"
+    with open(src, "rb", buffering=0) as fsrc, open(dst, "wb", buffering=0) as fdst:
+        if not _clone_file(fsrc, fdst):
+            pytest.skip("The file system of tmp_path cannot clone files.")
+    assert dst.read_bytes() == data
+    with open(dst, "r+b") as fh:
+        fh.write(b"changed")
+    assert dst.read_bytes() == b"changed" + data[7:]
+    assert src.read_bytes() == data
+
+
+@pytest.mark.skipif(not hasattr(run_mod, "fcntl"), reason="fcntl does not exist")
+def test_clone_file_failure_leaves_the_destination_empty(monkeypatch, tmp_path):
+    request = object()
+
+    def failing_ioctl(fd: int, req: object, arg: int):
+        assert req is request
+        os.write(fd, b"half done")
+        raise OSError(errno.EOPNOTSUPP, os.strerror(errno.EOPNOTSUPP))
+
+    monkeypatch.setattr(run_mod.fcntl, "FICLONE", request, raising=False)
+    monkeypatch.setattr(run_mod.fcntl, "ioctl", failing_ioctl)
+    src = tmp_path / "src.bin"
+    _write_source(src, 100)
+    dst = tmp_path / "dst.bin"
+    with open(src, "rb", buffering=0) as fsrc, open(dst, "wb", buffering=0) as fdst:
+        assert not _clone_file(fsrc, fdst)
+    assert dst.stat().st_size == 0
+
+
+@pytest.mark.skipif(not Path("/proc/self/status").is_file(), reason="needs /proc")
+def test_copy_file_reads_past_a_size_of_zero(tmp_path):
+    """A file in `/proc` reports a size of 0, but it is copied up to its real end."""
+    src = Path("/proc/self/status")
+    assert src.stat().st_size == 0
+    dst = tmp_path / "status"
+    assert _copy_file(src, Path(dst), threading.Event())
+    assert dst.read_text(encoding="utf-8").startswith("Name:")
 
 
 def _forbid_subprocesses(monkeypatch: pytest.MonkeyPatch) -> None:

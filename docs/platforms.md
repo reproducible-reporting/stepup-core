@@ -89,6 +89,7 @@ The differences you are most likely to run into are:
 | `--perf` | available | not available | not available |
 | Suspending with `Ctrl+Z` | available | available | not available |
 | Connections between processes | Unix domain sockets | Unix domain sockets | TCP on `127.0.0.1` |
+| Copies made by `copy()` | share data where possible, keep holes | keep holes | plain copy |
 
 Enabling a feature on a platform that does not have it is an error,
 which StepUp reports before the build starts.
