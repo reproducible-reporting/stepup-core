@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """cattrs converters preconfigured for StepUp, and the hooks they register."""
 
+from enum import Enum
+
 import cattrs.preconf.json
 import cattrs.preconf.pyyaml
 
@@ -9,6 +11,15 @@ from .nglob import NamedGlob
 from .path import Path, is_path_type
 
 __all__ = ("json_converter", "yaml_converter")
+
+
+def _unstructure_str(value: str) -> str:
+    """Unstructure an instance of `str` or of a subclass to a plain string.
+
+    A path keeps any leading `./` or trailing `/` affixes,
+    and a string enum becomes its value.
+    """
+    return value.value if isinstance(value, Enum) else str(value)
 
 
 def _register_path_hooks(converter):
@@ -19,8 +30,11 @@ def _register_path_hooks(converter):
     The hooks apply to `Path` of StepUp and of the `path` library,
     and structuring creates an instance of the requested class.
     """
-    # The hook is registered for `str`, because it then also applies to every subclass.
-    converter.register_unstructure_hook(str, str)
+    # The unstructure hook is registered for `str`, so that it covers both path classes
+    # without importing the `path` library (see `ConventionTests.test_slash_paths`).
+    # It then takes precedence over the converter's own hooks for string enums,
+    # which is why it handles those as well.
+    converter.register_unstructure_hook(str, _unstructure_str)
     converter.register_structure_hook_func(is_path_type, lambda value, cls: cls(value))
 
 

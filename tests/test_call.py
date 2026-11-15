@@ -3,6 +3,7 @@
 """Unit tests for stepup.core.call and the call() API function in stepup.core.api."""
 
 import argparse
+import enum
 import json
 import shlex
 from dataclasses import dataclass
@@ -23,6 +24,11 @@ from stepup.core.stepinfo import StepInfo
 @dataclass
 class _SampleDC:
     a: int
+
+
+# A `(str, Enum)` mixin, defined with the functional API to keep ruff from suggesting `StrEnum`,
+# whose `str()` is its value, unlike that of the mixin.
+_Color = enum.Enum("_Color", {"RED": "red"}, type=str)
 
 
 # ---------------------------------------------------------------------------
@@ -462,6 +468,23 @@ def test_args_file_json(captured, monkeypatch, path_tmp):
     with open(path_tmp / "foo.json", encoding="utf-8") as fh:
         data = json.load(fh)
     assert data["x"] == 1
+
+
+@pytest.mark.parametrize("args_file", [None, "args.json", "args.yaml"])
+def test_string_enum_argument_round_trip(captured, monkeypatch, path_tmp, args_file):
+    """A string enum argument reaches the function as the same member."""
+    monkeypatch.chdir(path_tmp)
+    call("./s.py", "fn", args_file=args_file, color=_Color.RED)
+    received = []
+
+    def fn(color: _Color):
+        received.append(color)
+
+    json_inp = shlex.split(captured[0]["command"])[2] if args_file is None else None
+    args = argparse.Namespace(function="fn", json_inp=json_inp, path_inp=args_file)
+    _dispatch("s.py", {"fn": fn}, args)
+    assert received == [_Color.RED]
+    assert received[0] is _Color.RED
 
 
 def test_args_file_yaml(captured, monkeypatch, path_tmp):
