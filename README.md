@@ -15,14 +15,17 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 [![CodeFactor](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core/badge)](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core)
 
 <!-- snipwise.md BEGIN abstract -->
-StepUp is a dynamic build tool and a modern alternative to
-[Make](https://en.wikipedia.org/wiki/Make_(software)).
-Its defining feature is that workflow generation and execution are unified:
-a `plan.py` script defines the initial build steps.
-While the workflow is being executed, any step can add more steps and dependencies,
+StepUp is a dynamic build tool for workflows written in Python.
+Like [Make](https://en.wikipedia.org/wiki/Make_(software)),
+it reruns only the steps whose inputs have changed.
+Unlike most build tools, StepUp starts executing steps with only partial knowledge of the workflow.
+A platform-independent `plan.py` script defines the initial steps,
+and while the workflow runs, any step can add more steps and dependencies,
 based on the outputs built so far.
-This makes StepUp ideal for builds
-where the full set of dependencies cannot be determined in advance.
+Workflows can thus grow with your work,
+without having to fit your ideas into a rigid framework.
+StepUp is therefore ideal for workflows that are less structured than software builds,
+such as those that produce scientific publications or datasets.
 <!-- snipwise.md END abstract -->
 
 StepUp Core provides the basic framework for StepUp, without any domain-specific features.

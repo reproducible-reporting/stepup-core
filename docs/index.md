@@ -16,14 +16,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
 <!-- snipwise.md BEGIN abstract -->
-StepUp is a dynamic build tool and a modern alternative to
-[Make](https://en.wikipedia.org/wiki/Make_(software)).
-Its defining feature is that workflow generation and execution are unified:
-a `plan.py` script defines the initial build steps.
-While the workflow is being executed, any step can add more steps and dependencies,
+StepUp is a dynamic build tool for workflows written in Python.
+Like [Make](https://en.wikipedia.org/wiki/Make_(software)),
+it reruns only the steps whose inputs have changed.
+Unlike most build tools, StepUp starts executing steps with only partial knowledge of the workflow.
+A platform-independent `plan.py` script defines the initial steps,
+and while the workflow runs, any step can add more steps and dependencies,
 based on the outputs built so far.
-This makes StepUp ideal for builds
-where the full set of dependencies cannot be determined in advance.
+Workflows can thus grow with your work,
+without having to fit your ideas into a rigid framework.
+StepUp is therefore ideal for workflows that are less structured than software builds,
+such as those that produce scientific publications or datasets.
 <!-- snipwise.md END abstract -->
 
 This is the documentation for StepUp Core, the basic framework for StepUp,
@@ -155,6 +158,14 @@ while "Step" reflects how StepUp defines operations as individual *steps*.
   When StepUp completes the build, it can switch to a *watch phase* to register file changes.
   When the user requests a rerun, it knows exactly which part of the DAG needs to be rebuilt.
   This allows efficient edit-build iterations to incrementally build and refine a project.
+
+- 💻 **Cross-Platform:**
+  StepUp runs on Linux, macOS and Windows.
+  Inside StepUp, paths always use `/` as separator,
+  and every file StepUp writes is UTF-8 with `\n` line endings,
+  so a `plan.py` defines the same workflow on every platform.
+  A few features depend on the operating system,
+  as explained in [Supported Platforms](platforms.md).
 
 - 🧹 **Automatic Cleanup:**
   Old outputs are *automatically removed*
