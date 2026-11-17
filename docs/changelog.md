@@ -19,6 +19,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.1.0rc2][] - 2026-11-17 {: #v4.1.0rc2 }
+
+Second release candidate for StepUp 4.1.
+
 ### Fixed
 
 - A console script that runs in the forkserver and returns an exit code from its function,
@@ -1888,6 +1894,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.1.0rc2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc2
 [4.1.0rc1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc1
 [4.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.3
 [4.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.2
