@@ -19,7 +19,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Fixed
+
+- A console script that runs in the forkserver and returns an exit code from its function,
+  as `sys.exit(main())` expects, now fails with that exit code,
+  as it does in a subprocess.
+  The forkserver ignored the returned value and reported success.
 
 ## [4.1.0rc1][] - 2026-11-15 {: #v4.1.0rc1 }
 

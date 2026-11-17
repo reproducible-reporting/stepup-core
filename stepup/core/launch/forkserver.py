@@ -209,7 +209,7 @@ def forkserver_entry(
                 else:
                     module_name, attr_name = ep_value.split(":", 1)
                     func = getattr(importlib.import_module(module_name), attr_name)
-                    func()
+                    sys.exit(func())
             except SystemExit as exc:
                 returncode = (
                     exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)

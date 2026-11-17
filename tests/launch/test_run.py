@@ -457,6 +457,23 @@ async def test_forkserver_normalizes_line_endings(tmp_path):
     assert outcome.stderr == "err\n"
 
 
+def _return_exit_code() -> int:
+    """Return an exit code instead of raising `SystemExit`."""
+    return 3
+
+
+@pytest.mark.requires_forkserver
+async def test_forkserver_returned_exit_code(tmp_path):
+    """An entry point that returns an exit code has the same return code as in a subprocess."""
+    outcome = await exec_in_forkserver(
+        multiprocessing.get_context("forkserver"),
+        forkserver_entry,
+        ("exit", [], dict(os.environ), str(tmp_path), f"{__name__}:_return_exit_code"),
+        Run(SimpleNamespace(i=1, label="exit", command_and_workdir=("exit", ".")), job_i=1),
+    )
+    assert outcome.returncode == 3, outcome.stderr
+
+
 #
 # Stop levels
 #
