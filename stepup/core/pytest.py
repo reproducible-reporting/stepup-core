@@ -5,6 +5,7 @@
 import ast
 import asyncio
 import difflib
+import fnmatch
 import functools
 import importlib.util
 import os
@@ -14,8 +15,10 @@ import shutil
 import signal
 import subprocess
 import sys
+from collections.abc import Callable, Sequence
 from typing import TextIO
 
+import attrs
 import pytest
 
 from .cli.director_log import scan_director_log
@@ -30,7 +33,19 @@ from .watch.select import select_watcher_backend
 if sys.platform == "win32":
     from .platform.winapi import JobObject
 
-__all__ = ("ConventionTests", "remove_hashes", "run_example", "run_plan")
+__all__ = (
+    "GRAPH_OUTPUT",
+    "OUTPUT_RULES",
+    "REPORTER_OUTPUT",
+    "ConventionTests",
+    "OutputRule",
+    "mask_reporter_output",
+    "normalize_reporter_output",
+    "remove_digests",
+    "remove_hashes",
+    "run_example",
+    "run_plan",
+)
 
 
 def pytest_configure():
@@ -86,6 +101,33 @@ CHANGE_LINE = re.compile(r"^ ?(?:UPDATED|DELETED) │ (.*)$")
 
 TRACEBACK_FILE = re.compile(r'^( *File ")([^"\n]*)(?=")', re.MULTILINE)
 """The file name on a line of a Python traceback."""
+
+TRACEBACK_SOURCE = re.compile(
+    r'^((?P<indent>[ |]*)File "[^"\n]*", line [^\n]*\n(?P=indent)  [^\n]*\n)'
+    r"(?:(?P=indent)  [^\n]*\n)+",
+    re.MULTILINE,
+)
+"""A frame of a Python traceback that shows more than the first line of its source.
+
+The first group holds the line with the file name and the first line of the source.
+The lines that follow it are carets under the source,
+or further lines of a statement that spans several lines.
+"""
+
+TRACEBACK_LINE_NUMBER = re.compile(r", line \d+, in ")
+"""The line number on a line of a Python traceback that names a function."""
+
+DIRECTOR_SOCKET_LINE = re.compile(r"^ *DIRECTOR │ Listening on .*\n", re.MULTILINE)
+"""The line of the reporter output that names the socket of the director."""
+
+DIRECTOR_USAGE_LINE = re.compile(r"^ *DIRECTOR │ Wall .*\n", re.MULTILINE)
+"""The line of the reporter output with the resources used by the director and the steps."""
+
+STDERR_PAGE = re.compile(re.escape(STDERR_BEGIN) + r".*?" + re.escape(STDERR_END), re.DOTALL)
+"""The page of the reporter output with the standard error of a step."""
+
+GRAPH_DIGEST_LINE = re.compile(r"^ *(?:inp_|out_)?digest = [ 0-9a-f]{71}\n", re.MULTILINE)
+"""A line with the digest of a file or a step in the text format of the workflow graph."""
 
 FILE_MODE = re.compile(r"(?<=[ (]mode )([-?a-z]{10}) ➜ ([-?a-z]{10})")
 """The change of a file mode in the reporter output, e.g. `mode ?--------- ➜ -rw-r--r--`."""
@@ -148,7 +190,166 @@ def sort_change_runs(text: str) -> str:
     return "\n".join(result)
 
 
-async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
+def normalize_reporter_output(text: str) -> str:
+    """Rewrite the output of `stepup build` into a form that is the same in every run.
+
+    This removes or replaces the parts that depend on the platform, the Python version,
+    the run itself, or the exact source code of StepUp:
+
+    - the separators in the file names of tracebacks, see `slash_traceback_files`,
+    - all but the first line of the source of each frame in a traceback,
+      because Python versions differ in the carets and the lines they add to it,
+    - the line numbers in tracebacks,
+    - the socket of the director, which is in a new temporary directory in every run,
+    - the body of the standard error page, which depends on the OS and the Python version,
+    - the resources used by the director and the steps.
+    """
+    text = slash_traceback_files(text)
+    text = TRACEBACK_SOURCE.sub(r"\1", text)
+    text = TRACEBACK_LINE_NUMBER.sub(", line ---, in ", text)
+    text = DIRECTOR_SOCKET_LINE.sub("", text)
+    text = STDERR_PAGE.sub(STDERR_BEGIN + "\n(stripped)\n" + STDERR_END, text)
+    return DIRECTOR_USAGE_LINE.sub("", text)
+
+
+def mask_reporter_output(text: str) -> str:
+    """Hide the parts of the output of `stepup build` that may differ in this environment.
+
+    When the file watcher is `watchfiles`,
+    the order of consecutive `UPDATED` and `DELETED` lines is hidden,
+    because the changes observed together are reported in sorted order,
+    see `stepup.core.watch.watchfiles.WatchfilesBackend` and `sort_change_runs`.
+    On a platform without permission bits of files,
+    the file modes and the digests of step hashes are hidden, see `mask_file_modes`.
+    """
+    if select_watcher_backend() == "watchfiles":
+        text = sort_change_runs(text)
+    if not file_modes_available():
+        text = mask_file_modes(text)
+    return text
+
+
+def remove_digests(text: str) -> str:
+    """Remove the digests of files and steps from the text format of the workflow graph.
+
+    They change with every change to the contents of a file,
+    so an example tests the contents of its results explicitly instead.
+    """
+    return GRAPH_DIGEST_LINE.sub("", text)
+
+
+def finalize_output(text: str, workdir: Path) -> str:
+    """Bring a normalized output into the form of an expected file, whatever its contents.
+
+    The directory of the example and the current directory are replaced by `${CASE}`
+    and `${PWD}`, which keeps the paths of the machine out of the expected files.
+    The directory of the example comes first, because it may be inside the current directory.
+    Trailing whitespace is removed from every line and from the end of the text,
+    so that the pre-commit hooks `trailing-whitespace` and `end-of-file-fixer`
+    leave the expected files unchanged.
+
+    Parameters
+    ----------
+    text
+        The output, after the normalization of its `OutputRule`.
+    workdir
+        The directory in which the example ran.
+
+    Returns
+    -------
+    finalized
+        The output as it is stored in an expected file.
+    """
+    text = text.replace(workdir, "${CASE}").replace(Path.cwd(), "${PWD}")
+    return re.sub(r"[ \t]+$", "", text, flags=re.MULTILINE).rstrip()
+
+
+def _unchanged(text: str) -> str:
+    """Return the text as it is."""
+    return text
+
+
+@attrs.define(frozen=True)
+class OutputRule:
+    """How `run_example` treats the outputs of an example whose names match a pattern.
+
+    A rule has two stages, which differ in what happens to the parts they hide.
+    The `normalize` stage loses them,
+    because its result is what `overwrite_expected` writes to the expected file.
+    It is meant for what differs between runs, machines, platforms or Python versions,
+    and for what would make the expected file change for no good reason.
+    The `mask` stage only hides them while comparing,
+    so that the expected file keeps them.
+    It is meant for what may only differ in some environments,
+    and is still worth comparing in the others.
+    """
+
+    pattern: str = attrs.field(validator=attrs.validators.instance_of(str))
+    """The pattern for the part of the file name after `expected` or `current`.
+
+    It is matched with `fnmatch.fnmatchcase`,
+    e.g. `_stdout*.txt` matches `expected_stdout.txt` and `expected_stdout2.txt`.
+    """
+
+    normalize: Callable[[str], str] = attrs.field(
+        default=_unchanged, kw_only=True, validator=attrs.validators.is_callable()
+    )
+    """Rewrite the current output into the form that is stored in the expected file.
+
+    It receives the output as the example wrote it,
+    and its result is finalized by `finalize_output`.
+    """
+
+    mask: Callable[[str], str] = attrs.field(
+        default=_unchanged, kw_only=True, validator=attrs.validators.is_callable()
+    )
+    """Hide the parts that may legitimately differ in the present environment.
+
+    It is applied to the finalized current output and to the expected output,
+    only for their comparison.
+    """
+
+
+REPORTER_OUTPUT = OutputRule(
+    "_stdout*.txt", normalize=normalize_reporter_output, mask=mask_reporter_output
+)
+"""The rule for the output of `stepup build`."""
+
+GRAPH_OUTPUT = OutputRule("_graph*.txt", normalize=remove_digests)
+"""The rule for the text format of the workflow graph, as written by `stepup graph`."""
+
+OUTPUT_RULES = (REPORTER_OUTPUT, GRAPH_OUTPUT)
+"""The rules that `run_example` applies by default."""
+
+
+def select_output_rule(rules: Sequence[OutputRule], suffix: str) -> OutputRule:
+    """Select the first rule whose pattern matches a suffix of an output file name.
+
+    Parameters
+    ----------
+    rules
+        The rules to select from, in order of precedence.
+    suffix
+        The part of the file name after `expected` or `current`.
+
+    Returns
+    -------
+    rule
+        The selected rule, or a rule that leaves the output unchanged when none matches.
+    """
+    for rule in rules:
+        if fnmatch.fnmatchcase(suffix, rule.pattern):
+            return rule
+    return OutputRule("*")
+
+
+async def run_example(
+    srcdir: Path,
+    tmpdir: Path,
+    overwrite_expected: bool = False,
+    *,
+    rules: Sequence[OutputRule] = OUTPUT_RULES,
+):
     """Run an example use case in a temporary directory and check the outputs.
 
     The script `main.sh` in the example is the entry point for the test case.
@@ -170,14 +371,14 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     On Windows, it runs with the bash of `stepup.core.platform.popen.find_shell`,
     in a hidden console and a Job Object of its own, which is terminated.
 
-    All files in the srcdir starting with `expected_` will be compared to corresponding files
-    starting with `current_` in the temporary directory after completion of the example.
-    When the file watcher is `watchfiles`,
-    the order of consecutive `UPDATED` and `DELETED` lines is not compared,
-    because the changes observed together are reported in sorted order,
-    see `stepup.core.watch.watchfiles.WatchfilesBackend`.
-    On a platform without permission bits of files,
-    the file modes and the digests of step hashes are not compared, see `mask_file_modes`.
+    All files in the srcdir starting with `expected` will be compared to corresponding files
+    starting with `current` in the temporary directory after completion of the example.
+    Each pair is treated by the first of the `rules` that matches the rest of the file name.
+    Its `normalize` stage and `finalize_output` turn the current output
+    into the form of an expected file,
+    after which both are passed through its `mask` stage and compared.
+    The default rules, `OUTPUT_RULES`, cover the output of `stepup build`
+    and the text format of the workflow graph.
 
     Parameters
     ----------
@@ -187,6 +388,9 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
         The temporary directory where the example is executed.
     overwrite_expected
         Update the expected outputs in the source with the outputs from the tmpdir.
+    rules
+        The rules for the outputs of the example, in order of precedence.
+        An output that matches none of them is only finalized.
     """
     workdir = tmpdir / "example"
     shutil.copytree(srcdir, workdir)
@@ -213,8 +417,8 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
         pairs = []
 
         for path_exp in sorted(srcdir.glob("expected*.*")):
-            fn_exp = path_exp.basename()
-            path_cur = workdir / ("current" + fn_exp[8:])
+            suffix = path_exp.basename()[len("expected") :]
+            path_cur = workdir / f"current{suffix}"
             if not path_cur.is_file():
                 raise AssertionError(
                     f"{path_cur.basename()} was not created and main.sh exited with "
@@ -222,53 +426,26 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
                     f"it died on."
                 )
             with open(path_cur, encoding="utf-8") as fh:
-                cur = fh.read().rstrip()
+                cur = fh.read()
 
             # Print the current output for debugging purposes,
-            # before normalizing it for comparison with the expected output.
+            # because the normalization below loses information.
             print()
-            print(f"########## {fn_exp} ##########")
+            print(f"########## {path_exp.basename()} ##########")
             print()
-            print(cur)
+            print(cur.rstrip())
 
-            # Normalize output before comparing:
-            # - Python prints the file names of a traceback with the separators of the platform
-            cur = slash_traceback_files(cur)
-            cur = cur.replace(Path.cwd(), "${PWD}")
-            cur = cur.replace(workdir, "${CASE}")
-            # - The director's socket path contains a random temporary directory
-            cur = re.sub(r"DIRECTOR │ Listening on .*\n", "", cur)
-            # - Exact line numbers in exceptions change often and do not matter here
-            cur = re.sub(r", line \d+, in ", ", line ---, in ", cur)
-            # - Remove new types of traceback output not introduced after Python 3.11,
-            #   which is the oldest version we support.
-            cur = re.sub(r"^    \.{3}<\d+ lines>\.{3}\n", "", cur, flags=re.MULTILINE)
-            cur = re.sub(r"^    \)\n", "", cur, flags=re.MULTILINE)
-            cur = re.sub(r"    \~*\^*\n", "", cur, flags=re.MULTILINE)
-            # - Remove trailing whitespace
-            cur = re.sub(r"[ \t]+?(\n|\Z)", r"\1", cur)
-            # - Remove digests: they change often,
-            #   so the content of results must be tested explicitly.
-            cur = re.sub(r" {10}(.{4})digest = [ 0-9a-f]{71}\n", "", cur)
-            # - Strip the body of the standard error page: it is sensitive to OS and Python version
-            cur = re.sub(
-                STDERR_BEGIN + r".*?" + STDERR_END,
-                STDERR_BEGIN + "\n(stripped)\n" + STDERR_END,
-                cur,
-                flags=re.DOTALL,
-            )
-            # - Timings are not deterministic
-            cur = re.sub(r"DIRECTOR │ Wall .*\n", "", cur)
-
-            # Overwrite the expected output or keep the pair for the comparison below.
+            rule = select_output_rule(rules, suffix)
+            cur = finalize_output(rule.normalize(cur), workdir)
             if overwrite_expected:
-                path_exp = srcdir / fn_exp
                 with open(path_exp, "w", encoding="utf-8", newline="\n") as fh:
-                    print(cur, file=fh)
+                    # An empty output stays empty, as `end-of-file-fixer` would make it.
+                    if cur != "":
+                        print(cur, file=fh)
             else:
                 with open(path_exp, encoding="utf-8") as fh:
                     exp = fh.read().rstrip()
-                pairs.append((path_exp, cur, exp))
+                pairs.append((path_exp, rule, cur, exp))
     finally:
         for path_log in [workdir / MAIN_LOG, *sorted(workdir.glob(STEPUP_DIR / "*.log"))]:
             print()
@@ -280,16 +457,10 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
         print(f"########## main.sh return code: {returncode} ##########")
 
     # Check late for errors, to maximize the printed output.
-    sort_changes = select_watcher_backend() == "watchfiles"
-    mask_modes = not file_modes_available()
     different = []
-    for path_exp, cur, exp in pairs:
-        if sort_changes:
-            cur = sort_change_runs(cur)
-            exp = sort_change_runs(exp)
-        if mask_modes:
-            cur = mask_file_modes(cur)
-            exp = mask_file_modes(exp)
+    for path_exp, rule, cur_finalized, exp_finalized in pairs:
+        cur = rule.mask(cur_finalized)
+        exp = rule.mask(exp_finalized)
         if cur != exp:
             different.append(path_exp)
             print()

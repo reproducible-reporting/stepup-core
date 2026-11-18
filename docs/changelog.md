@@ -19,7 +19,25 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Changed
+
+- `run_example()` in `stepup.core.pytest` takes a keyword argument `rules`,
+  a sequence of `OutputRule` instances,
+  each of which decides for the outputs whose names match a pattern
+  how they are normalized before they are written or compared,
+  and what is masked while comparing them.
+  An extension package can put rules for its own outputs in front of the default `OUTPUT_RULES`.
+  The cleanups of the output of `stepup build` and of `stepup graph` now only apply to
+  `expected_stdout*.txt` and `expected_graph*.txt`, respectively.
+
+### Fixed
+
+- `run_example()` removed lines with carets from a traceback only partially,
+  and joined a line that ended in four spaces with the next one.
+  It now keeps only the first line of the source of each frame in a traceback,
+  which makes the result the same for Python 3.11 to 3.14.
+  An empty output is written back as an empty file,
+  which the pre-commit hook `end-of-file-fixer` leaves unchanged.
 
 ## [4.1.0rc2][] - 2026-11-17 {: #v4.1.0rc2 }
 

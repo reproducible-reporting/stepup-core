@@ -134,11 +134,16 @@ both of which stop whatever the example leaves behind:
 on POSIX, `main.sh` runs in a session of its own that is signaled afterwards,
 and on Windows, with the bash of Git for Windows in a hidden console of its own,
 inside a Job Object that is terminated afterwards.
-It also normalizes what differs between platforms before the comparison,
-so that one `expected_*` file serves all of them:
-the separators in the `File "..."` lines of a traceback,
-and, where files have no permission bits, the file modes and the digests of step hashes
+Before the comparison, each output is cleaned up by the first `OutputRule` that matches its name,
+whose docstring explains the difference between normalizing and masking an output.
+The default rules make one `expected_*` file serve all platforms:
+`normalize_reporter_output` writes the separators in the `File "..."` lines of a traceback
+as `/`, and `mask_reporter_output` hides, where files have no permission bits,
+the file modes and the digests of step hashes
 (`mask_file_modes`, which leaves the digests of files alone).
+A cleanup that loses information belongs in the `normalize` stage of a rule
+only when the expected file would otherwise depend on the machine, the run or the Python version,
+or change for no good reason.
 On Windows, it puts a shell script `python3` on the `PATH` of `main.sh`
 (`_write_python3_shim`), because Windows has no such program.
 Users need the same wrapper for shell steps that start a script with a `python3` shebang,

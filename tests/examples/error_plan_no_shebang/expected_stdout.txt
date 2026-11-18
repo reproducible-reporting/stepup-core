@@ -3,7 +3,7 @@
 Traceback (most recent call last):
   File "${PWD}/stepup/core/director/__main__.py", line ---, in async_main
     serve_result = await serve(
-                 File "${PWD}/stepup/core/director/serve.py", line ---, in serve
+  File "${PWD}/stepup/core/director/serve.py", line ---, in serve
     _check_plan()
   File "${PWD}/stepup/core/director/serve.py", line ---, in _check_plan
     raise ValueError(f"First line of plan differs from '{shebang}': {PLAN_PY}")

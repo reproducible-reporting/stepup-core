@@ -39,6 +39,29 @@ The module `stepup.core.pytest` holds test utilities that extensions can reuse:
 - `run_example()` runs an integration example in a temporary directory
   and compares the files it produces to the expected ones in the source directory.
   `run_plan()` runs the `plan.py` of an example as an ordinary Python script.
+- `OutputRule` tells `run_example()` how to clean up the outputs whose names match a pattern.
+  It normalizes an output into the form that is stored in the expected file,
+  e.g. by removing a date,
+  and it masks what may only differ in some environments while comparing,
+  e.g. file modes on a platform without permission bits.
+  The first rule that matches an output applies.
+  The default rules, `OUTPUT_RULES`, cover the output of `stepup build` and `stepup graph`.
+  An extension with outputs of its own puts its rules in front of them,
+  and passes `rules=RULES` to `run_example()`:
+
+    ```python
+    import re
+
+    from stepup.core.pytest import OUTPUT_RULES, OutputRule
+
+
+    def normalize_report(text: str) -> str:
+        return re.sub(r"^Date: .*\n", "", text, flags=re.MULTILINE)
+
+
+    RULES = (OutputRule("_report*.txt", normalize=normalize_report), *OUTPUT_RULES)
+    ```
+
 - `ConventionTests` collects the tests for the coding conventions of the StepUp packages,
   most importantly that every module declares `__all__`
   and that no module imports a name another module does not export.
