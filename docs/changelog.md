@@ -19,7 +19,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Fixed
+
+- On Windows, the constructor of `Path` and `to_slash()` in `stepup.core.path`
+  remove the prefix `\\?\` of an extended-length path,
+  e.g. `\\?\C:\Users\me` becomes `C:/Users/me`.
+  `filter_dependencies()` in `stepup.core.extapi` discarded every path with this prefix,
+  which some programs write in the list of files they used, as observed with Typst 0.15.
 
 ## [4.1.0rc3][] - 2026-11-18 {: #v4.1.0rc3 }
 

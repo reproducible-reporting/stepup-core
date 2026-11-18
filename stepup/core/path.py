@@ -58,25 +58,33 @@ or one of its variants.
 
 
 def _nt_to_slash(path: str) -> str:
-    """Write a Windows path with `/` separators and an upper-case drive letter.
+    r"""Write a Windows path with `/` separators and an upper-case drive letter.
 
+    The prefix of an extended-length path is removed:
+    `\\?\C:\dir` becomes `C:/dir`, and `\\?\UNC\server\share` becomes `//server/share`.
     The drive letter is only changed when it is followed by a separator or by nothing,
     because a colon after a one-letter file name may also start the name of a data stream.
     """
     # The unbound `str.replace` returns an exact `str`, also for an instance of a subclass.
     path = str.replace(path, "\\", "/")
+    if path.startswith("//?/UNC/"):
+        path = "//" + path[8:]
+    elif path.startswith("//?/"):
+        path = path[4:]
     if path[1:2] == ":" and path[2:3] in ("/", "") and "a" <= path[0] <= "z":
         path = path[0].upper() + path[1:]
     return path
 
 
 def to_slash(path: str) -> str:
-    """Convert a path string received from the operating system to StepUp's spelling.
+    r"""Convert a path string received from the operating system to StepUp's spelling.
 
     Inside StepUp, `/` is the only path separator on every platform.
-    On Windows, backslashes are replaced by `/` and the drive letter is written in upper case,
+    On Windows, backslashes are replaced by `/`, the drive letter is written in upper case,
+    and the prefix `\\?\` of an extended-length path is removed,
     because the operating system does not distinguish these spellings,
     while StepUp compares paths as strings.
+    Some programs report paths with this prefix, as observed with Typst 0.15 on Windows.
     On other platforms, a backslash is an ordinary file name character
     and the path is returned unchanged.
 
@@ -219,15 +227,15 @@ class _NtPath(BasePath):
 
 
 class Path(_NtPath if sys.platform == "win32" else BasePath):
-    """A file system path with `/` as its only separator, on every platform.
+    r"""A file system path with `/` as its only separator, on every platform.
 
     This is a subclass of `path.Path` from the [path](https://pypi.org/project/path/) library,
     and therefore also of `str`.
     It preserves a leading `./` and a trailing `/`, which carry meaning in StepUp.
 
     On POSIX systems, it behaves exactly like `path.Path`.
-    On Windows, the constructor replaces backslashes by `/`
-    and writes the drive letter in upper case,
+    On Windows, the constructor replaces backslashes by `/`,
+    writes the drive letter in upper case and removes the prefix `\\?\` of an extended-length path,
     and all methods return paths with `/` separators, e.g. `C:/Users/me/project/plan.py`.
     Windows accepts such paths in all its file system functions.
     Use `os.path.normpath()` to obtain the native spelling when another program requires it.

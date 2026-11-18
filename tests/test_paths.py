@@ -62,6 +62,7 @@ def test_to_slash():
     assert to_slash("sub/dir/") == "sub/dir/"
     if sys.platform == "win32":
         assert to_slash("c:\\Users\\me\\") == "C:/Users/me/"
+        assert to_slash("\\\\?\\C:\\Users\\me") == "C:/Users/me"
     else:
         assert to_slash("sub\\name") == "sub\\name"
 
@@ -77,6 +78,10 @@ def test_to_slash():
         ("c:/Users/me", "C:/Users/me"),
         ("C:rel", "C:rel"),
         ("\\\\server\\share\\dir", "//server/share/dir"),
+        ("\\\\?\\c:\\Users\\me", "C:/Users/me"),
+        ("//?/C:/Users/me", "C:/Users/me"),
+        ("\\\\?\\UNC\\server\\share\\dir", "//server/share/dir"),
+        ("\\\\.\\pipe\\name", "//./pipe/name"),
         (pathlib.PureWindowsPath("sub/dir/file.txt"), "sub/dir/file.txt"),
         (path_lib.Path("sub\\file.txt"), "sub/file.txt"),
         ("a", "a"),

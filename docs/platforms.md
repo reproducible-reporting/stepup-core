@@ -129,7 +129,8 @@ below which other users of the computer may be able to connect to a running buil
 ### Paths
 
 StepUp writes paths with `/`, also on Windows, e.g. `C:/Users/me/project/data.csv`,
-always with an upper-case drive letter.
+always with an upper-case drive letter
+and without the prefix `\\?\` of an extended-length path.
 Windows accepts `/` in all its file functions,
 so these paths can be passed to `open()` and to every other function of Python.
 All paths that StepUp returns are instances of [`Path`][stepup.core.path.Path]
