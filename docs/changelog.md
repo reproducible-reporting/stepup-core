@@ -19,6 +19,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.1.0rc3][] - 2026-11-18 {: #v4.1.0rc3 }
+
+Third release candidate for StepUp 4.1.
+
 ### Changed
 
 - `run_example()` in `stepup.core.pytest` takes a keyword argument `rules`,
@@ -1912,6 +1918,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.1.0rc3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc3
 [4.1.0rc2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc2
 [4.1.0rc1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc1
 [4.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.3
