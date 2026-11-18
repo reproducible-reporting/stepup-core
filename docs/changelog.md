@@ -19,6 +19,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.1.0rc4][] - 2026-11-18 {: #v4.1.0rc4 }
+
+Fourth release candidate for StepUp 4.1.
+
 ### Fixed
 
 - On Windows, the constructor of `Path` and `to_slash()` in `stepup.core.path`
@@ -1924,6 +1930,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.1.0rc4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc4
 [4.1.0rc3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc3
 [4.1.0rc2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc2
 [4.1.0rc1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc1
