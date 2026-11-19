@@ -1,0 +1,20 @@
+ STARTUP │ Making failed steps pending
+ STARTUP │ Watching 1 directory
+ UPDATED │ ENV_VAR_TEST_STEPUP_KQZRPX ='AAAA' ➜ ='BBBB'
+ STARTUP │ Checking 2 file(s) for changes
+ UPDATED │ plan.py (digest 1f45bea1 ➜ 1ba7f5bb, size 57 ➜ 188)
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+  NOSKIP │ echo ${ENV_VAR_TEST_STEPUP_KQZRPX} > out.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 7c75ca18 ➜ 33035feb, out_digest db08565a ➜ (unset)
+Modified env var     ENV_VAR_TEST_STEPUP_KQZRPX ='AAAA' ➜ ='BBBB'
+────────────────────────────────────────────────────────────────────────────────
+   START │ echo ${ENV_VAR_TEST_STEPUP_KQZRPX} > out.txt
+ SUCCESS │ echo ${ENV_VAR_TEST_STEPUP_KQZRPX} > out.txt
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

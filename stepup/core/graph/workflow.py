@@ -2412,7 +2412,10 @@ class Workflow(Trellis):
             )
 
     def env_var_uses(self) -> list[tuple[Step, str, str | None]]:
-        """Return the environment variables used by all attached steps, with their stored values.
+        """Return the environment variables used by all steps, with their stored values.
+
+        Detached steps are included for the reason given in `mark_consuming_steps_pending`:
+        a detached step can be recycled with its state and stored hash intact.
 
         The result is a list instead of a lazy cursor,
         so it is safe to iterate over it while mutating the graph (e.g. marking steps pending).
@@ -2423,10 +2426,7 @@ class Workflow(Trellis):
             One `(step, name, value)` tuple per variable of each step,
             where `value` is the stored value, or `None` when the variable was unset.
         """
-        sql = (
-            "SELECT node.i, label, name, value FROM env_var "
-            "JOIN node ON env_var.node = node.i WHERE NOT node.detached"
-        )
+        sql = "SELECT node.i, label, name, value FROM env_var JOIN node ON env_var.node = node.i"
         return [
             (Step(self, node_i, label), name, value)
             for node_i, label, name, value in self.db.execute(sql)

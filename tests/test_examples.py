@@ -112,6 +112,7 @@ EXAMPLES = [
     "env_vars_config_touch",
     "env_vars_multi",
     "env_vars_path",
+    "env_vars_restart_detached",
     "env_vars_restart_set",
     "env_vars_restart_unset",
     "env_vars_restart_value",

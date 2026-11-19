@@ -317,3 +317,29 @@ async def test_rescan_env_vars_stores_new_value(wfp: Workflow, monkeypatch):
     reporter = _FakeReporter()
     await rescan_env_vars(wfp, reporter)
     assert reporter.calls == []
+
+
+async def test_rescan_env_vars_includes_detached_steps(wfp: Workflow, monkeypatch):
+    """A detached step that uses a changed variable is marked pending and stores the new value.
+
+    The step may be recycled later with its state and stored hash intact,
+    so it would never rerun if the rescan skipped it.
+    """
+    name = "ENV_VAR_TEST_STEPUP_RESCAN"
+    monkeypatch.setenv(name, "old")
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "./work.py", env_deps=[name])
+        step = wfp.find(Step, "./work.py")
+        step.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
+        step.detach()
+
+    monkeypatch.setenv(name, "new")
+    reporter = _FakeReporter()
+    await rescan_env_vars(wfp, reporter)
+
+    assert reporter.calls == [("UPDATED", f"{name} ='old' ➜ ='new'")]
+    async with wfp.db:
+        assert step.is_detached()
+        assert step.get_state() == StepState.PENDING
+        assert (step, name, "new") in wfp.env_var_uses()

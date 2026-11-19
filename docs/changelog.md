@@ -27,6 +27,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   Every later start with the same value reported the change again
   and marked the step and everything downstream pending,
   only for the hash check to skip them.
+- A step that was detached when `stepup build` started,
+  e.g. because the plan that defines it had failed in the previous run,
+  was not rerun when an environment variable it uses had changed.
+  When the plan defined the step again, it kept the output made with the old value
+  until the next start.
 
 ## [4.1.0rc4][] - 2026-11-18 {: #v4.1.0rc4 }
 
