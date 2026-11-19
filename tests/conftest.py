@@ -112,8 +112,11 @@ BUILD_UNTIL_DONE = """\
 import os
 from stepup.core.path import Path
 from time import sleep
-with open("STARTED.txt", "w") as fh:
+# Write to a temporary file first and rename it,
+# so that STARTED.txt never exists without its content.
+with open("STARTED.tmp", "w", encoding="utf-8", newline="\\n") as fh:
     fh.write(os.environ["STEPUP_JOB_I"])
+os.replace("STARTED.tmp", "STARTED.txt")
 while not Path("DONE.txt").is_file():
     sleep(0.1)
 print("Found DONE.txt. Stopping.")
