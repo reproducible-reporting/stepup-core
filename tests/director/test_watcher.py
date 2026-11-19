@@ -267,3 +267,100 @@ async def test_record_deleted_parent_skips_build_products_during_build(wfp: Work
             await watcher.record_change(Change.DELETED_PARENT, Path("sub"))
         assert watcher.deleted == {"sub/out.txt"}
         assert reporter.calls == [("DELETED", "sub/out.txt")]
+
+
+def _declare_built_output(wfp: Workflow, path: str):
+    """Declare `path` as the output of a step and store the hash of the file on disk."""
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "prog", out_paths=[path])
+    wfp.update_file_hash(path, FileHash.unknown().refreshed(path), cause=HashUpdateCause.SUCCEEDED)
+    assert wfp.find(File, path).get_state() == FileState.BUILT
+
+
+async def test_record_change_discards_report_of_unchanged_output(wfp: Workflow, tmpdir):
+    """A late report about an output that still matches its stored hash is not news."""
+    with contextlib.chdir(tmpdir):
+        with open("out.txt", "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("built")
+        async with wfp.db:
+            _declare_built_output(wfp, "out.txt")
+
+        watcher = _make_watcher(wfp)
+        reporter = _FakeReporter()
+        watcher.reporter = reporter
+        async with wfp.db:
+            await watcher.record_change(Change.DELETED, Path("out.txt"))
+            await watcher.record_change(Change.UPDATED, Path("out.txt"))
+        assert watcher.deleted == set()
+        assert watcher.updated == set()
+        assert reporter.calls == []
+
+        # A real change is still reported.
+        with open("out.txt", "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("edited by the user")
+        async with wfp.db:
+            await watcher.record_change(Change.UPDATED, Path("out.txt"))
+        assert watcher.updated == {"out.txt"}
+        assert reporter.calls == [("UPDATED", "out.txt")]
+
+
+async def test_record_change_discards_earlier_report_when_file_is_restored(wfp: Workflow, tmpdir):
+    """A file moved away and back is unchanged, so its earlier removal is no longer news."""
+    with contextlib.chdir(tmpdir):
+        with open("out.txt", "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("built")
+        async with wfp.db:
+            _declare_built_output(wfp, "out.txt")
+
+        watcher = _make_watcher(wfp)
+        os.rename("out.txt", "tmp.txt")
+        async with wfp.db:
+            await watcher.record_change(Change.DELETED, Path("out.txt"))
+        assert watcher.deleted == {"out.txt"}
+        os.rename("tmp.txt", "out.txt")
+        async with wfp.db:
+            await watcher.record_change(Change.UPDATED, Path("out.txt"))
+        assert watcher.deleted == set()
+        assert watcher.updated == set()
+
+
+async def test_record_change_discards_removal_of_missing_file(wfp: Workflow, tmpdir):
+    """A removal of a static file already known to be missing is not news."""
+    with contextlib.chdir(tmpdir):
+        os.mkdir("sub")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.declare_static_files(plan, ["ghost.txt", "sub/ghost.txt"])
+            for path in "ghost.txt", "sub/ghost.txt":
+                wfp.update_file_hash(path, FileHash.unknown(), cause=HashUpdateCause.OBSERVED)
+                assert wfp.find(File, path).get_state() == FileState.MISSING
+
+        os.rmdir("sub")
+        watcher = _make_watcher(wfp)
+        reporter = _FakeReporter()
+        watcher.reporter = reporter
+        async with wfp.db:
+            await watcher.record_change(Change.DELETED, Path("ghost.txt"))
+            await watcher.record_change(Change.DELETED_PARENT, Path("sub"))
+        assert watcher.deleted == set()
+        assert reporter.calls == []
+
+
+async def test_record_change_keeps_report_of_unconfirmed_file(wfp: Workflow, tmpdir):
+    """An `UNCONFIRMED` file must be hashed to settle its state, even when its stat matches."""
+    with contextlib.chdir(tmpdir):
+        with open("stale.txt", "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("stale")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.declare_static_files(plan, ["stale.txt"])
+            stale_hash = FileHash.unknown().refreshed("stale.txt")
+            wfp.update_file_hash("stale.txt", stale_hash, cause=HashUpdateCause.OBSERVED)
+            stale = wfp.find(File, "stale.txt")
+            stale.set_state(FileState.UNCONFIRMED)
+            assert stale.get_hash().is_current("stale.txt")
+
+        watcher = _make_watcher(wfp)
+        async with wfp.db:
+            await watcher.record_change(Change.UPDATED, Path("stale.txt"))
+        assert watcher.updated == {"stale.txt"}

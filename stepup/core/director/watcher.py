@@ -27,7 +27,8 @@ from collections.abc import Generator
 
 import attrs
 
-from ..enums import Change, HashUpdateCause
+from ..enums import OBSERVABLE_FILE_STATES, Change, FileState, HashUpdateCause
+from ..graph.file import File
 from ..graph.sqlite3 import DBSession
 from ..graph.workflow import Workflow
 from ..path import Path
@@ -40,6 +41,14 @@ from .reporter import ReporterClient
 __all__ = ("Watcher",)
 
 logger = logging.getLogger(__name__)
+
+
+_SETTLED_STATES = OBSERVABLE_FILE_STATES - {FileState.UNCONFIRMED}
+"""States in which a file that still matches its stored hash has no change to report.
+
+`Workflow.update_file_hash` drops an unchanged observation in these states,
+while an `UNCONFIRMED` file must still move to `CONFIRMED` or `MISSING`.
+"""
 
 
 @attrs.define
@@ -234,8 +243,22 @@ class Watcher:
             Whether the change was observed while a build phase was running.
             The build is writing its own outputs then,
             so only a change to a static file counts as news.
+
+        Notes
+        -----
+        A report about a file that still matches its stored hash is not news,
+        because hashing the file at the end of the watch phase would change nothing.
+        Such a report is discarded, together with any earlier one about the same file.
+        File watchers may report a change well after it happened,
+        e.g. FSEvents (macOS) after more than 10 milliseconds on a busy CI runner,
+        as observed with watchfiles 1.3.0.
+        Without this check, an output written in the build phase
+        could be reported as changed in the next watch phase.
         """
-        if change == Change.DELETED and path not in self.deleted:
+        if change != Change.DELETED_PARENT and self._is_unchanged(path):
+            self.deleted.discard(path)
+            self.updated.discard(path)
+        elif change == Change.DELETED and path not in self.deleted:
             if self.workflow.change_is_relevant(path, during_build=during_build):
                 await self.reporter("DELETED", path)
                 self.deleted.add(path)
@@ -251,9 +274,16 @@ class Watcher:
                     event.set()
         elif change == Change.DELETED_PARENT:
             for sub_path in self.workflow.relevant_paths_under(path, during_build=during_build):
-                if sub_path not in self.deleted:
+                if sub_path not in self.deleted and not self._is_unchanged(sub_path):
                     await self.reporter("DELETED", sub_path)
                     self.deleted.add(sub_path)
                     self.updated.discard(sub_path)
                     for event in self.files_changed_events:
                         event.set()
+
+    def _is_unchanged(self, path: str) -> bool:
+        """Whether `path` is a file whose stored hash still describes it on disk."""
+        file = self.workflow.find_attached(File, path)
+        if file is None or file.get_state() not in _SETTLED_STATES:
+            return False
+        return file.get_hash().is_current(path)

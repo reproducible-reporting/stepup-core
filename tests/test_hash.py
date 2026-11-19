@@ -77,6 +77,23 @@ def test_refreshed_trailing_sep_on_file(path_tmp: Path):
     assert init_hash.refreshed(path + os.sep) is init_hash
 
 
+def test_is_current(path_tmp: Path):
+    path = path_tmp / "file.txt"
+    assert FileHash.unknown().is_current(path)
+    path.write_bytes(b"content")
+    assert not FileHash.unknown().is_current(path)
+    file_hash = FileHash.unknown().refreshed(path)
+    assert file_hash.is_current(path)
+    st = os.stat(path)
+    os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000_000))
+    assert not file_hash.is_current(path)
+    file_hash = file_hash.refreshed(path)
+    path.write_bytes(b"longer content")
+    assert not file_hash.is_current(path)
+    path.remove()
+    assert not file_hash.is_current(path)
+
+
 def test_hash_symbolic_link_dir(path_tmp: Path):
     path_sub = path_tmp / "sub"
     path_sub.mkdir()

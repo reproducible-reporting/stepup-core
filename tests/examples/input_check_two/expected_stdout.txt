@@ -17,7 +17,5 @@ DIRECTOR │ Ran 3 job(s).
  WARNING │ Skipping file cleanup due to incomplete build
  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
    PHASE │ watch
- UPDATED │ f1.txt
 DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
-SAMEHASH │ f1.txt
 DIRECTOR │ See you!

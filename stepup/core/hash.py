@@ -320,17 +320,44 @@ class FileHash:
             st = os.stat(path)
         except OSError:
             return self if self.is_unknown else self.unknown()
-        # Decide whether the digest computation can be skipped.
-        if (
-            self.mode == st.st_mode
-            and self.mtime == st.st_mtime
-            and self.size == st.st_size
-            and self.inode == st.st_ino
-        ):
+        if self._matches_stat(st):
             return self
         # Directories are rejected by compute_file_digest.
         digest = compute_file_digest(path, cancel_event=cancel_event)
         return self.__class__(digest, st.st_mode, st.st_size, st.st_mtime, st.st_ino)
+
+    def is_current(self, path: str) -> bool:
+        """Whether this hash still describes the file on disk, judged from `stat` alone.
+
+        This is the case when `refreshed` would return `self` without computing a digest:
+        the file is still missing for an unknown hash,
+        or its mode, size, modification time and inode number are unchanged.
+        It shares the blind spot of `refreshed` for a rewrite that keeps all four properties.
+
+        Parameters
+        ----------
+        path
+            Path to a file.
+
+        Returns
+        -------
+        is_current
+            Whether the file on disk matches this hash.
+        """
+        try:
+            st = os.stat(Path(path))
+        except OSError:
+            return self.is_unknown
+        return self._matches_stat(st)
+
+    def _matches_stat(self, st: os.stat_result) -> bool:
+        """Whether the `stat` result of an existing file has the properties of this hash."""
+        return (
+            self.mode == st.st_mode
+            and self.mtime == st.st_mtime
+            and self.size == st.st_size
+            and self.inode == st.st_ino
+        )
 
     def stat_differs(self, other: Self) -> bool:
         """Whether the `stat` properties left out of `==` differ from those of `other`.
