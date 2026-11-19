@@ -157,10 +157,16 @@ and nothing keeps true.
 
 ## Directory Creation and Removal
 
-StepUp has no node type for directories, yet it creates and removes the ones its steps need.
-The two halves are deliberately symmetric:
+StepUp has no node type for directories, yet it creates the ones its steps need
+and removes some of them again.
+The two halves are deliberately asymmetric:
 **a directory is created when a step is about to use it,
-and marked for removal when that step or its files leave the workflow.**
+and marked for removal only when a regular or volatile output in it leaves the workflow
+or is removed because its optional step is reverted.**
+An empty directory may still belong to the user,
+and StepUp does not record which directories it created itself.
+A static file or a step that leaves the workflow therefore never marks a directory,
+not even the working directory of that step.
 
 How both halves are implemented is in `stepup/core/director/CLAUDE.md`.
 

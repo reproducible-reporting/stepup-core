@@ -1,0 +1,11 @@
+ STARTUP │ Watching 2 directories
+ STARTUP │ Checking 2 file(s) for changes
+ UPDATED │ plan.py (digest 39d6458b ➜ 25d708ea, size 113 ➜ 75)
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot
+DIRECTOR │ See you!

@@ -2146,6 +2146,95 @@ async def test_to_be_deleted(wfp: Workflow):
         assert wfp.find_and_detached(Step, "./plan.py") == (None, None)
 
 
+async def test_to_be_deleted_static_keeps_dir(wfp: Workflow):
+    """A static file that leaves the workflow never queues its directory, which is the user's."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["notes/a.txt"])
+        wfp.register_static_tree(plan, "data")
+        wfp.define_step(plan, "use", inp_paths=["data/sub/a.txt"])
+        wfp.update_file_hash("notes/a.txt", FileHash.unknown(), cause=HashUpdateCause.OBSERVED)
+        wfp.update_file_hash("data/sub/a.txt", FileHash.unknown(), cause=HashUpdateCause.OBSERVED)
+        assert wfp.find(File, "notes/a.txt").get_state() == FileState.MISSING
+        assert wfp.find(File, "data/sub/a.txt").get_state() == FileState.MISSING
+        plan.detach()
+        assert wfp.delete_detached() == {}
+
+
+async def test_to_be_deleted_planned_output_dir(wfp: Workflow):
+    """An output without a file on disk still queues its directory.
+
+    This covers an output that was never built and one that the user removed by hand.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "never", out_paths=["sub1/never"])
+        wfp.define_step(plan, "gone", out_paths=["sub2/gone"])
+        wfp.update_file_hash("sub2/gone", fake_hash("sub2/gone"), cause=HashUpdateCause.SUCCEEDED)
+        wfp.find(Step, "gone").mark_completed(StepHash(b"aaa", None, b"zzz", None), False)
+        wfp.update_file_hash("sub2/gone", FileHash.unknown(), cause=HashUpdateCause.OBSERVED)
+        assert wfp.find(File, "sub2/gone").get_state() == FileState.PLANNED
+        plan.detach()
+        assert wfp.delete_detached() == {"sub1/": None, "sub2/": None}
+
+
+async def test_to_be_deleted_workdir_kept(wfp: Workflow):
+    """The working directory of a step that leaves the workflow is not queued."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "echo", workdir="sub/")
+        plan.detach()
+        assert wfp.delete_detached() == {}
+
+
+async def test_supply_file_keeps_output_state_without_creator(wfp: Workflow):
+    """A detached output without a creator remembers its role when it is supplied as an input.
+
+    The role is what decides whether the directory of the file is removed with it.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog", out_paths=["data/foo.txt"])
+        foo = wfp.find(File, "data/foo.txt")
+        assert foo.get_state() == FileState.PLANNED
+        # Detaching the file itself, as a step does with outputs it no longer amends,
+        # leaves it without a creator.
+        foo.detach()
+        assert foo.creator() is None
+
+        wfp.define_step(plan, "other")
+        (info,) = wfp._supply_files(wfp.find(Step, "other"), ["data/foo.txt"])
+        assert info.detached
+        assert info.state == FileState.PLANNED
+        assert info.file.get_state() == FileState.PLANNED
+
+        plan.detach()
+        assert wfp.delete_detached() == {"data/": None}
+
+
+async def test_supply_file_forgets_volatile_without_creator(wfp: Workflow):
+    """A detached volatile output without a creator loses its role when it is supplied as an input.
+
+    A volatile file can never be an input, so the node becomes `UNDECLARED`,
+    and neither the file nor its directory is removed when the node is deleted.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog", vol_paths=["data/foo.txt"])
+        foo = wfp.find(File, "data/foo.txt")
+        assert foo.get_state() == FileState.VOLATILE
+        foo.detach()
+        assert foo.creator() is None
+
+        wfp.define_step(plan, "other", inp_paths=["data/foo.txt"])
+        foo = wfp.find(File, "data/foo.txt")
+        assert foo.is_detached()
+        assert foo.get_state() == FileState.UNDECLARED
+
+        plan.detach()
+        assert wfp.delete_detached() == {}
+
+
 async def test_externally_deleted(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")

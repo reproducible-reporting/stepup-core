@@ -39,3 +39,24 @@ async def test_remove_deletable_files_unhashable(wfp: Workflow, tmpdir):
         await remove_deletable_files(to_be_deleted, ReporterClient(client))
         assert Path("out.txt").is_dir()
         assert ("WARNING", "Not removing out.txt: it cannot be hashed.") in client.reports
+
+
+async def test_remove_deletable_files_prunes_parents(tmpdir):
+    """The directories of a removed output are pruned upward, as long as they are empty.
+
+    An empty directory that was never queued, and the parent that holds it, are left alone.
+    """
+    with contextlib.chdir(tmpdir):
+        Path("a/b").makedirs_p()
+        Path("a/b/out.txt").write_text("x", encoding="utf-8")
+        Path("c/d").makedirs_p()
+        Path("c/d/out.txt").write_text("x", encoding="utf-8")
+        Path("c/user").mkdir()
+        to_be_deleted = {"a/b/out.txt": None, "a/b/": None, "c/d/out.txt": None, "c/d/": None}
+        client = RecordingClient()
+        await remove_deletable_files(to_be_deleted, ReporterClient(client))
+        assert not Path("a").exists()
+        assert not Path("c/d").exists()
+        assert Path("c/user").is_dir()
+        removed = {str(description) for tag, description in client.reports if tag == "REMOVE"}
+        assert removed == {"a/b/out.txt", "c/d/out.txt", "a/b", "a", "c/d"}

@@ -62,21 +62,32 @@ distinguished by a trailing separator on the key.
 `Workflow.delete_detached` opens one for the duration of its own call
 (reachable as `Workflow.to_be_deleted`, which raises at any other moment)
 and returns it, so no queue outlives the cleanup pass that fills it.
-`File.before_delete` marks the file's parent directory
-and `Step.before_delete` marks the step's working directory.
+`File.before_delete` marks the parent directory of a regular or volatile output.
 `revert_optional_steps` builds a queue of its own and returns it,
 because the nodes of the outputs it flags stay in the graph
 and therefore never reach `before_delete`.
 `Builder.finalize` merges the two queues and hands them to `remove_deletable_files`.
-A directory is marked whatever the state of the file that named it,
-which is what catches an output the user removed by hand:
+
+Whether a directory is marked depends on the role of the file, not on its state.
+An output that the user removed by hand is `PLANNED`:
 the file itself is then no longer in `to_be_deleted`, but its directory still is.
+`File.initialize_row` keeps the state of a former output
+when a node without a creator is recreated as `UNDECLARED`,
+so the role survives until the node is deleted.
+A former volatile output becomes `UNDECLARED` instead,
+so that file and its directory are left alone.
 
 `remove_deletable_files` deletes the files first and hands the directories to
 `_prune_empty_dirs`, which removes each one only if it is empty,
-and then walks up to the root doing the same.
-Emptiness is the only safeguard here,
-so marking a directory too eagerly is harmless by construction.
-The one exception is the project root and its ancestors,
-which `mark_dir_to_be_deleted` refuses to queue and the upward walk stops at:
-a step may build outside the root, but the directories above it are not StepUp's to remove.
+and then walks up to the root doing the same,
+because `Workflow.create_dirs` may have created several levels for one output.
+The walk may also remove an empty ancestor that the user created,
+since StepUp does not record which directories it created.
+It never reaches a static tree, because no output can be removed from inside one:
+`_declare_file` refuses an output inside an attached static tree,
+and `register_static_tree` adopts the detached files under a new tree as static files.
+The example `clean_dir_keep_static_tree` covers the latter,
+and `stepup clean` relies on the same invariant for its own upward walk.
+The project root and its ancestors are never removed either:
+`mark_dir_to_be_deleted` refuses to queue them and the upward walk stops at them,
+because a step may build outside the root, but the directories above it are not StepUp's to remove.

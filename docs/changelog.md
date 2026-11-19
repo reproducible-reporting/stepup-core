@@ -19,6 +19,23 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+### Changed
+
+- StepUp only removes an empty directory when it is the directory of an output
+  that left the workflow or that StepUp removed when reverting an optional step,
+  and then also its parent directories as long as they are empty.
+  The working directory of a step that leaves the workflow is therefore no longer removed,
+  even when it is empty.
+
+### Fixed
+
+- StepUp removed the directory of a static file that left the workflow,
+  when that directory was empty at the end of the build.
+  A static file leaves the workflow when the plan no longer declares it
+  or when a step no longer amends it as an input,
+  e.g. after `git pack-refs` removed a loose ref that `static(".git/")` covered,
+  which made StepUp remove `.git/refs/heads/`.
+
 ## [4.1.0rc5][] - 2026-11-19 {: #v4.1.0rc5 }
 
 Fifth release candidate for StepUp 4.1.

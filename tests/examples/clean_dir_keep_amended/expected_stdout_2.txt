@@ -1,0 +1,11 @@
+ STARTUP │ Watching 2 directories
+ STARTUP │ Checking 3 file(s) for changes
+ DELETED │ data/sub/a.txt
+   PHASE │ build
+   START │ ./use.py
+ SUCCESS │ ./use.py
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot
+DIRECTOR │ See you!

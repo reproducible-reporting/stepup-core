@@ -1,0 +1,9 @@
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph_1.txt, current_graph_1_provenance.dot and current_graph_1_dependency.dot
+DIRECTOR │ See you!

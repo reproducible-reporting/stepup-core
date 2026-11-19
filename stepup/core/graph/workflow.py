@@ -861,8 +861,9 @@ class _SupplyInfo:
 def mark_dir_to_be_deleted(to_be_deleted: dict[str, FileHash | None], path: str):
     """Mark a directory as a candidate for removal in the next cleanup pass.
 
-    The directory is only removed if it is empty by then,
-    so marking one that other files still live in is harmless.
+    The directory is only removed if it is empty by then.
+    Mark only the directory of a regular or volatile output of a step,
+    because an empty directory may still belong to the user.
     The project root and its ancestors are never marked:
     StepUp may build outside the root, but it never owns the directories above it.
 
@@ -1755,10 +1756,11 @@ class Workflow(Trellis):
             detached = False
             self.watch_dir(Path(path).parent)
         elif file is None or file.creator() is None:
-            # Nothing declares this path (anymore), so it has no role.
+            # Nothing declares this path (anymore).
             # `creator=None` makes `Trellis.create` force `detached = True`.
-            state = FileState.UNDECLARED
-            file = self.create(File, None, path, state=state)
+            file = self.create(File, None, path, state=FileState.UNDECLARED)
+            # A former output keeps its state, see `File.initialize_row`.
+            state = file.get_state()
             detached = True
             self.watch_dir(Path(path).parent)
         else:

@@ -7,7 +7,6 @@
 DIRECTOR │ Ran 1 job(s).
 DIRECTOR │ Trying to remove 1 deletable file(s) and empty director(y|ies)
   REMOVE │ hello.txt
-  REMOVE │ sub
    PHASE │ watch
 DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot
 DIRECTOR │ See you!

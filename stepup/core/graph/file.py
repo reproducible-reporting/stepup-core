@@ -6,7 +6,7 @@ from collections.abc import Iterator
 
 import attrs
 
-from ..enums import FileState
+from ..enums import FILE_STATES_BY_ROLE, FileRole, FileState
 from ..exceptions import PathError
 from ..hash import FileHash, fmt_full_digest
 from ..path import Path
@@ -27,6 +27,9 @@ __all__ = ("REGULAR_OUTPUT_WHERE", "File")
 # the callers drive their joins from different directions for query-planner reasons
 # documented at each site.
 REGULAR_OUTPUT_WHERE = f"NOT onode.detached AND ofile.state != {FileState.VOLATILE.value}"
+
+_STEP_OUTPUT_STATES = FILE_STATES_BY_ROLE[FileRole.OUTPUT] | FILE_STATES_BY_ROLE[FileRole.VOLATILE]
+"""The states of a file that a step declared as a regular or volatile output."""
 
 
 FILE_SCHEMA = f"""
@@ -58,7 +61,7 @@ CREATE TABLE IF NOT EXISTS file (
 --   so it must not survive a recycle into UNCONFIRMED.
 --   That would let a leftover build product be silently adopted as a trusted source.
 -- * UNDECLARED needs no such exclusion:
---   File.initialize_row carries a BUILT or OUTDATED state over instead of writing UNDECLARED,
+--   File.initialize_row carries an output state over instead of writing UNDECLARED,
 --   and that is the only place UNDECLARED is ever written,
 --   so an UNDECLARED row's hash can never have an output-role origin.
 -- * Do not add `hash` to the `SET` clause of the upsert in File.initialize_row().
@@ -146,6 +149,8 @@ class File(Node):
             one that was `BUILT` or `OUTDATED` before keeps its output state
             when it is recreated as `UNDECLARED` or `PLANNED`,
             with `BUILT` degrading to `OUTDATED` to force a rebuild.
+            One that was `PLANNED` before keeps that state
+            when it is recreated as `UNDECLARED`.
 
         Notes
         -----
@@ -158,11 +163,18 @@ class File(Node):
         # UNDECLARED means that nothing declares the file (yet) and PLANNED that it must still
         # be built. Neither is a reason to forget that a step produced the file before,
         # so the old output state is restored instead of the requested one.
+        # For UNDECLARED, this includes PLANNED,
+        # so that a former output keeps its role, even when it was never built.
+        # A former volatile output becomes UNDECLARED nonetheless,
+        # because a volatile file can never be the input of a step.
         if state in (FileState.UNDECLARED, FileState.PLANNED):
             sql = "SELECT state, hash FROM file WHERE node = ?"
             row = self.db.execute(sql, (self.i,)).fetchone()
-            if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):
-                state = FileState(row[0])
+            old_state = None if row is None else FileState(row[0])
+            if old_state in (FileState.BUILT, FileState.OUTDATED) or (
+                state == FileState.UNDECLARED and old_state == FileState.PLANNED
+            ):
+                state = old_state
                 hash_json = row[1]
         # The upsert only assigns the state column when the row already exists,
         # so a recycled hash survives unless the file_clear_hash trigger nulls it afterward.
@@ -202,10 +214,9 @@ class File(Node):
         The row in the file table is removed automatically by `ON DELETE CASCADE`
         when the node row is deleted; here we only queue the on-disk file for deletion.
 
-        The parent directory is queued whatever the state of the file,
+        The parent directory of a (volatile) output is queued whatever the state of the file,
         also when the file itself is not deleted (or is already gone).
-        A directory is only removed when it is empty by the end of the cleanup pass,
-        so this cannot take away a directory that something else still needs.
+        The directory of any other file belongs to the user and is never queued.
         """
         state = self.get_state()
         if state == FileState.VOLATILE:
@@ -214,7 +225,8 @@ class File(Node):
             file_hash = self.get_hash()
             if not file_hash.is_unknown:
                 self.graph.to_be_deleted[self.path] = file_hash
-        self.graph.mark_dir_to_be_deleted(self.path.parent)
+        if state in _STEP_OUTPUT_STATES:
+            self.graph.mark_dir_to_be_deleted(self.path.parent)
 
     #
     # Getters and setters

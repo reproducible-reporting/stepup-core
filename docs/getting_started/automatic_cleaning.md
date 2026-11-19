@@ -17,6 +17,17 @@ StepUp will remove this output.
 This is also similar to [Ninja](https://ninja-build.org/)'s `cleandead` command,
 but it is enabled by default in StepUp.
 
+When outputs leave the workflow and their directory is empty after their removal,
+StepUp removes that directory too, and then its parent directories as long as they are empty.
+This also holds for an output that you already removed yourself or that was never built.
+At the end of a build, StepUp also removes the outputs of
+[optional steps](../advanced_topics/optional_steps.md) that no other step needs,
+and their directories in the same way.
+StepUp never removes a directory for any other reason.
+A directory that only contained static files,
+or that only served as the working directory of a step,
+is left alone when these files or that step leave the workflow, even when it is empty.
+
 Sometimes, it can be helpful to defer the cleanup
 until you are sure that the output files are no longer needed.
 This can be done in one of three ways:

@@ -30,7 +30,7 @@ stepup join
 # Wait for background processes, if any.
 wait
 
-# The working directory is empty and goes away with its step.
+# The output is removed, but the empty working directory is kept.
 [[ -f keep.txt ]] || exit 1
 [[ ! -f hello.txt ]] || exit 1
-[[ ! -d sub ]] || exit 1
+[[ -d sub ]] || exit 1
