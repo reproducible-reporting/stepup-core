@@ -36,3 +36,21 @@ grep AAAA current_variables.txt
 grep CCCC current_variables.txt
 ! grep -q BBBB current_variables.txt || exit 1
 cp current_variables.txt current_variables2.txt
+
+# Restart with the same changed value. The stored value must have been refreshed,
+# so nothing is reported as updated and no step runs.
+rm .stepup/*.log
+sb -j 1 -w -e & # > current_stdout3.txt &
+
+stepup wait
+stepup graph current_graph3
+stepup join
+
+# Wait for background processes, if any.
+wait
+
+[[ -f plan.py ]] || exit 1
+! grep -q UPDATED .stepup/success.log || exit 1
+! grep -qw START .stepup/success.log || exit 1
+grep CCCC current_variables.txt
+cp current_variables.txt current_variables3.txt

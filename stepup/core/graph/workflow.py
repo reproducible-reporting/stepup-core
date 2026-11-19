@@ -2411,6 +2411,27 @@ class Workflow(Trellis):
                 Step(self, node_i, label),
             )
 
+    def env_var_uses(self) -> list[tuple[Step, str, str | None]]:
+        """Return the environment variables used by all attached steps, with their stored values.
+
+        The result is a list instead of a lazy cursor,
+        so it is safe to iterate over it while mutating the graph (e.g. marking steps pending).
+
+        Returns
+        -------
+        uses
+            One `(step, name, value)` tuple per variable of each step,
+            where `value` is the stored value, or `None` when the variable was unset.
+        """
+        sql = (
+            "SELECT node.i, label, name, value FROM env_var "
+            "JOIN node ON env_var.node = node.i WHERE NOT node.detached"
+        )
+        return [
+            (Step(self, node_i, label), name, value)
+            for node_i, label, name, value in self.db.execute(sql)
+        ]
+
     def matches_any_glob(self, path: str) -> bool:
         """Test whether any registered glob pattern matches `path`.
 

@@ -1,0 +1,8 @@
+ STARTUP │ Watching 1 directory
+ STARTUP │ Checking 5 file(s) for changes
+   PHASE │ build
+DIRECTOR │ Ran 0 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+DIRECTOR │ See you!

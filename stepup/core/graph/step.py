@@ -1022,6 +1022,20 @@ class Step(Node):
         rows = [(self.i, name, os.getenv(name)) for name in env_deps if name not in env_overrides]
         self.db.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
 
+    def set_env_value(self, name: str, value: str | None) -> None:
+        """Replace the recorded value of an environment variable this step already uses.
+
+        Parameters
+        ----------
+        name
+            The name of the variable, which keeps its static or dynamic kind.
+        value
+            The new value, or `None` when the variable is unset.
+        """
+        self.db.execute(
+            "UPDATE env_var SET value = ? WHERE node = ? AND name = ?", (value, self.i, name)
+        )
+
     def env_deps(self, *, dynamic: bool | None = None) -> Iterator[str]:
         """Iterate over used environment variable names (not values)."""
         sql = "SELECT name FROM env_var WHERE node = ?"

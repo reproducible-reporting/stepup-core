@@ -6,7 +6,6 @@ import logging
 import os
 
 from ..enums import FileState, HashUpdateCause, StepState
-from ..graph.step import Step
 from ..graph.workflow import Workflow
 from ..hash import fmt_env_value, fmt_file_hash_diff
 from ..nglob import NamedGlob
@@ -92,30 +91,37 @@ async def watch_known_dirs(workflow: Workflow, reporter: ReporterClient):
 
 
 async def rescan_env_vars(workflow: Workflow, reporter: ReporterClient):
-    """Check for changes in environment variables used by steps."""
-    sql = (
-        "SELECT node, label, name, value FROM env_var JOIN node ON env_var.node = node.i "
-        "WHERE NOT node.detached"
-    )
+    """Check for changes in environment variables used by steps.
+
+    A step that uses a changed variable is marked pending,
+    and the new value is stored, so that the change is reported only once.
+    """
     async with workflow.db:
-        env_var_uses = workflow.db.execute(sql).fetchall()
+        env_var_uses = workflow.env_var_uses()
 
     # One step may use several changed variables, so it is collected only once.
     steps_to_rerun = {}
+    changed_values = []
     reported_names = set()
-    for node_i, label, name, old_value in env_var_uses:
+    for step, name, old_value in env_var_uses:
         new_value = os.getenv(name)
         if new_value == old_value:
             continue
-        steps_to_rerun[node_i] = Step(workflow, node_i, label)
+        steps_to_rerun[step.i] = step
+        changed_values.append((step, name, new_value))
         if name not in reported_names:
             reported_names.add(name)
             old_fmt = fmt_env_value(old_value)
             new_fmt = fmt_env_value(new_value)
             await reporter("UPDATED", f"{name} {old_fmt} ➜ {new_fmt}")
 
+    # The new values are stored in the same transaction that marks the steps pending.
+    # An interrupted build then still reruns these steps after the next start,
+    # because their pending state is stored as well.
     if len(steps_to_rerun) > 0:
         async with workflow.db:
+            for step, name, new_value in changed_values:
+                step.set_env_value(name, new_value)
             for step in steps_to_rerun.values():
                 workflow.mark_step_pending(step)
 

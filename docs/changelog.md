@@ -19,7 +19,14 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Fixed
+
+- When an environment variable used by a step had changed since the previous run,
+  `stepup build` reported the change and reran the step,
+  but did not store the new value.
+  Every later start with the same value reported the change again
+  and marked the step and everything downstream pending,
+  only for the hash check to skip them.
 
 ## [4.1.0rc4][] - 2026-11-18 {: #v4.1.0rc4 }
 

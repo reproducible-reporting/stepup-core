@@ -12,7 +12,12 @@ from stepup.core.director.builder import Builder
 from stepup.core.director.executor import Executor
 from stepup.core.director.reporter import ReporterClient
 from stepup.core.director.scheduler import Scheduler
-from stepup.core.director.startup import rescan_files, rescan_nglobs, watch_known_dirs
+from stepup.core.director.startup import (
+    rescan_env_vars,
+    rescan_files,
+    rescan_nglobs,
+    watch_known_dirs,
+)
 from stepup.core.enums import HashUpdateCause, StepState
 from stepup.core.graph.file import File, FileState
 from stepup.core.graph.step import Step
@@ -289,3 +294,26 @@ async def test_watch_known_dirs_includes_glob_base_dirs(wfp: Workflow, tmpdir):
         while not wfp.dir_queue.empty():
             watched.add(wfp.dir_queue.get_nowait())
         assert "data" in watched
+
+
+async def test_rescan_env_vars_stores_new_value(wfp: Workflow, monkeypatch):
+    """A changed variable is reported once, because the new value replaces the stored one."""
+    name = "ENV_VAR_TEST_STEPUP_RESCAN"
+    monkeypatch.setenv(name, "old")
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        plan.add_env_deps([name])
+        plan.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
+
+    monkeypatch.setenv(name, "new")
+    reporter = _FakeReporter()
+    await rescan_env_vars(wfp, reporter)
+
+    assert reporter.calls == [("UPDATED", f"{name} ='old' ➜ ='new'")]
+    async with wfp.db:
+        assert plan.get_state() == StepState.PENDING
+        assert (plan, name, "new") in wfp.env_var_uses()
+
+    reporter = _FakeReporter()
+    await rescan_env_vars(wfp, reporter)
+    assert reporter.calls == []

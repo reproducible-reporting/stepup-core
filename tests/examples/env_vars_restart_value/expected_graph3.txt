@@ -1,0 +1,62 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+           explained = yes
+             creator   root:
+              source   file:plan.py
+             product   file:demovars.py
+             product   file:printvars.py
+             product   file:variables.json
+             product   step:./demovars.py
+
+file:demovars.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./demovars.py
+
+file:printvars.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./printvars.py
+
+file:variables.json
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./demovars.py
+
+step:./demovars.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+           explained = yes
+             creator   step:./plan.py
+              source   file:demovars.py
+              source   file:variables.json
+             product   step:./printvars.py
+
+step:./printvars.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = ENV_VAR_TEST_STEPUP_AWDFTD
+                     = ENV_VAR_TEST_STEPUP_DFTHYH
+                     = STEPUP_PATH_FILTER [dynamic]
+           explained = yes
+             creator   step:./demovars.py
+              source   file:printvars.py
+             product   file:current_variables.txt
+                sink   file:current_variables.txt
+
+file:current_variables.txt
+               state = BUILT
+             creator   step:./printvars.py
+              source   step:./printvars.py
