@@ -19,6 +19,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+## [4.1.0rc6][] - 2026-11-19 {: #v4.1.0rc6 }
+
+Sixth release candidate for StepUp 4.1.
+
 ### Changed
 
 - StepUp only removes an empty directory when it is the directory of an output
@@ -1963,6 +1967,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.1.0rc6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc6
 [4.1.0rc5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc5
 [4.1.0rc4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc4
 [4.1.0rc3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc3
