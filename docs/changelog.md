@@ -19,6 +19,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+## [4.1.0rc5][] - 2026-11-19 {: #v4.1.0rc5 }
+
+Fifth release candidate for StepUp 4.1.
+
 ### Fixed
 
 - When an environment variable used by a step had changed since the previous run,
@@ -1942,6 +1946,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.1.0rc5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc5
 [4.1.0rc4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc4
 [4.1.0rc3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc3
 [4.1.0rc2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc2
