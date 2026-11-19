@@ -19,15 +19,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-### Fixed
-
-- In watch mode, StepUp no longer reports a file as `UPDATED` or `DELETED`
-  when the file on disk still matches its last recorded hash,
-  judged from its mode, size, modification time and inode number.
-  Such reports came from changes that StepUp had already processed,
-  e.g. an output written by a step whose notification arrived after the build phase,
-  which happens with FSEvents on macOS.
-  They were followed by a `SAMEHASH` report and had no other effect.
+(no change yet)
 
 ## [4.1.0rc6][] - 2026-11-19 {: #v4.1.0rc6 }
 
@@ -49,6 +41,13 @@ Sixth release candidate for StepUp 4.1.
   or when a step no longer amends it as an input,
   e.g. after `git pack-refs` removed a loose ref that `static(".git/")` covered,
   which made StepUp remove `.git/refs/heads/`.
+- In watch mode, StepUp no longer reports a file as `UPDATED` or `DELETED`
+  when the file on disk still matches its last recorded hash,
+  judged from its mode, size, modification time and inode number.
+  Such reports came from changes that StepUp had already processed,
+  e.g. an output written by a step whose notification arrived after the build phase,
+  which happens with FSEvents on macOS.
+  They were followed by a `SAMEHASH` report and had no other effect.
 
 ## [4.1.0rc5][] - 2026-11-19 {: #v4.1.0rc5 }
 
