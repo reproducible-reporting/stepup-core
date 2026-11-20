@@ -546,6 +546,23 @@ the internal environment variables described above.
     and [`get_root()`][stepup.core.path.get_root] instead,
     which are always up to date.
 
+`STEPUP_DIRECTOR_I`
+
+:   A unique integer every time the director starts,
+    guaranteed as long as `.stepup/graph.db` is not removed.
+    StepUp itself also recreates this database when a new version changes its format,
+    which has the same effect as removing it.
+    A step that depends on this variable runs at every start of the director,
+    which suits a step that looks at something StepUp does not watch, such as a remote server.
+    Declare the dependency with `env="STEPUP_DIRECTOR_I"` when the step is defined,
+    or with [`getenv("STEPUP_DIRECTOR_I")`][stepup.core.api.getenv] from inside the step.
+    In watch mode, the value stays the same for the lifetime of the director,
+    so such a step does not run again in later build phases because of this variable.
+    The values are not consecutive, and a new database starts again at `1`,
+    so a step must not use the value as a key for anything outside `.stepup/`.
+    Unlike `STEPUP_JOB_I`, this variable is meant to be declared as a dependency,
+    and that is its only intended use.
+
 `STEPUP_JOB_I`
 
 :   A unique integer id for the current job running the step.

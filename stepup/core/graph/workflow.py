@@ -44,11 +44,10 @@ __all__ = ("GlobViolation", "Workflow", "mark_dir_to_be_deleted")
 logger = logging.getLogger(__name__)
 
 
-# Enforce Workflow's creator-kind and dependency-kind rules at the database level,
+# The tables and triggers of Workflow that belong to no single node kind's own satellite schema.
+# The triggers enforce the creator-kind and dependency-kind rules at the database level,
 # as a backstop against a bug that writes directly to the node or dependency tables,
 # bypassing the graph-mutation API that is normally responsible for upholding these rules.
-# These are the only Workflow-level invariants that don't belong to a single node kind's own
-# satellite schema, so they live here instead.
 WORKFLOW_SCHEMA = f"""
 -- Which kinds may create a node depends on the node's own kind:
 -- - root: file, step, root
@@ -114,6 +113,13 @@ BEGIN
             OR (s.kind = '{StaticTree.kind()}' AND k.kind = '{File.kind()}')
         );
 END;
+
+-- The number of the latest start of the director, which steps see as `STEPUP_DIRECTOR_I`.
+-- The table holds at most one row, with i = 0.
+CREATE TABLE IF NOT EXISTS director_counter (
+    i INTEGER PRIMARY KEY CHECK (i = 0),
+    n INTEGER NOT NULL CHECK (n >= 1)
+);
 
 -- Reusable scratch tables for batch lookups keyed by a list of paths or node ids,
 -- used instead of `json_each(...)`, which was found to be slow in performance tests.
@@ -1010,6 +1016,28 @@ class Workflow(Trellis):
         if name in self.infra_env:
             return self.infra_env[name]
         return os.environ.get(name)
+
+    def assign_director_i(self) -> int:
+        """Give the current start of the director a new number, exported as `STEPUP_DIRECTOR_I`.
+
+        The number is stored in the database and put in `infra_env`.
+        It differs from the numbers of all earlier starts for as long as the database is kept.
+        Call this once per start of the director, after `initialize()` and before the first step,
+        inside a transaction that is committed before any step runs.
+        A start that is killed has then used up its number,
+        and the steps that ran with it run again at the next start.
+
+        Returns
+        -------
+        director_i
+            The new number, `1` for a new database.
+        """
+        (director_i,) = self.db.execute(
+            "INSERT INTO director_counter (i, n) VALUES (0, 1) "
+            "ON CONFLICT(i) DO UPDATE SET n = n + 1 RETURNING n"
+        ).fetchone()
+        self.infra_env["STEPUP_DIRECTOR_I"] = str(director_i)
+        return director_i
 
     #
     # Base class overrides and initialization

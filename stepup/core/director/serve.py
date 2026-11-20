@@ -237,6 +237,7 @@ async def serve(
     # They form an overlay of the workflow rather than being set in `os.environ`,
     # so that running the director in-process (e.g. in the test suite)
     # does not pollute the calling process's environment.
+    # `Workflow.assign_director_i()` adds `STEPUP_DIRECTOR_I` once the database is open.
     infra_env = {
         "STEPUP_DIRECTOR_SOCKET": str(director_socket_path),
         "STEPUP_ROOT": str(Path.cwd()),
@@ -254,13 +255,16 @@ async def serve(
         mp_ctx=mp_ctx,
     )
 
+    # The scan of an existing workflow runs at every start, before `initialize_boot()`,
+    # so that a `plan.py` that the previous director saw deleted, and that was restored since,
+    # is confirmed again instead of making `initialize_boot()` start over.
+    # On a new database, the scan finds nothing and reports nothing.
+    await resume_from_db(handler.workflow, reporter, handler.builder)
     # Define the initial plan.py as a static file and create a step for it.
     async with db:
         initialized = handler.workflow.initialize_boot()
     if initialized:
         await reporter("STARTUP", "(Re)initialized boot script")
-    else:
-        await resume_from_db(handler.workflow, reporter, handler.builder)
     # Every step that must run again is pending now, so the builder can start.
     handler.builder.resume.set()
 
@@ -321,6 +325,10 @@ async def _wire_director(
         infra_env=infra_env,
     )
     await workflow.initialize()
+    # The number is assigned as soon as its table exists,
+    # and before `Executor` exists, which copies the overlay into the environment of the steps.
+    async with db:
+        workflow.assign_director_i()
     scheduler = Scheduler(
         workflow, db=db, use_duration=config.use_duration, write_joblog=config.write_joblog
     )

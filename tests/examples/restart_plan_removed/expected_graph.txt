@@ -1,0 +1,63 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:input.txt
+             product   step:echo "${ENV_VAR_TEST_STEPUP_PRVDGT}" > variable.txt
+             product   step:echo "${STEPUP_DIRECTOR_I}" > director_i.txt
+             product   step:tr a-z A-Z < input.txt > upper.txt
+
+file:input.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:tr a-z A-Z < input.txt > upper.txt
+
+step:tr a-z A-Z < input.txt > upper.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:input.txt
+             product   file:upper.txt
+                sink   file:upper.txt
+
+file:upper.txt
+               state = BUILT
+             creator   step:tr a-z A-Z < input.txt > upper.txt
+              source   step:tr a-z A-Z < input.txt > upper.txt
+
+step:echo "${ENV_VAR_TEST_STEPUP_PRVDGT}" > variable.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = ENV_VAR_TEST_STEPUP_PRVDGT
+             creator   step:./plan.py
+             product   file:variable.txt
+                sink   file:variable.txt
+
+file:variable.txt
+               state = BUILT
+             creator   step:echo "${ENV_VAR_TEST_STEPUP_PRVDGT}" > variable.txt
+              source   step:echo "${ENV_VAR_TEST_STEPUP_PRVDGT}" > variable.txt
+
+step:echo "${STEPUP_DIRECTOR_I}" > director_i.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_DIRECTOR_I
+             creator   step:./plan.py
+             product   file:director_i.txt
+                sink   file:director_i.txt
+
+file:director_i.txt
+               state = BUILT
+             creator   step:echo "${STEPUP_DIRECTOR_I}" > director_i.txt
+              source   step:echo "${STEPUP_DIRECTOR_I}" > director_i.txt

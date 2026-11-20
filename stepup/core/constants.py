@@ -90,6 +90,7 @@ but the variables they use internally are not listed here.
 
 INTERNAL_ENV_VARS = frozenset(
     {
+        "STEPUP_DIRECTOR_I",
         "STEPUP_DIRECTOR_SOCKET",
         "STEPUP_JOB_I",
         "STEPUP_REPORTER_SOCKET",

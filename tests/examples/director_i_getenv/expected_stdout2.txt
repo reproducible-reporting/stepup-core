@@ -1,0 +1,18 @@
+ STARTUP │ Watching 1 directory
+ UPDATED │ STEPUP_DIRECTOR_I ='1' ➜ ='2'
+ STARTUP │ Checking 3 file(s) for changes
+   PHASE │ build
+  NOSKIP │ ./getdirector.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 19862e8c ➜ c508afda, out_digest 0ec4d7fd ➜ (unset)
+Modified env var     STEPUP_DIRECTOR_I ='1' ➜ ='2'
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        getdirector.py
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+   START │ ./getdirector.py
+ SUCCESS │ ./getdirector.py
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ See you!

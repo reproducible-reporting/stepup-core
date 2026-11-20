@@ -2905,6 +2905,33 @@ async def test_amend_step_stores_overlay_value(wfp: Workflow, monkeypatch):
     }
 
 
+async def test_assign_director_i(wfs: Workflow):
+    for expected in 1, 2, 3:
+        async with wfs.db:
+            assert wfs.assign_director_i() == expected
+        assert wfs.infra_env["STEPUP_DIRECTOR_I"] == str(expected)
+        assert wfs.getenv("STEPUP_DIRECTOR_I") == str(expected)
+
+
+async def test_assign_director_i_after_reopen(path_tmp: Path):
+    """The next director continues from the number stored by the previous one."""
+    path_db = path_tmp / "graph.db"
+    for expected in 1, 2:
+        with DBSession.open(path_db) as db:
+            workflow = Workflow(db, dir_queue=None)
+            await workflow.initialize()
+            async with db:
+                assert workflow.assign_director_i() == expected
+
+
+async def test_director_counter_refuses_second_row(wfs: Workflow):
+    async with wfs.db:
+        wfs.assign_director_i()
+        with pytest.raises(sqlite3.IntegrityError):
+            wfs.db.execute("INSERT INTO director_counter (i, n) VALUES (1, 1)")
+        assert wfs.db.execute("SELECT i, n FROM director_counter").fetchall() == [(0, 1)]
+
+
 async def test_setenv_store_and_update(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")

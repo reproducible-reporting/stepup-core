@@ -19,7 +19,20 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+### Added
+
+- StepUp sets the environment variable `STEPUP_DIRECTOR_I` to a new integer every time it starts.
+  A step that depends on it, e.g. with `env="STEPUP_DIRECTOR_I"`, runs at every start,
+  which suits a step that looks at something StepUp does not watch, such as a remote server.
+  See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution).
+
 ### Fixed
+
+- A restart after `plan.py` was removed in watch mode
+  ignored the changes made while StepUp was not running,
+  such as modified input files and environment variables,
+  and did not retry the steps that had failed.
+  StepUp reinitialized the boot script and skipped the scan for changes at startup.
 
 - A step that depends on `SOURCE_DATE_EPOCH` did not run again after a start with `--no-fix-epoch`,
   so its outputs kept the fixed timestamp set by `--fix-epoch`.
