@@ -17,8 +17,9 @@ grep data output.txt
 
 # change output, then remove input
 echo modified > output.txt
-sleep 0.5
+stepup wait -u output.txt
 rm input.txt
+stepup wait -d input.txt
 stepup rebuild
 stepup wait
 stepup graph current_graph2

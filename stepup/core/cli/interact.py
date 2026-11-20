@@ -36,11 +36,14 @@ __all__ = (
 #
 
 
-WAIT_FOR_SOCKET_TIMEOUT = 10.0
+WAIT_FOR_SOCKET_TIMEOUT = 30.0
 """Seconds to wait for evidence in `DIRECTOR_LOG` that a director process exists.
 
 This deadline only covers the gap between the TUI truncating `DIRECTOR_LOG`
 and the director writing its `SOCKET` and `PID` lines into it.
+It is generous because a heavily loaded machine may need more than ten seconds
+to start the TUI and the director (observed on GitHub-hosted runners in November 2026),
+while it only delays the error when no director is starting at all.
 Once those lines name a live process, `wait_for_director_socket` waits without a deadline:
 the director creates its socket only after its startup file scan,
 whose duration is proportional to the size of the workflow and has no useful upper bound.

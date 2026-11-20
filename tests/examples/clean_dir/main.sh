@@ -18,6 +18,11 @@ stepup graph current_graph1
 rm sub/tmp.txt
 stepup clean sub/ --all --commit > current_cleanup.txt
 
+# Wait for the watcher to observe the removals, so they are reported before the graph is written.
+stepup wait -d sub/tmp.txt
+stepup wait -d sub/out.txt
+stepup wait -d sub/inp.txt
+
 # Get the graph after completion of the pending steps.
 stepup graph current_graph2
 stepup join

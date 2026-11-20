@@ -32,6 +32,10 @@ stepup clean sub --all --commit > current_cleanup_2.txt
 [[ ! -f sub/tmp.txt ]] || exit 1
 [[ ! -f sub/out.txt ]] || exit 1
 
+# Wait for the watcher to observe the removals, so they are reported before the graph is written.
+stepup wait -d sub/tmp.txt
+stepup wait -d sub/out.txt
+
 # Get the graph after completion of the pending steps.
 stepup graph current_graph2
 stepup join
