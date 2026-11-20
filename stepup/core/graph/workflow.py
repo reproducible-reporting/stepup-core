@@ -1017,24 +1017,33 @@ class Workflow(Trellis):
             return self.infra_env[name]
         return os.environ.get(name)
 
-    def assign_director_i(self) -> int:
-        """Give the current start of the director a new number, exported as `STEPUP_DIRECTOR_I`.
+    def assign_director_i(self, *, increment: bool = True) -> int:
+        """Give the current start of the director a number, exported as `STEPUP_DIRECTOR_I`.
 
         The number is stored in the database and put in `infra_env`.
-        It differs from the numbers of all earlier starts for as long as the database is kept.
+        With `increment=True`, it differs from the numbers of all earlier starts
+        for as long as the database is kept.
         Call this once per start of the director, after `initialize()` and before the first step,
         inside a transaction that is committed before any step runs.
         A start that is killed has then used up its number,
         and the steps that ran with it run again at the next start.
 
+        Parameters
+        ----------
+        increment
+            When False, the current start gets the number of the previous start,
+            so that no step that tracks `STEPUP_DIRECTOR_I` runs again merely because of it.
+            A new database gets `1` either way.
+
         Returns
         -------
         director_i
-            The new number, `1` for a new database.
+            The number of the current start.
         """
         (director_i,) = self.db.execute(
             "INSERT INTO director_counter (i, n) VALUES (0, 1) "
-            "ON CONFLICT(i) DO UPDATE SET n = n + 1 RETURNING n"
+            "ON CONFLICT(i) DO UPDATE SET n = n + ? RETURNING n",
+            (int(increment),),
         ).fetchone()
         self.infra_env["STEPUP_DIRECTOR_I"] = str(director_i)
         return director_i

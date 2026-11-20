@@ -156,6 +156,13 @@ def parse_args() -> argparse.Namespace:
         "console is an interactive terminal. [default=%(default)s]",
     )
     parser.add_argument(
+        "--offline",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Keep the value of STEPUP_DIRECTOR_I of the previous start "
+        "and set STEPUP_BUILD_OFFLINE=1 for the steps.",
+    )
+    parser.add_argument(
         "--reporter",
         type=Path,
         dest="reporter_socket",

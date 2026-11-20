@@ -2924,6 +2924,25 @@ async def test_assign_director_i_after_reopen(path_tmp: Path):
                 assert workflow.assign_director_i() == expected
 
 
+@pytest.mark.parametrize(
+    ("increments", "expected"),
+    [
+        ([True, False, True], [1, 1, 2]),
+        # A new database gets 1 without an increment as well.
+        ([False, True], [1, 2]),
+        ([False, False, True, False], [1, 1, 2, 2]),
+    ],
+)
+async def test_assign_director_i_without_increment(
+    wfs: Workflow, increments: list[bool], expected: list[int]
+):
+    """Without an increment, the current start keeps the number of the previous start."""
+    for increment, director_i in zip(increments, expected, strict=True):
+        async with wfs.db:
+            assert wfs.assign_director_i(increment=increment) == director_i
+        assert wfs.infra_env["STEPUP_DIRECTOR_I"] == str(director_i)
+
+
 async def test_director_counter_refuses_second_row(wfs: Workflow):
     async with wfs.db:
         wfs.assign_director_i()

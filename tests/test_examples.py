@@ -108,6 +108,8 @@ EXAMPLES = [
     "detach_running_skip",
     "detach_running_step",
     "director_i_getenv",
+    "director_i_offline",
+    "director_i_offline_after_fail",
     "director_i_plan",
     "director_i_pull",
     "director_i_watch",

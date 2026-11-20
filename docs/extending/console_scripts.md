@@ -47,3 +47,7 @@ For example, [`render_jinja()`][stepup.core.api.render_jinja]
 creates a step whose command starts with `sc-render-jinja ...`,
 which the step executor runs in-process because `sc-render-jinja` is itself a `console_scripts`
 entry point.
+
+A console script that downloads or uploads data honors `STEPUP_BUILD_OFFLINE`,
+which it reads from its environment,
+as explained in [Steps That Use the Network](api.md#steps-that-use-the-network).

@@ -184,6 +184,15 @@ def _add_build_parser(
         "a step is failed instead of parked. A livelock guard. [default=%(default)s]",
     )
     group.add_argument(
+        "--offline",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Work without access to remote data. "
+        "STEPUP_DIRECTOR_I keeps the value of the previous start, "
+        "so steps that run at every start keep their results. "
+        "Steps that run anyway find STEPUP_BUILD_OFFLINE=1 in their environment.",
+    )
+    group.add_argument(
         "--progress",
         default=True,
         action=argparse.BooleanOptionalAction,
@@ -660,6 +669,8 @@ def _build_director_argv(
         argv.append("--keep-going")
     if not args.fix_epoch:
         argv.append("--no-fix-epoch")
+    if args.offline:
+        argv.append("--offline")
     if live_progress:
         argv.append("--live-progress")
     if args.resources:

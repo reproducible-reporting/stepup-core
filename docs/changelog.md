@@ -26,6 +26,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   which suits a step that looks at something StepUp does not watch, such as a remote server.
   See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution).
 
+- The new setting `offline` (`--offline`, `STEPUP_BUILD_OFFLINE`) is meant for builds
+  without access to remote data.
+  `STEPUP_DIRECTOR_I` then keeps the value of the previous start,
+  so a step that runs at every start keeps its result of that start.
+  A step that runs anyway finds `STEPUP_BUILD_OFFLINE=1` in its environment.
+  Extension packages are expected to honor this variable in every step that uses the network,
+  as explained in [Steps That Use the Network](extending/api.md#steps-that-use-the-network).
+  See [Build Control](reference/configuration.md#build-control).
+
 ### Fixed
 
 - A restart after `plan.py` was removed in watch mode

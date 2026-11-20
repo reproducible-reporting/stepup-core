@@ -88,6 +88,11 @@ class ServeConfig:
     """Whether to set the `SOURCE_DATE_EPOCH` environment variable for step child processes
     (unless already set in the environment), for reproducible builds."""
 
+    offline: bool = attrs.field(default=False)
+    """Whether remote data cannot be reached.
+    If True, `STEPUP_DIRECTOR_I` keeps the value of the previous start,
+    and the steps find `STEPUP_BUILD_OFFLINE=1` in their environment."""
+
     write_joblog: bool = attrs.field(default=False)
     """Whether to record job-execution events (init, created, started, ended, completed)
     to `JOBLOG_CSV`, for diagnosing scheduler/executor dispatch overhead."""
@@ -139,6 +144,7 @@ class ServeConfig:
             explain_rerun=args.explain_rerun,
             keep_going=args.keep_going,
             fix_epoch=args.fix_epoch,
+            offline=args.offline,
             write_joblog=args.joblog,
             live_progress=args.live_progress,
             do_watch=args.watch,
@@ -242,6 +248,7 @@ async def serve(
         "STEPUP_DIRECTOR_SOCKET": str(director_socket_path),
         "STEPUP_ROOT": str(Path.cwd()),
         "STEPUP_BUILD_LOG_LEVEL": logging.getLevelName(logging.root.level),
+        "STEPUP_BUILD_OFFLINE": "1" if config.offline else "0",
     }
     if config.fix_epoch and "SOURCE_DATE_EPOCH" not in os.environ:
         infra_env["SOURCE_DATE_EPOCH"] = "315532800"
@@ -328,7 +335,10 @@ async def _wire_director(
     # The number is assigned as soon as its table exists,
     # and before `Executor` exists, which copies the overlay into the environment of the steps.
     async with db:
-        workflow.assign_director_i()
+        director_i = workflow.assign_director_i(increment=not config.offline)
+    if config.offline:
+        # Without this line, an offline start cannot be told apart from one with nothing to do.
+        await reporter("DIRECTOR", f"Working offline, STEPUP_DIRECTOR_I stays at {director_i}")
     scheduler = Scheduler(
         workflow, db=db, use_duration=config.use_duration, write_joblog=config.write_joblog
     )

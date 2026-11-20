@@ -1059,6 +1059,7 @@ def test_full_integration(path_tmp, parser):
     [
         (["build"], "STEPUP_BUILD_JOBS", "7", "jobs", Decimal("7")),
         (["build"], "STEPUP_BUILD_LOG_LEVEL", "INFO", "log_level", "INFO"),
+        (["build"], "STEPUP_BUILD_OFFLINE", "1", "offline", True),
         # The deprecated boot alias must read the build section, not a boot section.
         (["boot"], "STEPUP_BUILD_JOBS", "7", "jobs", Decimal("7")),
         (["clean", "."], "STEPUP_CLEAN_ALL", "1", "all", True),
@@ -1073,5 +1074,22 @@ def test_cli_section_per_subcommand(
     # interferes with the environment variable under test.
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
     monkeypatch.setenv(env_var, env_value)
+    parser, _ = _setup_cli()
+    assert getattr(parser.parse_args(argv), dest) == expected
+
+
+@pytest.mark.parametrize(
+    ("argv", "config", "dest", "expected"),
+    [
+        (["build"], "[build]\njobs = 7\n", "jobs", Decimal("7")),
+        (["build"], "[build]\noffline = true\n", "offline", True),
+    ],
+)
+def test_cli_section_per_subcommand_from_file(
+    path_tmp, monkeypatch, argv, config, dest, expected, clean_env
+):
+    """A subcommand reads its section of `stepup.toml` in the root of the project."""
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    (path_tmp / "stepup.toml").write_text(config, encoding="utf-8")
     parser, _ = _setup_cli()
     assert getattr(parser.parse_args(argv), dest) == expected

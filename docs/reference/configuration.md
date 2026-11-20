@@ -382,6 +382,24 @@ alphabetically within each group.
     This guards against livelocks where a step's dynamic inputs keep flip-flopping.
     The default is `100`, deliberately generous.
 
+`offline` / `STEPUP_BUILD_OFFLINE` / `--offline`, `--no-offline`
+
+:   Set to `true` when remote data cannot be reached, e.g. without a network connection.
+    [`STEPUP_DIRECTOR_I`](#environment-variables-in-step-execution)
+    then keeps the value of the previous start,
+    so a step that runs at every start of the director does not run merely because StepUp started.
+    Such a step keeps its result of the previous start,
+    and so do the steps that use its outputs.
+    A step that must run for another reason, e.g. because an input changed or because it failed,
+    runs as usual.
+    The director also exports the setting as `STEPUP_BUILD_OFFLINE` to the steps it runs,
+    with the value `1` or `0`,
+    so that a step that does run can avoid the network,
+    as described in [Steps That Use the Network](../extending/api.md#steps-that-use-the-network).
+    The next start without this setting gives `STEPUP_DIRECTOR_I` a new value again,
+    so every step that runs at every start looks at the remote data again.
+    In watch mode, the setting holds for the lifetime of the director.
+
 `progress` / `STEPUP_BUILD_PROGRESS` / `--progress`, `--no-progress`
 
 :   Set to `false` to disable the progress bar in the terminal user interface.
@@ -548,7 +566,7 @@ the internal environment variables described above.
 
 `STEPUP_DIRECTOR_I`
 
-:   A unique integer every time the director starts,
+:   A unique integer every time the director starts, unless [`offline`](#build-control) is set,
     guaranteed as long as `.stepup/graph.db` is not removed.
     StepUp itself also recreates this database when a new version changes its format,
     which has the same effect as removing it.
@@ -558,6 +576,8 @@ the internal environment variables described above.
     or with [`getenv("STEPUP_DIRECTOR_I")`][stepup.core.api.getenv] from inside the step.
     In watch mode, the value stays the same for the lifetime of the director,
     so such a step does not run again in later build phases because of this variable.
+    With `offline`, the director keeps the value of the previous start,
+    so such a step keeps its result of that start.
     The values are not consecutive, and a new database starts again at `1`,
     so a step must not use the value as a key for anything outside `.stepup/`.
     Unlike `STEPUP_JOB_I`, this variable is meant to be declared as a dependency,
