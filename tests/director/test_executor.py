@@ -40,7 +40,6 @@ def _make_executor(
         keep_going=keep_going,
         live_progress=False,
         write_joblog=False,
-        infra_env={},
     )
 
 
@@ -333,7 +332,7 @@ async def test_run_command_discounts_suspended_time(
     The second case checks the clamp at zero, which the `CHECK(wtime >= 0)` constraint
     on the `step_outcome` table depends on.
     """
-    workflow = SimpleNamespace(create_dirs=lambda paths: None)
+    workflow = SimpleNamespace(create_dirs=lambda paths: None, infra_env={})
     executor = _make_executor(reporter=_FakeReporter(), db=_NullDB(), workflow=workflow)
     run = _make_command_run(23)
 
@@ -354,7 +353,7 @@ async def test_run_command_discounts_suspended_time(
 
 async def test_run_command_not_started_after_kill(monkeypatch: pytest.MonkeyPatch):
     """A command started after a kill would not be stopped by it."""
-    workflow = SimpleNamespace(create_dirs=lambda paths: None)
+    workflow = SimpleNamespace(create_dirs=lambda paths: None, infra_env={})
     executor = _make_executor(reporter=_FakeReporter(), db=_NullDB(), workflow=workflow)
     run = _make_command_run(24)
 
@@ -369,6 +368,22 @@ async def test_run_command_not_started_after_kill(monkeypatch: pytest.MonkeyPatc
     assert run.outcome.returncode == 1
     assert "not started" in run.outcome.stderr
     assert 24 not in executor.running
+
+
+async def test_base_env_applies_overlay_of_workflow(wfs: Workflow, monkeypatch):
+    """The environment of a step agrees with `Workflow.getenv`, which is stored and hashed."""
+    monkeypatch.setenv("ENV_VAR_TEST_STEPUP_OVERLAID", "environ")
+    monkeypatch.setenv("ENV_VAR_TEST_STEPUP_PLAIN", "environ")
+    monkeypatch.delenv("ENV_VAR_TEST_STEPUP_EXTRA", raising=False)
+    wfs.infra_env["ENV_VAR_TEST_STEPUP_OVERLAID"] = "overlay"
+    wfs.infra_env["ENV_VAR_TEST_STEPUP_EXTRA"] = "overlay"
+    executor = _make_executor(workflow=wfs, db=wfs.db)
+
+    assert executor.base_env["ENV_VAR_TEST_STEPUP_OVERLAID"] == "overlay"
+    assert executor.base_env["ENV_VAR_TEST_STEPUP_EXTRA"] == "overlay"
+    assert executor.base_env["ENV_VAR_TEST_STEPUP_PLAIN"] == "environ"
+    for name in executor.base_env:
+        assert executor.base_env[name] == wfs.getenv(name)
 
 
 async def test_execute_job_hashes_nothing_after_abandoning_a_copy(wfs: Workflow, monkeypatch):

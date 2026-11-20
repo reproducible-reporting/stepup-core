@@ -166,7 +166,6 @@ def _make_executor(workflow: Workflow) -> Executor:
         keep_going=False,
         live_progress=False,
         write_joblog=False,
-        infra_env={},
     )
 
 

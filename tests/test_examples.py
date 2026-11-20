@@ -113,6 +113,7 @@ EXAMPLES = [
     "env_vars",
     "env_vars_config_add",
     "env_vars_config_touch",
+    "env_vars_fix_epoch",
     "env_vars_multi",
     "env_vars_path",
     "env_vars_restart_detached",

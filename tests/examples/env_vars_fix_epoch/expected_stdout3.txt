@@ -1,0 +1,25 @@
+ STARTUP │ Watching 1 directory
+ UPDATED │ SOURCE_DATE_EPOCH (unset) ➜ ='315532800'
+ STARTUP │ Checking 4 file(s) for changes
+   PHASE │ build
+  NOSKIP │ echo "${SOURCE_DATE_EPOCH-unset}" > epoch_env.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 6e3596b3 ➜ 4824038b, out_digest 81a7b059 ➜ (unset)
+Modified env var     SOURCE_DATE_EPOCH (unset) ➜ ='315532800'
+────────────────────────────────────────────────────────────────────────────────
+  NOSKIP │ ./getepoch.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 75c22aef ➜ 61f6a880, out_digest f72d48b2 ➜ (unset)
+Modified env var     SOURCE_DATE_EPOCH (unset) ➜ ='315532800'
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        getepoch.py
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+   START │ echo "${SOURCE_DATE_EPOCH-unset}" > epoch_env.txt
+ SUCCESS │ echo "${SOURCE_DATE_EPOCH-unset}" > epoch_env.txt
+   START │ ./getepoch.py
+ SUCCESS │ ./getepoch.py
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ See you!

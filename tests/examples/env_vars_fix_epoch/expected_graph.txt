@@ -1,0 +1,54 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+           explained = yes
+             creator   root:
+              source   file:plan.py
+             product   file:getepoch.py
+             product   step:./getepoch.py
+             product   step:echo "${SOURCE_DATE_EPOCH-unset}" > epoch_env.txt
+
+file:getepoch.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./getepoch.py
+
+step:echo "${SOURCE_DATE_EPOCH-unset}" > epoch_env.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = SOURCE_DATE_EPOCH
+           explained = yes
+             creator   step:./plan.py
+             product   file:epoch_env.txt
+                sink   file:epoch_env.txt
+
+file:epoch_env.txt
+               state = BUILT
+             creator   step:echo "${SOURCE_DATE_EPOCH-unset}" > epoch_env.txt
+              source   step:echo "${SOURCE_DATE_EPOCH-unset}" > epoch_env.txt
+
+step:./getepoch.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = SOURCE_DATE_EPOCH [dynamic]
+                     = STEPUP_PATH_FILTER [dynamic]
+           explained = yes
+             creator   step:./plan.py
+              source   file:getepoch.py
+             product   file:epoch_getenv.txt
+                sink   file:epoch_getenv.txt
+
+file:epoch_getenv.txt
+               state = BUILT
+             creator   step:./getepoch.py
+              source   step:./getepoch.py

@@ -29,7 +29,6 @@ def _make_watcher(workflow: Workflow) -> Watcher:
         keep_going=False,
         live_progress=False,
         write_joblog=False,
-        infra_env={},
     )
     return Watcher(
         workflow=workflow,

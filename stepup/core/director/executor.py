@@ -120,11 +120,6 @@ class Executor:
     write_joblog: bool = attrs.field(kw_only=True)
     """Whether to record `--joblog` events."""
 
-    # Other configuration
-
-    infra_env: dict = attrs.field(kw_only=True)
-    """Environment variables from the director for step child processes, overriding `os.environ`."""
-
     # Internal state
 
     running: NoOverwriteDict[int, Run | HashJob] = attrs.field(init=False, factory=NoOverwriteDict)
@@ -171,12 +166,13 @@ class Executor:
 
     @property
     def base_env(self) -> dict:
-        """The base environment for step child processes: `os.environ` with `infra_env` applied.
+        """The base environment for step child processes.
 
+        This is `os.environ` with the `infra_env` overlay of the workflow applied.
         No copy is returned, so the caller must not mutate the returned dictionary.
         """
         if self._base_env_cache is None:
-            self._base_env_cache = {**os.environ, **self.infra_env}
+            self._base_env_cache = {**os.environ, **self.workflow.infra_env}
         return self._base_env_cache
 
     #
@@ -756,7 +752,7 @@ class Executor:
         step_hash = StepHash.from_inp(
             run.step.label,
             result.all_hashes,
-            {name: self.base_env.get(name) for name in env_deps},
+            {name: self.workflow.getenv(name) for name in env_deps},
             explained=self.explain_rerun,
             shell=shell,
             env_overrides=env_overrides,
@@ -820,7 +816,7 @@ class Executor:
             step_hash = StepHash.from_inp(
                 run.step.label,
                 inp_result.all_hashes,
-                {name: self.base_env.get(name) for name in env_deps},
+                {name: self.workflow.getenv(name) for name in env_deps},
                 explained=self.explain_rerun,
                 shell=shell,
                 env_overrides=env_overrides,

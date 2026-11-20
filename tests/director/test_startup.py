@@ -53,7 +53,6 @@ def _make_builder(workflow: Workflow) -> Builder:
         keep_going=False,
         live_progress=False,
         write_joblog=False,
-        infra_env={},
     )
     return Builder(
         njob=2,
@@ -299,10 +298,9 @@ async def test_watch_known_dirs_includes_glob_base_dirs(wfp: Workflow, tmpdir):
 async def test_rescan_env_vars_stores_new_value(wfp: Workflow, monkeypatch):
     """A changed variable is reported once, because the new value replaces the stored one."""
     name = "ENV_VAR_TEST_STEPUP_RESCAN"
-    monkeypatch.setenv(name, "old")
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
-        plan.add_env_deps([name])
+        plan.add_env_deps({name: "old"})
         plan.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
 
     monkeypatch.setenv(name, "new")
@@ -343,3 +341,44 @@ async def test_rescan_env_vars_includes_detached_steps(wfp: Workflow, monkeypatc
         assert step.is_detached()
         assert step.get_state() == StepState.PENDING
         assert (step, name, "new") in wfp.env_var_uses()
+
+
+async def test_rescan_env_vars_compares_with_overlay(wfp: Workflow, monkeypatch):
+    """A step that stored the value of the overlay is left alone, whatever `os.environ` holds."""
+    name = "ENV_VAR_TEST_STEPUP_RESCAN"
+    monkeypatch.setenv(name, "environ")
+    wfp.infra_env[name] = "overlay"
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "./work.py", env_deps=[name])
+        step = wfp.find(Step, "./work.py")
+        step.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
+
+    reporter = _FakeReporter()
+    await rescan_env_vars(wfp, reporter)
+
+    assert reporter.calls == []
+    async with wfp.db:
+        assert step.get_state() == StepState.SUCCEEDED
+        assert (step, name, "overlay") in wfp.env_var_uses()
+
+
+async def test_rescan_env_vars_detects_value_leaving_overlay(wfp: Workflow, monkeypatch):
+    """A start with `--no-fix-epoch` makes a step pending that ran with the fixed epoch."""
+    name = "SOURCE_DATE_EPOCH"
+    monkeypatch.delenv(name, raising=False)
+    wfp.infra_env[name] = "315532800"
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "./work.py", env_deps=[name])
+        step = wfp.find(Step, "./work.py")
+        step.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
+
+    del wfp.infra_env[name]
+    reporter = _FakeReporter()
+    await rescan_env_vars(wfp, reporter)
+
+    assert reporter.calls == [("UPDATED", f"{name} ='315532800' ➜ (unset)")]
+    async with wfp.db:
+        assert step.get_state() == StepState.PENDING
+        assert (step, name, None) in wfp.env_var_uses()

@@ -2853,6 +2853,58 @@ async def test_dynamic_env_vars(wfp: Workflow):
         assert set(step.env_deps()) == {"bar", "egg", "foo"}
 
 
+async def test_getenv_prefers_overlay(wfs: Workflow, monkeypatch):
+    monkeypatch.setenv("ENV_VAR_TEST_STEPUP_OVERLAID", "environ")
+    monkeypatch.setenv("ENV_VAR_TEST_STEPUP_PLAIN", "environ")
+    monkeypatch.delenv("ENV_VAR_TEST_STEPUP_EXTRA", raising=False)
+    monkeypatch.delenv("ENV_VAR_TEST_STEPUP_NOWHERE", raising=False)
+    wfs.infra_env["ENV_VAR_TEST_STEPUP_OVERLAID"] = "overlay"
+    wfs.infra_env["ENV_VAR_TEST_STEPUP_EXTRA"] = "overlay"
+    assert wfs.getenv("ENV_VAR_TEST_STEPUP_OVERLAID") == "overlay"
+    assert wfs.getenv("ENV_VAR_TEST_STEPUP_EXTRA") == "overlay"
+    assert wfs.getenv("ENV_VAR_TEST_STEPUP_PLAIN") == "environ"
+    assert wfs.getenv("ENV_VAR_TEST_STEPUP_NOWHERE") is None
+
+
+async def test_define_step_stores_overlay_value(wfp: Workflow, monkeypatch):
+    """A tracked variable is stored with the value that the step sees."""
+    monkeypatch.delenv("ENV_VAR_TEST_STEPUP_EXTRA", raising=False)
+    monkeypatch.setenv("ENV_VAR_TEST_STEPUP_PLAIN", "environ")
+    wfp.infra_env["ENV_VAR_TEST_STEPUP_EXTRA"] = "overlay"
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(
+            plan, "prog1", env_deps=["ENV_VAR_TEST_STEPUP_EXTRA", "ENV_VAR_TEST_STEPUP_PLAIN"]
+        )
+        step = wfp.find(Step, "prog1")
+        uses = {(name, value) for user, name, value in wfp.env_var_uses() if user == step}
+    assert uses == {
+        ("ENV_VAR_TEST_STEPUP_EXTRA", "overlay"),
+        ("ENV_VAR_TEST_STEPUP_PLAIN", "environ"),
+    }
+
+
+async def test_amend_step_stores_overlay_value(wfp: Workflow, monkeypatch):
+    """A dynamic variable is stored with the value that the step sees."""
+    monkeypatch.delenv("ENV_VAR_TEST_STEPUP_EXTRA", raising=False)
+    monkeypatch.setenv("ENV_VAR_TEST_STEPUP_PLAIN", "environ")
+    wfp.infra_env["ENV_VAR_TEST_STEPUP_EXTRA"] = "overlay"
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog1")
+        step = wfp.find(Step, "prog1")
+        amend_step(wfp, step, env_deps=["ENV_VAR_TEST_STEPUP_EXTRA", "ENV_VAR_TEST_STEPUP_PLAIN"])
+        assert set(step.env_deps(dynamic=True)) == {
+            "ENV_VAR_TEST_STEPUP_EXTRA",
+            "ENV_VAR_TEST_STEPUP_PLAIN",
+        }
+        uses = {(name, value) for user, name, value in wfp.env_var_uses() if user == step}
+    assert uses == {
+        ("ENV_VAR_TEST_STEPUP_EXTRA", "overlay"),
+        ("ENV_VAR_TEST_STEPUP_PLAIN", "environ"),
+    }
+
+
 async def test_setenv_store_and_update(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")

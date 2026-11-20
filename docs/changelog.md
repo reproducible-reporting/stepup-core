@@ -19,7 +19,16 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no change yet)
+### Fixed
+
+- A step that depends on `SOURCE_DATE_EPOCH` did not run again after a start with `--no-fix-epoch`,
+  so its outputs kept the fixed timestamp set by `--fix-epoch`.
+  StepUp recorded the value of the variable in its own environment,
+  instead of the value that it gave to the step.
+  This is fixed for every variable that StepUp sets for its steps,
+  e.g. also for `STEPUP_ROOT` and `STEPUP_BUILD_LOG_LEVEL`.
+  After the upgrade, a step that depends on one of these variables may run once more,
+  after an `UPDATED` line for the variable.
 
 ## [4.1.0][] - 2026-11-20 {: #v4.1.0 }
 

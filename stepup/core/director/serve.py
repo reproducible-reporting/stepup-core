@@ -234,7 +234,7 @@ async def serve(
     _check_plan()
 
     # Environment variables exported to step child processes (and forkserver children).
-    # These are passed explicitly to the executor rather than set in `os.environ`,
+    # They form an overlay of the workflow rather than being set in `os.environ`,
     # so that running the director in-process (e.g. in the test suite)
     # does not pollute the calling process's environment.
     infra_env = {
@@ -318,6 +318,7 @@ async def _wire_director(
         defer_cap=config.defer_cap,
         targets=config.targets,
         target_dirs=config.target_dirs,
+        infra_env=infra_env,
     )
     await workflow.initialize()
     scheduler = Scheduler(
@@ -336,7 +337,6 @@ async def _wire_director(
         keep_going=config.keep_going,
         live_progress=config.live_progress,
         write_joblog=config.write_joblog,
-        infra_env=infra_env,
     )
     # Builder is agnostic of watch mode;
     # it is built first because the watcher needs builder.hash_queue,

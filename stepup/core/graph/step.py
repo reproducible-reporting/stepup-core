@@ -4,8 +4,7 @@
 
 import json
 import logging
-import os
-from collections.abc import Collection, Iterator
+from collections.abc import Collection, Iterator, Mapping
 from typing import Literal
 
 import attrs
@@ -993,24 +992,33 @@ class Step(Node):
         rows = [(self.i, name, units) for name, units in resources.items()]
         self.db.executemany("INSERT INTO step_resource VALUES (?, ?, ?)", rows)
 
-    def add_env_deps(self, env_deps: Collection[str]) -> None:
+    def add_env_deps(self, env_values: Mapping[str, str | None]) -> None:
         """Record environment variables read by this step, declared up front.
 
-        The current `os.getenv` value of each name is stored alongside it.
+        Parameters
+        ----------
+        env_values
+            The value of each variable, or `None` when it is unset.
         """
-        rows = [(self.i, name, os.getenv(name)) for name in env_deps]
+        rows = [(self.i, name, value) for name, value in env_values.items()]
         self.db.executemany("INSERT OR REPLACE INTO env_var VALUES (?, ?, ?, 0)", rows)
 
-    def amend_env_deps(self, env_deps: Collection[str]) -> None:
+    def amend_env_deps(self, env_values: Mapping[str, str | None]) -> None:
         """Record environment variables read by this step, discovered while running.
 
-        The current `os.getenv` value of each name is stored alongside it.
         Names already present in `env_overrides` are skipped,
         since their value is fixed by the step
         and they are therefore not external dependencies that can change between runs.
+
+        Parameters
+        ----------
+        env_values
+            The value of each variable, or `None` when it is unset.
         """
         env_overrides = self.get_env_overrides()
-        rows = [(self.i, name, os.getenv(name)) for name in env_deps if name not in env_overrides]
+        rows = [
+            (self.i, name, value) for name, value in env_values.items() if name not in env_overrides
+        ]
         self.db.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
 
     def set_env_value(self, name: str, value: str | None) -> None:

@@ -3,7 +3,6 @@
 """Startup sequence after opening the database and configuring internal data structures."""
 
 import logging
-import os
 
 from ..enums import FileState, HashUpdateCause, StepState
 from ..graph.workflow import Workflow
@@ -104,7 +103,7 @@ async def rescan_env_vars(workflow: Workflow, reporter: ReporterClient):
     changed_values = []
     reported_names = set()
     for step, name, old_value in env_var_uses:
-        new_value = os.getenv(name)
+        new_value = workflow.getenv(name)
         if new_value == old_value:
             continue
         steps_to_rerun[step.i] = step

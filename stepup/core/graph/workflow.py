@@ -5,6 +5,7 @@
 import asyncio
 import json
 import logging
+import os
 import re
 import stat
 import textwrap
@@ -941,6 +942,15 @@ class Workflow(Trellis):
     An empty set (the default) means no directory targets were given.
     """
 
+    infra_env: dict[str, str] = attrs.field(kw_only=True, factory=dict)
+    """Environment variables set by the director for all steps, overriding `os.environ`.
+
+    Steps see these values, and `getenv` returns them,
+    so they are also what is stored and hashed for the variables that a step tracks.
+    Complete this overlay before the first step starts, and never change it afterwards,
+    because the environment of a step would otherwise disagree with what is stored and hashed.
+    """
+
     _to_be_deleted: dict[str, FileHash | None] | None = attrs.field(init=False, default=None)
     """The deletion queue being filled by an ongoing `delete_detached` call, if any.
 
@@ -982,6 +992,24 @@ class Workflow(Trellis):
     def need_threshold(self) -> Need:
         """The need level above which a step's `_implied_need` makes it required."""
         return Need.DEFAULT if self.targets or self.target_dirs else Need.OPTIONAL
+
+    def getenv(self, name: str) -> str | None:
+        """Look up an environment variable in the environment that the director gives to all steps.
+
+        Parameters
+        ----------
+        name
+            The name of the variable.
+
+        Returns
+        -------
+        value
+            The value in `infra_env`, or else the one in `os.environ`,
+            or `None` when the variable is set in neither.
+        """
+        if name in self.infra_env:
+            return self.infra_env[name]
+        return os.environ.get(name)
 
     #
     # Base class overrides and initialization
@@ -2260,7 +2288,7 @@ class Workflow(Trellis):
                 unconfirmed.add(info.file)
 
         # Process vars
-        step.add_env_deps(env_deps)
+        step.add_env_deps({name: self.getenv(name) for name in env_deps})
 
         # Create out_paths
         for out_path in out_paths:
@@ -2353,7 +2381,7 @@ class Workflow(Trellis):
                 dynamic_ideps.append((info.new_idep,))
 
         # Process vars
-        step.amend_env_deps(env_deps)
+        step.amend_env_deps({name: self.getenv(name) for name in env_deps})
 
         # Drop outputs the step already declares,
         # so that they are neither re-declared nor turned into dynamic dependencies.
