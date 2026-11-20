@@ -52,9 +52,6 @@ The [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/) ext
 pip install stepup-reprep
 ```
 
-The extension packages have not been ported to Windows yet.
-On Windows, only StepUp Core is supported for now.
-
 ## POSIX Shell on Windows
 
 A step created with `shell=True` runs its command in a POSIX shell,

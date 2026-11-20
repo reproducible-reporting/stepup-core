@@ -21,100 +21,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no change yet)
 
-## [4.1.0rc6][] - 2026-11-19 {: #v4.1.0rc6 }
-
-Sixth release candidate for StepUp 4.1.
-
-### Changed
-
-- StepUp only removes an empty directory when it is the directory of an output
-  that left the workflow or that StepUp removed when reverting an optional step,
-  and then also its parent directories as long as they are empty.
-  The working directory of a step that leaves the workflow is therefore no longer removed,
-  even when it is empty.
-
-### Fixed
-
-- StepUp removed the directory of a static file that left the workflow,
-  when that directory was empty at the end of the build.
-  A static file leaves the workflow when the plan no longer declares it
-  or when a step no longer amends it as an input,
-  e.g. after `git pack-refs` removed a loose ref that `static(".git/")` covered,
-  which made StepUp remove `.git/refs/heads/`.
-- In watch mode, StepUp no longer reports a file as `UPDATED` or `DELETED`
-  when the file on disk still matches its last recorded hash,
-  judged from its mode, size, modification time and inode number.
-  Such reports came from changes that StepUp had already processed,
-  e.g. an output written by a step whose notification arrived after the build phase,
-  which happens with FSEvents on macOS.
-  They were followed by a `SAMEHASH` report and had no other effect.
-
-## [4.1.0rc5][] - 2026-11-19 {: #v4.1.0rc5 }
-
-Fifth release candidate for StepUp 4.1.
-
-### Fixed
-
-- When an environment variable used by a step had changed since the previous run,
-  `stepup build` reported the change and reran the step,
-  but did not store the new value.
-  Every later start with the same value reported the change again
-  and marked the step and everything downstream pending,
-  only for the hash check to skip them.
-- A step that was detached when `stepup build` started,
-  e.g. because the plan that defines it had failed in the previous run,
-  was not rerun when an environment variable it uses had changed.
-  When the plan defined the step again, it kept the output made with the old value
-  until the next start.
-
-## [4.1.0rc4][] - 2026-11-18 {: #v4.1.0rc4 }
-
-Fourth release candidate for StepUp 4.1.
-
-### Fixed
-
-- On Windows, the constructor of `Path` and `to_slash()` in `stepup.core.path`
-  remove the prefix `\\?\` of an extended-length path,
-  e.g. `\\?\C:\Users\me` becomes `C:/Users/me`.
-  `filter_dependencies()` in `stepup.core.extapi` discarded every path with this prefix,
-  which some programs write in the list of files they used, as observed with Typst 0.15.
-
-## [4.1.0rc3][] - 2026-11-18 {: #v4.1.0rc3 }
-
-Third release candidate for StepUp 4.1.
-
-### Changed
-
-- `run_example()` in `stepup.core.pytest` takes a keyword argument `rules`,
-  a sequence of `OutputRule` instances,
-  each of which decides for the outputs whose names match a pattern
-  how they are normalized before they are written or compared,
-  and what is masked while comparing them.
-  An extension package can put rules for its own outputs in front of the default `OUTPUT_RULES`.
-  The cleanups of the output of `stepup build` and of `stepup graph` now only apply to
-  `expected_stdout*.txt` and `expected_graph*.txt`, respectively.
-
-### Fixed
-
-- `run_example()` removed lines with carets from a traceback only partially,
-  and joined a line that ended in four spaces with the next one.
-  It now keeps only the first line of the source of each frame in a traceback,
-  which makes the result the same for Python 3.11 to 3.14.
-  An empty output is written back as an empty file,
-  which the pre-commit hook `end-of-file-fixer` leaves unchanged.
-
-## [4.1.0rc2][] - 2026-11-17 {: #v4.1.0rc2 }
-
-Second release candidate for StepUp 4.1.
-
-### Fixed
-
-- A console script that runs in the forkserver and returns an exit code from its function,
-  as `sys.exit(main())` expects, now fails with that exit code,
-  as it does in a subprocess.
-  The forkserver ignored the returned value and reported success.
-
-## [4.1.0rc1][] - 2026-11-15 {: #v4.1.0rc1 }
+## [4.1.0][] - 2026-11-20 {: #v4.1.0 }
 
 First full cross-platform release of StepUp Core, with native support for Windows.
 File watching is supported on all platforms (new on macOS and Windows).
@@ -127,7 +34,6 @@ which are fixed in this release.
   with the same workflow semantics as on Linux and macOS.
   [Supported Platforms](platforms.md) explains what differs between the platforms,
   and what a workflow needs to give the same results on all of them.
-  The extension packages have not been ported to Windows yet.
   The main points for Windows are:
 
     - Paths inside StepUp have `/` as their only separator, e.g. `C:/Users/me/project`.
@@ -149,8 +55,6 @@ which are fixed in this release.
       see [Interactive Usage](reference/interactive.md#using-stepup-in-a-windows-console).
       Suspending a build with `Ctrl+Z`, the forkserver, `--cgroup` and `--perf`
       are not available.
-    - In watch mode, a single recursive watch covers the directory in which StepUp runs,
-      so that the directories of the project can be renamed while StepUp watches them.
 
 - Watch mode (`--watch` and `--watch-first`) is now also supported on macOS and Windows,
   not only on Linux.
@@ -161,33 +65,27 @@ which are fixed in this release.
   [How Watch Mode Observes Changes](reference/interactive.md#how-watch-mode-observes-changes).
   On Linux, StepUp still uses inotify through asyncinotify,
   because of its lower overhead and better accuracy.
-  Developers of StepUp can select the library with the environment variable `STEPUP_WATCHER`,
-  and the way watchfiles watches directories with `STEPUP_WATCHER_RECURSIVE`,
-  see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
 - The processes of a build can talk to each other over TCP sockets on the loopback interface,
   as an alternative to Unix domain sockets, which Python does not offer on Windows.
   A client must authenticate with a random token,
   which is stored in a file that only the user running `stepup build` can read.
-  On Windows, this file is only guaranteed to be private with Python 3.12.4 or later,
-  or with a 3.11 release from 3.11.10 on.
-  With an older Python, it is private when other users cannot read `TEMP`, which is the default.
   Unix domain sockets remain the default where the platform supports them.
-  Developers of StepUp can select the transport with the environment variable
-  `STEPUP_RPC_TRANSPORT`,
-  see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
+  On Windows, the privacy of this file depends on the version of Python,
+  see `STEPUP_RPC_TRANSPORT` in
+  [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
 - The new class [`stepup.core.path.Path`][stepup.core.path.Path],
   a subclass of `path.Path` whose only path separator is `/` on every platform.
   All functions of StepUp that return a path now return an instance of this class.
   On Linux and macOS, it behaves exactly like `path.Path`.
+  On Windows, it also removes the prefix `\\?\` of an extended-length path.
   Extension packages should import `Path` from `stepup.core.path` instead of from `path`,
   see [Path Manipulation](extending/api.md#path-manipulation).
 - The new test `ConventionTests.test_slash_paths` in `stepup.core.pytest`
   tests that a package does not use `path.Path`, `os.sep` or `os.path`.
   An extension package that subclasses `ConventionTests` gets this test too,
   and can skip it with `native_path_modules = None`.
-- The environment variable `STEPUP_SHELL` selects the POSIX shell
-  that runs the commands of steps with `shell=True`,
-  and those of `run_subprocess()` in `stepup.core.extapi` with `shell=True`.
+- The environment variable `STEPUP_SHELL` selects the POSIX shell for commands with `shell=True`,
+  in steps and in `run_subprocess()` of `stepup.core.extapi`.
   The default is still `/bin/sh` on Linux and macOS,
   see [Configuration](reference/configuration.md#stepup-core-module-environment-variables).
 - Tested with Python 3.15 on Linux and macOS.
@@ -197,31 +95,30 @@ which are fixed in this release.
 - A step with the command `cp -p SRC DST` and without a shell,
   which is what [`copy()`][stepup.core.api.copy] creates,
   is now carried out by StepUp itself, without starting the program `cp`.
+  This is faster, and it also works on Windows, which has no such program.
   The copy still gets the permission bits, the timestamps
   and, when allowed, the owner and group of the source.
-  This is faster, and it also works on Windows, which has no such program.
-  Like GNU `cp`, the copy shares its data with the source on file systems that support it,
-  such as Btrfs and XFS, and it keeps the holes of sparse files.
-  The CPU time of such a copy is spent by StepUp itself,
-  and it is not recorded as CPU time of the step.
-- A carriage return followed by a line feed (`\r\n`) in the output of a step
-  is recorded as a single line feed, so that the output is the same on every platform.
-- `run_subprocess()` in `stepup.core.extapi` reads and writes text as UTF-8
-  instead of in the locale encoding.
-- StepUp reads and writes its own text files in UTF-8 on every platform,
-  instead of in the locale encoding,
-  and writes them with `\n` line endings.
-  This includes the files in `.stepup/`, the output of `stepup graph`
-  and the files that `loadns()`, `dumpns()` and `render_jinja()` read or write.
-- The `stepup` command writes its standard output and error in UTF-8 with `\n` line endings
-  when they are redirected to a file or a pipe, instead of in the locale encoding.
-  Output to a terminal is not affected, and neither is output under a UTF-8 locale.
+- StepUp reads and writes text in UTF-8 on every platform, instead of in the locale encoding.
+  This applies to its own files, such as those in `.stepup/` and the output of `stepup graph`,
+  to the files that `loadns()`, `dumpns()` and `render_jinja()` read or write,
+  to the text of `run_subprocess()` in `stepup.core.extapi`,
+  and to the standard output and error of the `stepup` command when they are redirected.
+  Files and redirected output are written with `\n` line endings,
+  and a `\r\n` in the output of a step is recorded as `\n`,
+  so that the output is the same on every platform.
 - `stepup.core.pytest` is now meant to be loaded as a pytest plugin,
   with `pytest_plugins = ("stepup.core.pytest",)` in `conftest.py`,
   instead of `pytest.register_assert_rewrite("stepup.core.pytest")`.
-  The plugin makes pytest write its report in UTF-8 when it is redirected,
-  as the `stepup` command does,
-  so that the output of a failed example is not escaped onto a single line on Windows.
+  The plugin makes pytest write its report in UTF-8 as well when it is redirected.
+- `run_example()` in `stepup.core.pytest` takes a keyword argument `rules`,
+  a sequence of `OutputRule` instances,
+  each of which decides for the outputs whose names match a pattern
+  how they are normalized before they are written or compared,
+  and what is masked while comparing them.
+  An extension package can put rules for its own outputs in front of the default `OUTPUT_RULES`.
+  The cleanups of the output of `stepup build` and of `stepup graph` now only apply to
+  `expected_stdout*.txt` and `expected_graph*.txt`, respectively.
+  Tracebacks are normalized such that they are the same for Python 3.11 to 3.14.
 - When the director ends with an exit code that is not a combination of
   the [return codes](reference/returncode.md) of StepUp,
   e.g. because a program that wraps the director failed,
@@ -232,13 +129,18 @@ which are fixed in this release.
   is replaced by the function `get_yaml_converter()`.
 - The modules of `stepup.core` are reorganized into the subpackages
   `platform`, `rpc`, `graph`, `watch`, `launch`, `director` and `cli`.
-  The modules for plans, steps and extensions keep their names:
-  `api`, `extapi`, `call`, `script`, `render_jinja`, `stepinfo`, `path`, `nglob`,
-  `exceptions`, `enums`, `constants`, `cattrs`, `utils`, `hash` and `pytest`.
+  The modules for plans, steps and extensions, such as `api`, `extapi`, `path` and `pytest`,
+  keep their names.
   An extension that adds a tool imports `ToolFunc` from `stepup.core.cli.tool`
   and `ConfigLoader` from `stepup.core.cli.config_loader`,
   see [Adding a Tool](extending/tool.md).
   `ConventionTests` in `stepup.core.pytest` now also tests the modules of subpackages.
+- StepUp only removes an empty directory when it is the directory of an output
+  that left the workflow or that StepUp removed when reverting an optional step,
+  and then also its parent directories as long as they are empty.
+  It no longer removes the directory of a static file that left the workflow,
+  e.g. `.git/refs/heads/` after `git pack-refs` removed a loose ref covered by `static(".git/")`,
+  nor the working directory of a step that left the workflow.
 
 ### Fixed
 
@@ -256,12 +158,23 @@ which are fixed in this release.
 - An input or output that is not a regular file, such as a FIFO or a device,
   makes the step fail with an error message,
   instead of StepUp waiting for it forever when it tries to hash or copy the file.
-- When a hash or a copy made by `copy()` is stuck in the operating system,
-  e.g. on an unresponsive network file system,
-  the last stage of stopping a build no longer waits for it,
-  i.e. the third `q`, or the end of the grace period after `Ctrl+C`.
-  The step fails and StepUp exits normally,
-  instead of not exiting after `q` or being killed after `Ctrl+C`.
+- The last stage of stopping a build no longer waits for a hash or a copy
+  that is stuck in the operating system, e.g. on an unresponsive network file system.
+  The step fails, and StepUp exits normally.
+- A console script that runs in the forkserver and returns an exit code from its function,
+  as `sys.exit(main())` expects, now fails with that exit code,
+  as it does in a subprocess.
+- When an environment variable used by a step had changed since the previous run,
+  `stepup build` did not store the new value,
+  so every later start reported the change again
+  and marked the step and everything downstream pending.
+  A step that was detached at the start,
+  e.g. because the plan that defines it had failed in the previous run,
+  was not rerun at all.
+- In watch mode, StepUp no longer reports a file as `UPDATED` or `DELETED`
+  when it still matches its last recorded hash.
+  Such reports came from late notifications of changes that StepUp had already processed,
+  e.g. of an output written by a step.
 
 ## [4.0.3][] - 2026-09-19 {: #v4.0.3 }
 
@@ -1976,12 +1889,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
-[4.1.0rc6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc6
-[4.1.0rc5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc5
-[4.1.0rc4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc4
-[4.1.0rc3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc3
-[4.1.0rc2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc2
-[4.1.0rc1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0rc1
+[4.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0
 [4.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.3
 [4.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.2
 [4.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.1
