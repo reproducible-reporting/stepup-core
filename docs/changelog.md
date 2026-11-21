@@ -37,6 +37,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Fixed
 
+- A Python step that stopped with a message, e.g. with `sys.exit("No data.")`,
+  failed without showing the message when it ran in the forkserver,
+  which is the default on Linux.
+  The message now appears under the standard error of the step, as without the forkserver.
+
 - A restart after `plan.py` was removed in watch mode
   ignored the changes made while StepUp was not running,
   such as modified input files and environment variables,

@@ -474,6 +474,24 @@ async def test_forkserver_returned_exit_code(tmp_path):
     assert outcome.returncode == 3, outcome.stderr
 
 
+def _exit_with_message():
+    """Exit with a message instead of an exit code."""
+    sys.exit("Something went wrong.")
+
+
+@pytest.mark.requires_forkserver
+async def test_forkserver_exit_with_message(tmp_path):
+    """An exit with a message prints the message and fails, as in a subprocess."""
+    outcome = await exec_in_forkserver(
+        multiprocessing.get_context("forkserver"),
+        forkserver_entry,
+        ("exit", [], dict(os.environ), str(tmp_path), f"{__name__}:_exit_with_message"),
+        Run(SimpleNamespace(i=1, label="exit", command_and_workdir=("exit", ".")), job_i=1),
+    )
+    assert outcome.returncode == 1
+    assert outcome.stderr == "Something went wrong.\n"
+
+
 #
 # Stop levels
 #

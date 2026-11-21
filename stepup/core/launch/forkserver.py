@@ -211,9 +211,14 @@ def forkserver_entry(
                     func = getattr(importlib.import_module(module_name), attr_name)
                     sys.exit(func())
             except SystemExit as exc:
-                returncode = (
-                    exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
-                )
+                if exc.code is None:
+                    returncode = 0
+                elif isinstance(exc.code, int):
+                    returncode = exc.code
+                else:
+                    # Like the interpreter, print any other exit code, e.g. `sys.exit("message")`.
+                    print(exc.code, file=stderr_buf)
+                    returncode = 1
             finally:
                 # Run `atexit` handlers before sending the result,
                 # so that any `amend()` calls from `atexit` handlers
