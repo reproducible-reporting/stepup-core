@@ -52,7 +52,7 @@ The value does not identify a start,
 because a start with `--offline` keeps the value of the previous one,
 and a new `.stepup/graph.db` starts again at `1`.
 The variable is only meant to be tracked,
-so a step should not use its value for anything else, e.g. as a key for data outside `.stepup/`.
+so a step must not use its value for anything else, e.g. as a key for data outside `.stepup/`.
 The [reference](../reference/configuration.md#environment-variables-in-step-execution)
 describes the variable in full.
 
@@ -174,12 +174,12 @@ also when it downloads nothing, because StepUp drops them when the step runs aga
    StepUp stores the value of every variable that a step depends on in `.stepup/graph.db`,
    and shows how it changed, at startup and with `--explain-rerun`,
    e.g. as `UPDATED │ MY_TOKEN ='old' ➜ ='new'`.
+   Likewise, never write a secret to an output or to the standard output or error.
 
 3. **Undeclared state stays private.**
    A step that runs at every start may read a secret, the remote, `STEPUP_BUILD_OFFLINE`
    or files of its own.
-   It does not need to declare them,
-   because StepUp starts it again anyway.
+   It does not need to declare them, because StepUp starts it again anyway.
 
     That said, an always-run step may declare dependencies to StepUp,
     so it runs at the right time in the workflow.

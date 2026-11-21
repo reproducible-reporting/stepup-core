@@ -391,8 +391,7 @@ alphabetically within each group.
     [`STEPUP_DIRECTOR_I`](#environment-variables-in-step-execution)
     then keeps the value of the previous start,
     so a step that runs at every start of the director does not run merely because StepUp started.
-    Such a step keeps its result of the previous start,
-    and so do the steps that use its outputs.
+    Such a step keeps its result of the previous start, and so do the steps that use its outputs.
     A step that must run for another reason, e.g. because an input changed or because it failed,
     runs as usual.
     The director also exports the setting as `STEPUP_BUILD_OFFLINE` to the steps it runs,
@@ -588,8 +587,7 @@ the internal environment variables described above.
 
     A step must not use the value of `STEPUP_DIRECTOR_I` for anything.
     It is only allowed to declare a dependency on it.
-    The director increments the value before any step runs,
-    and stores it in the workflow database.
+    The director increments the value before any step runs, and stores it in the workflow database.
     A step does not always see the value increase by 1 for several reasons,
     such as a failed dependency or an interrupted director.
     Furthermore, the value is reset to `1` when `.stepup/graph.db` is removed

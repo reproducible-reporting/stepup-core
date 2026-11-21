@@ -258,42 +258,23 @@ Use them when an API function exchanges paths with the director on the user's be
 
 A step that downloads or uploads data depends on a remote server, which StepUp does not watch.
 The [Remote Data](../advanced_topics/remote_data.md) tutorial explains how such a step works.
-An extension package that defines such steps follows these conventions,
-so that the steps look at the remote when needed and a build without network access still works:
+An extension package that defines such a step
+adds `env="STEPUP_DIRECTOR_I"` in the API function that defines it,
+so that the step runs at every start of StepUp,
+see [`STEPUP_DIRECTOR_I`](../reference/configuration.md#environment-variables-in-step-execution).
+The step then follows the
+[Rules for Steps That Run at Every Start](../advanced_topics/remote_data.md#rules-for-steps-that-run-at-every-start),
+and it handles `STEPUP_BUILD_OFFLINE` as explained in
+[Working Offline](../advanced_topics/remote_data.md#working-offline),
+so that a build without network access still works.
+The following conventions complete these rules for extension packages:
 
-1. **Track `STEPUP_DIRECTOR_I`** in every step that looks at a remote,
-   by adding `env="STEPUP_DIRECTOR_I"` in the API function that defines the step.
-   The step then runs at every start of StepUp,
-   see [`STEPUP_DIRECTOR_I`](../reference/configuration.md#environment-variables-in-step-execution).
-   When there is nothing to do, it leaves its outputs untouched,
-   so that StepUp skips the steps that use them.
-2. **Honor `STEPUP_BUILD_OFFLINE`.**
-   When it is `1`, set by the [`offline`](../reference/configuration.md#build-control) setting,
-   the step does not touch the network at all, and says so in its output.
-   An upload sends nothing and succeeds.
-   A download keeps the outputs that it can vouch for,
-   e.g. because a record of its last download shows that they are complete,
-   and declares again the outputs that it declared with [`amend()`][stepup.core.api.amend],
-   because StepUp drops them when a step runs again.
-   When it cannot vouch for an output,
-   it fails with a message that says why, instead of a network error after a timeout.
-3. **Read `STEPUP_BUILD_OFFLINE` with `os.environ`** in a step that tracks `STEPUP_DIRECTOR_I`,
-   without declaring it as a dependency.
-   The next start without `offline` runs the step again,
-   so a result that it produced offline is never kept online.
-   Declaring the variable would make the step run at the first start with `offline`,
-   which is exactly what this setting avoids.
-   Any other step that behaves differently offline declares the variable,
-   like any variable that it reads.
-4. **Treat an unset `STEPUP_BUILD_OFFLINE` as online**,
-   so that a console script also works when it is run by hand,
-   or by a version of StepUp Core that does not set the variable.
-5. **Keep secrets out of what StepUp stores or shows.**
-   Read a secret, such as an access token, with `os.environ`,
-   never with [`getenv()`][stepup.core.api.getenv] or `env=`,
-   because StepUp stores the values of the variables that a step depends on
-   and shows how they changed.
-   For the same reason, never write a secret to an output or to the standard output or error.
+- **Offline, an upload sends nothing**, says so in its output, and succeeds.
+- **Offline, a download keeps only the outputs that it can vouch for**,
+  e.g. because a record of its last download shows that they are complete.
+  When it cannot vouch for an output, it fails with a message that says why.
+- **An unset `STEPUP_BUILD_OFFLINE` means online**,
+  so that a console script also works when it is run by hand.
 
 For example, an API function defines a download step that runs at every start:
 

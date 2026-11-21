@@ -32,7 +32,8 @@ grep -q 'START.*pull.py' .stepup/success.log
 ! grep -q 'START.*report.txt' .stepup/success.log || exit 1
 grep -qx FIRST report.txt
 
-# Third start, after the remote data changed. Both steps run.
+# Third start, after the remote data changed.
+# Both steps run.
 echo second > remote/data.txt
 rm .stepup/*.log
 sb -j 1 -w & # > current_stdout3.txt &
@@ -46,7 +47,8 @@ wait
 grep -q 'START.*report.txt' .stepup/success.log
 grep -qx SECOND report.txt
 
-# Fourth start, with the same remote data as the third. The consumer is skipped again.
+# Fourth start, with the same remote data as the third.
+# The consumer is skipped again.
 rm .stepup/*.log
 sb -j 1 -w & # > current_stdout4.txt &
 

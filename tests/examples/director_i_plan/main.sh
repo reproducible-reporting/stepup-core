@@ -4,8 +4,7 @@ source ../example.rc
 # The directory remote/ stands in for a remote server, which StepUp does not watch.
 mkdir remote
 
-# First start: the remote has no data,
-# so the planning step declares the upload step, which runs.
+# First start: the remote has no data, so the planning step declares the upload step, which runs.
 sb -j 1 -w & # > current_stdout1.txt &
 
 stepup wait

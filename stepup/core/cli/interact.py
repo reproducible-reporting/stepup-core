@@ -41,7 +41,7 @@ WAIT_FOR_SOCKET_TIMEOUT = 30.0
 
 This deadline only covers the gap between the TUI truncating `DIRECTOR_LOG`
 and the director writing its `SOCKET` and `PID` lines into it.
-It is generous because a heavily loaded machine may need more than ten seconds
+It is generous because a heavily loaded machine may be slow
 to start the TUI and the director (observed on GitHub-hosted runners in November 2026),
 while it only delays the error when no director is starting at all.
 Once those lines name a live process, `wait_for_director_socket` waits without a deadline:

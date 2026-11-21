@@ -13,7 +13,8 @@ wait
 
 grep -qx 1 director_i.txt
 
-# Second start. The step runs again and gets the new value.
+# Second start.
+# The step runs again and gets the new value.
 rm .stepup/*.log
 sb -j 1 -w -e & # > current_stdout2.txt &
 
