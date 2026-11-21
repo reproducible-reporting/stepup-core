@@ -19,6 +19,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.2.0rc2][] - 2026-11-21 {: #v4.2.0rc2 }
+
+Second pre-release of StepUp 4.2.
+
 ### Changed
 
 - Outside StepUp, the functions of `stepup.core.api` no longer print the calls
@@ -1944,6 +1950,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.2.0rc2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc2
 [4.2.0rc1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc1
 [4.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0
 [4.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.3
