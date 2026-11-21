@@ -258,10 +258,28 @@ _IRREGULAR_FILE_KINDS = (
 """The kinds of files that are not regular files, with their names in error messages."""
 
 
+def _irregular_file_error(path: StrPath, st_mode: int) -> NotARegularFileError:
+    """Create the exception for a file that is not a regular file, given its `st_mode`."""
+    kind = next(
+        (kind for test, kind in _IRREGULAR_FILE_KINDS if test(st_mode)),
+        "a file of another kind",
+    )
+    return NotARegularFileError(f"Not a regular file but {kind}: {path}")
+
+
+def _is_directory(path: StrPath) -> bool:
+    """Return `True` when `path` is a directory, or a symbolic link to one."""
+    try:
+        return stat.S_ISDIR(os.stat(path).st_mode)
+    except OSError:
+        return False
+
+
 def open_regular_file(path: StrPath, flags: int, mode: int = 0o777) -> int:
     """Open a file like `os.open`, but only when it is a regular file.
 
     A FIFO or a device is opened without waiting for the other side, and then refused.
+    A directory is refused with the same exception on every platform.
     Use it as the `opener` of `open()`, which adds the flags that the platform needs,
     such as `O_BINARY` on Windows.
 
@@ -285,15 +303,20 @@ def open_regular_file(path: StrPath, flags: int, mode: int = 0o777) -> int:
     """
     # Windows has no `O_NONBLOCK`, and no FIFOs in the file system either.
     nonblocking = getattr(os, "O_NONBLOCK", 0)
-    fd = os.open(path, flags | nonblocking, mode)
+    try:
+        fd = os.open(path, flags | nonblocking, mode)
+    except (PermissionError, IsADirectoryError) as exc:
+        # Windows refuses to open a directory with `EACCES`,
+        # and POSIX refuses to open one for writing with `EISDIR`.
+        # The kind of file is only examined after the failure, never before opening it,
+        # so a file that is replaced in the meantime can at worst change the exception.
+        if _is_directory(path):
+            raise _irregular_file_error(path, stat.S_IFDIR) from exc
+        raise
     try:
         st_mode = os.fstat(fd).st_mode
         if not stat.S_ISREG(st_mode):
-            kind = next(
-                (kind for test, kind in _IRREGULAR_FILE_KINDS if test(st_mode)),
-                "a file of another kind",
-            )
-            raise NotARegularFileError(f"Not a regular file but {kind}: {path}")
+            raise _irregular_file_error(path, st_mode)
         if nonblocking:
             # Later reads and writes are ordinary ones, also on a FUSE file system,
             # which would pass the flag on to its daemon.

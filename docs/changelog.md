@@ -27,6 +27,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   Set `STEPUP_DEBUG=1` to see these calls, which are now printed on standard error.
   See [`STEPUP_DEBUG`](reference/configuration.md#settings-for-all-subcommands).
 
+### Fixed
+
+- A copy step whose source is a directory, or which would overwrite a directory,
+  fails with the message "Not a regular file but a directory" on all platforms.
+  On Windows, overwriting a directory used to fail with "Permission denied".
+
 ## [4.2.0rc1][] - 2026-11-21 {: #v4.2.0rc1 }
 
 Pre-release of StepUp 4.2, featuring a mechanism to work with remote data.

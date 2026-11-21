@@ -1025,6 +1025,24 @@ def test_copy_file_refuses_a_fifo_as_destination(reader: bool, tmp_path):
     assert stat.S_ISFIFO(fifo.lstat().st_mode)
 
 
+def test_copy_file_refuses_a_directory_as_source(tmp_path):
+    src = Path(tmp_path / "src")
+    src.mkdir()
+    dst = Path(tmp_path / "dst.bin")
+    with pytest.raises(NotARegularFileError, match="Not a regular file but a directory"):
+        _copy_file(src, dst, threading.Event())
+    assert not dst.exists()
+
+
+def test_copy_file_refuses_to_overwrite_a_directory(tmp_path):
+    src = Path(tmp_path / "src.bin")
+    _write_source(src, 100)
+    (tmp_path / "sub" / "src.bin").mkdir(parents=True)
+    with pytest.raises(NotARegularFileError, match="Not a regular file but a directory"):
+        _copy_file(src, Path(tmp_path / "sub"), threading.Event())
+    assert (tmp_path / "sub" / "src.bin").is_dir()
+
+
 def test_copy_file_refuses_a_device_as_source(tmp_path):
     dst = Path(tmp_path / "dst.bin")
     with pytest.raises(NotARegularFileError, match="character device"):

@@ -158,6 +158,7 @@ class NotARegularFileError(OSError):
     """A file whose content must be read or written is not a regular file.
 
     A FIFO or a device is a stream rather than content, so it cannot be hashed or copied.
+    A directory has no content to read or write either.
     `OSError` is the base, because the file cannot be used, just like one that cannot be opened.
     """
 

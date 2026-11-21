@@ -2,18 +2,21 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Tests for stepup.core.utils."""
 
+import errno
 import os
 import subprocess
 import sys
 
 import pytest
 
+from stepup.core.exceptions import NotARegularFileError
 from stepup.core.platform.popen import _resolve_interpreter, popen_args
 from stepup.core.utils import (
     escape_control_chars,
     extract_env_overrides,
     format_subprocess,
     merge_resources,
+    open_regular_file,
     parse_resources,
     truncate_output,
 )
@@ -203,3 +206,45 @@ def test_truncate_output_multibyte_boundary():
     assert "�" not in result
     assert len(kept.encode("utf-8")) <= 5
     assert result.endswith("[output truncated at 5 bytes]\n")
+
+
+@pytest.mark.parametrize("flags", [os.O_RDONLY, os.O_WRONLY, os.O_RDWR])
+def test_open_regular_file_directory(path_tmp, flags):
+    with pytest.raises(NotARegularFileError, match="Not a regular file but a directory"):
+        open_regular_file(path_tmp, flags)
+
+
+@pytest.mark.requires_symlinks
+def test_open_regular_file_directory_link(path_tmp):
+    link = path_tmp / "link"
+    os.symlink(path_tmp, link, target_is_directory=True)
+    with pytest.raises(NotARegularFileError, match="Not a regular file but a directory"):
+        open_regular_file(link, os.O_RDONLY)
+
+
+def test_open_regular_file_permission_denied(path_tmp, monkeypatch):
+    """A `PermissionError` for anything other than a directory is not replaced."""
+    path = path_tmp / "file.txt"
+    path.write_bytes(b"abc")
+
+    def deny(name, flags, mode=0o777):
+        raise PermissionError(errno.EACCES, "Permission denied", name)
+
+    monkeypatch.setattr(os, "open", deny)
+    with pytest.raises(PermissionError):
+        open_regular_file(path, os.O_RDONLY)
+
+
+def test_open_regular_file_regular(path_tmp):
+    path = path_tmp / "file.txt"
+    path.write_bytes(b"abc")
+    fd = open_regular_file(path, os.O_RDONLY | getattr(os, "O_BINARY", 0))
+    try:
+        assert os.read(fd, 10) == b"abc"
+    finally:
+        os.close(fd)
+
+
+def test_open_regular_file_missing(path_tmp):
+    with pytest.raises(FileNotFoundError):
+        open_regular_file(path_tmp / "missing", os.O_RDONLY)

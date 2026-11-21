@@ -86,8 +86,6 @@ def _copy_file(src: Path, dst: Path, cancel_event: threading.Event) -> bool:
     OSError
         When the file cannot be copied.
     """
-    if src.is_dir():
-        raise IsADirectoryError(errno.EISDIR, "The source is a directory", str(src))
     if dst.is_dir():
         dst = dst / src.name
     with open(src, "rb", buffering=0, opener=open_regular_file) as fsrc:
