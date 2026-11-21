@@ -156,9 +156,17 @@ and reserve spaces for the contents of files rather than their names.
 - Normally, you would never run `./plan.py` directly as a normal Python script, i.e.,
   without running it through `stepup`.
   Try it anyway, just to see what happens.
-  The terminal output shows the commands that would normally be sent to the StepUp director
-  process when `plan.py` is executed by `stepup`.
-  You should get the following screen output.
+  Nothing seems to happen,
+  because the functions of `stepup.core.api` do nothing when StepUp is not running.
+  Now run it again with the environment variable `STEPUP_DEBUG` set:
+
+    ```bash
+    STEPUP_DEBUG=1 ./plan.py
+    ```
+
+    The terminal output now shows the commands that would normally be sent
+    to the StepUp director process when `plan.py` is executed by `stepup`.
+    You should get the following screen output.
 
     ```text
     --8<--
@@ -168,6 +176,8 @@ and reserve spaces for the contents of files rather than their names.
 
     This output contains internal details of StepUp,
     which can be useful for debugging purposes.
+    Setting `STEPUP_DEBUG` also enables other debugging features,
+    which are listed in the [configuration reference](../reference/configuration.md#settings-for-all-subcommands).
 
 - For resource-intensive workflows, you can inspect the global resource usage
   at the end of the `.stepup/director.log` file.

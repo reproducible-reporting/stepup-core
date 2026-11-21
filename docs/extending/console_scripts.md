@@ -18,7 +18,8 @@ e.g. as explained in the [Python Packaging User Guide](https://packaging.python.
 This is the recommended approach for scripts that can also work outside of StepUp,
 e.g. wrappers of external tools.
 Such scripts can still call functions from `stepup.core.api`,
-as these are no-ops (with some debug output) when StepUp is not running.
+as these are silent no-ops when StepUp is not running.
+Set `STEPUP_DEBUG=1` to see these calls, which are then printed on standard error.
 
 Install the relevant function as a `console_scripts` entry point in your package's `pyproject.toml`:
 

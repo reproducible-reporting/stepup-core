@@ -19,6 +19,14 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+### Changed
+
+- Outside StepUp, the functions of `stepup.core.api` no longer print the calls
+  they would send to the director,
+  which cluttered the output of console scripts that users run directly.
+  Set `STEPUP_DEBUG=1` to see these calls, which are now printed on standard error.
+  See [`STEPUP_DEBUG`](reference/configuration.md#settings-for-all-subcommands).
+
 ## [4.2.0rc1][] - 2026-11-21 {: #v4.2.0rc1 }
 
 Pre-release of StepUp 4.2, featuring a mechanism to work with remote data.

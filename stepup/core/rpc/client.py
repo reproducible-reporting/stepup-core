@@ -25,6 +25,7 @@ import logging
 import os
 import pickle
 import socket
+import sys
 from functools import cache, partial
 from typing import Any, NoReturn
 
@@ -856,8 +857,16 @@ class SocketSyncRPCClient(_SocketClientState, BaseSyncRPCClient):
 
 @attrs.define
 class DummySyncRPCClient(BaseSyncRPCClient):
-    """Synchronous client without a server, which prints the calls and returns `None`."""
+    """Synchronous client without a server, which returns `None` for every call.
+
+    When `STEPUP_DEBUG` is set, it prints each call on standard error,
+    so that the standard output of the calling script stays clean.
+    """
 
     def __call__(self, name: str, /, *args, _rpc_timeout: float | None = None, **kwargs) -> None:
-        """Print the call instead of sending it. The timeout is accepted and ignored."""
-        print(RPCCall(name, args, kwargs))
+        """Ignore the call, or print it when `STEPUP_DEBUG` is set.
+
+        The timeout is accepted and ignored.
+        """
+        if is_debug():
+            print(RPCCall(name, args, kwargs), file=sys.stderr)

@@ -771,6 +771,24 @@ def test_dummy_call_interface_passes_a_name_keyword():
     DummySyncRPCClient().call.greet(name="world")
 
 
+def test_dummy_sync_client_is_silent(monkeypatch, capsys):
+    """Without `STEPUP_DEBUG`, a script run outside StepUp gets no output from the client."""
+    monkeypatch.delenv("STEPUP_DEBUG", raising=False)
+    assert DummySyncRPCClient().call.greet("world", 5) is None
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_dummy_sync_client_prints_when_debugging(monkeypatch, capsys):
+    """With `STEPUP_DEBUG`, the calls go to stderr, so stdout remains the script's own."""
+    monkeypatch.setenv("STEPUP_DEBUG", "1")
+    assert DummySyncRPCClient().call.greet("world", 5) is None
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "greet('world', 5)\n"
+
+
 def test_is_rpc_allowed():
     """The marker set by `allow_rpc` is only meaningful through `is_rpc_allowed`."""
     handler = EchoHandler("x")

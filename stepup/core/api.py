@@ -2166,8 +2166,8 @@ def get_rpc_client(path: str | None = None) -> BaseSyncRPCClient:
     path
         The path of the director's RPC socket, for a caller that knows it up front.
         It is only used when the `STEPUP_DIRECTOR_SOCKET` environment variable is unset.
-        Without either, the result is a dummy client that prints the calls
-        instead of sending them to a director.
+        Without either, the result is a `DummySyncRPCClient`,
+        which has no director to send the calls to.
 
     Returns
     -------

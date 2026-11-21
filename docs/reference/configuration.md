@@ -311,8 +311,11 @@ separated by slashes, where applicable.
     [Failing Steps](../getting_started/failing_steps.md):
     a failing step then prints its complete traceback,
     including StepUp's own frames and the traceback of the director process.
-    Finally, a mistake that any subcommand reports as a short `ERROR:` message
+    A mistake that any subcommand reports as a short `ERROR:` message
     keeps its traceback, which is the only way to find out where it was raised.
+    Finally, when a `plan.py` or a console script runs outside StepUp,
+    the functions of `stepup.core.api` print the calls they would send to the director
+    on standard error, instead of ignoring them silently.
     This variable cannot be set through config files or command-line options.
 
 ## Settings for `sb` or `stepup build`
