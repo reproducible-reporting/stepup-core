@@ -1,4 +1,4 @@
-DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.2.0)
  STARTUP │ Checking 1 file(s) for changes
    PHASE │ build
 DIRECTOR │ Ran 0 job(s).

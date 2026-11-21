@@ -1,4 +1,4 @@
-DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0)
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.2.0)
 DIRECTOR │ Setting available resources: cpu:2,gpu:1
  STARTUP │ (Re)initialized boot script
    PHASE │ build

@@ -1,4 +1,4 @@
-DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.1.0)
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.2.0)
  UPDATED │ STEPUP_DIRECTOR_I ='4' ➜ ='5'
  STARTUP │ Checking 5 file(s) for changes
    PHASE │ build
