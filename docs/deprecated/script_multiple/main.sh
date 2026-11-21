@@ -11,3 +11,4 @@ sb --no-progress -j 1 | sed -f ../../clean_stdout.sed > stdout.txt
 # INP: ebbr.csv
 # INP: ebos.csv
 # INP: matplotlibrc
+# OUT: cases_out.txt

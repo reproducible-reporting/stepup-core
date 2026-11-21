@@ -3,9 +3,15 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """StepUp plan to generate all the outputs of the examples."""
 
+import re
+
 from path import Path
 
 from stepup.core.api import run, shq, static
+
+# A command that runs StepUp, possibly after variable assignments or inside a subshell,
+# e.g. `MYVAR=foo sb -j 1` or `(cd source; sb -j 1)`.
+RE_BUILD = re.compile(r"(?:^|[(;|&])\s*(?:\w+=\S*\s+)*(?:sb|stepup\s+build)\s")
 
 
 def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
@@ -16,6 +22,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
     ```bash
     sb -j 1 | sed -f ../../clean_stdout.sed > stdout.txt
     # INP: input
+    # OUT: output (for outputs of other commands)
     # ROOT: root/ (optional)
     ```
 
@@ -33,7 +40,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
     out
         A list of output paths, deduced from output redirection.
     """
-    inp = ["clean_stdout.sed"]
+    inp = [Path("clean_stdout.sed")]
     workdir = Path(path_main).parent
     root = workdir
     out = []
@@ -43,11 +50,11 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
                 inp.append(workdir / line[6:].strip())
             elif line.startswith("# ROOT:"):
                 root = workdir / line[7:].strip()
-            elif "stepup " in line and " > " in line:
-                out.append(workdir / Path(line[line.find(">") + 1 :].strip()))
             elif line.startswith("# OUT:"):
                 out.append(workdir / line[6:].strip())
-    return inp, root, out
+            elif RE_BUILD.search(line) and " > " in line:
+                out.append(workdir / line.rsplit(" > ", 1)[1].strip())
+    return inp, root, sorted(set(out))
 
 
 def main():
