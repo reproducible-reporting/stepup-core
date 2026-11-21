@@ -399,6 +399,7 @@ alphabetically within each group.
     The next start without this setting gives `STEPUP_DIRECTOR_I` a new value again,
     so every step that runs at every start looks at the remote data again.
     In watch mode, the setting holds for the lifetime of the director.
+    [Working Offline](../advanced_topics/remote_data.md#working-offline) shows an example.
 
 `progress` / `STEPUP_BUILD_PROGRESS` / `--progress`, `--no-progress`
 
@@ -566,22 +567,32 @@ the internal environment variables described above.
 
 `STEPUP_DIRECTOR_I`
 
-:   A unique integer every time the director starts, unless [`offline`](#build-control) is set,
-    guaranteed as long as `.stepup/graph.db` is not removed.
-    StepUp itself also recreates this database when a new version changes its format,
-    which has the same effect as removing it.
+:   An integer incremented every time the director starts,
+    unless [`offline`](#build-control) is set.
     A step that depends on this variable runs at every start of the director,
     which suits a step that looks at something StepUp does not watch, such as a remote server.
+    With `offline`, the director keeps the value of the previous start.
+    In watch mode, the value stays the same for the lifetime of the director,
+    so such a step does not run again in later build phases of the same director process.
+
+    Interactions with remote data must be skipped
+    when a step sees [`STEPUP_BUILD_OFFLINE=1`](#build-control),
+    because even if `STEPUP_DIRECTOR_I` remains the same, a step may run for other reasons,
+    such as a changed input or a failure in a previous run.
+
     Declare the dependency with `env="STEPUP_DIRECTOR_I"` when the step is defined,
     or with [`getenv("STEPUP_DIRECTOR_I")`][stepup.core.api.getenv] from inside the step.
-    In watch mode, the value stays the same for the lifetime of the director,
-    so such a step does not run again in later build phases because of this variable.
-    With `offline`, the director keeps the value of the previous start,
-    so such a step keeps its result of that start.
-    The values are not consecutive, and a new database starts again at `1`,
-    so a step must not use the value as a key for anything outside `.stepup/`.
-    Unlike `STEPUP_JOB_I`, this variable is meant to be declared as a dependency,
-    and that is its only intended use.
+
+    A step must not use the value of `STEPUP_DIRECTOR_I` for anything.
+    It is only allowed to declare a dependency on it.
+    The director increments the value before any step runs,
+    and stores it in the workflow database.
+    A step does not always see the value increase by 1 for several reasons,
+    such as a failed dependency or an interrupted director.
+    Furthermore, the value is reset to `1` when `.stepup/graph.db` is removed
+    (manually or due to a change in database format).
+
+    The [Remote Data](../advanced_topics/remote_data.md) tutorial shows an example.
 
 `STEPUP_JOB_I`
 

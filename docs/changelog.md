@@ -24,7 +24,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - StepUp sets the environment variable `STEPUP_DIRECTOR_I` to a new integer every time it starts.
   A step that depends on it, e.g. with `env="STEPUP_DIRECTOR_I"`, runs at every start,
   which suits a step that looks at something StepUp does not watch, such as a remote server.
-  See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution).
+  See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution)
+  and the new [Remote Data](advanced_topics/remote_data.md) tutorial.
 
 - The new setting `offline` (`--offline`, `STEPUP_BUILD_OFFLINE`) is meant for builds
   without access to remote data.

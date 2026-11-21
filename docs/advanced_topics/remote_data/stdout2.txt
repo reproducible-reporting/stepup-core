@@ -1,0 +1,10 @@
+DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.1.0)
+ UPDATED │ STEPUP_DIRECTOR_I ='1' ➜ ='2'
+ STARTUP │ Checking 5 file(s) for changes
+   PHASE │ build
+   START │ ./download.py
+ SUCCESS │ ./download.py
+    SKIP │ ./report.py
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+DIRECTOR │ See you!

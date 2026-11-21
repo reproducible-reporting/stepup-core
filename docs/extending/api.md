@@ -257,6 +257,7 @@ Use them when an API function exchanges paths with the director on the user's be
 ## Steps That Use the Network
 
 A step that downloads or uploads data depends on a remote server, which StepUp does not watch.
+The [Remote Data](../advanced_topics/remote_data.md) tutorial explains how such a step works.
 An extension package that defines such steps follows these conventions,
 so that the steps look at the remote when needed and a build without network access still works:
 
