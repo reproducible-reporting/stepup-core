@@ -19,6 +19,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.2.0rc4][] - 2026-11-22 {: #v4.2.0rc4 }
+
+Fourth pre-release of StepUp 4.2.
+
 ### Added
 
 - `is_offline(declare=True)` also declares a dependency on `STEPUP_BUILD_OFFLINE`,
@@ -2003,6 +2009,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.2.0rc4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc4
 [4.2.0rc3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc3
 [4.2.0rc2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc2
 [4.2.0rc1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc1
