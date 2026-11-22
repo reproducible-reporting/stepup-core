@@ -49,7 +49,7 @@ A real-world example of StepUp is the
 [AutoCorrelation Integral Drill (ACID) dataset](https://github.com/molmod/acid).
 This project uses a StepUp workflow to regenerate a 43 GB collection of 15360 synthetic
 time series used to benchmark algorithms that compute the autocorrelation integral.
-The workflows generate the dataset, package and upload it to Zenodo, and validate the results.
+The workflows generate the dataset, validate it and upload it to Zenodo.
 
 ## Why Was StepUp Created?
 

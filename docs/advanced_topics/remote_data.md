@@ -22,6 +22,7 @@ This tutorial shows how to make a step run at every start.
 This feature of StepUp is mainly for developers of extension packages,
 such as [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/).
 However, it can also be used as such in an ordinary workflow.
+Some smaller use cases are described in [Non-Remote Examples](#non-remote-examples).
 
 !!! warning "No dependencies through remote resources"
 
@@ -259,6 +260,107 @@ asks every extension package to honor `STEPUP_BUILD_OFFLINE` in this way.
 - Remove `data.txt` and run `sb -j 1 --offline`.
   The download step fails, because it cannot download the data offline.
   Run `sb -j 1` to download the data again.
+
+## Non-Remote Examples
+
+While `STEPUP_DIRECTOR_I` is primarily intended for handling remote data,
+it has other convenient uses.
+
+### Git Version
+
+For a document developed in a Git repository,
+one may want to insert the current version of the repository in the compiled PDF.
+The output of `git describe` may be used for this,
+but its output depends non-trivially on a number of files under `.git`.
+Making those file dependencies explicit is possible, but cumbersome and error-prone.
+Because `git describe` is fast, a simpler solution is to run it at every start:
+
+```python
+run(
+    "git describe --tags --always --dirty > git-version.txt",
+    env="STEPUP_DIRECTOR_I",
+    shell=True,
+    out="git-version.txt",
+)
+```
+
+If the output is the same as in the previous start, dependent steps are skipped,
+and the document is not recompiled.
+(Drop `--dirty` if Git tracks the outputs of the build,
+because the first build after a commit then modifies tracked files,
+which adds the `-dirty` suffix and compiles the document a second time.)
+
+Other Git commands fitting this pattern include
+`git rev-parse HEAD`, `git log -1 --format=%cd` or `git ls-files`.
+
+A change to the Git repository while `stepup build --watch` is running,
+will not trigger a rerun of the `git` command,
+because `STEPUP_DIRECTOR_I` is only incremented at the start of the director.
+To pick up such changes, stop the director and start it again.
+
+### Hardware Details
+
+If the output of your workflow is sensitive to the hardware it runs on,
+you may want to record these details.
+For the CPU, this can be done as follows:
+
+```python
+run(
+    "lscpu --hierarchic=always | grep -v 'CPU(s) scaling MHz' > cpu.txt",
+    env="STEPUP_DIRECTOR_I",
+    shell=True,
+    out="cpu.txt",
+)
+```
+
+The CPU frequency scaling is filtered out because it is different every time,
+and not a property of the CPU itself.
+
+A more robust approach is to post-process the output of these commands,
+e.g. `lscpu --json`, `lshw --json` or `nvidia-smi -L`,
+with a script that extracts the relevant and stable parts,
+before writing the output to a file that StepUp can track.
+
+### Software Versions
+
+It is generally recommended to specify the software used by a workflow through a "lock file".
+Some well-known examples:
+
+| Ecosystem | File |
+| --------- | ---- |
+| Python | [`pylock.toml`][pylock] |
+| uv | [`uv.lock`][uv-lock] |
+| Pixi | [`pixi.lock`][pixi-lock] |
+| Conda | [`conda-lock.yaml`][conda-lock] |
+| R | [`renv.lock`][renv-lock] |
+| Node.js | [`package-lock.json`][npm-lock] |
+| Julia | [`Manifest.toml`][julia-toml] |
+| Rust | [`Cargo.lock`][cargo-lock] |
+
+[pylock]: https://packaging.python.org/en/latest/specifications/pylock-toml/
+[uv-lock]: https://docs.astral.sh/uv/concepts/projects/layout/#the-lockfile
+[pixi-lock]: https://pixi.prefix.dev/latest/workspace/lock_file/
+[conda-lock]: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#building-identical-conda-environments
+[renv-lock]: https://rstudio.github.io/renv/articles/renv.html
+[npm-lock]: https://docs.npmjs.com/cli/v9/configuring-npm/package-lock-json
+[julia-toml]: https://pkgdocs.julialang.org/v1/toml-files/
+[cargo-lock]: https://doc.rust-lang.org/cargo/guide/cargo-toml-vs-cargo-lock.html
+
+A lock file goes further than simply listing all software tools your workflow uses directly.
+It also includes all dependencies, their versions,
+and typically also file hashes of the source code or binaries.
+
+If some software is installed without such a lock file,
+you can still record its version at every start, e.g. with:
+
+```python
+run(
+    "typst --version > typst-version.txt",
+    env="STEPUP_DIRECTOR_I",
+    shell=True,
+    out="typst-version.txt",
+)
+```
 
 ## Limits
 
