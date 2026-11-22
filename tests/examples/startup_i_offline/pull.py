@@ -4,15 +4,16 @@
 Offline, keep `data.txt` when it exists, and fail otherwise.
 """
 
-import os
 import sys
+
+from stepup.core.api import is_offline
 
 try:
     with open("data.txt", encoding="utf-8") as fh:
         local = fh.read()
 except FileNotFoundError:
     local = None
-if os.environ.get("STEPUP_BUILD_OFFLINE") == "1":
+if is_offline():
     if local is None:
         sys.exit("Offline, and data.txt was never downloaded.")
     print("Offline, keeping data.txt.")

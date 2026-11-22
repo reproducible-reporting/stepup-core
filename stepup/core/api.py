@@ -103,6 +103,7 @@ __all__ = (
     "glob",
     "graph",
     "hold",
+    "is_offline",
     "loadns",
     "plan",
     "render_jinja",
@@ -1459,6 +1460,25 @@ def copy(
         shell=False,
         duration=duration,
     )
+
+
+def is_offline() -> bool:
+    """Check whether StepUp runs in offline mode, without declaring a dependency.
+
+    This reads `STEPUP_BUILD_OFFLINE` from the environment of the step, which the director sets.
+    An unset variable, or any value other than `1`, means online,
+    so a console script also works when it is run by hand.
+    Unlike [`getenv()`][stepup.core.api.getenv], this never amends the current step,
+    because a step should declare `STEPUP_BUILD_OFFLINE`
+    only when its successful output depends on it.
+    [Working Offline](../advanced_topics/remote_data.md#working-offline) explains the cases.
+
+    Returns
+    -------
+    offline
+        `True` when StepUp runs in offline mode.
+    """
+    return os.environ.get("STEPUP_BUILD_OFFLINE") == "1"
 
 
 def getenv(

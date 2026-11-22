@@ -274,6 +274,7 @@ The following conventions complete these rules for extension packages:
   e.g. because a record of its last download shows that they are complete.
   When it cannot vouch for an output, it fails with a message that says why.
 - **An unset `STEPUP_BUILD_OFFLINE` means online**,
+  which [`is_offline()`][stepup.core.api.is_offline] does,
   so that a console script also works when it is run by hand.
 
 For example, an API function defines a download step that runs at every start:
@@ -292,10 +293,12 @@ The console script `my-download` (see [Console Scripts](console_scripts.md)) sta
 import os
 import sys
 
+from stepup.core.api import is_offline
+
 
 def main():
     url, dst = sys.argv[1:]
-    if os.environ.get("STEPUP_BUILD_OFFLINE") == "1":
+    if is_offline():
         if not os.path.isfile(dst):
             sys.exit(f"Working offline, so {dst} cannot be downloaded.")
         print(f"Working offline, keeping {dst}.")

@@ -2,9 +2,10 @@
 """Download `data.txt` from the remote, unless the local copy is up to date."""
 
 import hashlib
-import os
 import shutil
 import sys
+
+from stepup.core.api import is_offline
 
 REMOTE = "remote/data.txt"
 LOCAL = "data.txt"
@@ -21,7 +22,7 @@ def checksum(path: str) -> str | None:
 
 def main():
     local = checksum(LOCAL)
-    if os.environ.get("STEPUP_BUILD_OFFLINE") == "1":
+    if is_offline():
         if local is None:
             sys.exit(f"Working offline, so {LOCAL} cannot be downloaded.")
         print(f"Working offline, keeping {LOCAL}.")

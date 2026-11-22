@@ -43,6 +43,8 @@ may undergo larger changes and are not intended to be API stable.
 
 ### ::: stepup.core.api.getenv
 
+### ::: stepup.core.api.is_offline
+
 ### ::: stepup.core.api.call
 
 ### ::: stepup.core.api.script

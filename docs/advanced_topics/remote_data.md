@@ -197,8 +197,8 @@ also when it downloads nothing, because StepUp drops them when the step runs aga
    Likewise, never write a secret to an output or to the standard output or error.
 
 3. **Undeclared state stays private.**
-   A step that runs at every start may read a secret, the remote, `STEPUP_BUILD_OFFLINE`
-   or files of its own.
+   A step that runs at every start may read a secret, the remote, the offline mode
+   (with `is_offline()`) or files of its own.
    It does not need to declare them, because StepUp starts it again anyway.
 
     That said, an always-run step may declare dependencies to StepUp,
@@ -260,14 +260,24 @@ the first lines of its `main()` function keep `data.txt` and say so in the outpu
 When `data.txt` does not exist, the step fails with a message that says why,
 instead of a network error after a timeout.
 
-The download step reads `STEPUP_BUILD_OFFLINE` with `os.environ`, without declaring it.
-The step runs at every start without `--offline`,
-so a result that it produced offline is never kept online.
-Declaring the variable would make the step run at the first start with `--offline`,
-because the variable changed from `0` to `1`,
-which is exactly what offline mode avoids.
-A step that does not run at every start and behaves differently offline
-declares the variable, like any variable that it reads.
+The download step checks the mode with `is_offline()`,
+which reads `STEPUP_BUILD_OFFLINE` without declaring it.
+An unset variable, or any value other than `1`, means online.
+A step declares `STEPUP_BUILD_OFFLINE` only when its successful output depends on it,
+which gives three cases:
+
+- **A step with `recheck=True`** only calls `is_offline()`.
+  The next start online runs it again anyway,
+  and declaring the variable would make it run at the first start offline,
+  which offline mode avoids.
+- **A step that needs the network only to succeed**, e.g. for a license server,
+  only calls `is_offline()`, if it checks at all.
+  Its output does not depend on the mode.
+  Offline it can only fail, and failed steps are retried at the next start or rebuild.
+  Declaring the variable would make it run, and fail, as soon as StepUp is started offline.
+- **A step that writes a different output offline**, e.g. a placeholder,
+  calls `amend(env="STEPUP_BUILD_OFFLINE")` and `is_offline()`.
+  It must run again when StepUp is back online, to replace the placeholder.
 
 [Steps That Use the Network](../extending/api.md#steps-that-use-the-network)
 asks every extension package to honor `STEPUP_BUILD_OFFLINE` in this way.

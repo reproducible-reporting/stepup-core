@@ -23,6 +23,7 @@ from stepup.core.api import (
     getenv,
     glob,
     hold,
+    is_offline,
     loadns,
     plan,
     render_jinja,
@@ -49,6 +50,22 @@ def _chdir_work(monkeypatch, path_tmp):
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
     (path_tmp / "work").makedirs()
     monkeypatch.chdir(path_tmp / "work")
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(None, False), ("0", False), ("", False), ("true", False), ("1", True)],
+)
+def test_is_offline(monkeypatch, value, expected):
+    def fail(*args, **kwargs):
+        raise AssertionError("is_offline() must not amend")
+
+    monkeypatch.setattr("stepup.core.api.amend", fail)
+    if value is None:
+        monkeypatch.delenv("STEPUP_BUILD_OFFLINE", raising=False)
+    else:
+        monkeypatch.setenv("STEPUP_BUILD_OFFLINE", value)
+    assert is_offline() is expected
 
 
 def test_getenv_nonexisting(monkeypatch):

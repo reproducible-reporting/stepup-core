@@ -4,9 +4,9 @@
 Offline, send nothing.
 """
 
-import os
+from stepup.core.api import is_offline
 
-if os.environ.get("STEPUP_BUILD_OFFLINE") == "1":
+if is_offline():
     print("Offline, not sending report.txt.")
 else:
     with open("report.txt", encoding="utf-8") as fh:

@@ -402,7 +402,9 @@ alphabetically within each group.
     so every step that runs at every start looks at the remote data again.
     In watch mode, the setting holds for the lifetime of the director,
     so the `R` key and `stepup rebuild --recheck` then keep the value of `STEPUP_STARTUP_I` as well.
-    [Working Offline](../advanced_topics/remote_data.md#working-offline) shows an example.
+    A step checks the mode with [`is_offline()`][stepup.core.api.is_offline].
+    [Working Offline](../advanced_topics/remote_data.md#working-offline) shows an example
+    and explains when a step should declare the variable.
 
 `progress` / `STEPUP_BUILD_PROGRESS` / `--progress`, `--no-progress`
 

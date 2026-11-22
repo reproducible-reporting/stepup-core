@@ -21,6 +21,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Added
 
+- The function `is_offline()` in `stepup.core.api` tells a step whether StepUp runs offline,
+  without declaring `STEPUP_BUILD_OFFLINE` as a dependency.
+  See [Working Offline](advanced_topics/remote_data.md#working-offline).
 - The functions `step()`, `run()`, `plan()`, `script()`, `call()` and `amend()`
   accept `recheck=True` to make a step run at every start of StepUp (except with `offline`).
   This is a clearer spelling of a dependency on `STEPUP_STARTUP_I`,
