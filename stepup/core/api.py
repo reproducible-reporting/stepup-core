@@ -45,7 +45,7 @@ import shlex
 import string
 import sys
 import tomllib
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Generator, Iterable, Iterator
 from runpy import run_path
 from types import ModuleType, SimpleNamespace
 from typing import Any
@@ -633,7 +633,7 @@ def call(
         Files declared as inputs to this step. Normalized to `list[str]`.
         Also forwarded to the function as `inp`.
     env
-        Environment variables tracked by this step.
+        Names of environment variables the step depends on.
     out
         Files declared as outputs of this step. Normalized to `list[str]`.
         Also forwarded to the function as `out`.
@@ -837,7 +837,7 @@ class EnvSubstitutor:
 
 
 @contextlib.contextmanager
-def subs_env_vars() -> Iterator[EnvSubstitutor]:
+def subs_env_vars() -> Generator[EnvSubstitutor]:
     """Substitute environment variables in paths and record which variables are used.
 
     The context manager yields an [`EnvSubstitutor`][stepup.core.api.EnvSubstitutor],
@@ -1045,7 +1045,7 @@ def amend(
 
 
 @contextlib.contextmanager
-def hold() -> Iterator[None]:
+def hold() -> Generator[None]:
     """Hold back steps declared within this block and schedule them after the block exits.
 
     Use this to wrap a batch of `run()`/`step()`/`plan()` calls (typically in a `plan.py`)
