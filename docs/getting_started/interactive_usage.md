@@ -53,6 +53,7 @@ to display the supported keys with interactive commands:
   j = join        Wait for all steps to complete before shutting down.
   q = shutdown    Shut down StepUp. (1st is graceful. 2nd kills steps.)
   r = rebuild     Restart the builder. (Leaves watch phase.)
+  R = recheck     Like r, and also rerun steps with recheck=True.
 ────────────────────────────────────────────────────────────────────────────────
 ```
 

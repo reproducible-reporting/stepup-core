@@ -26,7 +26,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   This is a clearer spelling of a dependency on `STEPUP_STARTUP_I`,
   which keeps working and means the same.
   See [Remote Data](advanced_topics/remote_data.md#running-a-step-at-every-start).
-- `stepup rebuild --recheck` starts a build phase in watch mode,
+- `stepup rebuild --recheck` and the `R` key start a build phase in watch mode,
   in which the steps with `recheck=True` also run again, as after a new start of StepUp.
   It does nothing more than `stepup rebuild` with `offline`.
   See [Interactive Usage](reference/interactive.md#interacting-with-a-background-stepup-process).

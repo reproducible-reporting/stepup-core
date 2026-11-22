@@ -5,6 +5,7 @@
 import argparse
 import asyncio
 import contextlib
+import inspect
 import os
 import signal
 import sys
@@ -1382,6 +1383,16 @@ def test_key_actions_methods_are_allowed_rpc() -> None:
         assert is_rpc_allowed(method), f"{action.method!r} is not @allow_rpc"
 
 
+def test_key_actions_arguments_bind_to_rpc_signature() -> None:
+    """The `args` and `kwargs` of every entry fit the signature of the real RPC method.
+
+    The fake handler used to test the dispatch cannot catch a renamed keyword.
+    """
+    for action in _KEY_ACTIONS.values():
+        method = getattr(DirectorHandler, action.method)
+        inspect.signature(method).bind(None, *action.args, **action.kwargs)
+
+
 def _fixed_keystrokes(keys: list[str]) -> Callable[[asyncio.Event], AsyncGenerator[str, None]]:
     """Build a stand-in for `_iter_keystrokes` that yields a fixed sequence, then stops."""
 
@@ -1397,27 +1408,27 @@ class _FakeDirectorHandler:
     """Exposes the `DirectorHandler` RPC methods reachable through `_KEY_ACTIONS`."""
 
     def __init__(self) -> None:
-        self.calls: list[tuple[str, tuple]] = []
+        self.calls: list[tuple[str, tuple, dict]] = []
 
     @allow_rpc
-    async def start_build_phase(self) -> None:
-        self.calls.append(("start_build_phase", ()))
+    async def start_build_phase(self, recheck: bool = False) -> None:
+        self.calls.append(("start_build_phase", (), {"recheck": recheck} if recheck else {}))
 
     @allow_rpc
     async def shutdown(self) -> None:
-        self.calls.append(("shutdown", ()))
+        self.calls.append(("shutdown", (), {}))
 
     @allow_rpc
     async def drain(self) -> None:
-        self.calls.append(("drain", ()))
+        self.calls.append(("drain", (), {}))
 
     @allow_rpc
     async def wait_and_shutdown(self) -> None:
-        self.calls.append(("wait_and_shutdown", ()))
+        self.calls.append(("wait_and_shutdown", (), {}))
 
     @allow_rpc
     async def write_graph(self, path: str) -> None:
-        self.calls.append(("write_graph", (path,)))
+        self.calls.append(("write_graph", (path,), {}))
 
 
 def test_keyboard_reports_unreachable_director(
@@ -1464,7 +1475,7 @@ def test_keyboard_survives_director_disappearing(
 class _RaisingDirectorHandler:
     """A director stand-in whose `drain`/`write_graph` methods always raise, once called.
 
-    Used to test the `report_after` ordering contract: the report must (or must not)
+    Used to test the ordering of the report and the call: the report must (or must not)
     already have happened by the time the failing call's exception reaches the caller.
     """
 
@@ -1525,13 +1536,13 @@ def test_keyboard_dispatches_each_key(
             timeout=5,
         )
     )
-    assert handler.calls == [(action.method, action.args)]
+    assert handler.calls == [(action.method, action.args, action.kwargs)]
 
 
 def test_keyboard_reports_before_call(dir_sockets: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """For a non-`report_after` action, the report happens even when the call then fails.
 
-    `drain` reports before calling, per `KeyAction.report_after`'s documented contract,
+    `drain` reports before calling, per the documented contract of `KeyAction`,
     so a failing call must not suppress the report.
     """
     handler = _RaisingDirectorHandler()
@@ -1551,7 +1562,7 @@ def test_keyboard_reports_after_call_for_graph(
 ) -> None:
     """No success report is made when the `graph` call raises.
 
-    That is the entire reason `report_after` exists: the message claims `graph.txt` exists.
+    The report of `g` comes after the call, because the message claims `graph.txt` exists.
     """
     handler = _RaisingDirectorHandler()
     socket_path = dir_sockets / "director"

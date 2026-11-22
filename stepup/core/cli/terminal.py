@@ -311,6 +311,9 @@ class KeyAction:
     args: tuple = attrs.field(kw_only=True, default=())
     """Positional arguments passed to the RPC call."""
 
+    kwargs: dict = attrs.field(kw_only=True, factory=dict)
+    """Keyword arguments passed to the RPC call."""
+
 
 _KEY_ACTIONS = {
     "g": KeyAction(
@@ -342,6 +345,13 @@ _KEY_ACTIONS = {
         label="rebuild",
         description="Restart the builder. (Leaves watch phase.)",
         message="Restarting the builder.",
+    ),
+    "R": KeyAction(
+        method="start_build_phase",
+        label="recheck",
+        description="Like r, and also rerun steps with recheck=True.",
+        message="Restarting the builder and rerunning the steps with recheck=True.",
+        kwargs={"recheck": True},
     ),
 }
 
@@ -521,7 +531,7 @@ async def keyboard(
                 method = getattr(client.call, action.method)
                 if action.message is not None:
                     reporter_handler.report("KEYBOARD", action.message, [])
-                await method(*action.args)
+                await method(*action.args, **action.kwargs)
         except OSError as exc:
             # The director is on its way out (socket unlinked, or listening backlog gone),
             # or the connection dropped mid-call.

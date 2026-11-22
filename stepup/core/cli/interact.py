@@ -189,7 +189,10 @@ def add_rebuild_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> Tool
     parser.add_argument(
         "--recheck",
         action="store_true",
-        help="Also rerun the steps with recheck=True, as after a new start of StepUp.",
+        help=(
+            "Also rerun the steps with recheck=True, as after a new start of StepUp. "
+            "This is the same as the R key."
+        ),
     )
 
     def rebuild_tool(args: argparse.Namespace) -> None:

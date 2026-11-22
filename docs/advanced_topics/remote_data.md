@@ -51,7 +51,7 @@ and [`call()`][stepup.core.api.call] all accept `recheck`.
 Like any other step, a step with `recheck=True` only runs when it is needed
 and when its inputs are available.
 In watch mode, it does not run again in later build phases of the same director,
-unless you ask for a recheck with `stepup rebuild --recheck`.
+unless you ask for a recheck by pressing `R` or running `stepup rebuild --recheck`.
 
 This works through an environment variable.
 The director sets `STEPUP_STARTUP_I` for every step it runs,
@@ -65,7 +65,7 @@ Writing `env="STEPUP_STARTUP_I"` or calling
 declares the same dependency, but `recheck=True` states the intent more clearly.
 In watch mode, the value stays the same in later build phases,
 so the step does not run again because of this variable.
-Only `stepup rebuild --recheck` gives it a new value, as if StepUp started again,
+Only the `R` key or `stepup rebuild --recheck` gives it a new value, as if StepUp started again,
 so the steps with `recheck=True` run in the build phase that follows.
 
 The value does not identify a start,
@@ -225,7 +225,7 @@ lets such steps keep the results of the previous start:
   or when it failed at the previous start because the server could not be reached.
 - The next start without `--offline` gives `STEPUP_STARTUP_I` a new value,
   so every step that runs at every start looks at the remote again.
-- In watch mode, `stepup rebuild --recheck` keeps the value as well,
+- In watch mode, the `R` key and `stepup rebuild --recheck` keep the value as well,
   so it only starts a build phase, like `stepup rebuild`.
 
 To see this in the example, change the remote data and run StepUp offline:
@@ -317,7 +317,8 @@ Other Git commands fitting this pattern include
 A change to the Git repository while `stepup build --watch` is running,
 will not trigger a rerun of the `git` command,
 because `STEPUP_STARTUP_I` keeps its value in later build phases.
-To pick up such changes, run `stepup rebuild --recheck`.
+To pick up such changes, press `R`,
+or run `stepup rebuild --recheck` from an editor or another terminal.
 
 ### Hardware Details
 
@@ -388,7 +389,8 @@ run(
 - **Once per start or recheck, not per build phase.**
   In watch mode, a step that runs at every start does not run again in later build phases,
   e.g. after you press `r`.
-  To look at the remote again, run `stepup rebuild --recheck` in another terminal.
+  To look at the remote again, press `R`,
+  or run `stepup rebuild --recheck` in another terminal.
 - **Environment variables are read at startup only**, including secrets.
   The steps get the environment of the director as it was when it started,
   so a token that you set after starting StepUp is only seen after a restart.

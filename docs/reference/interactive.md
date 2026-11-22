@@ -36,6 +36,7 @@ If the key is not associated with a command, the following help message appears:
   j = join        Wait for all steps to complete before shutting down.
   q = shutdown    Shut down StepUp. (1st is graceful. 2nd kills steps.)
   r = rebuild     Restart the builder. (Leaves watch phase.)
+  R = recheck     Like r, and also rerun steps with recheck=True.
 ────────────────────────────────────────────────────────────────────────────────
 ```
 
@@ -43,6 +44,13 @@ These commands are defined as follows:
 
 - `r = rebuild`:
   Runs steps that are affected by file changes registered during the *watch phase*.
+- `R = recheck`:
+  Does the same as `r`, and also reruns the steps with `recheck=True`,
+  as after a new start of StepUp, see [Remote Data](../advanced_topics/remote_data.md).
+  It does not reread the environment of the director,
+  and with [`offline`](configuration.md#build-control) it does nothing more than `r`.
+  Beware that Caps Lock turns every `r` into `R`,
+  which can trigger an unintended synchronization with a remote.
 - `q = shutdown`:
   StepUp waits for all running steps to complete and will not start new jobs.
   As soon as no steps are running, StepUp exits.
@@ -64,7 +72,7 @@ These commands are defined as follows:
   which is StepUp's internal name for a (possibly named) glob pattern.
 
 Note that these interactive keys also work without the `-w` or `-W` option,
-except for `r` which only has an effect during the *watch phase*.
+except for `r` and `R`, which only has an effect during the *watch phase*.
 
 Pressing `Ctrl+C` (or sending `SIGTERM`) also stops StepUp, but more abruptly than `q`:
 it aborts the build instead of waiting for running steps.
@@ -204,7 +212,7 @@ However, you can still interact with StepUp as follows:
 | Command | Key | Description |
 | --- | --- | --- |
 | `stepup rebuild` | [`r`][keys] | Leave the watch phase and run the outdated steps. |
-| `stepup rebuild --recheck` | | Also rerun the steps with `recheck=True`, see below. |
+| `stepup rebuild --recheck` | [`R`][keys] | Also rerun the steps with `recheck=True`, see below. |
 | `stepup shutdown` | [`q`][keys] | Wait for the running steps and exit. Repeat to kill them. |
 | `stepup drain` | [`d`][keys] | Start no new steps and enter the watch phase when idle. |
 | `stepup join` | [`j`][keys] | Run steps until none are left, and then exit. |

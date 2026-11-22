@@ -209,6 +209,8 @@ def test_keys_reach_the_director(stepup_on_console, path_tmp: Path) -> None:
     host.act("keys g")
     wait_for_output(host, "Wrote graph to graph.txt")
     assert (path_tmp / "graph.txt").is_file()
+    host.act("keys R")
+    wait_for_output(host, "rerunning the steps with recheck=True")
     host.act("keys x")
     wait_for_output(host, "Unsupported key x")
     host.act("ctrl-c")
