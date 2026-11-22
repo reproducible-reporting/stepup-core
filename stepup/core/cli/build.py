@@ -187,7 +187,7 @@ def _add_build_parser(
         "--offline",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Work without access to remote data. "
+        help="Work without access to external data. "
         "STEPUP_STARTUP_I keeps its value, at startup and with 'stepup rebuild --recheck', "
         "so the steps with recheck=True keep their results. "
         "Steps that run anyway find STEPUP_BUILD_OFFLINE=1 in their environment.",

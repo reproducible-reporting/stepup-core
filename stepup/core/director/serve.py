@@ -89,7 +89,7 @@ class ServeConfig:
     (unless already set in the environment), for reproducible builds."""
 
     offline: bool = attrs.field(default=False)
-    """Whether remote data cannot be reached.
+    """Whether external data cannot be reached.
     If True, `STEPUP_STARTUP_I` keeps its value, at startup and at every recheck,
     and the steps find `STEPUP_BUILD_OFFLINE=1` in their environment."""
 

@@ -25,7 +25,7 @@ and with `stepup rebuild --recheck` in watch mode:
 `STEPUP_STARTUP_I` (except with `--offline`).
 A step that depends on it runs at every start and at every recheck,
 which `recheck=True` declares in a clearer way,
-as explained in the [Remote Data](remote_data.md) tutorial.
+as explained in the [External Data](external_data.md) tutorial.
 
 ## Example
 

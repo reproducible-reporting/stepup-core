@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download `data.txt` from the remote, unless the local copy is up to date."""
+"""Download `data.txt` from the external data, unless the local copy is up to date."""
 
 import hashlib
 import shutil
@@ -7,7 +7,7 @@ import sys
 
 from stepup.core.api import is_offline
 
-REMOTE = "remote/data.txt"
+EXTERNAL = "external/data.txt"
 LOCAL = "data.txt"
 
 
@@ -29,8 +29,8 @@ def main():
         return
     # This mimics the usage of a research-grade data server, like iRODS,
     # which can report the checksum, so downloads of unchanged data can be skipped.
-    if checksum(REMOTE) != local:
-        shutil.copyfile(REMOTE, LOCAL)
+    if checksum(EXTERNAL) != local:
+        shutil.copyfile(EXTERNAL, LOCAL)
 
 
 if __name__ == "__main__":

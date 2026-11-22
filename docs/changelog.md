@@ -23,12 +23,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 - The function `is_offline()` in `stepup.core.api` tells a step whether StepUp runs offline,
   without declaring `STEPUP_BUILD_OFFLINE` as a dependency.
-  See [Working Offline](advanced_topics/remote_data.md#working-offline).
+  See [Working Offline](advanced_topics/external_data.md#working-offline).
 - The functions `step()`, `run()`, `plan()`, `script()`, `call()` and `amend()`
   accept `recheck=True` to make a step run at every start of StepUp (except with `offline`).
   This is a clearer spelling of a dependency on `STEPUP_STARTUP_I`,
   which keeps working and means the same.
-  See [Remote Data](advanced_topics/remote_data.md#running-a-step-at-every-start).
+  See [External Data](advanced_topics/external_data.md#running-a-step-at-every-start).
 - `stepup rebuild --recheck` and the `R` key start a build phase in watch mode,
   in which the steps with `recheck=True` also run again, as after a new start of StepUp.
   It does nothing more than `stepup rebuild` with `offline`.
@@ -40,6 +40,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   which shows more clearly in `plan.py` files that a step runs at every start.
   Replace `env="STEPUP_DIRECTOR_I"` by `env="STEPUP_STARTUP_I"` in existing workflows.
   See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution).
+- The tutorial page "Remote Data" is renamed to "External Data",
+  and moved from `advanced_topics/remote_data.md` to `advanced_topics/external_data.md`.
 
 ## [4.2.0rc2][] - 2026-11-21 {: #v4.2.0rc2 }
 
@@ -69,7 +71,7 @@ Pre-release of StepUp 4.2, featuring a mechanism to work with remote data.
   A step that depends on it, e.g. with `env="STEPUP_DIRECTOR_I"`, runs at every start,
   which suits a step that looks at something StepUp does not watch, such as a remote server.
   See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution)
-  and the new [Remote Data](advanced_topics/remote_data.md) tutorial.
+  and the new [External Data](advanced_topics/external_data.md) tutorial.
 
 - The new setting `offline` (`--offline`, `STEPUP_BUILD_OFFLINE`) is meant for builds
   without access to remote data.

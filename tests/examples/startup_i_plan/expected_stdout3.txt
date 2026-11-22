@@ -4,8 +4,8 @@
    PHASE │ build
    START │ ./check.py
  SUCCESS │ ./check.py
-   START │ ./upload.py 5f7750a4
- SUCCESS │ ./upload.py 5f7750a4
+   START │ ./upload.py fd01b690
+ SUCCESS │ ./upload.py fd01b690
 DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch

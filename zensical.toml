@@ -56,7 +56,7 @@ nav = [
     "advanced_topics/duration_and_hold.md",
     "advanced_topics/blocked_steps.md",
     "advanced_topics/environment_variables.md",
-    "advanced_topics/remote_data.md",
+    "advanced_topics/external_data.md",
     "advanced_topics/volatile_outputs.md",
     "advanced_topics/dynamic_dependencies.md",
     "advanced_topics/dynamic_static_inputs.md",

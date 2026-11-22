@@ -1,2 +1,2 @@
 # The lines that start with a hash are left out of the report.
-Data from the remote:
+Data from the external source:

@@ -387,7 +387,7 @@ alphabetically within each group.
 
 `offline` / `STEPUP_BUILD_OFFLINE` / `--offline`, `--no-offline`
 
-:   Set to `true` when remote data cannot be reached, e.g. without a network connection.
+:   Set to `true` when external data cannot be reached, e.g. without a network connection.
     [`STEPUP_STARTUP_I`](#environment-variables-in-step-execution)
     then keeps its value of the previous start,
     so a step that runs at every start of the director does not run merely because StepUp started.
@@ -399,11 +399,11 @@ alphabetically within each group.
     so that a step that does run can avoid the network,
     as described in [Steps That Use the Network](../extending/api.md#steps-that-use-the-network).
     The next start without this setting gives `STEPUP_STARTUP_I` a new value again,
-    so every step that runs at every start looks at the remote data again.
+    so every step that runs at every start looks at the external data again.
     In watch mode, the setting holds for the lifetime of the director,
     so the `R` key and `stepup rebuild --recheck` then keep the value of `STEPUP_STARTUP_I` as well.
     A step checks the mode with [`is_offline()`][stepup.core.api.is_offline].
-    [Working Offline](../advanced_topics/remote_data.md#working-offline) shows an example
+    [Working Offline](../advanced_topics/external_data.md#working-offline) shows an example
     and explains when a step should declare the variable.
 
 `progress` / `STEPUP_BUILD_PROGRESS` / `--progress`, `--no-progress`
@@ -588,7 +588,7 @@ the internal environment variables described above.
     so such a step does not run again,
     unless the `R` key or `stepup rebuild --recheck` gives it a new value.
 
-    Interactions with remote data must be skipped
+    Interactions with external data must be skipped
     when a step sees [`STEPUP_BUILD_OFFLINE=1`](#build-control),
     because even if `STEPUP_STARTUP_I` remains the same, a step may run for other reasons,
     such as a changed input or a failure in a previous run.
@@ -607,7 +607,7 @@ the internal environment variables described above.
     Furthermore, the value is reset to `1` when `.stepup/graph.db` is removed
     (manually or due to a change in database format).
 
-    The [Remote Data](../advanced_topics/remote_data.md) tutorial shows an example.
+    The [External Data](../advanced_topics/external_data.md) tutorial shows an example.
 
 `STEPUP_STEP_INP_DIGEST`
 

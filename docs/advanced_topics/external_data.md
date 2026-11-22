@@ -4,7 +4,7 @@ description: >-
   so that it can exchange data with a resource other than files on disk or in environment variables.
 ---
 
-# Remote Data
+# External Data
 
 <!--
 SPDX-FileCopyrightText: 2026 Toon Verstraelen <Toon.Verstraelen@UGent.be>
@@ -22,7 +22,7 @@ This tutorial shows how to make a step run at every start with `recheck=True`.
 This feature of StepUp is mainly for developers of extension packages,
 such as [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/).
 However, it can also be used as such in an ordinary workflow.
-Some smaller use cases are described in [Non-Remote Examples](#non-remote-examples).
+Some smaller use cases are described in [Other Examples](#other-examples).
 
 !!! warning "No dependencies through remote resources"
 
@@ -78,16 +78,16 @@ describes the variable in full.
 
 ## Example: A Download Step
 
-Example source files: [`docs/advanced_topics/remote_data/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/remote_data)
+Example source files: [`docs/advanced_topics/external_data/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/external_data)
 
-In this example, the directory `remote/` stands in for a remote server, so no network is needed.
+In this example, the directory `external/` stands in for a remote server, so no network is needed.
 No step declares this directory, so StepUp does not see when it changes,
 just as it cannot see changes on a real server.
 Create it with some data:
 
 ```bash
-mkdir remote
-printf '%s\n' 2.0 4.0 > remote/data.txt
+mkdir external
+printf '%s\n' 2.0 4.0 > external/data.txt
 ```
 
 The following `plan.py` defines a download step that runs at every start,
@@ -95,17 +95,17 @@ and a step that summarizes the downloaded data:
 
 ```python
 --8<--
-advanced_topics/remote_data/plan.py
+advanced_topics/external_data/plan.py
 --8<--
 ```
 
-The download step compares the checksum of the remote file with that of its output,
+The download step compares the checksum of the external file with that of its output,
 and copies the file only when they differ.
 The part of `main()` that handles offline mode is explained in [Working Offline](#working-offline).
 
 ```python
 --8<--
-advanced_topics/remote_data/download.py
+advanced_topics/external_data/download.py
 --8<--
 ```
 
@@ -113,7 +113,7 @@ The script `report.py` writes the summary:
 
 ```python
 --8<--
-advanced_topics/remote_data/report.py
+advanced_topics/external_data/report.py
 --8<--
 ```
 
@@ -128,7 +128,7 @@ The first build runs all steps:
 
 ```text
 --8<--
-advanced_topics/remote_data/stdout1.txt
+advanced_topics/external_data/stdout1.txt
 --8<--
 ```
 
@@ -139,14 +139,14 @@ StepUp then checks `report.py`, finds that its input did not change, and skips i
 
 ```text
 --8<--
-advanced_topics/remote_data/stdout2.txt
+advanced_topics/external_data/stdout2.txt
 --8<--
 ```
 
-Now add a value to the remote data and run StepUp again:
+Now add a value to the external data and run StepUp again:
 
 ```bash
-echo 9.0 >> remote/data.txt
+echo 9.0 >> external/data.txt
 sb -j 1
 ```
 
@@ -154,7 +154,7 @@ The download step copies the new data, so `report.py` runs as well:
 
 ```text
 --8<--
-advanced_topics/remote_data/stdout3.txt
+advanced_topics/external_data/stdout3.txt
 --8<--
 ```
 
@@ -162,7 +162,7 @@ A next build without changes skips `report.py` again:
 
 ```text
 --8<--
-advanced_topics/remote_data/stdout4.txt
+advanced_topics/external_data/stdout4.txt
 --8<--
 ```
 
@@ -228,18 +228,18 @@ lets such steps keep the results of the previous start:
 - In watch mode, the `R` key and `stepup rebuild --recheck` keep the value as well,
   so it only starts a build phase, like `stepup rebuild`.
 
-To see this in the example, change the remote data and run StepUp offline:
+To see this in the example, change the external data and run StepUp offline:
 
 ```bash
-echo 3.0 >> remote/data.txt
+echo 3.0 >> external/data.txt
 sb -j 1 --offline
 ```
 
-No step runs, so the change of the remote data goes unnoticed:
+No step runs, so the change of the external data goes unnoticed:
 
 ```text
 --8<--
-advanced_topics/remote_data/stdout5.txt
+advanced_topics/external_data/stdout5.txt
 --8<--
 ```
 
@@ -251,7 +251,7 @@ sb -j 1
 
 ```text
 --8<--
-advanced_topics/remote_data/stdout6.txt
+advanced_topics/external_data/stdout6.txt
 --8<--
 ```
 
@@ -292,7 +292,7 @@ asks every extension package to honor `STEPUP_BUILD_OFFLINE` in this way.
   The download step fails, because it cannot download the data offline.
   Run `sb -j 1` to download the data again.
 
-## Non-Remote Examples
+## Other Examples
 
 While `recheck=True` is primarily intended for handling remote data,
 it has other convenient uses.

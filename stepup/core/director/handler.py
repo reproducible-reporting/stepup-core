@@ -60,7 +60,7 @@ class DirectorHandler:
     watcher: Watcher | None = attrs.field(kw_only=True)
     stop_event: asyncio.Event = attrs.field(kw_only=True)
     offline: bool = attrs.field(kw_only=True, default=False)
-    """Whether remote data cannot be reached, so that a recheck keeps `STEPUP_STARTUP_I`.
+    """Whether external data cannot be reached, so that a recheck keeps `STEPUP_STARTUP_I`.
 
     See `start_build_phase`.
     """

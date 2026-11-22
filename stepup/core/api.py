@@ -423,7 +423,7 @@ def step(
         so it can look at something that StepUp does not see, such as a remote server.
         This is equivalent to depending on the environment variable `STEPUP_STARTUP_I`,
         see [its reference](../reference/configuration.md#environment-variables-in-step-execution)
-        and the [Remote Data](../advanced_topics/remote_data.md) tutorial.
+        and the [External Data](../advanced_topics/external_data.md) tutorial.
     out
         File(s) created by the step.
         Relative paths are assumed to be relative to `workdir`.
@@ -1471,7 +1471,7 @@ def is_offline() -> bool:
     Unlike [`getenv()`][stepup.core.api.getenv], this never amends the current step,
     because a step should declare `STEPUP_BUILD_OFFLINE`
     only when its successful output depends on it.
-    [Working Offline](../advanced_topics/remote_data.md#working-offline) explains the cases.
+    [Working Offline](../advanced_topics/external_data.md#working-offline) explains the cases.
 
     Returns
     -------

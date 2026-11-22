@@ -1,9 +1,9 @@
 #!/usr/bin/env -S bash -x
 source ../example.rc
 
-# The directory remote/ stands in for a remote server, which StepUp does not watch.
-mkdir remote
-echo first > remote/data.txt
+# The directory external/ stands in for a remote server, which StepUp does not watch.
+mkdir external
+echo first > external/data.txt
 cp template1.txt template.txt
 
 # First start, online: all three steps run, and the report is uploaded.
@@ -16,11 +16,11 @@ stepup join
 
 set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1
-diff report.txt remote/report.txt
+diff report.txt external/report.txt
 
-# Second start, offline, with the remote out of reach, so that any access to it fails.
+# Second start, offline, with the external data out of reach, so that any access to it fails.
 # STEPUP_STARTUP_I stays at 1, so no step starts.
-mv remote unreachable
+mv external unreachable
 rm .stepup/*.log
 sb -j 1 -w --offline & # > current_stdout2.txt &
 PID=$!
@@ -64,13 +64,13 @@ set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1
 grep -q 'START.*push.py' .stepup/success.log
 ! grep -q 'START.*pull.py' .stepup/success.log || exit 1
-grep -qx 'Remote data:' report.txt
-grep -qx 'Data from the remote:' unreachable/report.txt
+grep -qx 'External data:' report.txt
+grep -qx 'Data from the external source:' unreachable/report.txt
 
-# Fifth start, online, with the remote back.
+# Fifth start, online, with the external data back.
 # Both pull.py and push.py run, the first leaves data.txt alone, so the report is skipped,
 # and the second uploads the report of the fourth start.
-mv unreachable remote
+mv unreachable external
 rm .stepup/*.log
 sb -j 1 -w & # > current_stdout5.txt &
 PID=$!
@@ -83,4 +83,4 @@ set +e; wait $PID; RETURNCODE=$?; set -e
 grep -q 'START.*pull.py' .stepup/success.log
 grep -q 'SKIP.*report.txt' .stepup/success.log
 grep -q 'START.*push.py' .stepup/success.log
-diff report.txt remote/report.txt
+diff report.txt external/report.txt

@@ -46,7 +46,7 @@ These commands are defined as follows:
   Runs steps that are affected by file changes registered during the *watch phase*.
 - `R = recheck`:
   Does the same as `r`, and also reruns the steps with `recheck=True`,
-  as after a new start of StepUp, see [Remote Data](../advanced_topics/remote_data.md).
+  as after a new start of StepUp, see [External Data](../advanced_topics/external_data.md).
   It does not reread the environment of the director,
   and with [`offline`](configuration.md#build-control) it does nothing more than `r`.
   Beware that Caps Lock turns every `r` into `R`,
@@ -224,7 +224,7 @@ However, you can still interact with StepUp as follows:
 With `--recheck`, `stepup rebuild` also reruns the steps with `recheck=True`,
 as after a new start of StepUp.
 With `--offline`, it does nothing more than `stepup rebuild`,
-see [Remote Data](../advanced_topics/remote_data.md).
+see [External Data](../advanced_topics/external_data.md).
 
 ## Interacting With StepUp From Within an IDE
 

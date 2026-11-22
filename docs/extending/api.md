@@ -257,15 +257,15 @@ Use them when an API function exchanges paths with the director on the user's be
 ## Steps That Use the Network
 
 A step that downloads or uploads data depends on a remote server, which StepUp does not watch.
-The [Remote Data](../advanced_topics/remote_data.md) tutorial explains how such a step works.
+The [External Data](../advanced_topics/external_data.md) tutorial explains how such a step works.
 An extension package that defines such a step
 passes `recheck=True` in the API function that defines it,
 so that the step runs at every start of StepUp,
 see [`STEPUP_STARTUP_I`](../reference/configuration.md#environment-variables-in-step-execution).
 The step then follows the
-[Rules for Steps That Run at Every Start](../advanced_topics/remote_data.md#rules-for-steps-that-run-at-every-start),
+[Rules for Steps That Run at Every Start](../advanced_topics/external_data.md#rules-for-steps-that-run-at-every-start),
 and it handles `STEPUP_BUILD_OFFLINE` as explained in
-[Working Offline](../advanced_topics/remote_data.md#working-offline),
+[Working Offline](../advanced_topics/external_data.md#working-offline),
 so that a build without network access still works.
 The following conventions complete these rules for extension packages:
 

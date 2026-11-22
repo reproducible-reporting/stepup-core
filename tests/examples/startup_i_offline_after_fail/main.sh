@@ -1,9 +1,9 @@
 #!/usr/bin/env -S bash -x
 source ../example.rc
 
-# The directory remote/ stands in for a remote server, which StepUp does not watch.
-mkdir remote
-echo first > remote/data.txt
+# The directory external/ stands in for a remote server, which StepUp does not watch.
+mkdir external
+echo first > external/data.txt
 
 # First start, online: all three steps run.
 sb -j 1 -w & # > current_stdout1.txt &
@@ -14,11 +14,11 @@ stepup join
 
 set +e; wait $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1
-diff report.txt remote/report.txt
+diff report.txt external/report.txt
 
-# Second start, online, with the remote out of reach, standing in for a lost connection.
+# Second start, online, with the external data out of reach, standing in for a lost connection.
 # STEPUP_STARTUP_I becomes 2, so pull.py runs, and it fails.
-mv remote unreachable
+mv external unreachable
 rm .stepup/*.log
 sb -j 1 -w & # > current_stdout2.txt &
 PID=$!
