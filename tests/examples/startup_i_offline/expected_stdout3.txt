@@ -1,0 +1,12 @@
+DIRECTOR │ Working offline, STEPUP_STARTUP_I stays at 1
+ STARTUP │ Watching 1 directory
+ STARTUP │ Checking 6 file(s) for changes
+ UPDATED │ template.txt (digest 07e762e1 ➜ 6813a7c2, size 85 ➜ 83)
+   PHASE │ build
+   START │ grep -v '^#' template.txt | cat - data.txt > report.txt
+ SUCCESS │ grep -v '^#' template.txt | cat - data.txt > report.txt
+    SKIP │ ./push.py
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ See you!

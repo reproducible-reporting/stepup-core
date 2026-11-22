@@ -1,0 +1,11 @@
+ STARTUP │ Watching 1 directory
+ UPDATED │ STEPUP_STARTUP_I ='1' ➜ ='2'
+ STARTUP │ Checking 4 file(s) for changes
+   PHASE │ build
+   START │ ./pull.py
+ SUCCESS │ ./pull.py
+    SKIP │ tr a-z A-Z < data.txt > report.txt
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ See you!

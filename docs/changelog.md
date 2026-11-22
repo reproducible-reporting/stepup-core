@@ -19,7 +19,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Changed
+
+- `STEPUP_DIRECTOR_I`, introduced in 4.2.0rc1, is renamed to `STEPUP_STARTUP_I`,
+  which shows more clearly in `plan.py` files that a step runs at every start.
+  Replace `env="STEPUP_DIRECTOR_I"` by `env="STEPUP_STARTUP_I"` in existing workflows.
+  See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution).
 
 ## [4.2.0rc2][] - 2026-11-21 {: #v4.2.0rc2 }
 

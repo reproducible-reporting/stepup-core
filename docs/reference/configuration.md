@@ -388,7 +388,7 @@ alphabetically within each group.
 `offline` / `STEPUP_BUILD_OFFLINE` / `--offline`, `--no-offline`
 
 :   Set to `true` when remote data cannot be reached, e.g. without a network connection.
-    [`STEPUP_DIRECTOR_I`](#environment-variables-in-step-execution)
+    [`STEPUP_STARTUP_I`](#environment-variables-in-step-execution)
     then keeps the value of the previous start,
     so a step that runs at every start of the director does not run merely because StepUp started.
     Such a step keeps its result of the previous start, and so do the steps that use its outputs.
@@ -398,7 +398,7 @@ alphabetically within each group.
     with the value `1` or `0`,
     so that a step that does run can avoid the network,
     as described in [Steps That Use the Network](../extending/api.md#steps-that-use-the-network).
-    The next start without this setting gives `STEPUP_DIRECTOR_I` a new value again,
+    The next start without this setting gives `STEPUP_STARTUP_I` a new value again,
     so every step that runs at every start looks at the remote data again.
     In watch mode, the setting holds for the lifetime of the director.
     [Working Offline](../advanced_topics/remote_data.md#working-offline) shows an example.
@@ -567,7 +567,14 @@ the internal environment variables described above.
     and [`get_root()`][stepup.core.path.get_root] instead,
     which are always up to date.
 
-`STEPUP_DIRECTOR_I`
+`STEPUP_JOB_I`
+
+:   A unique integer id for the current job running the step.
+    Unlike a step's own (stable) index, this changes every time the step is (re)started,
+    e.g. after being deferred.
+    This is mainly relevant for StepUp and has little significance for users implementing workflows.
+
+`STEPUP_STARTUP_I`
 
 :   An integer incremented every time the director starts,
     unless [`offline`](#build-control) is set.
@@ -579,13 +586,13 @@ the internal environment variables described above.
 
     Interactions with remote data must be skipped
     when a step sees [`STEPUP_BUILD_OFFLINE=1`](#build-control),
-    because even if `STEPUP_DIRECTOR_I` remains the same, a step may run for other reasons,
+    because even if `STEPUP_STARTUP_I` remains the same, a step may run for other reasons,
     such as a changed input or a failure in a previous run.
 
-    Declare the dependency with `env="STEPUP_DIRECTOR_I"` when the step is defined,
-    or with [`getenv("STEPUP_DIRECTOR_I")`][stepup.core.api.getenv] from inside the step.
+    Declare the dependency with `env="STEPUP_STARTUP_I"` when the step is defined,
+    or with [`getenv("STEPUP_STARTUP_I")`][stepup.core.api.getenv] from inside the step.
 
-    A step must not use the value of `STEPUP_DIRECTOR_I` for anything.
+    A step must not use the value of `STEPUP_STARTUP_I` for anything.
     It is only allowed to declare a dependency on it.
     The director increments the value before any step runs, and stores it in the workflow database.
     A step does not always see the value increase by 1 for several reasons,
@@ -594,13 +601,6 @@ the internal environment variables described above.
     (manually or due to a change in database format).
 
     The [Remote Data](../advanced_topics/remote_data.md) tutorial shows an example.
-
-`STEPUP_JOB_I`
-
-:   A unique integer id for the current job running the step.
-    Unlike a step's own (stable) index, this changes every time the step is (re)started,
-    e.g. after being deferred.
-    This is mainly relevant for StepUp and has little significance for users implementing workflows.
 
 `STEPUP_STEP_INP_DIGEST`
 

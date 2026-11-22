@@ -1,0 +1,18 @@
+ STARTUP │ Watching 1 directory
+ UPDATED │ STEPUP_STARTUP_I ='1' ➜ ='2'
+ STARTUP │ Checking 6 file(s) for changes
+   PHASE │ build
+   START │ ./pull.py
+    FAIL │ ./pull.py
+──────────────────────────────── Failed command ────────────────────────────────
+./pull.py  # exit=1
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+DIRECTOR │ Ran 1 job(s).
+ WARNING │ 1 step(s) failed.
+ WARNING │ Scheduler is draining. Not reporting pending steps.
+ WARNING │ Skipping file cleanup due to incomplete build
+ WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+   PHASE │ watch
+DIRECTOR │ See you!

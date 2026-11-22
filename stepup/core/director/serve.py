@@ -90,7 +90,7 @@ class ServeConfig:
 
     offline: bool = attrs.field(default=False)
     """Whether remote data cannot be reached.
-    If True, `STEPUP_DIRECTOR_I` keeps the value of the previous start,
+    If True, `STEPUP_STARTUP_I` keeps the value of the previous start,
     and the steps find `STEPUP_BUILD_OFFLINE=1` in their environment."""
 
     write_joblog: bool = attrs.field(default=False)
@@ -243,7 +243,7 @@ async def serve(
     # They form an overlay of the workflow rather than being set in `os.environ`,
     # so that running the director in-process (e.g. in the test suite)
     # does not pollute the calling process's environment.
-    # `Workflow.assign_director_i()` adds `STEPUP_DIRECTOR_I` once the database is open.
+    # `Workflow.assign_startup_i()` adds `STEPUP_STARTUP_I` once the database is open.
     infra_env = {
         "STEPUP_DIRECTOR_SOCKET": str(director_socket_path),
         "STEPUP_ROOT": str(Path.cwd()),
@@ -335,10 +335,10 @@ async def _wire_director(
     # The number is assigned as soon as its table exists,
     # and before `Executor` exists, which copies the overlay into the environment of the steps.
     async with db:
-        director_i = workflow.assign_director_i(increment=not config.offline)
+        startup_i = workflow.assign_startup_i(increment=not config.offline)
     if config.offline:
         # Without this line, an offline start cannot be told apart from one with nothing to do.
-        await reporter("DIRECTOR", f"Working offline, STEPUP_DIRECTOR_I stays at {director_i}")
+        await reporter("DIRECTOR", f"Working offline, STEPUP_STARTUP_I stays at {startup_i}")
     scheduler = Scheduler(
         workflow, db=db, use_duration=config.use_duration, write_joblog=config.write_joblog
     )

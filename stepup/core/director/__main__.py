@@ -159,7 +159,7 @@ def parse_args() -> argparse.Namespace:
         "--offline",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Keep the value of STEPUP_DIRECTOR_I of the previous start "
+        help="Keep the value of STEPUP_STARTUP_I of the previous start "
         "and set STEPUP_BUILD_OFFLINE=1 for the steps.",
     )
     parser.add_argument(

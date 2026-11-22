@@ -363,14 +363,14 @@ async def test_rescan_env_vars_compares_with_overlay(wfp: Workflow, monkeypatch)
         assert (step, name, "overlay") in wfp.env_var_uses()
 
 
-async def test_rescan_env_vars_new_director_i(wfp: Workflow, monkeypatch):
-    """A new start of the director makes only the steps that track `STEPUP_DIRECTOR_I` pending."""
+async def test_rescan_env_vars_new_startup_i(wfp: Workflow, monkeypatch):
+    """A new start of the director makes only the steps that track `STEPUP_STARTUP_I` pending."""
     other = "ENV_VAR_TEST_STEPUP_OTHER"
     monkeypatch.setenv(other, "same")
     async with wfp.db:
-        wfp.assign_director_i()
+        wfp.assign_startup_i()
         plan = wfp.find(Step, "./plan.py")
-        wfp.define_step(plan, "./remote.py", env_deps=["STEPUP_DIRECTOR_I"])
+        wfp.define_step(plan, "./remote.py", env_deps=["STEPUP_STARTUP_I"])
         wfp.define_step(plan, "./local.py", env_deps=[other])
         tracking = wfp.find(Step, "./remote.py")
         not_tracking = wfp.find(Step, "./local.py")
@@ -378,15 +378,15 @@ async def test_rescan_env_vars_new_director_i(wfp: Workflow, monkeypatch):
             step.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
 
     async with wfp.db:
-        wfp.assign_director_i()
+        wfp.assign_startup_i()
     reporter = _FakeReporter()
     await rescan_env_vars(wfp, reporter)
 
-    assert reporter.calls == [("UPDATED", "STEPUP_DIRECTOR_I ='1' ➜ ='2'")]
+    assert reporter.calls == [("UPDATED", "STEPUP_STARTUP_I ='1' ➜ ='2'")]
     async with wfp.db:
         assert tracking.get_state() == StepState.PENDING
         assert not_tracking.get_state() == StepState.SUCCEEDED
-        assert (tracking, "STEPUP_DIRECTOR_I", "2") in wfp.env_var_uses()
+        assert (tracking, "STEPUP_STARTUP_I", "2") in wfp.env_var_uses()
 
 
 async def test_rescan_env_vars_detects_value_leaving_overlay(wfp: Workflow, monkeypatch):

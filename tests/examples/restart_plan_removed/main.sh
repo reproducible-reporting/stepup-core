@@ -34,4 +34,4 @@ wait
 
 grep -qx SECOND upper.txt
 grep -qx second variable.txt
-grep -qx 2 director_i.txt
+grep -qx 2 startup_i.txt

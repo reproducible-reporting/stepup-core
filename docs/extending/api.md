@@ -259,9 +259,9 @@ Use them when an API function exchanges paths with the director on the user's be
 A step that downloads or uploads data depends on a remote server, which StepUp does not watch.
 The [Remote Data](../advanced_topics/remote_data.md) tutorial explains how such a step works.
 An extension package that defines such a step
-adds `env="STEPUP_DIRECTOR_I"` in the API function that defines it,
+adds `env="STEPUP_STARTUP_I"` in the API function that defines it,
 so that the step runs at every start of StepUp,
-see [`STEPUP_DIRECTOR_I`](../reference/configuration.md#environment-variables-in-step-execution).
+see [`STEPUP_STARTUP_I`](../reference/configuration.md#environment-variables-in-step-execution).
 The step then follows the
 [Rules for Steps That Run at Every Start](../advanced_topics/remote_data.md#rules-for-steps-that-run-at-every-start),
 and it handles `STEPUP_BUILD_OFFLINE` as explained in
@@ -283,7 +283,7 @@ from stepup.core.api import run, shq
 
 
 def download(url: str, dst: str):
-    return run(f"my-download {shq(url)} {shq(dst)}", out=dst, env="STEPUP_DIRECTOR_I")
+    return run(f"my-download {shq(url)} {shq(dst)}", out=dst, env="STEPUP_STARTUP_I")
 ```
 
 The console script `my-download` (see [Console Scripts](console_scripts.md)) starts as follows:

@@ -1,17 +1,17 @@
  STARTUP │ Watching 1 directory
  UPDATED │ ENV_VAR_TEST_STEPUP_PRVDGT ='first' ➜ ='second'
- UPDATED │ STEPUP_DIRECTOR_I ='1' ➜ ='2'
+ UPDATED │ STEPUP_STARTUP_I ='1' ➜ ='2'
  STARTUP │ Checking 5 file(s) for changes
  UPDATED │ input.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
- UPDATED │ plan.py (digest UNKNOWN ➜ 74925664, size 0 ➜ 446, mode ?--------- ➜ -rwxr-xr-x)
+ UPDATED │ plan.py (digest UNKNOWN ➜ 15c90efe, size 0 ➜ 442, mode ?--------- ➜ -rwxr-xr-x)
    PHASE │ build
     SKIP │ ./plan.py
    START │ tr a-z A-Z < input.txt > upper.txt
  SUCCESS │ tr a-z A-Z < input.txt > upper.txt
    START │ echo "${ENV_VAR_TEST_STEPUP_PRVDGT}" > variable.txt
  SUCCESS │ echo "${ENV_VAR_TEST_STEPUP_PRVDGT}" > variable.txt
-   START │ echo "${STEPUP_DIRECTOR_I}" > director_i.txt
- SUCCESS │ echo "${STEPUP_DIRECTOR_I}" > director_i.txt
+   START │ echo "${STEPUP_STARTUP_I}" > startup_i.txt
+ SUCCESS │ echo "${STEPUP_STARTUP_I}" > startup_i.txt
 DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
    PHASE │ watch

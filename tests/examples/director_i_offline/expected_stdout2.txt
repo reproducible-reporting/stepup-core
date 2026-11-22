@@ -1,8 +1,0 @@
-DIRECTOR │ Working offline, STEPUP_DIRECTOR_I stays at 1
- STARTUP │ Watching 1 directory
- STARTUP │ Checking 6 file(s) for changes
-   PHASE │ build
-DIRECTOR │ Ran 0 job(s).
-DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
-   PHASE │ watch
-DIRECTOR │ See you!

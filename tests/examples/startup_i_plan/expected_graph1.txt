@@ -1,0 +1,53 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:check.py
+             product   file:local.txt
+             product   file:upload.py
+             product   step:./check.py
+
+file:check.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./check.py
+
+file:local.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./check.py
+                sink   step:./upload.py ba0a034e
+
+file:upload.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./upload.py ba0a034e
+
+step:./check.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+                     = STEPUP_STARTUP_I
+             creator   step:./plan.py
+              source   file:check.py
+              source   file:local.txt
+             product   step:./upload.py ba0a034e
+
+step:./upload.py ba0a034e
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./check.py
+              source   file:local.txt
+              source   file:upload.py

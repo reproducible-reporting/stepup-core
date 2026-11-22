@@ -114,9 +114,9 @@ BEGIN
         );
 END;
 
--- The number of the latest start of the director, which steps see as `STEPUP_DIRECTOR_I`.
+-- The number of the latest start of the director, which steps see as `STEPUP_STARTUP_I`.
 -- The table holds at most one row, with i = 0.
-CREATE TABLE IF NOT EXISTS director_counter (
+CREATE TABLE IF NOT EXISTS startup_counter (
     i INTEGER PRIMARY KEY CHECK (i = 0),
     n INTEGER NOT NULL CHECK (n >= 1)
 );
@@ -1017,8 +1017,8 @@ class Workflow(Trellis):
             return self.infra_env[name]
         return os.environ.get(name)
 
-    def assign_director_i(self, *, increment: bool = True) -> int:
-        """Give the current start of the director a number, exported as `STEPUP_DIRECTOR_I`.
+    def assign_startup_i(self, *, increment: bool = True) -> int:
+        """Give the current start of the director a number, exported as `STEPUP_STARTUP_I`.
 
         The number is stored in the database and put in `infra_env`.
         With `increment=True`, it differs from the numbers of all earlier starts
@@ -1032,21 +1032,21 @@ class Workflow(Trellis):
         ----------
         increment
             When False, the current start gets the number of the previous start,
-            so that no step that tracks `STEPUP_DIRECTOR_I` runs again merely because of it.
+            so that no step that tracks `STEPUP_STARTUP_I` runs again merely because of it.
             A new database gets `1` either way.
 
         Returns
         -------
-        director_i
+        startup_i
             The number of the current start.
         """
-        (director_i,) = self.db.execute(
-            "INSERT INTO director_counter (i, n) VALUES (0, 1) "
+        (startup_i,) = self.db.execute(
+            "INSERT INTO startup_counter (i, n) VALUES (0, 1) "
             "ON CONFLICT(i) DO UPDATE SET n = n + ? RETURNING n",
             (int(increment),),
         ).fetchone()
-        self.infra_env["STEPUP_DIRECTOR_I"] = str(director_i)
-        return director_i
+        self.infra_env["STEPUP_STARTUP_I"] = str(startup_i)
+        return startup_i
 
     #
     # Base class overrides and initialization

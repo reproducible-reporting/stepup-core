@@ -10,8 +10,8 @@ run(
     out="variable.txt",
 )
 run(
-    'echo "${STEPUP_DIRECTOR_I}" > director_i.txt',
+    'echo "${STEPUP_STARTUP_I}" > startup_i.txt',
     shell=True,
-    env="STEPUP_DIRECTOR_I",
-    out="director_i.txt",
+    env="STEPUP_STARTUP_I",
+    out="startup_i.txt",
 )

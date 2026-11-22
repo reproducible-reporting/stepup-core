@@ -1,0 +1,21 @@
+DIRECTOR │ Working offline, STEPUP_STARTUP_I stays at 2
+ STARTUP │ Making failed steps pending
+ STARTUP │ Watching 1 directory
+ STARTUP │ Checking 6 file(s) for changes
+   PHASE │ build
+   START │ ./pull.py
+ SUCCESS │ ./pull.py
+─────────────────────────────── Standard output ────────────────────────────────
+Offline, keeping data.txt.
+────────────────────────────────────────────────────────────────────────────────
+    SKIP │ grep -v '^#' template.txt | cat - data.txt > report.txt
+   START │ ./push.py
+ SUCCESS │ ./push.py
+─────────────────────────────── Standard output ────────────────────────────────
+Offline, not sending report.txt.
+────────────────────────────────────────────────────────────────────────────────
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

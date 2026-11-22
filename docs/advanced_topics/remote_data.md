@@ -1,6 +1,6 @@
 ---
 description: >-
-  Make a step run at every start of StepUp with STEPUP_DIRECTOR_I,
+  Make a step run at every start of StepUp with STEPUP_STARTUP_I,
   so that it can exchange data with a resource other than files on disk or in environment variables.
 ---
 
@@ -35,14 +35,14 @@ Some smaller use cases are described in [Non-Remote Examples](#non-remote-exampl
     This means that interaction with remote resources must sit at the edges of a workflow:
     initial data coming in or final data going out.
 
-## The Variable `STEPUP_DIRECTOR_I`
+## The Variable `STEPUP_STARTUP_I`
 
-The director sets the environment variable `STEPUP_DIRECTOR_I` for every step it runs.
+The director sets the environment variable `STEPUP_STARTUP_I` for every step it runs.
 Its value is a unique integer every time the director starts.
 A step can depend on this variable like on any other one,
 as explained in the tutorial on [Environment Variables](environment_variables.md):
-with `env="STEPUP_DIRECTOR_I"` when the step is defined,
-or with [`getenv("STEPUP_DIRECTOR_I")`][stepup.core.api.getenv] from inside the step.
+with `env="STEPUP_STARTUP_I"` when the step is defined,
+or with [`getenv("STEPUP_STARTUP_I")`][stepup.core.api.getenv] from inside the step.
 At every start, StepUp finds a new value of the variable,
 so it runs such a step again instead of skipping it.
 Like any other step, it only runs when it is needed and when its inputs are available.
@@ -114,7 +114,7 @@ advanced_topics/remote_data/stdout1.txt
 ```
 
 Run `sb -j 1` again without changing anything.
-The `UPDATED` line shows that `STEPUP_DIRECTOR_I` has a new value, so the download step runs,
+The `UPDATED` line shows that `STEPUP_STARTUP_I` has a new value, so the download step runs,
 but it finds that `data.txt` is up to date and leaves it untouched.
 StepUp then checks `report.py`, finds that its input did not change, and skips it:
 
@@ -196,7 +196,7 @@ Without network access, a step that looks at the remote at every start fails.
 The [`offline`](../reference/configuration.md#build-control) setting, e.g. `sb --offline`,
 lets such steps keep the results of the previous start:
 
-- `STEPUP_DIRECTOR_I` keeps its value of the previous start,
+- `STEPUP_STARTUP_I` keeps its value of the previous start,
   so no step runs merely because StepUp started.
   A step that runs at every start keeps its result of the previous start,
   and so does everything downstream of it.
@@ -204,7 +204,7 @@ lets such steps keep the results of the previous start:
   finds `STEPUP_BUILD_OFFLINE=1` in its environment, and does not touch the network.
   It runs, for example, when its script changed,
   or when it failed at the previous start because the server could not be reached.
-- The next start without `--offline` gives `STEPUP_DIRECTOR_I` a new value,
+- The next start without `--offline` gives `STEPUP_STARTUP_I` a new value,
   so every step that runs at every start looks at the remote again.
 
 To see this in the example, change the remote data and run StepUp offline:
@@ -263,7 +263,7 @@ asks every extension package to honor `STEPUP_BUILD_OFFLINE` in this way.
 
 ## Non-Remote Examples
 
-While `STEPUP_DIRECTOR_I` is primarily intended for handling remote data,
+While `STEPUP_STARTUP_I` is primarily intended for handling remote data,
 it has other convenient uses.
 
 ### Git Version
@@ -278,7 +278,7 @@ Because `git describe` is fast, a simpler solution is to run it at every start:
 ```python
 run(
     "git describe --tags --always --dirty > git-version.txt",
-    env="STEPUP_DIRECTOR_I",
+    env="STEPUP_STARTUP_I",
     shell=True,
     out="git-version.txt",
 )
@@ -295,7 +295,7 @@ Other Git commands fitting this pattern include
 
 A change to the Git repository while `stepup build --watch` is running,
 will not trigger a rerun of the `git` command,
-because `STEPUP_DIRECTOR_I` is only incremented at the start of the director.
+because `STEPUP_STARTUP_I` is only incremented at the start of the director.
 To pick up such changes, stop the director and start it again.
 
 ### Hardware Details
@@ -307,7 +307,7 @@ For the CPU, this can be done as follows:
 ```python
 run(
     "lscpu --hierarchic=always | grep -v 'CPU(s) scaling MHz' > cpu.txt",
-    env="STEPUP_DIRECTOR_I",
+    env="STEPUP_STARTUP_I",
     shell=True,
     out="cpu.txt",
 )
@@ -356,7 +356,7 @@ you can still record its version at every start, e.g. with:
 ```python
 run(
     "typst --version > typst-version.txt",
-    env="STEPUP_DIRECTOR_I",
+    env="STEPUP_STARTUP_I",
     shell=True,
     out="typst-version.txt",
 )

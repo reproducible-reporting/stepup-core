@@ -15,7 +15,7 @@ step:./plan.py
               source   file:plan.py
              product   file:input.txt
              product   step:echo "${ENV_VAR_TEST_STEPUP_PRVDGT}" > variable.txt
-             product   step:echo "${STEPUP_DIRECTOR_I}" > director_i.txt
+             product   step:echo "${STEPUP_STARTUP_I}" > startup_i.txt
              product   step:tr a-z A-Z < input.txt > upper.txt
 
 file:input.txt
@@ -49,15 +49,15 @@ file:variable.txt
              creator   step:echo "${ENV_VAR_TEST_STEPUP_PRVDGT}" > variable.txt
               source   step:echo "${ENV_VAR_TEST_STEPUP_PRVDGT}" > variable.txt
 
-step:echo "${STEPUP_DIRECTOR_I}" > director_i.txt
+step:echo "${STEPUP_STARTUP_I}" > startup_i.txt
                state = SUCCEEDED
                 need = DEFAULT
-           using_env = STEPUP_DIRECTOR_I
+           using_env = STEPUP_STARTUP_I
              creator   step:./plan.py
-             product   file:director_i.txt
-                sink   file:director_i.txt
+             product   file:startup_i.txt
+                sink   file:startup_i.txt
 
-file:director_i.txt
+file:startup_i.txt
                state = BUILT
-             creator   step:echo "${STEPUP_DIRECTOR_I}" > director_i.txt
-              source   step:echo "${STEPUP_DIRECTOR_I}" > director_i.txt
+             creator   step:echo "${STEPUP_STARTUP_I}" > startup_i.txt
+              source   step:echo "${STEPUP_STARTUP_I}" > startup_i.txt

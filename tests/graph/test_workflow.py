@@ -2905,15 +2905,15 @@ async def test_amend_step_stores_overlay_value(wfp: Workflow, monkeypatch):
     }
 
 
-async def test_assign_director_i(wfs: Workflow):
+async def test_assign_startup_i(wfs: Workflow):
     for expected in 1, 2, 3:
         async with wfs.db:
-            assert wfs.assign_director_i() == expected
-        assert wfs.infra_env["STEPUP_DIRECTOR_I"] == str(expected)
-        assert wfs.getenv("STEPUP_DIRECTOR_I") == str(expected)
+            assert wfs.assign_startup_i() == expected
+        assert wfs.infra_env["STEPUP_STARTUP_I"] == str(expected)
+        assert wfs.getenv("STEPUP_STARTUP_I") == str(expected)
 
 
-async def test_assign_director_i_after_reopen(path_tmp: Path):
+async def test_assign_startup_i_after_reopen(path_tmp: Path):
     """The next director continues from the number stored by the previous one."""
     path_db = path_tmp / "graph.db"
     for expected in 1, 2:
@@ -2921,7 +2921,7 @@ async def test_assign_director_i_after_reopen(path_tmp: Path):
             workflow = Workflow(db, dir_queue=None)
             await workflow.initialize()
             async with db:
-                assert workflow.assign_director_i() == expected
+                assert workflow.assign_startup_i() == expected
 
 
 @pytest.mark.parametrize(
@@ -2933,22 +2933,22 @@ async def test_assign_director_i_after_reopen(path_tmp: Path):
         ([False, False, True, False], [1, 1, 2, 2]),
     ],
 )
-async def test_assign_director_i_without_increment(
+async def test_assign_startup_i_without_increment(
     wfs: Workflow, increments: list[bool], expected: list[int]
 ):
     """Without an increment, the current start keeps the number of the previous start."""
-    for increment, director_i in zip(increments, expected, strict=True):
+    for increment, startup_i in zip(increments, expected, strict=True):
         async with wfs.db:
-            assert wfs.assign_director_i(increment=increment) == director_i
-        assert wfs.infra_env["STEPUP_DIRECTOR_I"] == str(director_i)
+            assert wfs.assign_startup_i(increment=increment) == startup_i
+        assert wfs.infra_env["STEPUP_STARTUP_I"] == str(startup_i)
 
 
-async def test_director_counter_refuses_second_row(wfs: Workflow):
+async def test_startup_counter_refuses_second_row(wfs: Workflow):
     async with wfs.db:
-        wfs.assign_director_i()
+        wfs.assign_startup_i()
         with pytest.raises(sqlite3.IntegrityError):
-            wfs.db.execute("INSERT INTO director_counter (i, n) VALUES (1, 1)")
-        assert wfs.db.execute("SELECT i, n FROM director_counter").fetchall() == [(0, 1)]
+            wfs.db.execute("INSERT INTO startup_counter (i, n) VALUES (1, 1)")
+        assert wfs.db.execute("SELECT i, n FROM startup_counter").fetchall() == [(0, 1)]
 
 
 async def test_setenv_store_and_update(wfp: Workflow):
