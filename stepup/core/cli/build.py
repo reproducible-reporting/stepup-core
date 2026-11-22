@@ -435,13 +435,15 @@ async def _async_build(args: argparse.Namespace) -> int:
         # so it is not owned by _supervise_director.
         stop_event = asyncio.Event()
         reporter_handler = ReporterHandler(args.progress, stop_event)
-        task_reporter = asyncio.create_task(
-            SocketRPCServer(reporter_handler, reporter_socket_path, rpc_transport).serve(
-                stop_event
-            ),
-            name="reporter-rpc",
-        )
+        reporter_server = SocketRPCServer(reporter_handler, reporter_socket_path, rpc_transport)
+        task_reporter = None
         try:
+            # The director connects to the reporter as soon as it has started,
+            # so the reporter must be listening before the director is spawned.
+            await reporter_server.listen()
+            task_reporter = asyncio.create_task(
+                reporter_server.serve(stop_event), name="reporter-rpc"
+            )
             argv = _build_director_argv(
                 args,
                 targets,
@@ -464,7 +466,8 @@ async def _async_build(args: argparse.Namespace) -> int:
             # since it would hang forever if the event were ever left unset.
             reporter_handler.stop_reporting()
             stop_event.set()
-            await task_reporter
+            if task_reporter is not None:
+                await task_reporter
 
     return returncode | _report_director_log_problems(reporter_handler)
 

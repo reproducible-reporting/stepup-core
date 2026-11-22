@@ -17,7 +17,7 @@ from typing import Any, Self, TypeVar
 
 import attrs
 
-from ..exceptions import RPCError
+from ..exceptions import ConsistencyError, RPCError
 from ..path import Path
 from ..platform.asyncio import is_aborted_accept, iter_until_stopped
 from .protocol import (
@@ -511,16 +511,62 @@ class SocketRPCServer:
     _connections: set[RPCServerConnection] = attrs.field(init=False, factory=set)
     """The connections currently being served."""
 
-    _idle: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    _idle: asyncio.Event = attrs.field(init=False)
     """Set when no connection is being served."""
 
     _stopping: bool = attrs.field(init=False, default=False)
     """Whether the server is winding down, after which it serves no new connections."""
 
+    _stop_listening: Callable[[], Awaitable[None]] | None = attrs.field(init=False, default=None)
+    """Stop accepting connections, `None` until the server listens."""
+
+    @_idle.default
+    def _default_idle(self) -> asyncio.Event:
+        idle = asyncio.Event()
+        idle.set()
+        return idle
+
+    async def listen(self):
+        """Start accepting connections, and only then create the socket path.
+
+        Once this returns, clients can connect and their calls are served.
+        Await this before starting anything that connects to the server,
+        such as a subprocess that receives the socket path,
+        because a task running `serve()` may not have listened yet when that connects.
+        Run `serve()` afterwards,
+        which stops the server and its connections when its stop event is set.
+
+        Raises
+        ------
+        ConsistencyError
+            When the server listens already, which is a bug in StepUp:
+            a second listener would take over the socket path
+            and leave the first one running, out of reach of `serve()`.
+        """
+        if self._stop_listening is not None:
+            raise ConsistencyError("The RPC server is listening already.")
+        if self.transport == "unix":
+            server = await self._listen_unix()
+
+            async def stop_listening():
+                server.close()
+
+            self._stop_listening = stop_listening
+            return
+        self._token = secrets.token_bytes(TOKEN_SIZE)
+        acceptor = _TCPAcceptor.listen(TCP_HOST, self._serve_connection)
+        try:
+            TCPEndpoint(TCP_HOST, acceptor.port, self._token).write(self.socket_path)
+        except BaseException:
+            await acceptor.stop()
+            raise
+        self._stop_listening = acceptor.stop
+
     async def serve(self, stop_event: asyncio.Event):
         """Accept and serve connections until `stop_event` is set.
 
-        This returns when the server has stopped serving all its connections.
+        This first calls `listen()`, unless that was done already.
+        It returns when the server has stopped serving all its connections.
         It keeps its own account of them and does not rely on `asyncio.Server.wait_closed`,
         which waits forever for a connection that the event loop failed to close.
         On Windows, a connection stays attached to its server
@@ -534,8 +580,8 @@ class SocketRPCServer:
             The server keeps accepting connections until this event is set,
             and then stops the connections that are still open.
         """
-        self._idle.set()
-        stop_listening = await self._listen()
+        if self._stop_listening is None:
+            await self.listen()
         await stop_event.wait()
         self._stopping = True
         # Listening is stopped below, which does not end the connections being served,
@@ -544,32 +590,8 @@ class SocketRPCServer:
         # Iterate over a copy: `_serve_connection` removes a connection when it stops serving.
         for connection in list(self._connections):
             connection.stop()
-        await stop_listening()
+        await self._stop_listening()
         await self._idle.wait()
-
-    async def _listen(self) -> Callable[[], Awaitable[None]]:
-        """Start accepting connections, and only then create the socket path.
-
-        Returns
-        -------
-        stop_listening
-            A coroutine function that stops accepting connections.
-        """
-        if self.transport == "unix":
-            server = await self._listen_unix()
-
-            async def stop_listening():
-                server.close()
-
-            return stop_listening
-        self._token = secrets.token_bytes(TOKEN_SIZE)
-        acceptor = _TCPAcceptor.listen(TCP_HOST, self._serve_connection)
-        try:
-            TCPEndpoint(TCP_HOST, acceptor.port, self._token).write(self.socket_path)
-        except BaseException:
-            await acceptor.stop()
-            raise
-        return acceptor.stop
 
     async def _listen_unix(self) -> asyncio.Server:
         """Listen on a Unix domain socket that appears at the socket path once it listens."""

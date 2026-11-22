@@ -32,6 +32,14 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   Such a step would run at the first start offline, which the setting `offline` avoids,
   so StepUp now reports this as an error.
 
+### Fixed
+
+- `stepup build` occasionally stopped right after it had started the director.
+  The end of `.stepup/director.log` then showed a `FileNotFoundError` for the reporter socket,
+  because the director reported before `stepup build` was listening for its reports.
+  `stepup build` now listens before it starts the director,
+  and the director listens before it starts any step.
+
 ## [4.2.0rc3][] - 2026-11-22 {: #v4.2.0rc3 }
 
 Third pre-release of StepUp 4.2.

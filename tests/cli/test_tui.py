@@ -1226,7 +1226,11 @@ def test_async_build_ignores_watcher_without_watch_mode(
 def test_async_build_uses_one_transport(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch, rpc_transport: str
 ) -> None:
-    """The reporter and the director listen on the transport selected by the environment."""
+    """The reporter and the director listen on the transport selected by the environment.
+
+    The reporter listens before the director is spawned,
+    because the director connects to it as soon as it has started.
+    """
     (path_tmp / "plan.py").touch()
     monkeypatch.setenv("STEPUP_RPC_TRANSPORT", rpc_transport)
     monkeypatch.setattr(
@@ -1238,7 +1242,7 @@ def test_async_build_uses_one_transport(
     async def fake_create_subprocess_exec(*argv, **kwargs):
         director_argv.extend(argv)
         reporter_path = Path(next(arg for arg in argv if str(arg).startswith("--reporter="))[11:])
-        await wait_for_path(reporter_path, asyncio.Event())
+        assert reporter_path.exists()
         reporter_endpoints.append(read_endpoint(reporter_path))
         return FakeProcess(returncode=0)
 

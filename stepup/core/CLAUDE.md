@@ -89,6 +89,7 @@ StepUp runs as two process types:
   It exposes an RPC server over a socket, whose path is handed to it by the TUI
   (a per-run temp directory, e.g. `tempfile.TemporaryDirectory(prefix="stepup-")`,
   not under `.stepup/`).
+  It listens on that socket before it starts any step.
   Manages `Builder`, `Watcher`, and `Scheduler`.
   Steps run *inside* the director's event loop as asyncio tasks.
   The `Executor` that runs them and the hashing of their files
@@ -97,6 +98,7 @@ StepUp runs as two process types:
   Spawns the director as a subprocess and connects to its RPC socket as a client
   (e.g. to forward keyboard commands). It also serves the reporter RPC socket itself,
   to which the director connects as a client to report progress.
+  The TUI listens on that socket before it spawns the director.
   Renders progress to the terminal.
 
 The entry point `stepup build` (in `cli/build.py`) is what users run.

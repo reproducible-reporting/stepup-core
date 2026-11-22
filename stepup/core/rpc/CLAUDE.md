@@ -28,6 +28,13 @@ tell the transports apart by the file type at the socket path,
 so they need no setting, and `STEPUP_DIRECTOR_SOCKET` and the `SOCKET` line of the
 director log have the same shape for both.
 
+A client does not wait for a server that is not there yet:
+connecting to a socket path where nothing exists fails at once with a `FileNotFoundError`.
+Whoever starts a process that connects to a server therefore awaits `SocketRPCServer.listen()`
+before it starts that process.
+Leaving the listening to the task that runs `SocketRPCServer.serve()` is not enough,
+because that task may not have run yet when the process connects.
+
 A TCP server accepts connections with `_TCPAcceptor` instead of `asyncio.start_server`,
 which the Proactor event loop of Windows stops after one connection reset before its accept.
 Its docstring says when it can be dropped.

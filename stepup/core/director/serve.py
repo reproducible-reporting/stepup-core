@@ -401,9 +401,10 @@ async def _run_tasks(
 ) -> None:
     """Run the director's async tasks until shutdown, then tear them down in order."""
     exit_event = asyncio.Event()
-    rpc_server = asyncio.create_task(
-        SocketRPCServer(handler, director_socket_path, rpc_transport).serve(exit_event)
-    )
+    server = SocketRPCServer(handler, director_socket_path, rpc_transport)
+    # The steps started by `build_loop` connect to the director as soon as they run.
+    await server.listen()
+    rpc_server = asyncio.create_task(server.serve(exit_event))
     coroutines = [
         build_loop(handler.builder, handler.watcher, handler.stop_event),
         handler.db.reclaim_loop(handler.stop_event),

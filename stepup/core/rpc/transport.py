@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 #
 # Either way, the server creates the socket path only once it listens,
 # so that a path that exists means a server that accepts connections,
-# see `SocketRPCServer._listen`.
+# see `SocketRPCServer.listen`.
 #
 # A client tells the two apart by the type of file at the socket path,
 # so that only the server needs to know which transport is in use.

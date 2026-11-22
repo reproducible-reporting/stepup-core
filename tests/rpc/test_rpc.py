@@ -25,6 +25,7 @@ from core_common import EchoHandler, settled_task_names
 from stepup.core.cli.director_log import DIRECTOR_LOG_CHECKS
 from stepup.core.exceptions import (
     ConfigError,
+    ConsistencyError,
     CyclicError,
     RPCClientUnusableError,
     RPCError,
@@ -152,6 +153,59 @@ async def test_socket_multi_clients(socket_server_path):
         assert await asyncio.gather(c1.call.echo("h"), c2.call.echo("w", 0.1)) == expected
         assert await asyncio.gather(c2.call.echo("h", 0.1), c1.call.echo("w")) == expected
         assert await asyncio.gather(c2.call.echo("h"), c1.call.echo("w", 0.1)) == expected
+
+
+async def test_listen_serves_calls_before_serve(dir_sockets, rpc_transport):
+    """A client can connect and call as soon as `listen()` returns, before `serve()` runs.
+
+    `serve()` still accounts for a connection that it did not see being accepted,
+    so it returns only after that connection has ended.
+    """
+    async with asyncio.timeout(5):
+        socket_path = dir_sockets / "socket"
+        server = SocketRPCServer(EchoHandler("early"), str(socket_path), rpc_transport)
+        stop_event = asyncio.Event()
+        server_task = None
+        await server.listen()
+        client = SocketAsyncRPCClient(socket_path)
+        try:
+            assert socket_path.exists()
+            assert server._idle.is_set()
+            assert await client.call.echo("hello") == "early: hello"
+            assert not server._idle.is_set()
+            server_task = asyncio.create_task(server.serve(stop_event))
+            # Let `serve()` run up to its wait for the stop event.
+            await asyncio.sleep(0)
+            assert not server._idle.is_set()
+            assert await client.call.echo("again") == "early: again"
+        finally:
+            stop_event.set()
+            if server_task is None:
+                # The server listens already, so serving it only stops it.
+                server_task = asyncio.create_task(server.serve(stop_event))
+            await server_task
+            # The server closed this connection first, which `close` must accept.
+            await client.close()
+        assert not server._connections
+
+
+async def test_listen_twice_is_refused(dir_sockets, rpc_transport):
+    """A server refuses to listen twice, which would leave the first listener running.
+
+    The second listener would take over the socket path,
+    after which `serve()` could only stop the second one.
+    """
+    async with asyncio.timeout(5):
+        socket_path = dir_sockets / "socket"
+        server = SocketRPCServer(EchoHandler("twice"), str(socket_path), rpc_transport)
+        stop_event = asyncio.Event()
+        await server.listen()
+        try:
+            with pytest.raises(ConsistencyError, match="listening already"):
+                await server.listen()
+        finally:
+            stop_event.set()
+            await server.serve(stop_event)
 
 
 async def test_serve_stops_an_idle_connection(dir_sockets, rpc_transport):
