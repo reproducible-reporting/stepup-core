@@ -507,10 +507,10 @@ def step(
     # The command is resolved after the environment variable substitution below,
     # because a callable command is built from the substituted paths.
     inp_paths = coerce_paths(inp)
-    env_deps = as_list(env)
-    if recheck and STARTUP_I_ENV_VAR not in env_deps:
+    env_deps = set(as_list(env))
+    if recheck:
         # Added before the validation of `env_overrides`, so that a collision is detected too.
-        env_deps.append(STARTUP_I_ENV_VAR)
+        env_deps.add(STARTUP_I_ENV_VAR)
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
 
@@ -530,7 +530,7 @@ def step(
 
     # Validate the environment overrides against the env dependencies and reserved names.
     if env_overrides is not None:
-        overlap = set(env_deps) & set(env_overrides)
+        overlap = env_deps & set(env_overrides)
         if overlap:
             raise StepUpError(
                 "Variable(s) cannot be both an env dependency and an env_overrides value: "
@@ -599,7 +599,7 @@ def step(
         get_job_i(),
         command,
         tr_inp_paths,
-        env_deps,
+        sorted(env_deps),
         tr_out_paths,
         tr_vol_paths,
         tr_workdir,
@@ -991,9 +991,9 @@ def amend(
     """
     # Pre-process the arguments for the Director process.
     inp_paths = coerce_paths(inp)
-    env_deps = as_list(env)
+    env_deps = set(as_list(env))
     if recheck:
-        env_deps.append(STARTUP_I_ENV_VAR)
+        env_deps.add(STARTUP_I_ENV_VAR)
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_deps, out_paths, vol_paths]):
@@ -1015,7 +1015,6 @@ def amend(
             "amend() cannot be called with `inp` while this step has an open hold() block. "
             "Call the amend-triggering code before entering the `with hold():` block."
         )
-    env_deps = set(env_deps)
     with subs_env_vars() as subs_env:
         su_inp_paths = {subs_env(inp_path) for inp_path in inp_paths}
         su_out_paths = {subs_env(out_path) for out_path in out_paths}

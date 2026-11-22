@@ -1206,6 +1206,12 @@ def test_step_recheck_and_env_no_duplicate(define_step_client):
     assert define_step_client.calls[0][3] == ["STEPUP_STARTUP_I"]
 
 
+def test_step_env_sorted_and_deduplicated(define_step_client):
+    info = step("./script.py", env=["ZED", "FOO", "ZED"], recheck=True)
+    assert info.env == ["FOO", "STEPUP_STARTUP_I", "ZED"]
+    assert define_step_client.calls[0][3] == ["FOO", "STEPUP_STARTUP_I", "ZED"]
+
+
 def test_step_recheck_env_overrides_overlap():
     with pytest.raises(StepUpError, match="cannot be both an env dependency and an env_overrides"):
         step("./script.py", recheck=True, env_overrides={"STEPUP_STARTUP_I": "1"})
