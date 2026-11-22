@@ -10,12 +10,13 @@ import socket
 import stat
 import sys
 import tempfile
+import time
 
 import attrs
 
 from ..exceptions import ConfigError, RPCError
 from ..path import Path, StrPath
-from ..platform.oscompat import af_unix_available
+from ..platform.oscompat import af_unix_available, share_modes_apply
 
 __all__ = (
     "RPC_TRANSPORTS",
@@ -49,6 +50,18 @@ logger = logging.getLogger(__name__)
 
 RPC_TRANSPORTS = ("unix", "tcp")
 """The transports that a server can listen on, the preferred one first."""
+
+ENDPOINT_READ_TIMEOUT = 5.0
+"""Seconds during which `TCPEndpoint.read` retries an endpoint file that refuses to be opened.
+
+The refusal normally lasts no more than a few milliseconds.
+The margin is large because GitHub-hosted Windows runners stretch such delays
+(observed in November 2026),
+while it only postpones the error when the file can never be read.
+"""
+
+ENDPOINT_READ_INTERVAL = 0.02
+"""Seconds between two attempts of `TCPEndpoint.read` to open an endpoint file."""
 
 
 def select_rpc_transport() -> str:
@@ -120,6 +133,13 @@ class TCPEndpoint:
     def read(cls, path: StrPath) -> "TCPEndpoint":
         """Read the endpoint file of a server.
 
+        Where share modes apply (`share_modes_apply`),
+        a file that has just appeared may be held open by another process for a short while,
+        e.g. by the rename that created it or by a virus scanner,
+        and then refuses to be opened.
+        A `PermissionError` is therefore retried there
+        for up to `ENDPOINT_READ_TIMEOUT` seconds, during which this function blocks.
+
         Parameters
         ----------
         path
@@ -137,7 +157,16 @@ class TCPEndpoint:
         RPCError
             When the file is not an endpoint file.
         """
-        text = Path(path).read_text(encoding="utf-8")
+        path = Path(path)
+        deadline = time.monotonic() + ENDPOINT_READ_TIMEOUT
+        while True:
+            try:
+                text = path.read_text(encoding="utf-8")
+                break
+            except PermissionError:
+                if not share_modes_apply() or time.monotonic() >= deadline:
+                    raise
+            time.sleep(ENDPOINT_READ_INTERVAL)
         try:
             data = json.loads(text)
             return cls(data["host"], int(data["port"]), bytes.fromhex(data["token"]))

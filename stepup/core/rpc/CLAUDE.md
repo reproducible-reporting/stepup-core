@@ -23,6 +23,9 @@ which is what the readiness check of the TUI and `query_director_log` rely on.
 A Unix domain socket needs a rename for this (`SocketRPCServer._listen_unix`),
 because `bind()` creates the socket file before `listen()`,
 and a client that connects in between is refused.
+An endpoint file that exists may still refuse to be opened, though:
+on Windows, a file that has just appeared may be held open briefly by another process,
+which `TCPEndpoint.read` retries.
 Clients (steps, `stepup` subcommands, the director's reporter client)
 tell the transports apart by the file type at the socket path,
 so they need no setting, and `STEPUP_DIRECTOR_SOCKET` and the `SOCKET` line of the

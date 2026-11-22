@@ -117,10 +117,10 @@ def _connect_director() -> Generator[SocketSyncRPCClient]:
     client = get_rpc_client(wait_for_director_socket())
     try:
         yield client
-    except (ConnectionError, FileNotFoundError, RPCError) as exc:
-        raise ToolError(f"Could not connect to the StepUp director: {exc}") from exc
     except TimeoutError as exc:
         raise ToolError(f"Timeout while connecting to the StepUp director: {exc}") from exc
+    except (OSError, RPCError) as exc:
+        raise ToolError(f"Could not connect to the StepUp director: {exc}") from exc
     # Closing tells the director's side of the connection to wind down.
     # A director that has just accepted a shutdown may be gone by now,
     # which `close()` deals with on its own.

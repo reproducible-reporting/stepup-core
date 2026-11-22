@@ -1876,6 +1876,63 @@ def test_read_endpoint_rejects_an_incomplete_file(path_tmp, content: str):
         read_endpoint(path)
 
 
+def _refuse_reads(monkeypatch: pytest.MonkeyPatch, refusals: int | None) -> list[Path]:
+    """Let the first `refusals` reads of a file fail as a held file does, or all if `None`.
+
+    Returns
+    -------
+    attempts
+        The paths of all attempted reads, refused or not.
+    """
+    attempts = []
+    read_text = Path.read_text
+
+    def refusing_read_text(self, *args, **kwargs):
+        attempts.append(self)
+        if refusals is None or len(attempts) <= refusals:
+            raise PermissionError(13, "Permission denied", str(self))
+        return read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", refusing_read_text)
+    return attempts
+
+
+def test_read_endpoint_retries_a_held_file(path_tmp, monkeypatch: pytest.MonkeyPatch):
+    """Where share modes apply, a file that refuses to be opened for a while is read later."""
+    path = path_tmp / "endpoint"
+    endpoint = TCPEndpoint(TCP_HOST, 4321, secrets.token_bytes(TOKEN_SIZE))
+    endpoint.write(path)
+    monkeypatch.setattr("stepup.core.rpc.transport.share_modes_apply", lambda: True)
+    monkeypatch.setattr("stepup.core.rpc.transport.ENDPOINT_READ_INTERVAL", 0.001)
+    attempts = _refuse_reads(monkeypatch, 2)
+    assert read_endpoint(path) == endpoint
+    assert attempts == [path] * 3
+
+
+def test_read_endpoint_gives_up_on_a_held_file(path_tmp, monkeypatch: pytest.MonkeyPatch):
+    """Where share modes apply, a file that keeps refusing to be opened is an error in the end."""
+    path = path_tmp / "endpoint"
+    TCPEndpoint(TCP_HOST, 4321, secrets.token_bytes(TOKEN_SIZE)).write(path)
+    monkeypatch.setattr("stepup.core.rpc.transport.share_modes_apply", lambda: True)
+    monkeypatch.setattr("stepup.core.rpc.transport.ENDPOINT_READ_TIMEOUT", 0.05)
+    monkeypatch.setattr("stepup.core.rpc.transport.ENDPOINT_READ_INTERVAL", 0.001)
+    attempts = _refuse_reads(monkeypatch, None)
+    with pytest.raises(PermissionError):
+        read_endpoint(path)
+    assert len(attempts) > 1
+
+
+def test_read_endpoint_reports_a_denied_file_at_once(path_tmp, monkeypatch: pytest.MonkeyPatch):
+    """Without share modes, a file that refuses to be opened is denied for good."""
+    path = path_tmp / "endpoint"
+    TCPEndpoint(TCP_HOST, 4321, secrets.token_bytes(TOKEN_SIZE)).write(path)
+    monkeypatch.setattr("stepup.core.rpc.transport.share_modes_apply", lambda: False)
+    attempts = _refuse_reads(monkeypatch, None)
+    with pytest.raises(PermissionError):
+        read_endpoint(path)
+    assert attempts == [path]
+
+
 @pytest.mark.requires_af_unix
 def test_read_endpoint_recognizes_a_unix_domain_socket(dir_sockets):
     path = dir_sockets / "socket"

@@ -12,6 +12,7 @@ from stepup.core.platform.oscompat import (
     forkserver_available,
     perf_available,
     raw_terminal_available,
+    share_modes_apply,
     suspend_available,
     windows_console_available,
 )
@@ -23,6 +24,7 @@ ALL_PREDICATES = (forkserver_available, perf_available, raw_terminal_available, 
 @pytest.mark.parametrize("predicate", ALL_PREDICATES)
 def test_linux_has_everything(predicate) -> None:
     assert predicate()
+    assert not share_modes_apply()
     assert not windows_console_available()
 
 
@@ -31,6 +33,7 @@ def test_macos() -> None:
     assert forkserver_available()
     assert not perf_available()
     assert raw_terminal_available()
+    assert not share_modes_apply()
     assert suspend_available()
     assert not windows_console_available()
 
@@ -39,6 +42,7 @@ def test_macos() -> None:
 @pytest.mark.parametrize("predicate", ALL_PREDICATES)
 def test_windows_has_nothing(predicate) -> None:
     assert not predicate()
+    assert share_modes_apply()
     assert windows_console_available()
 
 

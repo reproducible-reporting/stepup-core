@@ -167,6 +167,34 @@ def test_connect_director_wraps_rpc_error(monkeypatch: pytest.MonkeyPatch) -> No
         raise RPCError("no reply")
 
 
+@pytest.mark.parametrize(
+    "exc",
+    [
+        ConnectionRefusedError("refused"),
+        FileNotFoundError("gone"),
+        PermissionError("Permission denied"),
+    ],
+)
+def test_connect_director_wraps_os_error(monkeypatch: pytest.MonkeyPatch, exc: OSError) -> None:
+    """Any failure to open the socket path or the connection becomes a `ToolError`."""
+    _fake_director(monkeypatch, FakeClient())
+    with (
+        pytest.raises(ToolError, match=f"Could not connect to the StepUp director: {exc}"),
+        interact._connect_director(),
+    ):
+        raise exc
+
+
+def test_connect_director_wraps_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A timeout is an `OSError` too, but it is reported as such."""
+    _fake_director(monkeypatch, FakeClient())
+    with (
+        pytest.raises(ToolError, match="Timeout while connecting to the StepUp director: slow"),
+        interact._connect_director(),
+    ):
+        raise TimeoutError("slow")
+
+
 def test_connect_director_closes_client(monkeypatch: pytest.MonkeyPatch) -> None:
     """A conversation that ended well is closed, so the director can wind down its side."""
     client = FakeClient()

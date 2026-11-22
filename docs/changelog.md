@@ -39,6 +39,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   because the director reported before `stepup build` was listening for its reports.
   `stepup build` now listens before it starts the director,
   and the director listens before it starts any step.
+- On Windows, `stepup wait` and the other subcommands that talk to the director occasionally failed
+  with a `PermissionError` on the director's endpoint file,
+  because another process still held that file open right after it had appeared.
+  StepUp now retries reading it for a few seconds.
+  An error while connecting to the director is now always reported as such,
+  instead of with a traceback.
 
 ## [4.2.0rc3][] - 2026-11-22 {: #v4.2.0rc3 }
 

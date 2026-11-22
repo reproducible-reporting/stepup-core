@@ -23,6 +23,7 @@ __all__ = (
     "forkserver_available",
     "perf_available",
     "raw_terminal_available",
+    "share_modes_apply",
     "suspend_available",
     "windows_console_available",
 )
@@ -77,6 +78,17 @@ def windows_console_available() -> bool:
 
     A console hands out single keystrokes as input records, without a raw mode,
     and delivers a Ctrl-C or Ctrl-Break to every process attached to it.
+    """
+    return sys.platform == "win32"
+
+
+def share_modes_apply() -> bool:
+    """Whether a file that one process holds open may refuse to be opened by another one.
+
+    On Windows, every open states which kinds of access it shares with later opens,
+    and an open that conflicts with a handle held elsewhere fails with `PermissionError`.
+    Such a handle is also held briefly by processes unrelated to StepUp,
+    e.g. by a virus scanner that examines a file which has just been written.
     """
     return sys.platform == "win32"
 
