@@ -2853,6 +2853,58 @@ async def test_dynamic_env_vars(wfp: Workflow):
         assert set(step.env_deps()) == {"bar", "egg", "foo"}
 
 
+async def test_recheck_offline_define_raises(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+    with pytest.raises(GraphError, match="runs at every start"):
+        async with wfp.db:
+            wfp.define_step(plan, "prog1", env_deps=["STEPUP_BUILD_OFFLINE", "STEPUP_STARTUP_I"])
+    async with wfp.db:
+        assert wfp.find(Step, "prog1") is None
+
+
+@pytest.mark.parametrize(
+    ("static", "dynamic"),
+    [
+        (["STEPUP_STARTUP_I"], ["STEPUP_BUILD_OFFLINE"]),
+        (["STEPUP_BUILD_OFFLINE"], ["STEPUP_STARTUP_I"]),
+        ([], ["STEPUP_BUILD_OFFLINE", "STEPUP_STARTUP_I"]),
+    ],
+)
+async def test_recheck_offline_amend_raises(wfp: Workflow, static, dynamic):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog1", env_deps=static)
+        step = wfp.find(Step, "prog1")
+    with pytest.raises(GraphError, match="runs at every start"):
+        async with wfp.db:
+            amend_step(wfp, step, env_deps=dynamic)
+
+
+async def test_recheck_offline_amend_order_raises(wfp: Workflow):
+    """Two amendments in the same run are checked together, in either order."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog1")
+        step = wfp.find(Step, "prog1")
+        amend_step(wfp, step, env_deps=["STEPUP_BUILD_OFFLINE"])
+    with pytest.raises(GraphError, match="runs at every start"):
+        async with wfp.db:
+            amend_step(wfp, step, env_deps=["STEPUP_STARTUP_I"])
+
+
+async def test_recheck_offline_previous_run_allowed(wfp: Workflow):
+    """A dynamic dependency of a previous run does not count in the next run."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog1")
+        step = wfp.find(Step, "prog1")
+        amend_step(wfp, step, env_deps=["STEPUP_STARTUP_I"])
+        step.reset_for_rerun()
+        amend_step(wfp, step, env_deps=["STEPUP_BUILD_OFFLINE"])
+        assert set(step.env_deps()) == {"STEPUP_BUILD_OFFLINE"}
+
+
 async def test_getenv_prefers_overlay(wfs: Workflow, monkeypatch):
     monkeypatch.setenv("ENV_VAR_TEST_STEPUP_OVERLAID", "environ")
     monkeypatch.setenv("ENV_VAR_TEST_STEPUP_PLAIN", "environ")

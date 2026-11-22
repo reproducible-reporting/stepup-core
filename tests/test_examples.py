@@ -176,6 +176,7 @@ EXAMPLES = [
     "not_cyclic_change",
     "not_cyclic_replay",
     "not_cyclic_restart",
+    "offline_placeholder",
     "optional_chain",
     "optional_change",
     "optional_change_sub1",

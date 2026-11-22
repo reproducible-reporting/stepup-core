@@ -1,0 +1,66 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:cite.py
+             product   file:intro.txt
+             product   file:key.txt
+             product   step:./cite.py
+             product   step:cat intro.txt citation.txt > report.txt
+
+file:cite.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./cite.py
+
+file:intro.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:cat intro.txt citation.txt > report.txt
+
+file:key.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./cite.py
+
+step:./cite.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_BUILD_OFFLINE [dynamic]
+                     = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./plan.py
+              source   file:cite.py
+              source   file:key.txt
+             product   file:citation.txt
+                sink   file:citation.txt
+
+file:citation.txt
+               state = BUILT
+             creator   step:./cite.py
+              source   step:./cite.py
+                sink   step:cat intro.txt citation.txt > report.txt
+
+step:cat intro.txt citation.txt > report.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:citation.txt
+              source   file:intro.txt
+             product   file:report.txt
+                sink   file:report.txt
+
+file:report.txt
+               state = BUILT
+             creator   step:cat intro.txt citation.txt > report.txt
+              source   step:cat intro.txt citation.txt > report.txt

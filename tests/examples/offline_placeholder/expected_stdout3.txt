@@ -1,0 +1,12 @@
+ STARTUP │ Watching 1 directory
+ UPDATED │ STEPUP_BUILD_OFFLINE ='1' ➜ ='0'
+ STARTUP │ Checking 6 file(s) for changes
+   PHASE │ build
+   START │ ./cite.py
+ SUCCESS │ ./cite.py
+   START │ cat intro.txt citation.txt > report.txt
+ SUCCESS │ cat intro.txt citation.txt > report.txt
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ See you!

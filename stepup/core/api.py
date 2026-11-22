@@ -58,7 +58,6 @@ from .constants import (
     DIRECTOR_SOCKET_SENTINEL,
     RENDER_JINJA_MODES,
     RESERVED_ENV_VARS,
-    STARTUP_I_ENV_VAR,
 )
 from .enums import Need
 from .exceptions import (
@@ -424,6 +423,8 @@ def step(
         This is equivalent to depending on the environment variable `STEPUP_STARTUP_I`,
         see [its reference](../reference/configuration.md#environment-variables-in-step-execution)
         and the [External Data](../advanced_topics/external_data.md) tutorial.
+        Such a step cannot also depend on `STEPUP_BUILD_OFFLINE`,
+        as explained in [Working Offline](../advanced_topics/external_data.md#working-offline).
     out
         File(s) created by the step.
         Relative paths are assumed to be relative to `workdir`.
@@ -510,7 +511,7 @@ def step(
     env_deps = set(as_list(env))
     if recheck:
         # Added before the validation of `env_overrides`, so that a collision is detected too.
-        env_deps.add(STARTUP_I_ENV_VAR)
+        env_deps.add("STEPUP_STARTUP_I")
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
 
@@ -993,7 +994,7 @@ def amend(
     inp_paths = coerce_paths(inp)
     env_deps = set(as_list(env))
     if recheck:
-        env_deps.add(STARTUP_I_ENV_VAR)
+        env_deps.add("STEPUP_STARTUP_I")
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_deps, out_paths, vol_paths]):
@@ -1461,22 +1462,37 @@ def copy(
     )
 
 
-def is_offline() -> bool:
-    """Check whether StepUp runs in offline mode, without declaring a dependency.
+def is_offline(*, declare: bool = False) -> bool:
+    """Check whether StepUp runs in offline mode.
 
     This reads `STEPUP_BUILD_OFFLINE` from the environment of the step, which the director sets.
     An unset variable, or any value other than `1`, means online,
     so a console script also works when it is run by hand.
-    Unlike [`getenv()`][stepup.core.api.getenv], this never amends the current step,
-    because a step should declare `STEPUP_BUILD_OFFLINE`
-    only when its successful output depends on it.
-    [Working Offline](../advanced_topics/external_data.md#working-offline) explains the cases.
+    [Working Offline](../advanced_topics/external_data.md#working-offline)
+    explains when a step should declare the variable.
+
+    Parameters
+    ----------
+    declare
+        When `True`, amend the current step with a dependency on `STEPUP_BUILD_OFFLINE`,
+        so that it runs again when StepUp goes offline or back online.
+        Pass it only when the successful output of the step depends on the mode,
+        e.g. when the step writes a placeholder offline.
+        A step that runs at every start, e.g. with `recheck=True`,
+        cannot declare this dependency.
 
     Returns
     -------
     offline
         `True` when StepUp runs in offline mode.
+
+    Raises
+    ------
+    GraphError
+        When `declare` is `True` in a step that runs at every start.
     """
+    if declare:
+        amend(env="STEPUP_BUILD_OFFLINE")
     return os.environ.get("STEPUP_BUILD_OFFLINE") == "1"
 
 

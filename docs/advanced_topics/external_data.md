@@ -302,8 +302,12 @@ which gives three cases:
   Offline it can only fail, and failed steps are retried at the next start or rebuild.
   Declaring the variable would make it run, and fail, as soon as StepUp is started offline.
 - **A step that writes a different output offline**, e.g. a placeholder,
-  calls `amend(env="STEPUP_BUILD_OFFLINE")` and `is_offline()`.
+  calls `is_offline(declare=True)`, which also declares the variable.
   It must run again when StepUp is back online, to replace the placeholder.
+
+A step that runs at every start, e.g. with `recheck=True`, cannot declare the variable.
+StepUp reports this combination as an error,
+which makes the step fail when it calls `is_offline(declare=True)`.
 
 [Steps That Use the Network](../extending/api.md#steps-that-use-the-network)
 asks every extension package to honor `STEPUP_BUILD_OFFLINE` in this way.

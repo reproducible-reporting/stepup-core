@@ -34,7 +34,7 @@ from stepup.core.api import (
     step,
     subs_env_vars,
 )
-from stepup.core.constants import DIRECTOR_SOCKET_SENTINEL, STARTUP_I_ENV_VAR
+from stepup.core.constants import DIRECTOR_SOCKET_SENTINEL
 from stepup.core.exceptions import AmendWhileHoldingError, PathError, StepUpError
 from stepup.core.nglob import NamedGlob
 from stepup.core.path import Path, make_path_out
@@ -66,6 +66,18 @@ def test_is_offline(monkeypatch, value, expected):
     else:
         monkeypatch.setenv("STEPUP_BUILD_OFFLINE", value)
     assert is_offline() is expected
+
+
+@pytest.mark.parametrize("value", [None, "0", "1"])
+def test_is_offline_declare(monkeypatch, value):
+    amended = []
+    monkeypatch.setattr("stepup.core.api.amend", lambda **kwargs: amended.append(kwargs))
+    if value is None:
+        monkeypatch.delenv("STEPUP_BUILD_OFFLINE", raising=False)
+    else:
+        monkeypatch.setenv("STEPUP_BUILD_OFFLINE", value)
+    assert is_offline(declare=True) is (value == "1")
+    assert amended == [{"env": "STEPUP_BUILD_OFFLINE"}]
 
 
 def test_getenv_nonexisting(monkeypatch):
@@ -1175,10 +1187,6 @@ def amend_step_client(monkeypatch):
     client = _CaptureAmendClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
     return client
-
-
-def test_startup_i_env_var_name():
-    assert STARTUP_I_ENV_VAR == "STEPUP_STARTUP_I"
 
 
 def test_step_recheck(define_step_client):

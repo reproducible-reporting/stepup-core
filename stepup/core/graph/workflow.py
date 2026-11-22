@@ -800,6 +800,33 @@ def _raise_if_dir_inputs(inp_paths: Collection[str]) -> None:
             raise GraphError(f"Directory inputs are not supported: {inp_path}")
 
 
+def _raise_if_recheck_offline(step_label: str, env_deps: Collection[str]) -> None:
+    """Raise when a step that runs at every start also depends on the offline mode.
+
+    Offline, `STEPUP_STARTUP_I` keeps its value so that such a step does not run.
+    A dependency on `STEPUP_BUILD_OFFLINE` would make it run at the first start offline anyway.
+
+    Parameters
+    ----------
+    step_label
+        The label of the step, used in the error message.
+    env_deps
+        All environment variables on which the step depends,
+        including those declared earlier in the same run.
+
+    Raises
+    ------
+    GraphError
+        When `env_deps` contains both `STEPUP_STARTUP_I` and `STEPUP_BUILD_OFFLINE`.
+    """
+    if "STEPUP_STARTUP_I" in env_deps and "STEPUP_BUILD_OFFLINE" in env_deps:
+        raise GraphError(
+            f"Step {step_label} runs at every start, so it cannot depend on STEPUP_BUILD_OFFLINE, "
+            "because it would then also run at the first start offline. "
+            "Call is_offline() without declare=True in such a step."
+        )
+
+
 def _raise_if_out_and_vol_overlap(
     creator_phrase: str, out_paths: Collection[str], vol_paths: Collection[str]
 ) -> None:
@@ -2263,6 +2290,7 @@ class Workflow(Trellis):
         # Check overlap before the recycle short-circuit below,
         # so it applies uniformly to a fresh definition and a re-definition.
         step_label = Step.adjust_label(command, workdir)
+        _raise_if_recheck_offline(step_label, env_deps)
         self._raise_if_glob_match(step_label, out_paths + vol_paths)
 
         # If a compatible detached step is found, fully recycle it, instead of creating a new one.
@@ -2394,6 +2422,9 @@ class Workflow(Trellis):
         out_paths = sorted(set(out_paths))
         vol_paths = sorted(set(vol_paths))
         _raise_if_dir_inputs(inp_paths)
+        # Dynamic dependencies of a previous run were dropped before this run started,
+        # so this sees the plan's declarations and those amended in the current run.
+        _raise_if_recheck_offline(step.label, set(step.env_deps()) | set(env_deps))
 
         # Keep track of missing files, of which there are three different types:
         # - unavailable = certainly not available.

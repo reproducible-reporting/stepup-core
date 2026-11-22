@@ -19,7 +19,18 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Added
+
+- `is_offline(declare=True)` also declares a dependency on `STEPUP_BUILD_OFFLINE`,
+  for a step that writes a different output offline, e.g. a placeholder.
+  See [Working Offline](advanced_topics/external_data.md#working-offline).
+
+### Changed
+
+- A step that runs at every start, e.g. with `recheck=True`,
+  can no longer depend on `STEPUP_BUILD_OFFLINE`.
+  Such a step would run at the first start offline, which the setting `offline` avoids,
+  so StepUp now reports this as an error.
 
 ## [4.2.0rc3][] - 2026-11-22 {: #v4.2.0rc3 }
 
