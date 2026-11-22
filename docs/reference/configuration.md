@@ -570,6 +570,21 @@ the internal environment variables described above.
     and [`get_root()`][stepup.core.path.get_root] instead,
     which are always up to date.
 
+`SOURCE_DATE_EPOCH`
+
+:   Set to a fixed value for reproducible timestamps,
+    unless it is already set or disabled with the [`fix_epoch`](#build-control) setting.
+
+`STEPUP_BUILD_LOG_LEVEL`
+
+:   The log level of the director,
+    as set with the [`log_level`](#diagnostics-and-profiling) setting.
+
+`STEPUP_BUILD_OFFLINE`
+
+:   Either `1` or `0`, as set with the [`offline`](#build-control) setting.
+    In Python, use [`is_offline()`][stepup.core.api.is_offline] instead.
+
 `STEPUP_JOB_I`
 
 :   A unique integer id for the current job running the step.
