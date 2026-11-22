@@ -12,32 +12,53 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
 StepUp is designed to work with files on disk (and environment variables) that it can see.
-It cannot, by itself, check data on a remote server, or any other resource that it cannot see.
-However, sometimes a workflow needs to receive such data, or send it.
-StepUp's workaround is to run certain steps unconditionally,
+It cannot, by itself, check data on a remote server, or any other external resource.
+However, sometimes a workflow needs to exchange data with such external resources.
+StepUp's solution is to run certain steps at every start,
 even if their visible dependencies did not change,
-so the step itself can interact with the remote resource and act when needed.
+so the step itself can interact with the external resource and act when needed.
 This tutorial shows how to make a step run at every start with `recheck=True`.
 
-This feature of StepUp is mainly for developers of extension packages,
-such as [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/).
-However, it can also be used as such in an ordinary workflow.
-Some smaller use cases are described in [Other Examples](#other-examples).
+This feature of StepUp was primarily developed for interacting with external resources on a network,
+which is illustrated in the first example below.
+It is equally useful in more local contexts,
+where StepUp's dependency tracking is insufficient or inconvenient,
+as shown in the [Local Examples](#local-examples) section.
 
-!!! warning "No dependencies through remote resources"
+!!! warning "No dependencies through external resources"
 
-    StepUp does not track dependencies through remote resources.
+    StepUp does not track dependencies through external resources.
     They are completely opaque to StepUp and the mechanism below does not even assume they exist.
-    For example, if step A sends data to a remote, and step B fetches that remote data again,
+    For example, if step A sends data to a remote server, and step B fetches that remote data again,
     StepUp will not know that B depends on A.
     It may thus run them in the wrong order,
     and it does not make B pending when the upload of A has changed.
-    This means that interaction with remote resources must sit at the edges of a workflow:
+    This means that interaction with external resources must sit at the edges of a workflow:
     initial data coming in or final data going out.
+
+Other build tools have a similar feature,
+for example:
+
+- GNU Make runs the recipe of a [phony target][make-phony]
+  in every invocation, regardless of the files on disk.
+- doit decides whether a task is up to date with
+  [`uptodate`](https://pydoit.org/dependencies.html),
+  which also accepts a Python function that can look at an external resource.
+- Meson considers a `custom_target()` with [`build_always_stale: true`][meson-stale]
+  always out of date.
+- Nextflow re-executes a process with `cache false` when a pipeline is resumed,
+  as explained in [Cache and Resume](https://docs.seqera.io/nextflow/cache-and-resume).
+
+[make-phony]: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
+[meson-stale]: https://mesonbuild.com/Reference-manual_functions.html#custom_target_build_always_stale
+
+Unlike a Make phony target,
+a step with `recheck=True` in StepUp still takes part in the dependency graph,
+so the steps downstream of it are skipped when its outputs remain the same.
 
 ## Running a Step at Every Start
 
-Pass `recheck=True` when a step is defined to make it run at every start of StepUp:
+To make a step run at every start of StepUp, declare it with `recheck=True`:
 
 ```python
 run("./download.py", out="data.txt", recheck=True)
@@ -50,25 +71,22 @@ The functions [`step()`][stepup.core.api.step], [`run()`][stepup.core.api.run],
 and [`call()`][stepup.core.api.call] all accept `recheck`.
 Like any other step, a step with `recheck=True` only runs when it is needed
 and when its inputs are available.
-In watch mode, it does not run again in later build phases of the same director,
-unless you ask for a recheck by pressing `R` or running `stepup rebuild --recheck`.
+In watch mode, it runs once per start of StepUp, not in every build phase,
+unless you press `R` or run `stepup rebuild --recheck`, see [Limits](#limits).
 
-This works through an environment variable.
-The director sets `STEPUP_STARTUP_I` for every step it runs,
-with a unique integer every time the director starts.
-A step with `recheck=True` depends on this variable like on any other one,
+### How It Works
+
+The `recheck=True` feature is implemented with an environment variable.
+The director sets `STEPUP_STARTUP_I`, whose value normally changes every time the director starts.
+A step with `recheck=True` depends on this variable,
 as explained in the tutorial on [Environment Variables](environment_variables.md).
 At every start, StepUp finds a new value of the variable,
 so it runs such a step again instead of skipping it.
 Writing `env="STEPUP_STARTUP_I"` or calling
 [`getenv("STEPUP_STARTUP_I")`][stepup.core.api.getenv] from inside the step
 declares the same dependency, but `recheck=True` states the intent more clearly.
-In watch mode, the value stays the same in later build phases,
-so the step does not run again because of this variable.
-Only the `R` key or `stepup rebuild --recheck` gives it a new value, as if StepUp started again,
-so the steps with `recheck=True` run in the build phase that follows.
 
-The value does not identify a start,
+The value does not reliably identify a start,
 because a start with `--offline` keeps the value of the previous one,
 and a new `.stepup/graph.db` starts again at `1`.
 The variable is only meant to be tracked,
@@ -78,11 +96,14 @@ describes the variable in full.
 
 ## Example: A Download Step
 
-Example source files: [`docs/advanced_topics/external_data/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/external_data)
+Example source files: [`docs/advanced_topics/external_data/`][example-src]
 
-In this example, the directory `external/` stands in for a remote server, so no network is needed.
+[example-src]: https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/external_data
+
+In this example, the directory `external/` stands in for a remote server,
+so no network is needed to run it.
 No step declares this directory, so StepUp does not see when it changes,
-just as it cannot see changes on a real server.
+just as it cannot see changes on a real remote server.
 Create it with some data:
 
 ```bash
@@ -175,13 +196,14 @@ and StepUp will still skip `report.py` when the file is unchanged.
 
 A download step that learns its outputs from the remote
 declares them with [`amend(out=...)`][stepup.core.api.amend] in every run,
-also when it downloads nothing, because StepUp drops them when the step runs again.
+also when it skips downloading,
+e.g. because `--offline` is set or the earlier downloads are still valid.
 
 ## Rules for Steps That Run at Every Start
 
 1. **Fast and bounded when there is nothing to do.**
    The step runs in every build, so its check delays every build.
-   The check costs at most a few requests, each with a timeout.
+   Keep the check to a few requests, each with a timeout.
    Do not touch the network when there is nothing to check, e.g. when credentials are absent.
    Fail when credentials are present and the remote cannot be reached,
    because the user asked for something that cannot be done.
@@ -199,10 +221,14 @@ also when it downloads nothing, because StepUp drops them when the step runs aga
 3. **Undeclared state stays private.**
    A step that runs at every start may read a secret, the remote, the offline mode
    (with `is_offline()`) or files of its own.
-   It does not need to declare them, because StepUp starts it again anyway.
+   It does not need to declare these as dependencies, because the step runs at every start anyway.
+   (With `--offline` or between rechecks, the step does not run again,
+   and the workflow keeps the previous result, which is intended.)
 
     That said, an always-run step may declare dependencies to StepUp,
     so it runs at the right time in the workflow.
+    For example, an upload script should depend on the files it uploads,
+    so they are updated before being uploaded.
 
 4. **Throttled where needed.**
    Limit the number of steps that use the same server at the same time
@@ -292,10 +318,7 @@ asks every extension package to honor `STEPUP_BUILD_OFFLINE` in this way.
   The download step fails, because it cannot download the data offline.
   Run `sb -j 1` to download the data again.
 
-## Other Examples
-
-While `recheck=True` is primarily intended for handling remote data,
-it has other convenient uses.
+## Local Examples
 
 ### Git Version
 
@@ -324,11 +347,9 @@ which adds the `-dirty` suffix and compiles the document a second time.)
 Other Git commands fitting this pattern include
 `git rev-parse HEAD`, `git log -1 --format=%cd` or `git ls-files`.
 
-A change to the Git repository while `stepup build --watch` is running,
-will not trigger a rerun of the `git` command,
-because `STEPUP_STARTUP_I` keeps its value in later build phases.
-To pick up such changes, press `R`,
-or run `stepup rebuild --recheck` from an editor or another terminal.
+A change to the Git repository while `stepup build --watch` is running
+is only picked up after you press `R` or run `stepup rebuild --recheck`,
+see [Limits](#limits).
 
 ### Hardware Details
 
@@ -347,6 +368,7 @@ run(
 
 The CPU frequency scaling is filtered out because it is different every time,
 and not a property of the CPU itself.
+(Note that this is a simplified Linux-only example.)
 
 A more robust approach is to post-process the output of these commands,
 e.g. `lscpu --json`, `lshw --json` or `nvidia-smi -L`,
@@ -372,7 +394,7 @@ Some well-known examples:
 [pylock]: https://packaging.python.org/en/latest/specifications/pylock-toml/
 [uv-lock]: https://docs.astral.sh/uv/concepts/projects/layout/#the-lockfile
 [pixi-lock]: https://pixi.prefix.dev/latest/workspace/lock_file/
-[conda-lock]: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#building-identical-conda-environments
+[conda-lock]: https://conda.github.io/conda-lock/
 [renv-lock]: https://rstudio.github.io/renv/articles/renv.html
 [npm-lock]: https://docs.npmjs.com/cli/v9/configuring-npm/package-lock-json
 [julia-toml]: https://pkgdocs.julialang.org/v1/toml-files/
@@ -397,10 +419,12 @@ run(
 ## Limits
 
 - **Once per start or recheck, not per build phase.**
-  In watch mode, a step that runs at every start does not run again in later build phases,
-  e.g. after you press `r`.
-  To look at the remote again, press `R`,
+  In watch mode, the value of `STEPUP_STARTUP_I` stays the same in later build phases,
+  e.g. after you press `r`, so a step that runs at every start does not run again.
+  To look at the external data again, press `R`,
   or run `stepup rebuild --recheck` in another terminal.
+  This gives the variable a new value, as if StepUp started again,
+  so the steps with `recheck=True` run in the build phase that follows.
 - **Environment variables are read at startup only**, including secrets.
   The steps get the environment of the director as it was when it started,
   so a token that you set after starting StepUp is only seen after a restart.

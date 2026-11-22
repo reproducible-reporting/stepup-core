@@ -290,16 +290,16 @@ def download(url: str, dst: str):
 The console script `my-download` (see [Console Scripts](console_scripts.md)) starts as follows:
 
 ```python
-import os
 import sys
 
 from stepup.core.api import is_offline
+from stepup.core.path import Path
 
 
 def main():
     url, dst = sys.argv[1:]
     if is_offline():
-        if not os.path.isfile(dst):
+        if not Path(dst).is_file():
             sys.exit(f"Working offline, so {dst} cannot be downloaded.")
         print(f"Working offline, keeping {dst}.")
         return
