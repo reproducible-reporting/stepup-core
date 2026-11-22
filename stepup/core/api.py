@@ -417,7 +417,8 @@ def step(
         If they change, or when they are (un)defined, the step digest will change,
         such that the step cannot be skipped.
     recheck
-        When `True`, the step runs at every start of StepUp, except with `offline`,
+        When `True`, the step runs at every start of StepUp,
+        and in watch mode also after `stepup rebuild --recheck`, except with `offline`,
         so it can look at something that StepUp does not see, such as a remote server.
         This is equivalent to depending on the environment variable `STEPUP_STARTUP_I`,
         see [its reference](../reference/configuration.md#environment-variables-in-step-execution)
@@ -926,7 +927,8 @@ def amend(
         If they change, or when they are (un)defined, the step digest will change,
         such that the step cannot be skipped.
     recheck
-        When `True`, the step runs at every start of StepUp, except with `offline`.
+        When `True`, the step runs at every start of StepUp and at every recheck,
+        except with `offline`.
         See [`step()`][stepup.core.api.step] for more information.
         This allows a step to ask for a recheck from the inside,
         after it has found out that it looks at something that StepUp does not see.

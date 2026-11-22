@@ -51,8 +51,10 @@ What must never vary is the graph produced by the *same* inputs and code.
 The declared way for a step to vary between builds is to track `STEPUP_STARTUP_I`,
 spelled `recheck=True` in the API,
 which the director sets to a new integer at every start (`Workflow.assign_startup_i`),
+and in watch mode at every `stepup rebuild --recheck`,
 except with `--offline`, which keeps the value of the previous start.
-Such a step runs at every start and may read what StepUp does not track, such as a remote,
+Such a step runs at every start and recheck,
+and may read what StepUp does not track, such as a remote,
 so the graph that it extends is a function of that remote state as well.
 
 The determinism goal applies to the graph of a **successful** build.

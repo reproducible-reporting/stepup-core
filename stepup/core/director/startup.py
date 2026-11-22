@@ -13,10 +13,39 @@ from .builder import Builder
 from .hash_queue import gather_hashes
 from .reporter import ReporterClient
 
-__all__ = ("resume_from_db",)
+__all__ = ("rescan_env_vars", "resume_from_db", "update_startup_i")
 
 
 logger = logging.getLogger(__name__)
+
+
+async def update_startup_i(workflow: Workflow, reporter: ReporterClient, *, offline: bool) -> int:
+    """Give a new start of the director, or a recheck, the next value of `STEPUP_STARTUP_I`.
+
+    This takes its own transaction, so it must not be called inside one.
+    Rerunning the steps that track the variable is left to `rescan_env_vars`.
+
+    Parameters
+    ----------
+    workflow
+        The workflow whose counter is updated, see `Workflow.assign_startup_i`.
+    reporter
+        Where the offline message is reported.
+    offline
+        When True, the value stays the same, and a message tells the user so.
+        Without that message, an offline start or recheck
+        could not be told apart from one with nothing to do.
+
+    Returns
+    -------
+    startup_i
+        The value of `STEPUP_STARTUP_I` from now on.
+    """
+    async with workflow.db:
+        startup_i = workflow.assign_startup_i(increment=not offline)
+    if offline:
+        await reporter("DIRECTOR", f"Working offline, STEPUP_STARTUP_I stays at {startup_i}")
+    return startup_i
 
 
 async def resume_from_db(workflow: Workflow, reporter: ReporterClient, builder: Builder):

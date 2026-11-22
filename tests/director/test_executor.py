@@ -386,6 +386,20 @@ async def test_base_env_applies_overlay_of_workflow(wfs: Workflow, monkeypatch):
         assert executor.base_env[name] == wfs.getenv(name)
 
 
+async def test_base_env_follows_new_startup_i(wfs: Workflow):
+    """After a recheck, the steps see the new `STEPUP_STARTUP_I`, not the cached one."""
+    async with wfs.db:
+        wfs.assign_startup_i()
+    executor = _make_executor(workflow=wfs, db=wfs.db)
+    assert executor.base_env["STEPUP_STARTUP_I"] == "1"
+
+    async with wfs.db:
+        wfs.assign_startup_i()
+    assert executor.base_env["STEPUP_STARTUP_I"] == "2"
+    # Without a change, the cache is reused.
+    assert executor.base_env is executor.base_env
+
+
 async def test_execute_job_hashes_nothing_after_abandoning_a_copy(wfs: Workflow, monkeypatch):
     """A copy stuck on a dead mount must not be followed by a hash that gets stuck as well."""
     async with wfs.db:

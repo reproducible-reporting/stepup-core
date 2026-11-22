@@ -136,6 +136,13 @@ class Executor:
     _base_env_cache: dict | None = attrs.field(init=False, default=None)
     """Cache for `base_env`, populated lazily on first access."""
 
+    _base_env_infra: dict[str, str] | None = attrs.field(init=False, default=None)
+    """A copy of the `infra_env` of the workflow from which `_base_env_cache` was built.
+
+    The cache is rebuilt when the overlay no longer equals this copy,
+    e.g. after `STEPUP_STARTUP_I` got a new value in the watch phase.
+    """
+
     _counts_flush_handle: asyncio.TimerHandle | None = attrs.field(init=False, default=None)
     """Handle for the scheduled step-counts flush, or `None` when none is pending.
 
@@ -171,8 +178,10 @@ class Executor:
         This is `os.environ` with the `infra_env` overlay of the workflow applied.
         No copy is returned, so the caller must not mutate the returned dictionary.
         """
-        if self._base_env_cache is None:
-            self._base_env_cache = {**os.environ, **self.workflow.infra_env}
+        infra_env = self.workflow.infra_env
+        if self._base_env_cache is None or infra_env != self._base_env_infra:
+            self._base_env_infra = dict(infra_env)
+            self._base_env_cache = {**os.environ, **infra_env}
         return self._base_env_cache
 
     #

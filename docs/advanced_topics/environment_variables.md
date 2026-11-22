@@ -21,8 +21,9 @@ changing the variable, and then starting StepUp again.
 Environment variables cannot be modified while StepUp is running.
 
 StepUp itself sets one variable that changes at every start,
+and with `stepup rebuild --recheck` in watch mode:
 `STEPUP_STARTUP_I` (except with `--offline`).
-A step that depends on it runs at every start,
+A step that depends on it runs at every start and at every recheck,
 which `recheck=True` declares in a clearer way,
 as explained in the [Remote Data](remote_data.md) tutorial.
 

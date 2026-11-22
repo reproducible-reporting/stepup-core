@@ -389,7 +389,7 @@ alphabetically within each group.
 
 :   Set to `true` when remote data cannot be reached, e.g. without a network connection.
     [`STEPUP_STARTUP_I`](#environment-variables-in-step-execution)
-    then keeps the value of the previous start,
+    then keeps its value of the previous start,
     so a step that runs at every start of the director does not run merely because StepUp started.
     Such a step keeps its result of the previous start, and so do the steps that use its outputs.
     A step that must run for another reason, e.g. because an input changed or because it failed,
@@ -400,7 +400,8 @@ alphabetically within each group.
     as described in [Steps That Use the Network](../extending/api.md#steps-that-use-the-network).
     The next start without this setting gives `STEPUP_STARTUP_I` a new value again,
     so every step that runs at every start looks at the remote data again.
-    In watch mode, the setting holds for the lifetime of the director.
+    In watch mode, the setting holds for the lifetime of the director,
+    so `stepup rebuild --recheck` then keeps the value of `STEPUP_STARTUP_I` as well.
     [Working Offline](../advanced_topics/remote_data.md#working-offline) shows an example.
 
 `progress` / `STEPUP_BUILD_PROGRESS` / `--progress`, `--no-progress`
@@ -576,13 +577,13 @@ the internal environment variables described above.
 
 `STEPUP_STARTUP_I`
 
-:   An integer incremented every time the director starts,
+:   An integer incremented at every start of the director and with `stepup rebuild --recheck`,
     unless [`offline`](#build-control) is set.
     A step that depends on this variable runs at every start of the director,
     which suits a step that looks at something StepUp does not watch, such as a remote server.
     With `offline`, the director keeps the value of the previous start.
-    In watch mode, the value stays the same for the lifetime of the director,
-    so such a step does not run again in later build phases of the same director process.
+    In watch mode, the value stays the same in later build phases,
+    so such a step does not run again, unless `stepup rebuild --recheck` gives it a new value.
 
     Interactions with remote data must be skipped
     when a step sees [`STEPUP_BUILD_OFFLINE=1`](#build-control),

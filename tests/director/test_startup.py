@@ -16,6 +16,7 @@ from stepup.core.director.startup import (
     rescan_env_vars,
     rescan_files,
     rescan_nglobs,
+    update_startup_i,
     watch_known_dirs,
 )
 from stepup.core.enums import HashUpdateCause, StepState
@@ -387,6 +388,51 @@ async def test_rescan_env_vars_new_startup_i(wfp: Workflow, monkeypatch):
         assert tracking.get_state() == StepState.PENDING
         assert not_tracking.get_state() == StepState.SUCCEEDED
         assert (tracking, "STEPUP_STARTUP_I", "2") in wfp.env_var_uses()
+
+
+async def _define_completed_steps(wfp: Workflow) -> tuple[Step, Step]:
+    """Define one completed step that tracks `STEPUP_STARTUP_I` and one that does not."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "./remote.py", env_deps=["STEPUP_STARTUP_I"])
+        wfp.define_step(plan, "./local.py")
+        tracking = wfp.find(Step, "./remote.py")
+        not_tracking = wfp.find(Step, "./local.py")
+        for step in tracking, not_tracking:
+            step.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
+    return tracking, not_tracking
+
+
+async def test_update_startup_i_online(wfp: Workflow):
+    """A recheck online gives a new value, which reruns only the steps that track it."""
+    await update_startup_i(wfp, _FakeReporter(), offline=False)
+    tracking, not_tracking = await _define_completed_steps(wfp)
+
+    reporter = _FakeReporter()
+    assert await update_startup_i(wfp, reporter, offline=False) == 2
+    await rescan_env_vars(wfp, reporter)
+
+    assert wfp.getenv("STEPUP_STARTUP_I") == "2"
+    assert reporter.calls == [("UPDATED", "STEPUP_STARTUP_I ='1' ➜ ='2'")]
+    async with wfp.db:
+        assert tracking.get_state() == StepState.PENDING
+        assert not_tracking.get_state() == StepState.SUCCEEDED
+
+
+async def test_update_startup_i_offline(wfp: Workflow):
+    """A recheck offline keeps the value, says so, and reruns nothing."""
+    await update_startup_i(wfp, _FakeReporter(), offline=False)
+    tracking, not_tracking = await _define_completed_steps(wfp)
+
+    reporter = _FakeReporter()
+    assert await update_startup_i(wfp, reporter, offline=True) == 1
+    await rescan_env_vars(wfp, reporter)
+
+    assert wfp.getenv("STEPUP_STARTUP_I") == "1"
+    assert reporter.calls == [("DIRECTOR", "Working offline, STEPUP_STARTUP_I stays at 1")]
+    async with wfp.db:
+        assert tracking.get_state() == StepState.SUCCEEDED
+        assert not_tracking.get_state() == StepState.SUCCEEDED
 
 
 async def test_rescan_env_vars_detects_value_leaving_overlay(wfp: Workflow, monkeypatch):

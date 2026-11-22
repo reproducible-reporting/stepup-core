@@ -199,14 +199,24 @@ However, you can still interact with StepUp as follows:
 
 1. Open a terminal on the machine running StepUp.
 2. Use `cd` to go to the directory where StepUp is running.
-3. Execute one of the following commands:
+3. Execute one of the commands in the table below.
 
-    - `stepup rebuild`
-    - `stepup shutdown`
-    - `stepup drain`
-    - `stepup join`
-    - `stepup graph`
-    - `stepup status` (prints detailed status of the workflow)
+| Command | Key | Description |
+| --- | --- | --- |
+| `stepup rebuild` | [`r`][keys] | Leave the watch phase and run the outdated steps. |
+| `stepup rebuild --recheck` | | Also rerun the steps with `recheck=True`, see below. |
+| `stepup shutdown` | [`q`][keys] | Wait for the running steps and exit. Repeat to kill them. |
+| `stepup drain` | [`d`][keys] | Start no new steps and enter the watch phase when idle. |
+| `stepup join` | [`j`][keys] | Run steps until none are left, and then exit. |
+| `stepup graph PREFIX` | [`g`][keys] | Write the graph to `PREFIX.txt` and two `.dot` files. |
+| `stepup status` | | Print a detailed status of the workflow. |
+
+[keys]: #terminal-user-interface
+
+With `--recheck`, `stepup rebuild` also reruns the steps with `recheck=True`,
+as after a new start of StepUp.
+With `--offline`, it does nothing more than `stepup rebuild`,
+see [Remote Data](../advanced_topics/remote_data.md).
 
 ## Interacting With StepUp From Within an IDE
 

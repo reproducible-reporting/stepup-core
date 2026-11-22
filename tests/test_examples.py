@@ -273,6 +273,8 @@ EXAMPLES = [
     "startup_i_offline_after_fail",
     "startup_i_plan",
     "startup_i_pull",
+    "startup_i_rebuild",
+    "startup_i_rebuild_offline",
     "startup_i_watch",
     "static",
     "static_abs",

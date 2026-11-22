@@ -182,14 +182,24 @@ def add_join_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFun
 
 def add_rebuild_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolFunc:
     """Add the `rebuild` subcommand to the parser."""
-    subparsers.add_parser(
+    parser = subparsers.add_parser(
         "rebuild",
         help="Exit the watch phase and start the build phase.",
+    )
+    parser.add_argument(
+        "--recheck",
+        action="store_true",
+        help="Also rerun the steps with recheck=True, as after a new start of StepUp.",
     )
 
     def rebuild_tool(args: argparse.Namespace) -> None:
         with _connect_director() as client:
-            client.call.start_build_phase()
+            # Without the flag, no keyword is sent,
+            # so that a director of an older installation still accepts the call.
+            if args.recheck:
+                client.call.start_build_phase(recheck=True)
+            else:
+                client.call.start_build_phase()
 
     return rebuild_tool
 

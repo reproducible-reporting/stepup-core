@@ -1,0 +1,71 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:getstartup.py
+             product   file:input.txt
+             product   step:./getstartup.py
+             product   step:echo "${STEPUP_STARTUP_I}" > shell_i.txt
+             product   step:tr a-z A-Z < input.txt > upper.txt
+
+file:getstartup.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./getstartup.py
+
+file:input.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:tr a-z A-Z < input.txt > upper.txt
+
+step:echo "${STEPUP_STARTUP_I}" > shell_i.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_STARTUP_I
+             creator   step:./plan.py
+             product   file:shell_i.txt
+                sink   file:shell_i.txt
+
+file:shell_i.txt
+               state = BUILT
+             creator   step:echo "${STEPUP_STARTUP_I}" > shell_i.txt
+              source   step:echo "${STEPUP_STARTUP_I}" > shell_i.txt
+
+step:./getstartup.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+                     = STEPUP_STARTUP_I
+             creator   step:./plan.py
+              source   file:getstartup.py
+             product   file:python_i.txt
+                sink   file:python_i.txt
+
+file:python_i.txt
+               state = BUILT
+             creator   step:./getstartup.py
+              source   step:./getstartup.py
+
+step:tr a-z A-Z < input.txt > upper.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:input.txt
+             product   file:upper.txt
+                sink   file:upper.txt
+
+file:upper.txt
+               state = BUILT
+             creator   step:tr a-z A-Z < input.txt > upper.txt
+              source   step:tr a-z A-Z < input.txt > upper.txt

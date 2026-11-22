@@ -17,8 +17,12 @@ import stepup.core.director.serve as serve_mod
 from stepup.core.director.handler import DirectorHandler
 from stepup.core.director.reporter import ReporterClient
 from stepup.core.director.serve import SCHEDULER_CPU_ENV_VARS, interpret_jobs
-from stepup.core.enums import StopLevel
+from stepup.core.director.startup import update_startup_i
+from stepup.core.enums import StepState, StopLevel
 from stepup.core.exceptions import CgroupError
+from stepup.core.graph.step import Step
+from stepup.core.graph.workflow import Workflow
+from stepup.core.hash import StepHash
 from stepup.core.path import Path
 
 
@@ -123,6 +127,7 @@ class FakeBuilder:
     """Stands in for the builder, with control over whether steps are still running."""
 
     running_tasks: list = attrs.field(factory=list)
+    resume: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
 
 
 async def await_interrupt(handler: DirectorHandler) -> None:
@@ -135,6 +140,8 @@ class FakeWatcher:
     """Stands in for the watcher, with the events and sets that a waiting RPC call consults."""
 
     busy_watching: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    end_watching: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    done_watching: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     files_changed_events: set[asyncio.Event] = attrs.field(init=False, factory=set)
     updated: set[str] = attrs.field(init=False, factory=set)
     deleted: set[str] = attrs.field(init=False, factory=set)
@@ -155,18 +162,33 @@ class FakeWatcher:
         for event in self.files_changed_events:
             event.set()
 
+    async def finish_watch_phase(self) -> None:
+        """End the watch phase once asked to, with a delay in which other calls may run."""
+        await self.end_watching.wait()
+        self.busy_watching.clear()
+        await asyncio.sleep(0.05)
+        self.end_watching.clear()
+        self.done_watching.set()
 
-def make_director_handler(nrunning: int = 0, watcher: FakeWatcher | None = None) -> DirectorHandler:
+
+def make_director_handler(
+    nrunning: int = 0,
+    watcher: FakeWatcher | None = None,
+    workflow: Workflow | None = None,
+    reporter=None,
+    offline: bool = False,
+) -> DirectorHandler:
     """Create a `DirectorHandler` with just enough collaborators for shutdown tests."""
     return DirectorHandler(
         scheduler=FakeScheduler(),
-        workflow=None,
-        db=None,
-        reporter=ReporterClient(),
+        workflow=workflow,
+        db=None if workflow is None else workflow.db,
+        reporter=ReporterClient() if reporter is None else reporter,
         executor=FakeExecutor(),
         builder=FakeBuilder(list(range(nrunning))),
         watcher=watcher,
         stop_event=asyncio.Event(),
+        offline=offline,
     )
 
 
@@ -361,3 +383,117 @@ async def test_watch_first_loop_starts_a_build_phase_after_a_change(monkeypatch)
     await asyncio.wait_for(started.wait(), timeout=5.0)
     handler.stop_event.set()
     await asyncio.wait_for(task, timeout=5.0)
+
+
+#
+# Rechecks
+#
+
+
+class RecordingReporter:
+    """Records reported lines instead of sending them anywhere."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def __call__(self, tag, description, pages=None):
+        self.calls.append((tag, description))
+
+
+async def make_recheck_handler(wfp: Workflow, *, offline: bool = False):
+    """Create a handler with a real workflow, one step that tracks `STEPUP_STARTUP_I`."""
+    await update_startup_i(wfp, RecordingReporter(), offline=False)
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "./remote.py", env_deps=["STEPUP_STARTUP_I"])
+        tracking = wfp.find(Step, "./remote.py")
+        tracking.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
+    handler = make_director_handler(
+        watcher=FakeWatcher(), workflow=wfp, reporter=RecordingReporter(), offline=offline
+    )
+    return handler, tracking
+
+
+async def test_start_build_phase_recheck_in_watch_phase(wfp: Workflow):
+    """A recheck online gives a new value, and the tracking step runs in the next build phase."""
+    handler, tracking = await make_recheck_handler(wfp)
+    handler.watcher.busy_watching.set()
+    watcher_task = asyncio.create_task(handler.watcher.finish_watch_phase())
+    await asyncio.wait_for(handler.start_build_phase(recheck=True), timeout=5.0)
+    await watcher_task
+
+    assert wfp.getenv("STEPUP_STARTUP_I") == "2"
+    assert handler.reporter.calls == [("UPDATED", "STEPUP_STARTUP_I ='1' ➜ ='2'")]
+    assert handler.builder.resume.is_set()
+    async with wfp.db:
+        assert tracking.get_state() == StepState.PENDING
+
+
+async def test_start_build_phase_recheck_offline(wfp: Workflow):
+    """A recheck offline keeps the value and says so, but still starts a build phase."""
+    handler, tracking = await make_recheck_handler(wfp, offline=True)
+    handler.watcher.busy_watching.set()
+    watcher_task = asyncio.create_task(handler.watcher.finish_watch_phase())
+    await asyncio.wait_for(handler.start_build_phase(recheck=True), timeout=5.0)
+    await watcher_task
+
+    assert wfp.getenv("STEPUP_STARTUP_I") == "1"
+    assert handler.reporter.calls == [("DIRECTOR", "Working offline, STEPUP_STARTUP_I stays at 1")]
+    assert handler.builder.resume.is_set()
+    async with wfp.db:
+        assert tracking.get_state() == StepState.SUCCEEDED
+
+
+async def test_start_build_phase_recheck_during_build_phase(wfp: Workflow):
+    """A recheck during a build phase does nothing, and does not use up a number."""
+    handler, tracking = await make_recheck_handler(wfp)
+    await asyncio.wait_for(handler.start_build_phase(recheck=True), timeout=5.0)
+
+    assert wfp.getenv("STEPUP_STARTUP_I") == "1"
+    assert handler.reporter.calls == []
+    assert not handler.builder.resume.is_set()
+    async with wfp.db:
+        (n,) = wfp.db.execute("SELECT n FROM startup_counter").fetchone()
+        assert n == 1
+        assert tracking.get_state() == StepState.SUCCEEDED
+
+
+async def test_start_build_phase_recheck_without_watcher(wfp: Workflow):
+    """Without watch mode, a recheck does nothing."""
+    handler, _tracking = await make_recheck_handler(wfp)
+    handler.watcher = None
+    await asyncio.wait_for(handler.start_build_phase(recheck=True), timeout=5.0)
+
+    assert wfp.getenv("STEPUP_STARTUP_I") == "1"
+    assert handler.reporter.calls == []
+    assert not handler.builder.resume.is_set()
+
+
+@pytest.mark.parametrize("recheck_first", [True, False])
+async def test_start_build_phase_concurrent_calls(wfp: Workflow, monkeypatch, recheck_first):
+    """Two calls in one watch phase recheck at most once and never mark steps after a resume.
+
+    The second call finds the watch phase over once it gets its turn, and returns.
+    """
+    handler, _tracking = await make_recheck_handler(wfp)
+    resumed_when_marked = []
+    mark_step_pending = Workflow.mark_step_pending
+
+    def recording_mark_step_pending(self, step, *args, **kwargs):
+        resumed_when_marked.append(handler.builder.resume.is_set())
+        return mark_step_pending(self, step, *args, **kwargs)
+
+    monkeypatch.setattr(Workflow, "mark_step_pending", recording_mark_step_pending)
+    handler.watcher.busy_watching.set()
+    watcher_task = asyncio.create_task(handler.watcher.finish_watch_phase())
+    calls = [handler.start_build_phase(recheck=True), handler.start_build_phase()]
+    if not recheck_first:
+        calls.reverse()
+    await asyncio.wait_for(asyncio.gather(*calls), timeout=5.0)
+    await watcher_task
+
+    assert True not in resumed_when_marked
+    assert wfp.getenv("STEPUP_STARTUP_I") == ("2" if recheck_first else "1")
+    async with wfp.db:
+        (n,) = wfp.db.execute("SELECT n FROM startup_counter").fetchone()
+        assert n == (2 if recheck_first else 1)

@@ -1,0 +1,31 @@
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo "${STEPUP_STARTUP_I}" > shell_i.txt
+ SUCCESS │ echo "${STEPUP_STARTUP_I}" > shell_i.txt
+   START │ ./getstartup.py
+ SUCCESS │ ./getstartup.py
+   START │ tr a-z A-Z < input.txt > upper.txt
+ SUCCESS │ tr a-z A-Z < input.txt > upper.txt
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+ UPDATED │ input.txt
+   PHASE │ build
+   START │ tr a-z A-Z < input.txt > upper.txt
+ SUCCESS │ tr a-z A-Z < input.txt > upper.txt
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+ UPDATED │ STEPUP_STARTUP_I ='1' ➜ ='2'
+   PHASE │ build
+   START │ echo "${STEPUP_STARTUP_I}" > shell_i.txt
+ SUCCESS │ echo "${STEPUP_STARTUP_I}" > shell_i.txt
+   START │ ./getstartup.py
+ SUCCESS │ ./getstartup.py
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

@@ -1,0 +1,18 @@
+ STARTUP │ Watching 1 directory
+ UPDATED │ STEPUP_STARTUP_I ='1' ➜ ='2'
+ STARTUP │ Checking 3 file(s) for changes
+   PHASE │ build
+  NOSKIP │ ./getstartup.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest b80852d6 ➜ f8f87555, out_digest f84190bc ➜ (unset)
+Modified env var     STEPUP_STARTUP_I ='1' ➜ ='2'
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        getstartup.py
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+   START │ ./getstartup.py
+ SUCCESS │ ./getstartup.py
+DIRECTOR │ Ran 1 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ See you!

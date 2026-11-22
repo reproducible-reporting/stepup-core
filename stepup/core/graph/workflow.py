@@ -114,7 +114,8 @@ BEGIN
         );
 END;
 
--- The number of the latest start of the director, which steps see as `STEPUP_STARTUP_I`.
+-- The number of the latest start of the director or recheck,
+-- which steps see as `STEPUP_STARTUP_I`.
 -- The table holds at most one row, with i = 0.
 CREATE TABLE IF NOT EXISTS startup_counter (
     i INTEGER PRIMARY KEY CHECK (i = 0),
@@ -953,7 +954,8 @@ class Workflow(Trellis):
 
     Steps see these values, and `getenv` returns them,
     so they are also what is stored and hashed for the variables that a step tracks.
-    Complete this overlay before the first step starts, and never change it afterwards,
+    Complete this overlay before the first step starts.
+    Afterwards, only `assign_startup_i` changes it, and only while no step runs,
     because the environment of a step would otherwise disagree with what is stored and hashed.
     """
 
@@ -1021,17 +1023,18 @@ class Workflow(Trellis):
         """Give the current start of the director a number, exported as `STEPUP_STARTUP_I`.
 
         The number is stored in the database and put in `infra_env`.
-        With `increment=True`, it differs from the numbers of all earlier starts
+        With `increment=True`, it differs from the numbers of all earlier starts and rechecks
         for as long as the database is kept.
-        Call this once per start of the director, after `initialize()` and before the first step,
-        inside a transaction that is committed before any step runs.
+        Call this at every start of the director, after `initialize()` and before the first step,
+        and again for every recheck in the watch phase, while no step runs.
+        Call it inside a transaction that is committed before any step runs with the new number.
         A start that is killed has then used up its number,
         and the steps that ran with it run again at the next start.
 
         Parameters
         ----------
         increment
-            When False, the current start gets the number of the previous start,
+            When False, the number of the previous start or recheck is kept,
             so that no step that tracks `STEPUP_STARTUP_I` runs again merely because of it.
             A new database gets `1` either way.
 

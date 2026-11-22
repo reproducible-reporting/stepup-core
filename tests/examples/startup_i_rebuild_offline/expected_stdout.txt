@@ -1,0 +1,17 @@
+DIRECTOR │ Working offline, STEPUP_STARTUP_I stays at 1
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ echo "${STEPUP_STARTUP_I}" > startup_i.txt
+ SUCCESS │ echo "${STEPUP_STARTUP_I}" > startup_i.txt
+DIRECTOR │ Ran 2 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Working offline, STEPUP_STARTUP_I stays at 1
+   PHASE │ build
+DIRECTOR │ Ran 0 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

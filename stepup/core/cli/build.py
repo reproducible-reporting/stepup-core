@@ -188,8 +188,8 @@ def _add_build_parser(
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Work without access to remote data. "
-        "STEPUP_STARTUP_I keeps the value of the previous start, "
-        "so steps that run at every start keep their results. "
+        "STEPUP_STARTUP_I keeps its value, at startup and with 'stepup rebuild --recheck', "
+        "so the steps with recheck=True keep their results. "
         "Steps that run anyway find STEPUP_BUILD_OFFLINE=1 in their environment.",
     )
     group.add_argument(

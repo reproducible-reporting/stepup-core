@@ -27,6 +27,7 @@ from .builder import Builder
 from .executor import Executor
 from .reporter import ReporterClient
 from .scheduler import Scheduler
+from .startup import rescan_env_vars, update_startup_i
 from .watcher import Watcher
 
 __all__ = ("DirectorHandler",)
@@ -58,6 +59,19 @@ class DirectorHandler:
     builder: Builder = attrs.field(kw_only=True)
     watcher: Watcher | None = attrs.field(kw_only=True)
     stop_event: asyncio.Event = attrs.field(kw_only=True)
+    offline: bool = attrs.field(kw_only=True, default=False)
+    """Whether remote data cannot be reached, so that a recheck keeps `STEPUP_STARTUP_I`.
+
+    See `start_build_phase`.
+    """
+
+    _build_phase_lock: asyncio.Lock = attrs.field(init=False, factory=asyncio.Lock)
+    """Held by `start_build_phase` from its check for the watch phase until the builder resumes.
+
+    Two calls could otherwise both find the watch phase active,
+    and one could then mark steps pending while the builder already runs.
+    """
+
     _next_stop_level: StopLevel = attrs.field(init=False, default=StopLevel.INTERRUPT)
     """The stop level the next escalating `shutdown` delivers to running steps.
 
@@ -420,23 +434,36 @@ class DirectorHandler:
             await self._wait_for_change(path, self.watcher.deleted)
 
     @allow_rpc
-    async def start_build_phase(self) -> None:
+    async def start_build_phase(self, *, recheck: bool = False) -> None:
         """Leave the watch phase and build the steps made pending by the observed file changes.
+
+        Parameters
+        ----------
+        recheck
+            When True, `STEPUP_STARTUP_I` also gets a new value, as at a new start of the director,
+            so that the steps that track it run again in the build phase that follows.
+            When the director works offline, the value stays the same and a message says so.
 
         Notes
         -----
-        This has no effect during the build phase.
+        This has no effect during the build phase, also not with `recheck=True`.
         """
-        if self.watcher is None or not self.watcher.busy_watching.is_set():
-            return
-        async with self.db:
-            # Make all failed steps pending again for rerun.
-            for step in self.workflow.steps(StepState.FAILED):
-                self.workflow.mark_step_pending(step)
-        self.watcher.end_watching.set()
-        await wait_for_any_event(self.watcher.done_watching, self.stop_event)
-        self.scheduler.draining = False
-        self.builder.resume.set()
+        async with self._build_phase_lock:
+            if self.watcher is None or not self.watcher.busy_watching.is_set():
+                return
+            if recheck:
+                await update_startup_i(self.workflow, self.reporter, offline=self.offline)
+                await rescan_env_vars(self.workflow, self.reporter)
+            async with self.db:
+                # Make all failed steps pending again for rerun.
+                for step in self.workflow.steps(StepState.FAILED):
+                    self.workflow.mark_step_pending(step)
+            self.watcher.end_watching.set()
+            # `shutdown` and `interrupt` end the watch phase without taking the lock,
+            # and set `stop_event`, so this wait cannot hold the lock forever.
+            await wait_for_any_event(self.watcher.done_watching, self.stop_event)
+            self.scheduler.draining = False
+            self.builder.resume.set()
 
     @allow_rpc
     async def wait_and_shutdown(self) -> None:
