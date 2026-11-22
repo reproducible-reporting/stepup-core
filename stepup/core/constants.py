@@ -23,6 +23,7 @@ __all__ = (
     "RESERVED_ENV_VARS",
     "SQLLOG_CSV",
     "SQLLOG_JSON",
+    "STARTUP_I_ENV_VAR",
     "STEPUP_DIR",
     "SUCCESS_LOG",
     "WARNING_LOG",
@@ -88,12 +89,18 @@ their settings are recognized through their patched parsers,
 but the variables they use internally are not listed here.
 """
 
+STARTUP_I_ENV_VAR = "STEPUP_STARTUP_I"
+"""The environment variable with the number of the current start of the director.
+
+A step that depends on it runs again at every start, which is what `recheck=True` declares.
+"""
+
 INTERNAL_ENV_VARS = frozenset(
     {
         "STEPUP_DIRECTOR_SOCKET",
         "STEPUP_JOB_I",
         "STEPUP_REPORTER_SOCKET",
-        "STEPUP_STARTUP_I",
+        STARTUP_I_ENV_VAR,
         "STEPUP_STEP_INP_DIGEST",
         "STEPUP_STEP_NEED",
     }

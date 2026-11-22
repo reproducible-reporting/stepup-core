@@ -589,8 +589,11 @@ the internal environment variables described above.
     because even if `STEPUP_STARTUP_I` remains the same, a step may run for other reasons,
     such as a changed input or a failure in a previous run.
 
-    Declare the dependency with `env="STEPUP_STARTUP_I"` when the step is defined,
-    or with [`getenv("STEPUP_STARTUP_I")`][stepup.core.api.getenv] from inside the step.
+    Declare the dependency with `recheck=True` when the step is defined,
+    or with [`amend(recheck=True)`][stepup.core.api.amend] from inside the step.
+    This is equivalent to depending on the variable,
+    with `env="STEPUP_STARTUP_I"` or with [`getenv("STEPUP_STARTUP_I")`][stepup.core.api.getenv],
+    which is how `recheck` works.
 
     A step must not use the value of `STEPUP_STARTUP_I` for anything.
     It is only allowed to declare a dependency on it.

@@ -1,6 +1,6 @@
 ---
 description: >-
-  Make a step run at every start of StepUp with STEPUP_STARTUP_I,
+  Make a step run at every start of StepUp with recheck=True,
   so that it can exchange data with a resource other than files on disk or in environment variables.
 ---
 
@@ -17,7 +17,7 @@ However, sometimes a workflow needs to receive such data, or send it.
 StepUp's workaround is to run certain steps unconditionally,
 even if their visible dependencies did not change,
 so the step itself can interact with the remote resource and act when needed.
-This tutorial shows how to make a step run at every start.
+This tutorial shows how to make a step run at every start with `recheck=True`.
 
 This feature of StepUp is mainly for developers of extension packages,
 such as [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/).
@@ -35,17 +35,33 @@ Some smaller use cases are described in [Non-Remote Examples](#non-remote-exampl
     This means that interaction with remote resources must sit at the edges of a workflow:
     initial data coming in or final data going out.
 
-## The Variable `STEPUP_STARTUP_I`
+## Running a Step at Every Start
 
-The director sets the environment variable `STEPUP_STARTUP_I` for every step it runs.
-Its value is a unique integer every time the director starts.
-A step can depend on this variable like on any other one,
-as explained in the tutorial on [Environment Variables](environment_variables.md):
-with `env="STEPUP_STARTUP_I"` when the step is defined,
-or with [`getenv("STEPUP_STARTUP_I")`][stepup.core.api.getenv] from inside the step.
+Pass `recheck=True` when a step is defined to make it run at every start of StepUp:
+
+```python
+run("./download.py", out="data.txt", recheck=True)
+```
+
+A step that finds out only while it runs that it must be checked at every start,
+calls [`amend(recheck=True)`][stepup.core.api.amend].
+The functions [`step()`][stepup.core.api.step], [`run()`][stepup.core.api.run],
+[`plan()`][stepup.core.api.plan], [`script()`][stepup.core.api.script]
+and [`call()`][stepup.core.api.call] all accept `recheck`.
+Like any other step, a step with `recheck=True` only runs when it is needed
+and when its inputs are available.
+In watch mode, it does not run again in later build phases of the same director.
+
+This works through an environment variable.
+The director sets `STEPUP_STARTUP_I` for every step it runs,
+with a unique integer every time the director starts.
+A step with `recheck=True` depends on this variable like on any other one,
+as explained in the tutorial on [Environment Variables](environment_variables.md).
 At every start, StepUp finds a new value of the variable,
 so it runs such a step again instead of skipping it.
-Like any other step, it only runs when it is needed and when its inputs are available.
+Writing `env="STEPUP_STARTUP_I"` or calling
+[`getenv("STEPUP_STARTUP_I")`][stepup.core.api.getenv] from inside the step
+declares the same dependency, but `recheck=True` states the intent more clearly.
 In watch mode, the value stays the same for the lifetime of the director,
 so the step does not run again in later build phases because of this variable.
 
@@ -263,7 +279,7 @@ asks every extension package to honor `STEPUP_BUILD_OFFLINE` in this way.
 
 ## Non-Remote Examples
 
-While `STEPUP_STARTUP_I` is primarily intended for handling remote data,
+While `recheck=True` is primarily intended for handling remote data,
 it has other convenient uses.
 
 ### Git Version
@@ -278,9 +294,9 @@ Because `git describe` is fast, a simpler solution is to run it at every start:
 ```python
 run(
     "git describe --tags --always --dirty > git-version.txt",
-    env="STEPUP_STARTUP_I",
     shell=True,
     out="git-version.txt",
+    recheck=True,
 )
 ```
 
@@ -307,9 +323,9 @@ For the CPU, this can be done as follows:
 ```python
 run(
     "lscpu --hierarchic=always | grep -v 'CPU(s) scaling MHz' > cpu.txt",
-    env="STEPUP_STARTUP_I",
     shell=True,
     out="cpu.txt",
+    recheck=True,
 )
 ```
 
@@ -356,9 +372,9 @@ you can still record its version at every start, e.g. with:
 ```python
 run(
     "typst --version > typst-version.txt",
-    env="STEPUP_STARTUP_I",
     shell=True,
     out="typst-version.txt",
+    recheck=True,
 )
 ```
 

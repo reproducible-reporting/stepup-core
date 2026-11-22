@@ -49,6 +49,7 @@ so a step whose behaviour genuinely varies (on wall-clock time, on undeclared
 environment state) will legitimately produce a different graph.
 What must never vary is the graph produced by the *same* inputs and code.
 The declared way for a step to vary between builds is to track `STEPUP_STARTUP_I`,
+spelled `recheck=True` in the API,
 which the director sets to a new integer at every start (`Workflow.assign_startup_i`),
 except with `--offline`, which keeps the value of the previous start.
 Such a step runs at every start and may read what StepUp does not track, such as a remote,

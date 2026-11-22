@@ -33,7 +33,7 @@ from stepup.core.api import (
     step,
     subs_env_vars,
 )
-from stepup.core.constants import DIRECTOR_SOCKET_SENTINEL
+from stepup.core.constants import DIRECTOR_SOCKET_SENTINEL, STARTUP_I_ENV_VAR
 from stepup.core.exceptions import AmendWhileHoldingError, PathError, StepUpError
 from stepup.core.nglob import NamedGlob
 from stepup.core.path import Path, make_path_out
@@ -1128,3 +1128,128 @@ def test_step_rejects_dir_inp_spelled_with_trailing_slash():
     """A directory input is rejected on its spelling, also when it does not exist yet."""
     with pytest.raises(PathError, match="Directories are not allowed"):
         step("cat missing/", inp="missing/")
+
+
+@attrs.define
+class _CaptureAmendClient(DummySyncRPCClient):
+    """A dummy RPC client that records the arguments of the `amend_step` call."""
+
+    calls: list = attrs.field(factory=list)
+
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+        if name == "amend_step":
+            self.calls.append(args)
+            return True
+        return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
+
+
+@pytest.fixture
+def define_step_client(monkeypatch):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    client = _CaptureDefineStepClient()
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
+    return client
+
+
+@pytest.fixture
+def amend_step_client(monkeypatch):
+    monkeypatch.setattr(api, "_AMEND_HISTORY", {key: set() for key in api._AMEND_HISTORY})
+    monkeypatch.setattr(api, "get_job_i", lambda: 1)
+    client = _CaptureAmendClient()
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
+    return client
+
+
+def test_startup_i_env_var_name():
+    assert STARTUP_I_ENV_VAR == "STEPUP_STARTUP_I"
+
+
+def test_step_recheck(define_step_client):
+    info = step("./script.py", env="FOO", recheck=True)
+    assert info.env == ["FOO", "STEPUP_STARTUP_I"]
+    assert define_step_client.calls[0][3] == ["FOO", "STEPUP_STARTUP_I"]
+
+
+def test_step_recheck_default_off(define_step_client):
+    info = step("./script.py")
+    assert info.env == []
+    assert define_step_client.calls[0][3] == []
+
+
+def test_step_recheck_equals_env(define_step_client):
+    info_recheck = step("./script.py", recheck=True)
+    info_env = step("./script.py", env="STEPUP_STARTUP_I")
+    assert info_recheck.env == info_env.env == ["STEPUP_STARTUP_I"]
+    assert define_step_client.calls[0][3] == define_step_client.calls[1][3]
+
+
+def test_step_recheck_and_env_no_duplicate(define_step_client):
+    info = step("./script.py", env="STEPUP_STARTUP_I", recheck=True)
+    assert info.env == ["STEPUP_STARTUP_I"]
+    assert define_step_client.calls[0][3] == ["STEPUP_STARTUP_I"]
+
+
+def test_step_recheck_env_overrides_overlap():
+    with pytest.raises(StepUpError, match="cannot be both an env dependency and an env_overrides"):
+        step("./script.py", recheck=True, env_overrides={"STEPUP_STARTUP_I": "1"})
+
+
+def test_run_forwards_recheck(captured_step_kwargs):
+    run("echo hello", recheck=True)
+    assert captured_step_kwargs[-1]["recheck"] is True
+    run("echo hello")
+    assert captured_step_kwargs[-1]["recheck"] is False
+
+
+def test_plan_forwards_recheck(captured_step_kwargs):
+    plan("./plan.py", recheck=True)
+    assert captured_step_kwargs[-1]["recheck"] is True
+    plan("./plan.py")
+    assert captured_step_kwargs[-1]["recheck"] is False
+
+
+def test_script_forwards_recheck(captured_step_kwargs):
+    script("./script.py", recheck=True)
+    assert captured_step_kwargs[-1]["recheck"] is True
+    script("./script.py")
+    assert captured_step_kwargs[-1]["recheck"] is False
+
+
+def test_call_forwards_recheck(captured_step_kwargs):
+    call("./f.py", "main", recheck=True)
+    assert captured_step_kwargs[-1]["recheck"] is True
+    call("./f.py", "main")
+    assert captured_step_kwargs[-1]["recheck"] is False
+
+
+def test_call_recheck_not_in_function_arguments(captured_step_kwargs):
+    call("./f.py", "main", recheck=True, x=1)
+    command = captured_step_kwargs[-1]["command"]
+    assert '"x": 1' in command
+    assert "recheck" not in command
+
+
+def test_amend_recheck(amend_step_client):
+    amend(recheck=True)
+    assert len(amend_step_client.calls) == 1
+    _job_i, tr_inp, env_deps, tr_out, tr_vol = amend_step_client.calls[0]
+    assert (tr_inp, env_deps, tr_out, tr_vol) == (set(), ["STEPUP_STARTUP_I"], set(), set())
+
+
+def test_amend_recheck_and_env_no_duplicate(amend_step_client):
+    amend(env=["FOO", "STEPUP_STARTUP_I"], recheck=True)
+    assert amend_step_client.calls[0][2] == ["FOO", "STEPUP_STARTUP_I"]
+
+
+def test_amend_recheck_repeated(amend_step_client):
+    amend(recheck=True)
+    amend(recheck=True)
+    amend(env="STEPUP_STARTUP_I")
+    assert len(amend_step_client.calls) == 1
+
+
+def test_amend_recheck_does_not_raise_while_holding(monkeypatch, amend_step_client):
+    """`amend(recheck=True)` is like an `env`-only amend, so it is allowed inside `hold()`."""
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    amend(recheck=True)
+    assert len(amend_step_client.calls) == 1

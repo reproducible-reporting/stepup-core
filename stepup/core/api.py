@@ -58,6 +58,7 @@ from .constants import (
     DIRECTOR_SOCKET_SENTINEL,
     RENDER_JINJA_MODES,
     RESERVED_ENV_VARS,
+    STARTUP_I_ENV_VAR,
 )
 from .enums import Need
 from .exceptions import (
@@ -378,6 +379,7 @@ def step(
     *,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
+    recheck: bool = False,
     out: Iterable[StrPath] | StrPath = (),
     vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
@@ -414,6 +416,12 @@ def step(
         Environment variable(s) to which the step is sensitive.
         If they change, or when they are (un)defined, the step digest will change,
         such that the step cannot be skipped.
+    recheck
+        When `True`, the step runs at every start of StepUp, except with `offline`,
+        so it can look at something that StepUp does not see, such as a remote server.
+        This is equivalent to depending on the environment variable `STEPUP_STARTUP_I`,
+        see [its reference](../reference/configuration.md#environment-variables-in-step-execution)
+        and the [Remote Data](../advanced_topics/remote_data.md) tutorial.
     out
         File(s) created by the step.
         Relative paths are assumed to be relative to `workdir`.
@@ -498,6 +506,9 @@ def step(
     # because a callable command is built from the substituted paths.
     inp_paths = coerce_paths(inp)
     env_deps = as_list(env)
+    if recheck and STARTUP_I_ENV_VAR not in env_deps:
+        # Added before the validation of `env_overrides`, so that a collision is detected too.
+        env_deps.append(STARTUP_I_ENV_VAR)
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
 
@@ -606,6 +617,7 @@ def call(
     *,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
+    recheck: bool = False,
     out: Iterable[StrPath] | StrPath = (),
     vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
@@ -634,6 +646,9 @@ def call(
         Also forwarded to the function as `inp`.
     env
         Names of environment variables the step depends on.
+    recheck
+        See [`step()`][stepup.core.api.step] for more information.
+        This parameter is not forwarded to the function.
     out
         Files declared as outputs of this step. Normalized to `list[str]`.
         Also forwarded to the function as `out`.
@@ -749,6 +764,7 @@ def call(
         out=su_out_paths,
         vol=vol,
         env=env,
+        recheck=recheck,
         workdir=su_workdir,
         need=need,
         resources=resources,
@@ -893,6 +909,7 @@ def amend(
     *,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
+    recheck: bool = False,
     out: Iterable[StrPath] | StrPath = (),
     vol: Iterable[StrPath] | StrPath = (),
 ) -> None:
@@ -908,6 +925,11 @@ def amend(
         Environment variables to which the step is sensitive.
         If they change, or when they are (un)defined, the step digest will change,
         such that the step cannot be skipped.
+    recheck
+        When `True`, the step runs at every start of StepUp, except with `offline`.
+        See [`step()`][stepup.core.api.step] for more information.
+        This allows a step to ask for a recheck from the inside,
+        after it has found out that it looks at something that StepUp does not see.
     out
         Files created by the step.
         Relative paths are relative to the current working directory.
@@ -933,9 +955,9 @@ def amend(
         This holds even for an input that would have resolved instantly and harmlessly:
         the check does not look at whether the input is actually available,
         only at whether the calling step is holding.
-        `env`, `out`, and `vol` are never involved in this check:
+        `env`, `recheck`, `out`, and `vol` are never involved in this check:
         unlike `inp`, none of them can depend on a held-back step's output,
-        so an `env`/`out`/`vol`-only amend can never deadlock and is always allowed,
+        so an `env`/`recheck`/`out`/`vol`-only amend can never deadlock and is always allowed,
         even while holding.
         Move the code that calls `amend(inp=...)` before entering the `with hold():` block instead.
 
@@ -967,6 +989,8 @@ def amend(
     # Pre-process the arguments for the Director process.
     inp_paths = coerce_paths(inp)
     env_deps = as_list(env)
+    if recheck:
+        env_deps.append(STARTUP_I_ENV_VAR)
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_deps, out_paths, vol_paths]):
@@ -1178,6 +1202,7 @@ def run(
     *,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
+    recheck: bool = False,
     out: Iterable[StrPath] | StrPath = (),
     vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
@@ -1251,7 +1276,7 @@ def run(
         which does not exist yet when the callable is called.
         This is also what one wants, since the executable already appears in the command itself.
         (The returned `step_info.inp` does include the executable.)
-    inp, env, out, vol, workdir, optional, resources, duration
+    inp, env, recheck, out, vol, workdir, optional, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
     Returns
@@ -1271,6 +1296,7 @@ def run(
         command,
         inp=inp_paths,
         env=env,
+        recheck=recheck,
         out=out_paths,
         vol=vol_paths,
         workdir=workdir,
@@ -1287,6 +1313,7 @@ def plan(
     *,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
+    recheck: bool = False,
     out: Iterable[StrPath] | StrPath = (),
     vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
@@ -1343,7 +1370,7 @@ def plan(
         which does not exist yet when the callable is called.
         This is also what one wants, since the executable already appears in the command itself.
         (The returned `step_info.inp` does include the executable.)
-    inp, env, out, vol, workdir, resources, duration
+    inp, env, recheck, out, vol, workdir, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
     Returns
@@ -1361,6 +1388,7 @@ def plan(
         command,
         inp=inp_paths,
         env=env,
+        recheck=recheck,
         out=out_paths,
         vol=vol_paths,
         workdir=workdir,
@@ -1516,6 +1544,7 @@ def script(
     step_info: StrPath | None = None,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
+    recheck: bool = False,
     out: Iterable[StrPath] | StrPath = (),
     vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
@@ -1544,7 +1573,7 @@ def script(
         are written to this `step_info` file.
         (See [stepup.core.stepinfo][] module for the file format.)
         This filename is relative to the work directory.
-    inp, env, out, vol, workdir, optional, resources, duration
+    inp, env, recheck, out, vol, workdir, optional, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
     Returns
@@ -1554,7 +1583,7 @@ def script(
 
     Notes
     -----
-    - The arguments `inp`, `env`, `out` and `vol` are rarely needed for script steps.
+    - The arguments `inp`, `env`, `recheck`, `out` and `vol` are rarely needed for script steps.
       They only apply to the plan stage of the script, not the run stage.
     - The `inp` argument may be useful when the planning is configured by some input files.
     - The `optional` argument never applies to the plan stage,
@@ -1579,6 +1608,7 @@ def script(
         command,
         inp=inp,
         env=env,
+        recheck=recheck,
         out=out,
         vol=vol,
         workdir=workdir,

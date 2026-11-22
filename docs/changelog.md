@@ -19,6 +19,14 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+### Added
+
+- The functions `step()`, `run()`, `plan()`, `script()`, `call()` and `amend()`
+  accept `recheck=True` to make a step run at every start of StepUp (except with `offline`).
+  This is a clearer spelling of a dependency on `STEPUP_STARTUP_I`,
+  which keeps working and means the same.
+  See [Remote Data](advanced_topics/remote_data.md#running-a-step-at-every-start).
+
 ### Changed
 
 - `STEPUP_DIRECTOR_I`, introduced in 4.2.0rc1, is renamed to `STEPUP_STARTUP_I`,

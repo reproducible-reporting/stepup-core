@@ -96,6 +96,8 @@ Passing a keyword argument that the function does not declare raises a `TypeErro
 so typos in argument names are caught at execution time rather than silently ignored.
 The only exceptions are `inp` and `out`, which are silently dropped when absent
 from the function's signature, since many functions do not need both.
+The other parameters of `call()` itself, such as `env`, `recheck`, `vol` and `workdir`,
+configure the step and are never forwarded to the function.
 
 ```python
 # plan.py: pass a threshold to the run function

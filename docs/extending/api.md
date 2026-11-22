@@ -259,7 +259,7 @@ Use them when an API function exchanges paths with the director on the user's be
 A step that downloads or uploads data depends on a remote server, which StepUp does not watch.
 The [Remote Data](../advanced_topics/remote_data.md) tutorial explains how such a step works.
 An extension package that defines such a step
-adds `env="STEPUP_STARTUP_I"` in the API function that defines it,
+passes `recheck=True` in the API function that defines it,
 so that the step runs at every start of StepUp,
 see [`STEPUP_STARTUP_I`](../reference/configuration.md#environment-variables-in-step-execution).
 The step then follows the
@@ -283,7 +283,7 @@ from stepup.core.api import run, shq
 
 
 def download(url: str, dst: str):
-    return run(f"my-download {shq(url)} {shq(dst)}", out=dst, env="STEPUP_STARTUP_I")
+    return run(f"my-download {shq(url)} {shq(dst)}", out=dst, recheck=True)
 ```
 
 The console script `my-download` (see [Console Scripts](console_scripts.md)) starts as follows:

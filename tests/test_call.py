@@ -49,6 +49,7 @@ def captured(monkeypatch):
         *,
         inp=(),
         env=(),
+        recheck=False,
         out=(),
         vol=(),
         workdir="./",
