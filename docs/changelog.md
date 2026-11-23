@@ -19,6 +19,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.3.0a0][] - 2026-11-23 {: #v4.3.0a0 }
+
 ### Added
 
 - Extension packages register the `STEPUP_*` environment variables they read
@@ -2014,6 +2018,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.3.0a0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.3.0a0
 [4.2.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0
 [4.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0
 [4.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.3
