@@ -15,10 +15,18 @@ on:
       # ... and only if relevant files have changed.
       # This list must be consistent with MANIFEST.in.
       - stepup/**
+      - '!**/CLAUDE.md'
+      - '!**/snipwise.md'
+      - '!**/.gitattributes'
       - pyproject.toml
       - LICENSE
+      - LICENSES/**
       - MANIFEST.in
       - README.md
+      - CONTRIBUTING.md
+      - CITATION.cff
+      - REUSE.toml
+      - .zenodo.json
       - .github/workflows/release.yaml
 
 env:

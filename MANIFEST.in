@@ -9,6 +9,7 @@ prune .vscode
 prune asciinema
 prune docs
 prune overrides
+prune tools
 exclude .editorconfig
 exclude .gitignore
 exclude .markdownlint-cli2.jsonc
@@ -20,3 +21,6 @@ prune tests
 
 # Exclude common build artifacts and cache files
 global-exclude *.py[cod] __pycache__ *.so
+
+# Exclude development files
+global-exclude CLAUDE.md snipwise.md .gitattributes
