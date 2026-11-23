@@ -34,6 +34,7 @@ if sys.platform == "win32":
     from .platform.winapi import JobObject
 
 __all__ = (
+    "EXAMPLE_TIMEOUT",
     "GRAPH_OUTPUT",
     "OUTPUT_RULES",
     "REPORTER_OUTPUT",

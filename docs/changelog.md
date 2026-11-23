@@ -19,7 +19,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Added
+
+- `EXAMPLE_TIMEOUT` in `stepup.core.pytest` is now part of the import contract (`__all__`),
+  so extension packages can use it in their tests of the integration examples.
 
 ## [4.2.0rc4][] - 2026-11-22 {: #v4.2.0rc4 }
 
