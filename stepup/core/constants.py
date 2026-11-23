@@ -5,7 +5,6 @@
 from .path import Path
 
 __all__ = (
-    "CORE_ENV_VARS",
     "DIRECTOR_LOG",
     "DIRECTOR_LOG_DESCRIPTION",
     "DIRECTOR_LOG_PID_PREFIX",
@@ -14,7 +13,6 @@ __all__ = (
     "DIRECTOR_SOCKET_SENTINEL",
     "FAIL_LOG",
     "GRAPH_DB",
-    "INTERNAL_ENV_VARS",
     "JOBLOG_CSV",
     "PERF_DATA",
     "PLAN_PY",
@@ -60,51 +58,6 @@ DIRECTOR_SOCKET_SENTINEL = "_invalid_socket_for_director_process_"
 # The delimiter styles supported by the `render-jinja` console script,
 # in the order in which they are shown to the user.
 RENDER_JINJA_MODES = ("auto", "plain", "latex")
-
-CORE_ENV_VARS = frozenset(
-    {
-        "STEPUP_DEBUG",
-        "STEPUP_MAX_OUTPUT_SIZE",
-        "STEPUP_PATH_FILTER",
-        "STEPUP_ROOT",
-        "STEPUP_RPC_TRANSPORT",
-        "STEPUP_SHELL",
-        "STEPUP_SYNC_RPC_TIMEOUT",
-        "STEPUP_WATCHER",
-        "STEPUP_WATCHER_RECURSIVE",
-    }
-)
-"""The variables StepUp Core acts on without a subcommand defining a setting for them.
-
-Maintained by hand, together with `INTERNAL_ENV_VARS`:
-nothing derives either set from the places that read these variables,
-which `test_env_vars_are_classified` guards against.
-A variable with the prefix that is in neither set nor in
-`ConfigLoader.recognized_env_vars` does nothing,
-which is how a typo in a variable name becomes visible.
-
-Extension packages are not covered:
-their settings are recognized through their patched parsers,
-but the variables they use internally are not listed here.
-"""
-
-INTERNAL_ENV_VARS = frozenset(
-    {
-        "STEPUP_DIRECTOR_SOCKET",
-        "STEPUP_JOB_I",
-        "STEPUP_REPORTER_SOCKET",
-        "STEPUP_STARTUP_I",
-        "STEPUP_STEP_INP_DIGEST",
-        "STEPUP_STEP_NEED",
-    }
-)
-"""The variables that StepUp sets itself for the subprocesses it starts.
-
-Whatever the environment holds for one of these is overwritten before a step sees it,
-so setting one by hand configures nothing and is most likely a mistake.
-`stepup config` therefore lists them in a group of their own,
-apart from the variables that nothing reads at all.
-"""
 
 # Seconds over which updates of the progress display are coalesced.
 PROGRESS_REFRESH_DELAY = 0.3

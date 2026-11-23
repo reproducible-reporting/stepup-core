@@ -50,7 +50,8 @@ Reinstall the development version with:
 uv sync --extra dev
 ```
 
-This is needed after changing the `stepup.tools` entry points in `pyproject.toml`,
+This is needed after changing the `stepup.tools` or `stepup.env_vars` entry points
+in `pyproject.toml`,
 because subcommands are looked up through the installed package metadata,
 so a renamed or added subcommand is invisible until the environment is synced.
 

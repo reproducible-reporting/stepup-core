@@ -74,6 +74,7 @@ nav = [
   { "Reference" = [
     "reference/stepup.core.api.md",
     "reference/stepup.core.call.md",
+    "reference/stepup.core.env_vars.md",
     "reference/stepup.core.exceptions.md",
     "reference/stepup.core.extapi.md",
     "reference/stepup.core.nglob.md",
@@ -89,6 +90,7 @@ nav = [
     "extending/api.md",
     "extending/console_scripts.md",
     "extending/tool.md",
+    "extending/env_vars.md",
   ] },
   { "Deprecated" = [
     "deprecated/introduction.md",

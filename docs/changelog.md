@@ -19,7 +19,35 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Added
+
+- Extension packages register the `STEPUP_*` environment variables they read
+  with an entry point in the new `stepup.env_vars` group,
+  which returns an `EnvVarRegistry` from the new module `stepup.core.env_vars`.
+  `stepup config` lists the variables of each package in a group of its own,
+  instead of listing them as unrecognized,
+  and reports a value that the package cannot use on the line of the variable.
+  It also reports a broken registration, e.g. a variable whose name does not start
+  with `STEPUP_` followed by the name of the entry point.
+  See [Environment Variables](extending/env_vars.md).
+- `stepup config` checks the values of the environment variables of StepUp Core,
+  such as `STEPUP_WATCHER` and `STEPUP_SYNC_RPC_TIMEOUT`,
+  and suggests a known name for an unrecognized `STEPUP_*` variable that is close to it.
+
+### Changed
+
+- `stepup config` no longer prints the value of an environment variable
+  unless it is the variable of a setting or a package registered it as not secret.
+  Every other value, including that of an unrecognized `STEPUP_*` variable,
+  is shown as `<set, hidden>`,
+  because a misspelled name may hold a secret.
+  See [Unrecognized Environment Variables](reference/configuration.md#unrecognized-environment-variables).
+
+### Removed
+
+- `CORE_ENV_VARS` and `INTERNAL_ENV_VARS` are removed from `stepup.core.constants`.
+  The variables of StepUp Core are registered like those of an extension,
+  with `overridden=True` for the variables that StepUp sets for every step.
 
 ## [4.2.0][] - 2026-11-23 {: #v4.2.0 }
 

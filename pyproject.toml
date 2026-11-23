@@ -102,6 +102,9 @@ stepup = "stepup.core.__main__:main"
 sb = "stepup.core.__main__:sb_main"
 sc-render-jinja = "stepup.core.render_jinja:main"
 
+[project.entry-points."stepup.env_vars"]
+core = "stepup.core.cli.env_vars_loader:core_env_vars"
+
 [project.entry-points."stepup.tools"]
 boot = "stepup.core.cli.build:add_boot_subcommand"
 browse = "stepup.core.cli.browse:add_browse_subcommand"

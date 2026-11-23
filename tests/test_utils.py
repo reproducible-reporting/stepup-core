@@ -9,7 +9,7 @@ import sys
 
 import pytest
 
-from stepup.core.exceptions import NotARegularFileError
+from stepup.core.exceptions import NotARegularFileError, StepUpError
 from stepup.core.platform.popen import _resolve_interpreter, popen_args
 from stepup.core.utils import (
     escape_control_chars,
@@ -17,6 +17,7 @@ from stepup.core.utils import (
     format_subprocess,
     merge_resources,
     open_regular_file,
+    parse_path_filter,
     parse_resources,
     truncate_output,
 )
@@ -248,3 +249,14 @@ def test_open_regular_file_regular(path_tmp):
 def test_open_regular_file_missing(path_tmp):
     with pytest.raises(FileNotFoundError):
         open_regular_file(path_tmp / "missing", os.O_RDONLY)
+
+
+def test_parse_path_filter():
+    text = os.pathsep.join(["-venv", "", "+/abs/data", "+"])
+    assert parse_path_filter(text) == [(False, "venv"), (True, "/abs/data"), (True, "")]
+    assert parse_path_filter("") == []
+
+
+def test_parse_path_filter_rejects():
+    with pytest.raises(StepUpError, match="Invalid filter item: data"):
+        parse_path_filter(os.pathsep.join(["+.", "data"]))

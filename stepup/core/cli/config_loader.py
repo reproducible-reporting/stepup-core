@@ -97,6 +97,7 @@ __all__ = (
     "ConfigProblem",
     "ConfigValue",
     "format_config_problems",
+    "format_hint",
     "print_config_problems",
 )
 
@@ -145,7 +146,7 @@ def _expected_value(section_path: str) -> str:
     return f"'{section_path}' is configured as a section, but a value is expected"
 
 
-def _hint(suggestions: list[str]) -> str:
+def format_hint(suggestions: list[str]) -> str:
     """Turn the suggestions for a mistyped name into a suffix for an error message.
 
     Parameters
@@ -174,10 +175,10 @@ def _hint(suggestions: list[str]) -> str:
 class ConfigLocation:
     """A place in the configuration, at whatever granularity is known.
 
-    A location is one of four things:
+    A location is one of five things:
     an environment variable, a config file, a section of a config file,
-    or a setting of a config file.
-    The four constructors say which, so that a call site does not have to spell out
+    a setting of a config file, or an entry point of a package that registers variables.
+    The five constructors say which, so that a call site does not have to spell out
     the fields that do not apply.
     Locations are hashable, so `config` can key the lines it renders by the location
     they show, and look up the location of a problem to display it on its own line.
@@ -185,7 +186,8 @@ class ConfigLocation:
     Raises
     ------
     ConsistencyError
-        When neither `path` nor `env_var` is given, which leaves the location nameless.
+        When none of `path`, `env_var` and `entry_point` is given,
+        which leaves the location nameless.
     """
 
     path: Path | None = attrs.field(default=None, converter=attrs.converters.optional(Path))
@@ -200,14 +202,22 @@ class ConfigLocation:
     env_var: str | None = attrs.field(default=None)
     """The environment variable, `None` for a config file."""
 
+    entry_point: str | None = attrs.field(default=None)
+    """The entry point as written in the package metadata, e.g. `fancy = mod:func`."""
+
     def __attrs_post_init__(self) -> None:
-        if self.path is None and self.env_var is None:
-            raise ConsistencyError("Config location without path or env var.")
+        if self.path is None and self.env_var is None and self.entry_point is None:
+            raise ConsistencyError("Config location without path, env var or entry point.")
 
     @classmethod
     def of_env(cls, env_var: str) -> "ConfigLocation":
         """Locate an environment variable."""
         return cls(env_var=env_var)
+
+    @classmethod
+    def of_entry_point(cls, entry_point: str) -> "ConfigLocation":
+        """Locate an entry point, written as `name = value`."""
+        return cls(entry_point=entry_point)
 
     @classmethod
     def of_file(cls, path: Path) -> "ConfigLocation":
@@ -225,8 +235,12 @@ class ConfigLocation:
         return cls(path=path, section=section, key=key)
 
     def __str__(self) -> str:
-        """The config file or environment variable to look at."""
-        return f"${self.env_var}" if self.env_var is not None else str(short_path(self.path))
+        """The config file, environment variable or entry point to look at."""
+        if self.env_var is not None:
+            return f"${self.env_var}"
+        if self.entry_point is not None:
+            return f"entry point '{self.entry_point}'"
+        return str(short_path(self.path))
 
 
 @attrs.define(frozen=True)
@@ -909,7 +923,8 @@ class ConfigLoader:
                     )
                 else:
                     matches = difflib.get_close_matches(key, sections)
-                    detail = f"unknown section [{section_path}]{_hint([repr(m) for m in matches])}"
+                    hint = format_hint([repr(m) for m in matches])
+                    detail = f"unknown section [{section_path}]{hint}"
                 problems.append(ConfigProblem(detail, ConfigLocation.of_section(path, key)))
         return problems
 
@@ -949,7 +964,7 @@ class ConfigLoader:
                 suggestions.append(repr(match))
             else:
                 suggestions.append(f"{match!r} {self._join_section_phrases(path, match_owners)}")
-        return _hint(suggestions)
+        return format_hint(suggestions)
 
     def _sections_defining(self, key: str) -> set[str | None]:
         """Return the sections in which `key` is a supported setting.

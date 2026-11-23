@@ -13,6 +13,7 @@ from .watchfiles import WatchfilesBackend, select_recursive_watch
 
 __all__ = (
     "import_backend_class",
+    "parse_watcher_backend",
     "select_watcher_backend",
 )
 
@@ -41,16 +42,37 @@ def select_watcher_backend() -> str:
         if the selected library is not installed,
         or if `STEPUP_WATCHER_RECURSIVE` is invalid while `watchfiles` is selected.
     """
-    choices = ("asyncinotify", "watchfiles") if sys.platform == "linux" else ("watchfiles",)
-    backend = os.environ.get("STEPUP_WATCHER", "") or choices[0]
-    if backend not in choices:
-        raise ConfigError(
-            f"STEPUP_WATCHER must be {' or '.join(choices)} on {sys.platform}, got {backend!r}."
-        )
+    try:
+        backend = parse_watcher_backend(os.environ.get("STEPUP_WATCHER", ""))
+    except ValueError as exc:
+        raise ConfigError(f"STEPUP_WATCHER {exc}.") from exc
     if importlib.util.find_spec(backend) is None:
         raise ConfigError(f"Watch mode needs the {backend} library, which is not installed.")
     if backend == "watchfiles":
         select_recursive_watch()
+    return backend
+
+
+def parse_watcher_backend(value: str) -> str:
+    """Interpret a value of `STEPUP_WATCHER`, of which an empty one selects the default.
+
+    Whether the selected library is installed is not checked here.
+
+    Returns
+    -------
+    backend
+        The name of the library, `asyncinotify` or `watchfiles`.
+
+    Raises
+    ------
+    ValueError
+        If `value` names a library that cannot be used on this platform.
+        The message does not name the variable.
+    """
+    choices = ("asyncinotify", "watchfiles") if sys.platform == "linux" else ("watchfiles",)
+    backend = value or choices[0]
+    if backend not in choices:
+        raise ValueError(f"must be {' or '.join(choices)} on {sys.platform}, got {backend!r}")
     return backend
 
 

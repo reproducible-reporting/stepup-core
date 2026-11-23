@@ -5,6 +5,7 @@
 import asyncio
 import concurrent.futures
 import hashlib
+import importlib.metadata
 import os
 import socket
 import subprocess
@@ -16,6 +17,7 @@ from typing import Self, TypeVar
 import attrs
 import pytest
 
+import stepup.core.cli.env_vars_loader
 from stepup.core.enums import HashUpdateCause
 from stepup.core.exceptions import CyclicError
 from stepup.core.graph.file import File
@@ -314,3 +316,26 @@ def call_with_fifo_guard(fifo: str, func: Callable[..., T], *args) -> T:
             finally:
                 os.close(fd_read)
             pytest.fail(f"Waited more than {FIFO_DEADLINE} s for the other side of {fifo}")
+
+
+def add_env_var_entry_points(monkeypatch: pytest.MonkeyPatch, extra: dict[str, str]) -> None:
+    """Make `stepup config` find more entry points in the `stepup.env_vars` group.
+
+    Parameters
+    ----------
+    monkeypatch
+        The fixture that undoes the change at the end of the test.
+    extra
+        The entry points to add to those that are installed, as `{name: "module:callable"}`.
+    """
+    real = importlib.metadata.entry_points
+
+    def entry_points(*, group: str) -> list[importlib.metadata.EntryPoint]:
+        result = list(real(group=group))
+        if group == "stepup.env_vars":
+            result.extend(
+                importlib.metadata.EntryPoint(name, value, group) for name, value in extra.items()
+            )
+        return result
+
+    monkeypatch.setattr(stepup.core.cli.env_vars_loader, "entry_points", entry_points)

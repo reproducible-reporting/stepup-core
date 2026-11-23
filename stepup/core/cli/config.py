@@ -19,10 +19,20 @@ A problem for which no line was found, for instance one about a setting that a c
 with a higher priority overrides, has nothing to be appended to
 and is reported on standard error instead.
 
-This module is a plain client of the public `ConfigLoader` API in `config_loader.py`.
+## Which Values Are Shown
+
+The value of a setting is always shown, also when it comes from an environment variable,
+because it already appears in its section and may come from a config file as well.
+The value of any other `STEPUP_*` variable is shown only when a package registered it
+with `secret=False`, see `env_vars_loader.py`.
+Every other value is replaced by `_MASK`, including those of unrecognized variables,
+because a misspelled name may hold a secret too.
+
+This module is a plain client of the public APIs in `config_loader.py` and `env_vars_loader.py`.
 """
 
 import argparse
+import difflib
 import sys
 from collections.abc import Iterable
 from itertools import accumulate
@@ -32,7 +42,6 @@ import attrs
 from rich.console import Console
 from rich.syntax import Syntax
 
-from ..constants import CORE_ENV_VARS, INTERNAL_ENV_VARS
 from ..enums import ReturnCode
 from ..path import short_path
 from .config_loader import (
@@ -40,8 +49,10 @@ from .config_loader import (
     ConfigLocation,
     ConfigProblem,
     ConfigValue,
+    format_hint,
     print_config_problems,
 )
+from .env_vars_loader import EnvVarCatalog, load_env_var_catalog
 from .tool import ERROR_STYLE, SubParsers, ToolFunc
 
 __all__ = ("add_config_subcommand",)
@@ -52,6 +63,17 @@ _ERROR_MARK = "<-- ERROR: "
 
 _PROBLEM_SEP = "  "
 """The gap between a rendered line and the problem shown on it, which stays unstyled."""
+
+_MASK = "<set, hidden>"
+"""What is shown in place of a value that may be secret."""
+
+_HINT_CUTOFF = 0.75
+"""The similarity above which a known variable is suggested for an unrecognized one.
+
+The similarity is that of `difflib.get_close_matches`, computed without the common prefix.
+It is higher than the default, because names often share the part after the prefix as well,
+e.g. `STEPUP_BUILD_FOO` would otherwise suggest `STEPUP_BUILD_JOBS`.
+"""
 
 
 #
@@ -163,8 +185,9 @@ def add_config_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolF
     )
 
     def config_tool(args: argparse.Namespace) -> None:
-        problems = loader.problems()
-        report = _render_config(loader)
+        catalog = load_env_var_catalog(loader)
+        problems = loader.problems() + catalog.problems
+        report = _render_config(loader, catalog)
         spans, remaining = _inline_problems(report, problems)
         _print_toml(report.lines, spans)
         if len(remaining) > 0:
@@ -180,13 +203,15 @@ def add_config_subcommand(subparsers: SubParsers, loader: ConfigLoader) -> ToolF
 #
 
 
-def _render_config(loader: ConfigLoader) -> _Report:
+def _render_config(loader: ConfigLoader, catalog: EnvVarCatalog) -> _Report:
     """Render the merged configuration as TOML, without the problems.
 
     Parameters
     ----------
     loader
         The configuration loader, with every parser patched into it.
+    catalog
+        The environment variables registered by StepUp Core and its extensions.
 
     Returns
     -------
@@ -204,7 +229,6 @@ def _render_config(loader: ConfigLoader) -> _Report:
     n_header_lines = len(report.lines)
 
     config = loader.effective_config()
-    env_vars = loader.prefixed_env_vars()
     top_settings = config.get(None, {})
     sections = {k: v for k, v in config.items() if k is not None and v}
 
@@ -224,7 +248,7 @@ def _render_config(loader: ConfigLoader) -> _Report:
         report.add(f"[{section}]", locations, is_section_header=True)
         _add_settings(report, sections[section])
 
-    _add_env_vars(report, env_vars, loader.recognized_env_vars())
+    _add_env_vars(report, loader, catalog)
 
     # Whether anything was rendered is read back from the report,
     # instead of being worked out in advance from what the three cases above would add.
@@ -255,49 +279,92 @@ def _add_settings(report: _Report, settings: dict[str, ConfigValue]) -> None:
         report.add(f"{key} = {_toml_value(entry.value)}  # {entry.location}", locations)
 
 
-def _add_env_vars(report: _Report, env_vars: dict[str, str], recognized: set[str]) -> None:
+def _add_env_vars(report: _Report, loader: ConfigLoader, catalog: EnvVarCatalog) -> None:
     """Append the environment variables of the prefix as comments, grouped by what they do.
+
+    The groups are, in this order:
+    the variables of the settings,
+    one group per package for the variables that it registered,
+    the variables that StepUp overrides, whichever package registered them,
+    and the variables that nothing recognizes, each with a hint at a known name close to it.
 
     Parameters
     ----------
     report
         The rendered configuration, extended in place.
-    env_vars
-        The environment variables to list, keyed by name.
-    recognized
-        The names that the patched parsers recognize, as returned by
-        `ConfigLoader.recognized_env_vars`.
+    loader
+        The configuration loader, with every parser patched into it,
+        which holds the environment variables to list.
+    catalog
+        The environment variables registered by StepUp Core and its extensions.
     """
+    env_vars = loader.prefixed_env_vars()
+    recognized = loader.recognized_env_vars()
     setting_vars = []
-    core_vars = []
-    internal_vars = []
+    package_vars: dict[str, list[str]] = {package: [] for package in catalog.packages}
+    overridden_vars = []
     unrecognized_vars = []
     for env_var in sorted(env_vars):
+        entry = catalog.env_vars.get(env_var)
         if env_var in recognized:
             setting_vars.append(env_var)
-        elif env_var in CORE_ENV_VARS:
-            core_vars.append(env_var)
-        elif env_var in INTERNAL_ENV_VARS:
-            internal_vars.append(env_var)
-        else:
+        elif entry is None:
             unrecognized_vars.append(env_var)
-    groups = [
-        ("# Configuration environment variables:", setting_vars),
-        ("# StepUp Core module environment variables:", core_vars),
+        elif entry.info.overridden:
+            overridden_vars.append(env_var)
+        else:
+            package_vars[entry.package].append(env_var)
+    groups = [("# Configuration environment variables:", setting_vars)]
+    groups.extend(
+        (f"# {package} environment variables:", group) for package, group in package_vars.items()
+    )
+    groups.append(
         (
             "# Internal environment variables, overruled by StepUp (probably a mistake):",
-            internal_vars,
-        ),
-        ("# Unrecognized environment variables, without effect:", unrecognized_vars),
-    ]
+            overridden_vars,
+        )
+    )
+    groups.append(("# Unrecognized environment variables, without effect:", unrecognized_vars))
+
+    known = sorted(recognized | catalog.env_vars.keys())
     for header, group in groups:
         if len(group) == 0:
             continue
         report.add("")
         report.add(header)
         for env_var in group:
-            value = _toml_value(env_vars[env_var])
-            report.add(f"#   {env_var} = {value}", [ConfigLocation.of_env(env_var)])
+            entry = catalog.env_vars.get(env_var)
+            if env_var in recognized or (entry is not None and not entry.info.secret):
+                value = _toml_value(env_vars[env_var])
+                hint = ""
+            else:
+                value = _MASK
+                hint = "" if entry is not None else _env_var_hint(env_var, known, loader.env_prefix)
+            report.add(f"#   {env_var} = {value}{hint}", [ConfigLocation.of_env(env_var)])
+
+
+def _env_var_hint(env_var: str, known: list[str], env_prefix: str) -> str:
+    """Suggest the known variables whose names are close to that of an unrecognized one.
+
+    Parameters
+    ----------
+    env_var
+        The name of the unrecognized variable.
+    known
+        The names of the variables of the settings and of the registered variables.
+    env_prefix
+        The prefix that all names share, which is left out when comparing them.
+
+    Returns
+    -------
+    hint
+        A suffix for the line of the variable, empty when no name is close.
+    """
+    stems = {name.removeprefix(env_prefix): name for name in known}
+    matches = difflib.get_close_matches(
+        env_var.removeprefix(env_prefix), list(stems), cutoff=_HINT_CUTOFF
+    )
+    return format_hint([repr(stems[match]) for match in matches])
 
 
 #

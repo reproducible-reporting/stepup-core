@@ -13,12 +13,14 @@ import tomllib
 from decimal import Decimal
 
 import pytest
+from core_common import add_env_var_entry_points
 
 import stepup.core
 from stepup.core.__main__ import _setup_cli, main
 from stepup.core.cli.config import _toml_value
-from stepup.core.constants import CORE_ENV_VARS, INTERNAL_ENV_VARS
+from stepup.core.cli.env_vars_loader import core_env_vars
 from stepup.core.enums import ReturnCode
+from stepup.core.env_vars import EnvVarInfo, EnvVarRegistry
 from stepup.core.exceptions import ConfigError
 from stepup.core.path import Path
 
@@ -130,7 +132,7 @@ def test_cli_config_groups_env_vars(monkeypatch, path_tmp, capsys, clean_env):
     assert _run_main(monkeypatch, path_tmp, ["config"]) == 0
     lines = capsys.readouterr().out.splitlines()
     setting = lines.index("# Configuration environment variables:")
-    core = lines.index("# StepUp Core module environment variables:")
+    core = lines.index("# StepUp Core environment variables:")
     internal = lines.index(
         "# Internal environment variables, overruled by StepUp (probably a mistake):"
     )
@@ -139,7 +141,9 @@ def test_cli_config_groups_env_vars(monkeypatch, path_tmp, capsys, clean_env):
     assert lines[setting + 1] == '#   STEPUP_BUILD_JOBS = "3"'
     assert lines[core + 1] == f'#   STEPUP_ROOT = "{path_tmp}"'
     assert lines[internal + 1] == '#   STEPUP_JOB_I = "0"'
-    assert lines[unknown + 1] == '#   STEPUP_BUILD_JBOS = "3"'
+    assert lines[unknown + 1] == (
+        "#   STEPUP_BUILD_JBOS = <set, hidden> (did you mean 'STEPUP_BUILD_JOBS'?)"
+    )
 
 
 def test_cli_config_without_any_configuration(monkeypatch, path_tmp, capsys, clean_env):
@@ -152,12 +156,11 @@ def test_cli_config_without_any_configuration(monkeypatch, path_tmp, capsys, cle
     assert lines[-2] == ""
 
 
-def test_listed_env_vars_are_not_settings(monkeypatch, path_tmp, clean_env):
-    """A variable listed by name would never be shown as such once it becomes a setting."""
+def test_registered_env_vars_are_not_settings(monkeypatch, path_tmp, clean_env):
+    """A registered variable would never be shown as such once it becomes a setting."""
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
     _, loader = _setup_cli()
-    assert CORE_ENV_VARS.isdisjoint(loader.recognized_env_vars())
-    assert INTERNAL_ENV_VARS.isdisjoint(loader.recognized_env_vars())
+    assert core_env_vars().env_vars.keys().isdisjoint(loader.recognized_env_vars())
 
 
 def _looks_like_env(node: ast.expr) -> bool:
@@ -201,9 +204,9 @@ def _env_var_names(source: str) -> set[str]:
 
 
 def test_env_vars_are_classified(monkeypatch, path_tmp, clean_env):
-    """Every prefixed variable that StepUp Core looks up by name is accounted for.
+    """Every prefixed variable that StepUp Core looks up by name is registered, and vice versa.
 
-    Without this, adding a variable to the code and forgetting `CORE_ENV_VARS`
+    Without this, adding a variable to the code and forgetting `core_env_vars`
     makes `stepup config` report it as being without effect, which is worse than
     not listing it at all.
     """
@@ -216,7 +219,7 @@ def test_env_vars_are_classified(monkeypatch, path_tmp, clean_env):
             for name in _env_var_names(path.read_text(encoding="utf-8"))
             if name.startswith("STEPUP_")
         )
-    listed = CORE_ENV_VARS | INTERNAL_ENV_VARS
+    listed = set(core_env_vars().env_vars)
     assert found - listed - loader.recognized_env_vars() == set()
     assert listed - found == set()
 
@@ -287,3 +290,137 @@ def test_cli_config_reports_overridden_setting_apart(monkeypatch, path_tmp, caps
     captured = capsys.readouterr()
     assert "<-- ERROR" not in captured.out
     assert f"{low}: jobs in section [build]: " in captured.err
+
+
+#
+# Environment variables of extensions
+#
+
+
+def fake_env_vars() -> EnvVarRegistry:
+    return EnvVarRegistry(
+        "StepUp Fake",
+        {
+            "STEPUP_FAKE_TOKEN": EnvVarInfo(secret=True, validator=_parse_token),
+            "STEPUP_FAKE_MODE": EnvVarInfo(secret=False, validator=_parse_mode),
+            "STEPUP_FAKE_INTERNAL": EnvVarInfo(secret=False, overridden=True),
+            "STEPUP_FAKE_KEY": EnvVarInfo(secret=True, overridden=True),
+        },
+    )
+
+
+def _parse_token(value: str) -> str:
+    if not value.startswith("tok-"):
+        raise ValueError(f"not a token: {value!r}")
+    return value
+
+
+def _parse_mode(value: str) -> str:
+    if value not in ("fast", "slow"):
+        raise ValueError(f"must be fast or slow, got {value!r}")
+    return value
+
+
+def another_env_vars() -> EnvVarRegistry:
+    return EnvVarRegistry("Another Package", {"STEPUP_ANOTHER_X": EnvVarInfo(secret=False)})
+
+
+def _run_config_with_fakes(monkeypatch, path_tmp: Path, env: dict[str, str]) -> int:
+    """Run `stepup config` with the fake registries of this module and the given variables."""
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    add_env_var_entry_points(
+        monkeypatch,
+        {
+            "fake": f"{__name__}:fake_env_vars",
+            "another": f"{__name__}:another_env_vars",
+        },
+    )
+    return _run_main(monkeypatch, path_tmp, ["config"])
+
+
+def test_cli_config_groups_extension_env_vars(monkeypatch, path_tmp, capsys, clean_env):
+    """Each package has a group of its own, while the overridden variables share one."""
+    env = {
+        "STEPUP_FAKE_MODE": "fast",
+        "STEPUP_ANOTHER_X": "1",
+        "STEPUP_FAKE_INTERNAL": "2",
+        "STEPUP_JOB_I": "3",
+    }
+    assert _run_config_with_fakes(monkeypatch, path_tmp, env) == 0
+    lines = capsys.readouterr().out.splitlines()
+    core = lines.index("# StepUp Core environment variables:")
+    another = lines.index("# Another Package environment variables:")
+    fake = lines.index("# StepUp Fake environment variables:")
+    internal = lines.index(
+        "# Internal environment variables, overruled by StepUp (probably a mistake):"
+    )
+    assert core < another < fake < internal
+    assert lines[another + 1] == '#   STEPUP_ANOTHER_X = "1"'
+    assert lines[fake + 1] == '#   STEPUP_FAKE_MODE = "fast"'
+    assert lines[internal + 1 : internal + 3] == [
+        '#   STEPUP_FAKE_INTERNAL = "2"',
+        '#   STEPUP_JOB_I = "3"',
+    ]
+
+
+def test_cli_config_masks_secrets(monkeypatch, path_tmp, capsys, clean_env):
+    """The value of a secret is never printed, whether it is registered or misspelled."""
+    env = {
+        "STEPUP_FAKE_TOKEN": "tok-hunter2",
+        "STEPUP_FAKE_KEY": "hunter3",
+        "STEPUP_FAKE_TKEN": "tok-hunter4",
+    }
+    assert _run_config_with_fakes(monkeypatch, path_tmp, env) == 0
+    captured = capsys.readouterr()
+    assert "hunter" not in captured.out
+    assert captured.err == ""
+    lines = captured.out.splitlines()
+    assert "#   STEPUP_FAKE_TOKEN = <set, hidden>" in lines
+    assert "#   STEPUP_FAKE_KEY = <set, hidden>" in lines
+    unknown = lines.index("# Unrecognized environment variables, without effect:")
+    assert lines[unknown + 1] == (
+        "#   STEPUP_FAKE_TKEN = <set, hidden> "
+        "(did you mean 'STEPUP_FAKE_TOKEN' or 'STEPUP_FAKE_KEY'?)"
+    )
+
+
+def test_cli_config_shows_settings_in_clear(monkeypatch, path_tmp, capsys, clean_env):
+    """A setting is shown in clear, because its value also appears in its section."""
+    assert _run_config_with_fakes(monkeypatch, path_tmp, {"STEPUP_BUILD_JOBS": "7"}) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert 'jobs = "7"  # $STEPUP_BUILD_JOBS' in lines
+    assert '#   STEPUP_BUILD_JOBS = "7"' in lines
+
+
+def test_cli_config_unrecognized_without_hint(monkeypatch, path_tmp, capsys, clean_env):
+    """A name that is not close to any known one gets no hint."""
+    assert _run_config_with_fakes(monkeypatch, path_tmp, {"STEPUP_XYZZY": "1"}) == 0
+    lines = capsys.readouterr().out.splitlines()
+    unknown = lines.index("# Unrecognized environment variables, without effect:")
+    assert lines[unknown + 1] == "#   STEPUP_XYZZY = <set, hidden>"
+
+
+def test_cli_config_inlines_rejected_values(monkeypatch, path_tmp, capsys, clean_env):
+    """A rejected value is reported on the line of its variable, without leaking a secret."""
+    env = {"STEPUP_FAKE_MODE": "medium", "STEPUP_FAKE_TOKEN": "hunter2"}
+    assert _run_config_with_fakes(monkeypatch, path_tmp, env) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    assert "hunter2" not in captured.out
+    assert captured.err == ""
+    assert _find_line(captured.out, "#   STEPUP_FAKE_MODE = ") == (
+        "#   STEPUP_FAKE_MODE = \"medium\"  <-- ERROR: must be fast or slow, got 'medium'"
+    )
+    assert _find_line(captured.out, "#   STEPUP_FAKE_TOKEN = ") == (
+        "#   STEPUP_FAKE_TOKEN = <set, hidden>  <-- ERROR: invalid value"
+    )
+
+
+def test_cli_config_reports_broken_entry_point(monkeypatch, path_tmp, capsys, clean_env):
+    """A broken entry point has no line of its own, so it is reported on standard error."""
+    add_env_var_entry_points(monkeypatch, {"gone": "no_such_module_for_stepup:env_vars"})
+    assert _run_main(monkeypatch, path_tmp, ["config"]) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    assert "<-- ERROR" not in captured.out
+    assert "entry point 'gone = no_such_module_for_stepup:env_vars': " in captured.err
+    assert "cannot be loaded: ModuleNotFoundError: " in captured.err

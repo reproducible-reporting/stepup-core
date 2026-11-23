@@ -32,6 +32,10 @@ A package can implement three types of components:
 
 3. [Custom **tools**](tool.md), which appear as new subcommands in the StepUp CLI.
 
+A package that is configured through environment variables
+also [registers these variables](env_vars.md),
+so that `stepup config` recognizes them and never shows a secret.
+
 ## Testing an Extension
 
 The module `stepup.core.pytest` holds test utilities that extensions can reuse:

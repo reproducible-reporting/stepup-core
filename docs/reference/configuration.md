@@ -112,28 +112,58 @@ because a second comment cannot be opened on the same line.
 A misspelled key in a config file is an error, but a misspelled `STEPUP_*` variable is not.
 The `STEPUP_*` namespace is shared with the variables that configure StepUp's internals,
 listed under [StepUp Core Module Environment Variables](#stepup-core-module-environment-variables),
+and with those of extension packages,
 which no subcommand defines an option for.
 Rejecting every name that is not a setting would therefore reject StepUp's own environment.
 
 To make a typo visible anyway, `stepup config` lists the `STEPUP_*` variables
-in three groups, by what each of them does:
+in groups, by what each of them does:
 
 ```toml
 # Configuration environment variables:
 #   STEPUP_BUILD_JOBS = "4"
 
-# StepUp Core module environment variables:
+# StepUp Core environment variables:
 #   STEPUP_ROOT = "/home/user/project"
 
+# StepUp Queue environment variables:
+#   STEPUP_QUEUE_ONCHANGE = "ignore"
+
+# Internal environment variables, overruled by StepUp (probably a mistake):
+#   STEPUP_JOB_I = "3"
+
 # Unrecognized environment variables, without effect:
-#   STEPUP_BUILD_JBOS = "4"
+#   STEPUP_BUILD_JBOS = <set, hidden> (did you mean 'STEPUP_BUILD_JOBS'?)
 ```
 
+The groups are:
+
+1. The variables of the settings of the subcommands.
+2. One group per package, StepUp Core first,
+   for the variables that the package acts on without a subcommand defining a setting for them.
+   Extension packages register these variables,
+   as explained in [Environment Variables](../extending/env_vars.md).
+3. The variables that StepUp sets itself for the subprocesses it starts,
+   overwriting any value you give them.
+4. Every other `STEPUP_*` variable, which StepUp and the installed extensions do not act on.
+   For a variable you set deliberately, this means a misspelled name,
+   and a known name that is close to it is suggested.
+
 When a setting does not take effect, the last group is the first place to look.
-It holds every `STEPUP_*` variable that StepUp does not act on,
-which for a variable you set deliberately means a misspelled name.
-Variables of an extension package appear there as well
-when they configure that package's internals rather than one of its settings.
+
+The value of a variable is shown only when it is known not to be a secret,
+which is the case for the settings and for the variables that a package registered as such.
+Any other variable is shown as `<set, hidden>`, including the unrecognized ones,
+because a misspelled name may hold a secret as well, e.g. `STEPUP_DATA_ZENODO_TKEN`.
+
+`stepup config` also checks the value of every registered variable that is set,
+and shows a value it cannot use as a problem on the line of the variable.
+For a secret, the problem only says that the value is invalid, without repeating it.
+A problem with an extension package itself,
+e.g. when it cannot be imported or when it registers a variable that is also a setting,
+is reported as well.
+Unlike the problems of the config files, these do not stop the other subcommands,
+because only `stepup config` loads the registrations of the extension packages.
 
 ## StepUp Core Module Environment Variables
 

@@ -22,6 +22,7 @@ __all__ = (
     "is_debug",
     "merge_resources",
     "open_regular_file",
+    "parse_path_filter",
     "parse_resources",
     "positive_decimal",
     "positive_int",
@@ -374,6 +375,37 @@ def to_bool(value: str | bool) -> bool:
             return False
         raise StepUpError(f"Cannot interpret '{value}' as a boolean value.")
     raise TypeError(f"Expected a boolean value or string. Got {type(value).__name__}")
+
+
+def parse_path_filter(text: str) -> list[tuple[bool, str]]:
+    """Split a value of `${STEPUP_PATH_FILTER}` into its rules.
+
+    Parameters
+    ----------
+    text
+        The items of the filter, separated by `os.pathsep`.
+        Empty items are skipped.
+
+    Returns
+    -------
+    rules
+        One `(keep, prefix)` pair per item, in the order of the items,
+        where `keep` is `True` for an item starting with `+`
+        and `prefix` is the rest of the item, not yet resolved to an absolute path.
+
+    Raises
+    ------
+    StepUpError
+        When an item does not start with `+` or `-`.
+    """
+    rules = []
+    for item in text.split(os.pathsep):
+        if item == "":
+            continue
+        if item[0] not in "+-":
+            raise StepUpError(f"Invalid filter item: {item}")
+        rules.append((item[0] == "+", item[1:]))
+    return rules
 
 
 def is_debug() -> bool:

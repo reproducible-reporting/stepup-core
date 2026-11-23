@@ -21,6 +21,7 @@ from ..platform.oscompat import af_unix_available, share_modes_apply
 __all__ = (
     "RPC_TRANSPORTS",
     "TCPEndpoint",
+    "parse_rpc_transport",
     "read_endpoint",
     "select_rpc_transport",
     "set_nodelay",
@@ -81,13 +82,30 @@ def select_rpc_transport() -> str:
     ConfigError
         If `STEPUP_RPC_TRANSPORT` names a transport that cannot be used on this platform.
     """
+    try:
+        return parse_rpc_transport(os.environ.get("STEPUP_RPC_TRANSPORT", ""))
+    except ValueError as exc:
+        raise ConfigError(f"STEPUP_RPC_TRANSPORT {exc}.") from exc
+
+
+def parse_rpc_transport(value: str) -> str:
+    """Interpret a value of `STEPUP_RPC_TRANSPORT`, of which an empty one selects the default.
+
+    Returns
+    -------
+    transport
+        One of `RPC_TRANSPORTS` that this platform supports.
+
+    Raises
+    ------
+    ValueError
+        If `value` names a transport that cannot be used on this platform.
+        The message does not name the variable.
+    """
     choices = RPC_TRANSPORTS if af_unix_available() else ("tcp",)
-    transport = os.environ.get("STEPUP_RPC_TRANSPORT", "") or choices[0]
+    transport = value or choices[0]
     if transport not in choices:
-        raise ConfigError(
-            f"STEPUP_RPC_TRANSPORT must be {' or '.join(choices)} on {sys.platform}, "
-            f"got {transport!r}."
-        )
+        raise ValueError(f"must be {' or '.join(choices)} on {sys.platform}, got {transport!r}")
     return transport
 
 

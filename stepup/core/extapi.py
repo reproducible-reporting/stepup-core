@@ -15,10 +15,9 @@ import sys
 from collections.abc import Iterable, Iterator, Mapping
 
 from .api import get_job_i, get_rpc_client, getenv
-from .exceptions import StepUpError
 from .path import Path, StrPath, get_here, get_root, get_stepup_root, translate
 from .platform.popen import popen_args
-from .utils import extract_env_overrides, truncate_output
+from .utils import extract_env_overrides, parse_path_filter, truncate_output
 
 __all__ = (
     "child_env",
@@ -372,16 +371,8 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     filter_str += os.pathsep + "+."
     rules = []
     stepup_root = get_stepup_root()
-    for filter_item in filter_str.split(os.pathsep):
-        if filter_item == "":
-            continue
-        if filter_item.startswith("+"):
-            keep = True
-        elif filter_item.startswith("-"):
-            keep = False
-        else:
-            raise StepUpError(f"Invalid filter item: {filter_item}")
-        prefix = Path(filter_item[1:])
+    for keep, prefix_str in parse_path_filter(filter_str):
+        prefix = Path(prefix_str)
         if not prefix.isabs():
             prefix = (stepup_root / prefix).realpath()
         rules.append((prefix, keep))

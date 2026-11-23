@@ -25,7 +25,7 @@ from .backend import WatcherBackend
 if TYPE_CHECKING:
     from watchfiles._rust_notify import RustNotify
 
-__all__ = ("WatchfilesBackend", "select_recursive_watch")
+__all__ = ("WatchfilesBackend", "parse_recursive_watch", "select_recursive_watch")
 
 
 WATCHFILES_STEP_MS = 10
@@ -82,11 +82,30 @@ def select_recursive_watch() -> bool:
     ConfigError
         If `STEPUP_WATCHER_RECURSIVE` is set to something else than `0` or `1`.
     """
-    value = os.environ.get("STEPUP_WATCHER_RECURSIVE", "")
+    try:
+        return parse_recursive_watch(os.environ.get("STEPUP_WATCHER_RECURSIVE", ""))
+    except ValueError as exc:
+        raise ConfigError(f"STEPUP_WATCHER_RECURSIVE {exc}.") from exc
+
+
+def parse_recursive_watch(value: str) -> bool:
+    """Interpret a value of `STEPUP_WATCHER_RECURSIVE`, of which an empty one selects the default.
+
+    Returns
+    -------
+    recursive
+        `True` for one recursive watch, `False` for a watch per directory.
+
+    Raises
+    ------
+    ValueError
+        If `value` is something else than `0`, `1` or empty.
+        The message does not name the variable.
+    """
     if value == "":
         return sys.platform == "win32"
     if value not in ("0", "1"):
-        raise ConfigError(f"STEPUP_WATCHER_RECURSIVE must be 0 or 1, got {value!r}.")
+        raise ValueError(f"must be 0 or 1, got {value!r}")
     return value == "1"
 
 
