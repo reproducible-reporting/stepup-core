@@ -1,6 +1,7 @@
 ---
 description: >-
-  Install StepUp Core with pip on Linux, macOS or Windows, with Python 3.11 or later.
+  Install StepUp Core from PyPI or conda-forge, with pip, uv, pixi or conda,
+  on Linux, macOS or Windows.
   On Windows, some steps also need a POSIX shell.
 ---
 
@@ -20,23 +21,31 @@ Requirements:
   so that other users of the computer cannot connect to a running build,
   see [`STEPUP_RPC_TRANSPORT`](reference/configuration.md#stepup-core-module-environment-variables).
   Older versions are only safe when `TEMP` lies in your user profile, which is the default.
-- [Pip](https://pip.pypa.io/)
+- A package manager, such as [pip](https://pip.pypa.io/), [uv](https://docs.astral.sh/uv/),
+  [pixi](https://pixi.prefix.dev/) or [conda](https://docs.conda.io/).
 - On Windows, a POSIX shell for the steps that need one,
   see [POSIX Shell on Windows](#posix-shell-on-windows) below.
 
-It is assumed that you know how to use [Pip](https://pip.pypa.io/).
-We recommend performing the installation in a
-[Python virtual environment](https://docs.python.org/3/library/venv.html)
-and activating such environments with [direnv](https://direnv.net/).
+StepUp is published on both [PyPI](https://pypi.org/) and [conda-forge](https://conda-forge.org/),
+under the same package name `stepup`.
 
-The core package can be installed with:
+We recommend installing into an isolated environment,
+such as a [Python virtual environment](https://docs.python.org/3/library/venv.html)
+or a pixi workspace,
+and activating it with [direnv](https://direnv.net/).
+
+## Installing from PyPI
+
+Use one of the following commands:
 
 ```bash
-pip install stepup
+pip install stepup      # in an activated virtual environment
+uv pip install stepup   # same, with uv
+uv add stepup           # in a uv project
 ```
 
 On Windows with Python 3.15, as of November 2026,
-the dependency PyYAML has no wheels yet,
+the dependency PyYAML has no wheels on PyPI yet,
 and building it from source fails without a C compiler.
 Its C extension, which StepUp does not use, can be left out of that build:
 
@@ -45,11 +54,13 @@ $env:PYYAML_FORCE_LIBYAML = "0"
 pip install stepup
 ```
 
-The [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/) extension
-(for reproducible reporting) is installed with:
+## Installing from conda-forge
+
+Use one of the following commands:
 
 ```bash
-pip install stepup-reprep
+pixi add stepup                      # in a pixi workspace
+conda install -c conda-forge stepup  # in an activated conda environment
 ```
 
 ## POSIX Shell on Windows
