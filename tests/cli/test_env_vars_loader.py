@@ -209,6 +209,7 @@ def test_rejected_values(monkeypatch, path_tmp, clean_env):
 @pytest.mark.parametrize(
     ("name", "value", "message"),
     [
+        ("STEPUP_DEBUG", "maybe", "Cannot interpret 'maybe' as a boolean value"),
         ("STEPUP_MAX_OUTPUT_SIZE", "lots", "invalid literal for int() with base 10: 'lots'"),
         ("STEPUP_PATH_FILTER", "+a:b", "Invalid filter item: b"),
         ("STEPUP_RPC_TRANSPORT", "udp", "must be "),
@@ -224,13 +225,6 @@ def test_core_rejected_values(monkeypatch, path_tmp, clean_env, name, value, mes
     (problem,) = catalog.problems
     assert problem.location.env_var == name
     assert problem.detail.startswith(message)
-
-
-def test_core_rejects_debug():
-    """`STEPUP_DEBUG` is tested apart, because a bad value already stops `_setup_cli`."""
-    validator = core_env_vars().env_vars["STEPUP_DEBUG"].validator
-    with pytest.raises(ValueError, match="Cannot interpret 'maybe' as a boolean value"):
-        validator("maybe")
 
 
 def test_validator_bug(monkeypatch, path_tmp, clean_env):

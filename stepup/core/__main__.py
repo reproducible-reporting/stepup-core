@@ -3,17 +3,24 @@
 """StepUp Command Line Interface."""
 
 import argparse
+import os
 import sys
 from importlib.metadata import entry_points
 from importlib.metadata import version as get_version
 
-from .cli.config_loader import ConfigLoader, format_config_problems, print_config_problems
+from .cli.config_loader import (
+    ConfigLoader,
+    ConfigLocation,
+    ConfigProblem,
+    format_config_problems,
+    print_config_problems,
+)
 from .cli.tool import print_error
 from .enums import ReturnCode
-from .exceptions import ConfigError, UsageError
+from .exceptions import ConfigError, StepUpError, UsageError
 from .path import get_stepup_root
 from .platform.stdio import write_utf8_unless_terminal
-from .utils import is_debug
+from .utils import is_debug, to_bool
 
 __all__ = ("main", "sb_main")
 
@@ -136,18 +143,33 @@ def _setup_cli() -> tuple[argparse.ArgumentParser, ConfigLoader]:
 def _exit_on_config_problems(loader: ConfigLoader) -> None:
     """Report the problems of the configuration and exit, if there are any.
 
+    An unrecognized value of `STEPUP_DEBUG` is one of these problems,
+    because `is_debug` would otherwise silently treat it as off.
+
     Raises
     ------
     ConfigError
         With `STEPUP_DEBUG`, instead of printing the problems, to get a traceback.
     """
-    problems = loader.problems()
+    problems = loader.problems() + _debug_problems()
     if len(problems) > 0:
         hint = "Run 'stepup config' to inspect the configuration."
         if is_debug():
             raise ConfigError(format_config_problems(problems, hint))
         print_config_problems(problems, hint)
         sys.exit(ReturnCode.INTERNAL.value)
+
+
+def _debug_problems() -> list[ConfigProblem]:
+    """Return a problem for an unrecognized value of `STEPUP_DEBUG`, if it has one."""
+    value = os.getenv("STEPUP_DEBUG")
+    if value is None:
+        return []
+    try:
+        to_bool(value)
+    except StepUpError as exc:
+        return [ConfigProblem(str(exc), ConfigLocation.of_env("STEPUP_DEBUG"))]
+    return []
 
 
 if __name__ == "__main__":

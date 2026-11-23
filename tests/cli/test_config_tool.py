@@ -73,6 +73,27 @@ def test_cli_config_survives_config_error(monkeypatch, path_tmp, capsys, clean_e
     assert captured.err == ""
 
 
+def test_cli_bad_debug_without_traceback(monkeypatch, path_tmp, capsys, clean_env):
+    """An unrecognized value of `STEPUP_DEBUG` stops a build with a message."""
+    monkeypatch.setenv("STEPUP_DEBUG", "maybe")
+    assert _run_main(monkeypatch, path_tmp, ["build"]) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Traceback" not in captured.err
+    assert "$STEPUP_DEBUG: Cannot interpret 'maybe' as a boolean value." in captured.err
+    assert "Run 'stepup config'" in captured.err
+
+
+def test_cli_config_survives_bad_debug(monkeypatch, path_tmp, capsys, clean_env):
+    """`stepup config` reports an unrecognized value of `STEPUP_DEBUG` like that of any variable."""
+    monkeypatch.setenv("STEPUP_DEBUG", "maybe")
+    assert _run_main(monkeypatch, path_tmp, ["config"]) == ReturnCode.INTERNAL.value
+    captured = capsys.readouterr()
+    line = _find_line(captured.out, "#   STEPUP_DEBUG = ")
+    assert line.endswith("<-- ERROR: Cannot interpret 'maybe' as a boolean value.")
+    assert captured.err == ""
+
+
 def _find_line(out: str, prefix: str) -> str:
     """Return the one line of the `config` output that starts with the given prefix."""
     (line,) = [line for line in out.splitlines() if line.startswith(prefix)]

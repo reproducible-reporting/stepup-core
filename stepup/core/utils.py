@@ -413,8 +413,15 @@ def is_debug() -> bool:
 
     The variable is read on every call, not cached, because a test may change it
     and because a step's environment is not the director's.
+
+    An unrecognized value counts as off instead of raising an error,
+    so that this function is safe to call while reporting another error.
+    The value is validated with the other environment variables of StepUp Core.
     """
-    return to_bool(os.getenv("STEPUP_DEBUG", "0"))
+    try:
+        return to_bool(os.getenv("STEPUP_DEBUG", "0"))
+    except StepUpError:
+        return False
 
 
 def truncate_output(content: str, max_bytes: int | None = None) -> str:

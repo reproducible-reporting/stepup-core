@@ -49,6 +49,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   The variables of StepUp Core are registered like those of an extension,
   with `overridden=True` for the variables that StepUp sets for every step.
 
+### Fixed
+
+- An unrecognized value of `STEPUP_DEBUG`, e.g. `STEPUP_DEBUG=maybe`,
+  no longer crashes every `stepup` subcommand with a traceback.
+  `stepup config` reports it on the line of the variable,
+  and the other subcommands stop with a short error message.
+
 ## [4.2.0][] - 2026-11-23 {: #v4.2.0 }
 
 This release makes workflows that depend on external data, such as a remote server or a web API,
