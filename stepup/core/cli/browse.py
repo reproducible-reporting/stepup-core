@@ -19,12 +19,13 @@ from urllib.parse import parse_qs, urlencode, urlparse
 import jinja2
 
 from ..cattrs import json_converter
+from ..converters import positive_int
 from ..enums import FileState, Need, StepState
 from ..graph.sqlite3 import connect
 from ..graph.step import Step
 from ..hash import FileHash, StepHash, fmt_env_value, fmt_short_digest
 from ..nglob import NamedGlob
-from ..utils import escape_control_chars, format_subprocess, positive_int
+from ..utils import escape_control_chars, format_subprocess
 from .config_loader import ConfigLoader
 from .tool import SubParsers, ToolFunc, get_graph_db_path
 

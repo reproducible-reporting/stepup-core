@@ -2,15 +2,15 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Small utilities used throughout."""
 
-import decimal
 import logging
 import os
 import re
 import shlex
 import stat
+import warnings
 from collections.abc import Iterable
-from decimal import Decimal
 
+from .converters import boolean
 from .exceptions import NotARegularFileError, StepUpError
 from .path import StrPath, coerce_str
 
@@ -24,8 +24,6 @@ __all__ = (
     "open_regular_file",
     "parse_path_filter",
     "parse_resources",
-    "positive_decimal",
-    "positive_int",
     "to_bool",
     "truncate_output",
 )
@@ -336,45 +334,14 @@ def as_list(values: Iterable[str] | str) -> list[str]:
 def to_bool(value: str | bool) -> bool:
     """Convert a string to a boolean value, passing a boolean through unchanged.
 
-    Parameters
-    ----------
-    value
-        The value to convert to a boolean.
-
-    Returns
-    -------
-    flag
-        The boolean representation of the input value.
-
-    Raises
-    ------
-    StepUpError
-        If the string cannot be interpreted as a boolean value.
-    TypeError
-        If the input is neither a string nor a boolean.
-        A configuration file can hold any TOML type here,
-        so this guard names the mistake instead of failing on a missing string method.
-
-    Examples
-    --------
-    >>> to_bool('yes')
-    True
-    >>> to_bool('no')
-    False
-    >>> to_bool(True)
-    True
-    >>> to_bool(False)
-    False
+    Deprecated: use `stepup.core.converters.boolean` instead.
     """
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        if value.lower() in ("yes", "true", "t", "y", "1"):
-            return True
-        if value.lower() in ("no", "false", "f", "n", "0"):
-            return False
-        raise StepUpError(f"Cannot interpret '{value}' as a boolean value.")
-    raise TypeError(f"Expected a boolean value or string. Got {type(value).__name__}")
+    warnings.warn(
+        "stepup.core.utils.to_bool is deprecated, use stepup.core.converters.boolean instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return boolean(value)
 
 
 def parse_path_filter(text: str) -> list[tuple[bool, str]]:
@@ -419,7 +386,7 @@ def is_debug() -> bool:
     The value is validated with the other environment variables of StepUp Core.
     """
     try:
-        return to_bool(os.getenv("STEPUP_DEBUG", "0"))
+        return boolean(os.getenv("STEPUP_DEBUG", "0"))
     except StepUpError:
         return False
 
@@ -459,40 +426,3 @@ def truncate_output(content: str, max_bytes: int | None = None) -> str:
         return content
     truncated = encoded[:max_bytes].decode("utf-8", "ignore")
     return f"{truncated}\n[output truncated at {max_bytes} bytes]\n"
-
-
-def positive_int(value: str | int) -> int:
-    """Convert a command-line or config value to an integer, requiring it to be strictly positive.
-
-    Raises
-    ------
-    ValueError
-        If the value is not an integer or is not strictly positive.
-    """
-    number = int(value)
-    if number <= 0:
-        raise ValueError(f"'{value}' is not strictly positive.")
-    return number
-
-
-def positive_decimal(value: str | float) -> Decimal:
-    """Convert a command-line or config value to a strictly positive `Decimal`.
-
-    The value is converted through its string form,
-    so that the number of digits after the decimal point is preserved:
-    `Decimal(3.0)` is `Decimal("3")` while `Decimal("3.0")` keeps the digit,
-    and a setting may give that digit a meaning of its own.
-    A config file may hold a TOML float here, unlike the command line, which is always a string.
-
-    Raises
-    ------
-    ValueError
-        If the value is not a number or is not strictly positive.
-    """
-    try:
-        number = Decimal(str(value))
-    except decimal.InvalidOperation as exc:
-        raise ValueError(f"not a number: {value!r}") from exc
-    if number <= 0:
-        raise ValueError(f"must be strictly positive: {value!r}")
-    return number

@@ -7,7 +7,7 @@ description: >-
 # Environment Variables
 
 <!--
-SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-FileCopyrightText: 2026 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
@@ -40,6 +40,7 @@ A package registers its variables with a function that takes no arguments
 and returns an [`EnvVarRegistry`][stepup.core.env_vars.EnvVarRegistry]:
 
 ```python
+from stepup.core.converters import boolean
 from stepup.core.env_vars import EnvVarInfo, EnvVarRegistry
 
 
@@ -54,6 +55,7 @@ def env_vars() -> EnvVarRegistry:
         package="StepUp Fancy",
         env_vars={
             "STEPUP_FANCY_MODE": EnvVarInfo(secret=False, validator=parse_mode),
+            "STEPUP_FANCY_VERBOSE": EnvVarInfo(secret=False, validator=boolean),
             "STEPUP_FANCY_TOKEN": EnvVarInfo(secret=True),
         },
     )
@@ -76,6 +78,10 @@ Every variable is described by an [`EnvVarInfo`][stepup.core.env_vars.EnvVarInfo
   Its return value is ignored,
   so the function with which the package reads the variable can be passed directly,
   as `parse_mode` in the example.
+  The converters in [`stepup.core.converters`](../reference/stepup.core.converters.md)
+  are suitable validators,
+  e.g. [`boolean()`][stepup.core.converters.boolean] for a variable that switches a feature,
+  which then accepts the same values as the boolean variables of StepUp Core.
   An overridden variable has no validator.
 
 The package name is shown as the header of the group in which `stepup config`

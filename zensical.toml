@@ -74,6 +74,7 @@ nav = [
   { "Reference" = [
     "reference/stepup.core.api.md",
     "reference/stepup.core.call.md",
+    "reference/stepup.core.converters.md",
     "reference/stepup.core.env_vars.md",
     "reference/stepup.core.exceptions.md",
     "reference/stepup.core.extapi.md",

@@ -29,9 +29,10 @@ from importlib.metadata import EntryPoint, entry_points
 
 import attrs
 
+from ..converters import boolean
 from ..env_vars import EnvVarInfo, EnvVarRegistry
 from ..rpc.transport import parse_rpc_transport
-from ..utils import parse_path_filter, to_bool
+from ..utils import parse_path_filter
 from ..watch.select import parse_watcher_backend
 from ..watch.watchfiles import parse_recursive_watch
 from .config_loader import ConfigLoader, ConfigLocation, ConfigProblem
@@ -59,7 +60,7 @@ def core_env_vars() -> EnvVarRegistry:
     return EnvVarRegistry(
         _CORE_PACKAGE,
         {
-            "STEPUP_DEBUG": EnvVarInfo(secret=False, validator=to_bool),
+            "STEPUP_DEBUG": EnvVarInfo(secret=False, validator=boolean),
             "STEPUP_MAX_OUTPUT_SIZE": EnvVarInfo(secret=False, validator=int),
             "STEPUP_PATH_FILTER": EnvVarInfo(secret=False, validator=parse_path_filter),
             "STEPUP_ROOT": EnvVarInfo(secret=False),

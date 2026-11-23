@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-FileCopyrightText: 2026 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """The description of the `STEPUP_*` environment variables of StepUp Core and its extensions.
 

@@ -33,6 +33,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - `stepup config` checks the values of the environment variables of StepUp Core,
   such as `STEPUP_WATCHER` and `STEPUP_SYNC_RPC_TIMEOUT`,
   and suggests a known name for an unrecognized `STEPUP_*` variable that is close to it.
+- The new module `stepup.core.converters` documents the functions with which StepUp Core
+  converts the values of its settings and environment variables,
+  so that an extension can use them as validators and when it reads its own variables:
+  `boolean()`, `positive_int()` and `positive_decimal()`.
+  They raise a `StepUpError` for a value they cannot convert.
+  See [`stepup.core.converters`](reference/stepup.core.converters.md).
 
 ### Changed
 
@@ -42,6 +48,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   is shown as `<set, hidden>`,
   because a misspelled name may hold a secret.
   See [Unrecognized Environment Variables](reference/configuration.md#unrecognized-environment-variables).
+
+### Deprecated
+
+- `to_bool()` in `stepup.core.utils` is deprecated in favor of
+  [`boolean()`][stepup.core.converters.boolean] in `stepup.core.converters`.
 
 ### Removed
 

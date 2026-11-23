@@ -42,6 +42,11 @@ The following modules of StepUp Core facilitate the implementation of such new A
   and [`EnvVarError`][stepup.core.exceptions.EnvVarError],
   so callers can catch them selectively instead of a generic `ValueError`.
 
+- [`stepup.core.converters`](../reference/stepup.core.converters.md)
+  converts the value of an option or an environment variable,
+  e.g. [`boolean()`][stepup.core.converters.boolean] interprets `yes` or `0`
+  in the same way as StepUp Core does for its own settings.
+
 A few things to keep in mind:
 
 - API functions that (indirectly) call the [`step()`][stepup.core.api.step] function

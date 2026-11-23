@@ -23,12 +23,12 @@ from ..constants import (
     SQLLOG_CSV,
     SQLLOG_JSON,
 )
+from ..converters import positive_int
 from ..graph.sqlite3 import DBSession, SQLLog
 from ..path import Path
 from ..platform.asyncio import tolerate_proactor_connection_errors
 from ..platform.stdio import write_utf8_unless_terminal
 from ..rpc.transport import RPC_TRANSPORTS
-from ..utils import positive_int
 from .reporter import ReporterClient
 from .serve import ServeConfig, interpret_jobs, serve
 

@@ -135,7 +135,7 @@ def test_cli_config_inlines_file_and_env_problems(monkeypatch, path_tmp, capsys,
 def test_cli_config_renders_decimal_setting_as_string(monkeypatch, path_tmp, capsys, clean_env):
     """A `Decimal` setting renders as a string, the only form that keeps a scale factor apart.
 
-    See `positive_decimal` in `utils.py`: `Decimal(3.0)` is `Decimal("3")`,
+    See `positive_decimal` in `converters.py`: `Decimal(3.0)` is `Decimal("3")`,
     so a TOML float would turn `3.0` times the number of cores into 3 jobs.
     """
     monkeypatch.setenv("STEPUP_BUILD_JOBS", "3.0")

@@ -18,7 +18,8 @@ The modules of `stepup/core/` form three bands of top-level modules and seven su
 ```text
 stepup/core/
   # band 1: shared vocabulary, imports no subpackage
-  exceptions  enums  path  nglob  constants  cattrs  utils  stepinfo  tracebacks  hash  env_vars
+  exceptions  enums  path  nglob  constants  converters  cattrs  utils  stepinfo  tracebacks
+  hash  env_vars
   # band 2: step-side API, imports band 1, rpc and platform only
   api  extapi  call  script  render_jinja
   # band 3: entry points

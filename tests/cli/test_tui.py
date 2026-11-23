@@ -45,6 +45,7 @@ from stepup.core.cli.terminal import (
     stdin_has_keystrokes,
 )
 from stepup.core.constants import PERF_DATA
+from stepup.core.converters import positive_decimal
 from stepup.core.director.handler import DirectorHandler
 from stepup.core.director.serve import interpret_jobs
 from stepup.core.enums import ReturnCode
@@ -54,7 +55,6 @@ from stepup.core.platform.asyncio import iter_until_stopped, wait_for_path
 from stepup.core.platform.oscompat import raw_terminal_available
 from stepup.core.rpc.server import SocketRPCServer, allow_rpc, is_rpc_allowed
 from stepup.core.rpc.transport import read_endpoint, select_rpc_transport
-from stepup.core.utils import positive_decimal
 
 if raw_terminal_available():
     import pty

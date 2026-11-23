@@ -85,9 +85,9 @@ from typing import Any
 import attrs
 from rich.text import Text
 
+from ..converters import boolean
 from ..exceptions import ConfigError, ConsistencyError
 from ..path import Path, short_path
-from ..utils import to_bool
 from .tool import ERROR_STYLE, print_error
 
 __all__ = (
@@ -375,7 +375,7 @@ def _coerce_value(raw: Any, action: argparse.Action) -> Any:
     """Parse a raw config value into the target Python type and validate choices.
 
     Boolean flags (`store_true`, `store_false`, `BooleanOptionalAction`) are converted
-    with `to_bool` and count actions with `int`.
+    with `boolean` and count actions with `int`.
     Any other option is converted with the action's `type` callable when it has one,
     and taken as it is otherwise.
     After coercion, the value is validated against `action.choices` when present.
@@ -414,7 +414,7 @@ def _coerce_value(raw: Any, action: argparse.Action) -> Any:
             argparse.BooleanOptionalAction,
         ),
     ):
-        value = to_bool(raw)
+        value = boolean(raw)
     elif isinstance(action, argparse._CountAction):
         value = int(raw)
     elif action.type is not None:

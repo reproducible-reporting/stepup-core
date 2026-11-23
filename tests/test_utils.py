@@ -19,6 +19,7 @@ from stepup.core.utils import (
     open_regular_file,
     parse_path_filter,
     parse_resources,
+    to_bool,
     truncate_output,
 )
 
@@ -260,3 +261,8 @@ def test_parse_path_filter():
 def test_parse_path_filter_rejects():
     with pytest.raises(StepUpError, match="Invalid filter item: data"):
         parse_path_filter(os.pathsep.join(["+.", "data"]))
+
+
+def test_to_bool_deprecated():
+    with pytest.deprecated_call(match="stepup.core.converters.boolean"):
+        assert to_bool("yes") is True

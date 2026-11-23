@@ -19,6 +19,7 @@ BAND1 = frozenset(
     [
         "cattrs",
         "constants",
+        "converters",
         "enums",
         "env_vars",
         "exceptions",

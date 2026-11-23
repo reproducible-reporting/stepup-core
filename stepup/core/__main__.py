@@ -16,11 +16,12 @@ from .cli.config_loader import (
     print_config_problems,
 )
 from .cli.tool import print_error
+from .converters import boolean
 from .enums import ReturnCode
 from .exceptions import ConfigError, StepUpError, UsageError
 from .path import get_stepup_root
 from .platform.stdio import write_utf8_unless_terminal
-from .utils import is_debug, to_bool
+from .utils import is_debug
 
 __all__ = ("main", "sb_main")
 
@@ -166,7 +167,7 @@ def _debug_problems() -> list[ConfigProblem]:
     if value is None:
         return []
     try:
-        to_bool(value)
+        boolean(value)
     except StepUpError as exc:
         return [ConfigProblem(str(exc), ConfigLocation.of_env("STEPUP_DEBUG"))]
     return []
