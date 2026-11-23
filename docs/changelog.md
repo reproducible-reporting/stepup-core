@@ -23,6 +23,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [4.2.0][] - 2026-11-23 {: #v4.2.0 }
 
+This release makes workflows that depend on external data, such as a remote server or a web API,
+reliable to build.
+It also includes several small bug fixes.
+
 ### Added
 
 - StepUp sets the environment variable `STEPUP_STARTUP_I` to a new integer every time it starts.
