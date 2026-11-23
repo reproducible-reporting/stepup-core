@@ -54,11 +54,8 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-    - name: Run release notes script
-      run: >-
-        .github/extract-notes.sh
-        '${{ github.repository }}'
-        '${{ github.ref }}'
+    - name: Extract the release notes
+      run: .github/scripts/extract-release-notes.py
     - name: Store the release notes
       uses: actions/upload-artifact@v7
       with:
