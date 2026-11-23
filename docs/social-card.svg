@@ -648,39 +648,39 @@
      fill="#c3c9d6"
      font-size="38"
      font-weight="400"
-     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:'IBM Plex Sans';-inkscape-font-specification:'IBM Plex Sans, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;fill-opacity:1"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:38px;font-family:Inter;-inkscape-font-specification:'Inter, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;fill-opacity:1"
      id="text134"><tspan
        x="96.185"
        y="232.834"
        id="tagline"
-       style="-inkscape-font-specification:'IBM Plex Sans, Normal';font-family:'IBM Plex Sans';font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:40px;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">A dynamic Python build tool for reproducible workflows</tspan></text>
+       style="-inkscape-font-specification:'Inter, Normal';font-family:Inter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:38px;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">A dynamic Python build tool for reproducible workflows</tspan></text>
   <text
      xml:space="preserve"
      x="92.28"
      y="155.111"
-     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:104px;line-height:1.5em;font-family:'IBM Plex Sans';-inkscape-font-specification:'IBM Plex Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;letter-spacing:0;word-spacing:1px;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#ffffff;stroke:none;stroke-width:1.88976;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:104px;line-height:1.5em;font-family:Inter;-inkscape-font-specification:'Inter, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;letter-spacing:0;word-spacing:1px;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#ffffff;stroke:none;stroke-width:1.88976;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"
      id="text135"><tspan
        x="92.28"
        y="155.111"
        id="tspan135"
-       style="-inkscape-font-specification:'IBM Plex Sans, Bold';font-family:'IBM Plex Sans';font-weight:bold;font-style:normal;font-stretch:normal;font-variant:normal;font-size:104px;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">StepUp</tspan></text>
+       style="-inkscape-font-specification:'Inter, Bold';font-family:Inter;font-weight:bold;font-style:normal;font-stretch:normal;font-variant:normal;font-size:104px;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">StepUp</tspan></text>
   <text
      x="399.79523"
      y="524.39398"
      fill="#7d879c"
      font-size="28"
      font-weight="400"
-     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:38px;font-family:'IBM Plex Sans';-inkscape-font-specification:'IBM Plex Sans, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:38px;font-family:Inter;-inkscape-font-specification:'Inter, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1"
      text-anchor="end"
      id="text136">github.com/reproducible-reporting</text>
   <text
      xml:space="preserve"
      x="243.04718"
      y="364.479"
-     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:38px;line-height:1.5em;font-family:'Source Code Pro';-inkscape-font-specification:'Source Code Pro, Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;letter-spacing:0;word-spacing:1px;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.88976;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:38px;line-height:1.5em;font-family:'JetBrains Mono';-inkscape-font-specification:'JetBrains Mono, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;letter-spacing:0;word-spacing:1px;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.88976;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"
      id="text137"><tspan
        x="400.25909"
        y="364.479"
-       style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:38px;font-family:'Source Code Pro';-inkscape-font-specification:'Source Code Pro, Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;fill-opacity:1"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:38px;font-family:'JetBrains Mono';-inkscape-font-specification:'JetBrains Mono, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;fill-opacity:1"
        id="tspan136">pip install stepup</tspan></text>
 </svg>

@@ -60,8 +60,11 @@ because it hands the SVG to the JPEG output extension instead of a rasterized im
 Three properties of the source must hold, and none of them is checked automatically:
 
 - The card measures 1200 by 630 pixels, the size the meta tags declare.
-- The text is set in IBM Plex Sans and Source Code Pro as live text, not as paths,
+- The text is set in Inter and JetBrains Mono as live text, not as paths,
   so those fonts have to be installed for the export to look right.
+  They are the default fonts of the `modern` theme variant of Zensical,
+  which the site uses because `zensical.toml` sets neither a variant nor a font,
+  so a change of either there calls for the same change in the card.
   Without them, Inkscape silently substitutes and the card changes.
 - The tagline is kept in step with the other copies by `snipwise.md`,
   which locates it through the `id="tagline"` attribute of its `tspan`.
