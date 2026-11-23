@@ -19,27 +19,48 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.2.0][] - 2026-11-23 {: #v4.2.0 }
+
 ### Added
 
+- StepUp sets the environment variable `STEPUP_STARTUP_I` to a new integer every time it starts.
+  A step that depends on it runs at every start,
+  which suits a step that looks at something StepUp does not watch, such as a remote server.
+  The functions `step()`, `run()`, `plan()`, `script()`, `call()` and `amend()`
+  accept `recheck=True` as a clearer spelling of this dependency.
+  See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution)
+  and the new [External Data](advanced_topics/external_data.md) tutorial.
+- `stepup rebuild --recheck` and the `R` key start a build phase in watch mode,
+  in which the steps with `recheck=True` also run again, as after a new start of StepUp.
+  It does nothing more than `stepup rebuild` with `offline`.
+  See [Interactive Usage](reference/interactive.md#interacting-with-a-background-stepup-process).
+- The new setting `offline` (`--offline`, `STEPUP_BUILD_OFFLINE`) is meant for builds
+  without access to external data.
+  `STEPUP_STARTUP_I` then keeps the value of the previous start,
+  so a step that runs at every start keeps its result of that start.
+  A step that runs anyway finds `STEPUP_BUILD_OFFLINE=1` in its environment.
+  Extension packages are expected to honor this variable in every step that uses the network,
+  as explained in [Steps That Use the Network](extending/api.md#steps-that-use-the-network).
+  See [Build Control](reference/configuration.md#build-control).
+- The function `is_offline()` in `stepup.core.api` tells a step whether StepUp runs offline.
+  With `declare=True`, it also declares a dependency on `STEPUP_BUILD_OFFLINE`,
+  for a step that writes a different output offline, e.g. a placeholder.
+  A step that runs at every start cannot have this dependency,
+  because it would then run at the first start offline,
+  so StepUp reports this as an error.
+  See [Working Offline](advanced_topics/external_data.md#working-offline).
 - `EXAMPLE_TIMEOUT` in `stepup.core.pytest` is now part of the import contract (`__all__`),
   so extension packages can use it in their tests of the integration examples.
 
-## [4.2.0rc4][] - 2026-11-22 {: #v4.2.0rc4 }
-
-Fourth pre-release of StepUp 4.2.
-
-### Added
-
-- `is_offline(declare=True)` also declares a dependency on `STEPUP_BUILD_OFFLINE`,
-  for a step that writes a different output offline, e.g. a placeholder.
-  See [Working Offline](advanced_topics/external_data.md#working-offline).
-
 ### Changed
 
-- A step that runs at every start, e.g. with `recheck=True`,
-  can no longer depend on `STEPUP_BUILD_OFFLINE`.
-  Such a step would run at the first start offline, which the setting `offline` avoids,
-  so StepUp now reports this as an error.
+- Outside StepUp, the functions of `stepup.core.api` no longer print the calls
+  they would send to the director,
+  which cluttered the output of console scripts that users run directly.
+  Set `STEPUP_DEBUG=1` to see these calls, which are now printed on standard error.
+  See [`STEPUP_DEBUG`](reference/configuration.md#settings-for-all-subcommands).
 
 ### Fixed
 
@@ -54,87 +75,18 @@ Fourth pre-release of StepUp 4.2.
   StepUp now retries reading it for a few seconds.
   An error while connecting to the director is now always reported as such,
   instead of with a traceback.
-
-## [4.2.0rc3][] - 2026-11-22 {: #v4.2.0rc3 }
-
-Third pre-release of StepUp 4.2.
-
-### Added
-
-- The function `is_offline()` in `stepup.core.api` tells a step whether StepUp runs offline,
-  without declaring `STEPUP_BUILD_OFFLINE` as a dependency.
-  See [Working Offline](advanced_topics/external_data.md#working-offline).
-- The functions `step()`, `run()`, `plan()`, `script()`, `call()` and `amend()`
-  accept `recheck=True` to make a step run at every start of StepUp (except with `offline`).
-  This is a clearer spelling of a dependency on `STEPUP_STARTUP_I`,
-  which keeps working and means the same.
-  See [External Data](advanced_topics/external_data.md#running-a-step-at-every-start).
-- `stepup rebuild --recheck` and the `R` key start a build phase in watch mode,
-  in which the steps with `recheck=True` also run again, as after a new start of StepUp.
-  It does nothing more than `stepup rebuild` with `offline`.
-  See [Interactive Usage](reference/interactive.md#interacting-with-a-background-stepup-process).
-
-### Changed
-
-- `STEPUP_DIRECTOR_I`, introduced in 4.2.0rc1, is renamed to `STEPUP_STARTUP_I`,
-  which shows more clearly in `plan.py` files that a step runs at every start.
-  Replace `env="STEPUP_DIRECTOR_I"` by `env="STEPUP_STARTUP_I"` in existing workflows.
-  See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution).
-- The tutorial page "Remote Data" is renamed to "External Data",
-  and moved from `advanced_topics/remote_data.md` to `advanced_topics/external_data.md`.
-
-## [4.2.0rc2][] - 2026-11-21 {: #v4.2.0rc2 }
-
-Second pre-release of StepUp 4.2.
-
-### Changed
-
-- Outside StepUp, the functions of `stepup.core.api` no longer print the calls
-  they would send to the director,
-  which cluttered the output of console scripts that users run directly.
-  Set `STEPUP_DEBUG=1` to see these calls, which are now printed on standard error.
-  See [`STEPUP_DEBUG`](reference/configuration.md#settings-for-all-subcommands).
-
-### Fixed
-
 - A copy step whose source is a directory, or which would overwrite a directory,
   fails with the message "Not a regular file but a directory" on all platforms.
   On Windows, overwriting a directory used to fail with "Permission denied".
-
-## [4.2.0rc1][] - 2026-11-21 {: #v4.2.0rc1 }
-
-Pre-release of StepUp 4.2, featuring a mechanism to work with remote data.
-
-### Added
-
-- StepUp sets the environment variable `STEPUP_DIRECTOR_I` to a new integer every time it starts.
-  A step that depends on it, e.g. with `env="STEPUP_DIRECTOR_I"`, runs at every start,
-  which suits a step that looks at something StepUp does not watch, such as a remote server.
-  See [Environment Variables in Step Execution](reference/configuration.md#environment-variables-in-step-execution)
-  and the new [External Data](advanced_topics/external_data.md) tutorial.
-
-- The new setting `offline` (`--offline`, `STEPUP_BUILD_OFFLINE`) is meant for builds
-  without access to remote data.
-  `STEPUP_DIRECTOR_I` then keeps the value of the previous start,
-  so a step that runs at every start keeps its result of that start.
-  A step that runs anyway finds `STEPUP_BUILD_OFFLINE=1` in its environment.
-  Extension packages are expected to honor this variable in every step that uses the network,
-  as explained in [Steps That Use the Network](extending/api.md#steps-that-use-the-network).
-  See [Build Control](reference/configuration.md#build-control).
-
-### Fixed
-
 - A Python step that stopped with a message, e.g. with `sys.exit("No data.")`,
   failed without showing the message when it ran in the forkserver,
   which is the default on Linux.
   The message now appears under the standard error of the step, as without the forkserver.
-
 - A restart after `plan.py` was removed in watch mode
   ignored the changes made while StepUp was not running,
   such as modified input files and environment variables,
   and did not retry the steps that had failed.
   StepUp reinitialized the boot script and skipped the scan for changes at startup.
-
 - A step that depends on `SOURCE_DATE_EPOCH` did not run again after a start with `--no-fix-epoch`,
   so its outputs kept the fixed timestamp set by `--fix-epoch`.
   StepUp recorded the value of the variable in its own environment,
@@ -2012,10 +1964,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
-[4.2.0rc4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc4
-[4.2.0rc3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc3
-[4.2.0rc2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc2
-[4.2.0rc1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0rc1
+[4.2.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0
 [4.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0
 [4.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.3
 [4.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.2
