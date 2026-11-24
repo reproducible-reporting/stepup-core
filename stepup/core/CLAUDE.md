@@ -258,9 +258,11 @@ because a step that fails before its first RPC call must still get a shortened t
 
 `extapi.py` collects utilities for authors of StepUp extension packages.
 It is a curated surface, not a layer:
-`subs_env_vars` and `track_amend` (and the `EnvSubstitutor` and `AmendTracker` they yield)
+`subs_env_vars`, `track_amend` and `get_amended_info`
+(and the `EnvSubstitutor` and `AmendTracker` they use)
 are equally meant for extension authors,
-yet live in `api.py` because `amend()` needs them and `extapi.py` imports from `api.py`.
+yet live in `api.py` because they share state with `amend()`
+and `extapi.py` imports from `api.py`.
 `docs/reference/stepup.core.api.md` documents them under a separate heading.
 
 `get_rpc_client` and `get_job_i` are **not** part of that surface.

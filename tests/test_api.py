@@ -20,6 +20,7 @@ from stepup.core.api import (
     call,
     copy,
     dumpns,
+    get_amended_info,
     get_info,
     get_rpc_client,
     getenv,
@@ -1536,3 +1537,43 @@ def test_track_amend_history_spelling(amend_sub):
         amend(inp="a.txt")
     assert api._AMEND_HISTORY.inp == {"sub/a.txt"}
     assert api._AMEND_HISTORY.workdir == "."
+
+
+def test_get_amended_info_empty(amend_sub):
+    info = get_amended_info()
+    assert info.command is None
+    assert info == StepInfo(workdir="sub")
+
+
+def test_get_amended_info_chdir(amend_sub, path_tmp):
+    (path_tmp / "sub/deep").makedirs()
+    amend(inp="a.txt", env="FOO", out="./b.txt", vol="c.txt")
+    info = get_amended_info()
+    assert info == StepInfo(inp=["a.txt"], env=["FOO"], out=["b.txt"], vol=["c.txt"], workdir="sub")
+    with contextlib.chdir("deep"):
+        info = get_amended_info()
+    assert info == StepInfo(
+        inp=["../a.txt"], env=["FOO"], out=["../b.txt"], vol=["../c.txt"], workdir="sub/deep"
+    )
+
+
+def test_get_amended_info_inside_and_outside_tracker(amend_sub):
+    amend(inp="a.txt")
+    with track_amend():
+        amend(inp="a.txt", env="FOO")
+        with contextlib.chdir(".."):
+            amend(out="sub/b.txt")
+    amend(env="BAR")
+    amend(env="BAR")
+    assert len(amend_sub.calls) == 4
+    assert get_amended_info() == StepInfo(
+        inp=["a.txt"], env=["BAR", "FOO"], out=["b.txt"], workdir="sub"
+    )
+
+
+def test_get_amended_info_failed_amend(monkeypatch, amend_sub):
+    amend(env="FOO")
+    monkeypatch.setattr(api, "_get_cached_rpc_client", _NotFoundAmendClient)
+    with pytest.raises(InputNotFoundError):
+        amend(inp="a.txt", out="b.txt")
+    assert get_amended_info() == StepInfo(env=["FOO"], workdir="sub")

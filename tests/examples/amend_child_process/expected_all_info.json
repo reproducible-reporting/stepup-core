@@ -1,0 +1,15 @@
+{
+  "command": "./work.py",
+  "inp": [
+    "child/child.py",
+    "child/data.txt",
+    "work.py"
+  ],
+  "env": [],
+  "out": [
+    "child/result.txt",
+    "extra.txt"
+  ],
+  "vol": [],
+  "workdir": "."
+}

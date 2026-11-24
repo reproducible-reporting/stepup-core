@@ -302,3 +302,49 @@ def test_rebase_absolute_paths(stepup_root: Path):
     assert rebased.workdir == stepup_root.parent / "ext"
     assert rebased.inp == ["../root/sub/b.txt", path_abs]
     assert rebased.rebase("sub") == step_info
+
+
+def test_merge_keeps_command_and_workdir(stepup_root: Path):
+    step_info = StepInfo("./work.py", inp=["work.py"], workdir="sub")
+    other = StepInfo(None, out=["c.txt"], workdir="other")
+    assert step_info.merge(other) == StepInfo(
+        "./work.py", inp=["work.py"], out=["../other/c.txt"], workdir="sub"
+    )
+    assert other.merge(step_info).command is None
+
+
+def test_merge_subdirectory(stepup_root: Path):
+    step_info = StepInfo("./work.py", inp=["sub/a.txt", "work.py"], out=["./d.txt"])
+    other = StepInfo(None, inp=["a.txt", "b.txt"], out=["../d.txt"], vol=["v.txt"], workdir="sub")
+    assert step_info.merge(other) == StepInfo(
+        "./work.py",
+        inp=["sub/a.txt", "sub/b.txt", "work.py"],
+        out=["d.txt"],
+        vol=["sub/v.txt"],
+    )
+
+
+def test_merge_env(stepup_root: Path):
+    step_info = StepInfo(env=["FOO", "BAR"], workdir="sub")
+    other = StepInfo(env=["BAR", "EGG"], workdir="other")
+    assert step_info.merge(other).env == ["BAR", "EGG", "FOO"]
+
+
+def test_merge_without_others_normalizes(stepup_root: Path):
+    step_info = StepInfo("cat a.txt", inp=["./a.txt", "x/../a.txt"], env=["FOO"], workdir="./sub")
+    assert step_info.merge() == StepInfo("cat a.txt", inp=["a.txt"], env=["FOO"], workdir="sub")
+
+
+def test_merge_into_empty(stepup_root: Path):
+    a = StepInfo("./a.py", inp=["a.txt"], workdir="sub")
+    b = StepInfo(None, out=["b.txt"], workdir="sub/deep")
+    assert StepInfo(workdir="other").merge(a, b) == StepInfo(
+        inp=["../sub/a.txt"], out=["../sub/deep/b.txt"], workdir="other"
+    )
+
+
+def test_merge_absolute_paths(stepup_root: Path):
+    path_abs = stepup_root.parent / "ext/a.txt"
+    step_info = StepInfo(inp=["b.txt"], workdir="sub")
+    other = StepInfo(inp=[path_abs, "b.txt"], workdir="other")
+    assert step_info.merge(other).inp == sorted([path_abs, Path("../other/b.txt"), Path("b.txt")])

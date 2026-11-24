@@ -69,3 +69,5 @@ which builds on this module and therefore cannot be imported by it.
 ### ::: stepup.core.api.track_amend
 
 ### ::: stepup.core.api.AmendTracker
+
+### ::: stepup.core.api.get_amended_info

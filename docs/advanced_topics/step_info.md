@@ -41,11 +41,17 @@ Note that the `StepInfo` object will only contain information known at the time 
 Dynamic dependencies (inputs, outputs, ...) amended while the step runs are not included.
 To collect those, wrap the code that amends them in a
 [`track_amend()`][stepup.core.api.track_amend] block,
-which returns them as a `StepInfo` without a command.
+or call [`get_amended_info()`][stepup.core.api.get_amended_info]
+for all dependencies amended by the current process.
+Both return them as a `StepInfo` without a command.
 Relative paths in `inp`, `out` and `vol` are relative to `workdir`,
 which is itself relative to `STEPUP_ROOT`, unless it is absolute.
 The method `rebase()` returns a copy with paths relative to another working directory,
 e.g. `info.rebase(".")` for paths relative to `STEPUP_ROOT`.
+The method `merge()` combines the dependencies of several `StepInfo` objects into one,
+with paths relative to the `workdir` of the first one,
+e.g. `get_info().merge(get_amended_info())`
+for the declared and amended dependencies of the current step.
 
 ## Example
 

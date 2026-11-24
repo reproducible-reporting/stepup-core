@@ -35,6 +35,7 @@ EXAMPLES = [
     "amend",
     "amend_already_declared",
     "amend_chdir",
+    "amend_child_process",
     "amend_delete_both",
     "amend_env_vars",
     "amend_env_vars_subs",

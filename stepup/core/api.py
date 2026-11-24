@@ -96,6 +96,7 @@ __all__ = (
     "call",
     "copy",
     "dumpns",
+    "get_amended_info",
     "get_info",
     "get_job_i",
     "get_rpc_client",
@@ -1001,6 +1002,40 @@ def track_amend() -> Generator[AmendTracker]:
         _AMEND_TRACKERS.remove(tracker)
 
 
+def get_amended_info() -> StepInfo:
+    """Get the dependencies amended by the current process.
+
+    The scope of this function is the current process,
+    whereas [`get_info()`][stepup.core.api.get_info] returns the dependencies
+    declared when the current step was defined.
+    When a step amends dependencies only in its own process,
+    its declared and amended dependencies are therefore:
+
+    ```python
+    info = get_info().merge(get_amended_info())
+    ```
+
+    Returns
+    -------
+    step_info
+        A `StepInfo` without a command, holding the dependencies of all successful
+        [`amend()`][stepup.core.api.amend] calls made so far in the current process,
+        including the calls made by other API functions.
+        A dependency that was amended several times appears once.
+        `workdir` is the current working directory, relative to `STEPUP_ROOT`
+        and with symbolic links resolved, and relative paths are relative to it.
+        The result is correct regardless of earlier changes of the working directory.
+
+    Notes
+    -----
+    Calls to `amend()` in other processes, such as subprocesses of the step, are not included.
+    Such a process can call `get_amended_info()` itself and report the result,
+    which can then be combined with the others using
+    [`StepInfo.merge()`][stepup.core.stepinfo.StepInfo.merge].
+    """
+    return _AMEND_HISTORY.get_info().rebase(get_here())
+
+
 class _HoldState:
     """How many `hold()` blocks the current process is nested inside of.
 
@@ -1238,6 +1273,8 @@ def get_info() -> StepInfo:
         also when the step has changed its current working directory.
         It only holds the dependencies declared when the step was defined,
         not those amended later.
+        Those amended by the current process are returned by
+        [`get_amended_info()`][stepup.core.api.get_amended_info].
     """
     return _localize_step_info(get_rpc_client().call.get_step_info(get_job_i()))
 

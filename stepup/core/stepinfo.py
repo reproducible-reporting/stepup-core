@@ -96,6 +96,43 @@ class StepInfo:
             workdir=workdir,
         )
 
+    def merge(self, *others: "StepInfo") -> "StepInfo":
+        """Combine the dependencies of several step infos into one.
+
+        Parameters
+        ----------
+        others
+            The step infos whose dependencies are added to those of `self`.
+            Their `workdir` may differ from that of `self`.
+
+        Returns
+        -------
+        step_info
+            A new `StepInfo` with the `command` and `workdir` of `self`,
+            and the union of the dependencies of `self` and `others`.
+            The paths of `others` are rebased onto `workdir`, as with `rebase()`,
+            and all paths are normalized,
+            so that different spellings of the same path appear only once.
+
+        Notes
+        -----
+        A `StepInfo` with a `command` may hold amended dependencies too,
+        e.g. after merging the result of
+        [`get_amended_info()`][stepup.core.api.get_amended_info] into it.
+        To combine step infos in a chosen working directory, merge them into an empty one,
+        e.g. `StepInfo(workdir=".").merge(*infos)` for paths relative to `STEPUP_ROOT`.
+        """
+        # Rebasing `self` onto its own `workdir` only normalizes its paths.
+        infos = [info.rebase(self.workdir) for info in (self, *others)]
+        return StepInfo(
+            self.command,
+            [path for info in infos for path in info.inp],
+            [name for info in infos for name in info.env],
+            [path for info in infos for path in info.out],
+            [path for info in infos for path in info.vol],
+            infos[0].workdir,
+        )
+
     def filter_inp(self, pattern: str, **subs: str) -> NamedGlob:
         """Return a `NamedGlob` object with matching results from `self.inp`."""
         ng = NamedGlob(pattern, subs)

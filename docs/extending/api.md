@@ -169,6 +169,64 @@ Relative paths added to them must be relative to `workdir`.
 In the example, the file `deps.json` is amended after the block,
 so that it is not part of the dependencies it records.
 
+### Dependencies Amended by a Process
+
+[`get_amended_info()`][stepup.core.api.get_amended_info] returns the dependencies
+that the current process has amended so far, as a `StepInfo` without a command.
+Like a tracker, it includes the calls to `amend()` made by other API functions,
+but it needs no `with` block, because its scope is the whole process.
+Its `workdir` is the current working directory at the time of the call,
+relative to `STEPUP_ROOT`.
+
+When a step starts a child process that amends dependencies,
+`get_amended_info()` in the step does not include them.
+The child process can call `get_amended_info()` itself and report the result to its parent,
+e.g. as JSON on its standard output.
+The parent then combines the reports with
+[`StepInfo.merge()`][stepup.core.stepinfo.StepInfo.merge],
+which rebases the paths of each report onto its own `workdir`.
+The following child process runs in a subdirectory `child/` of the step:
+
+```python
+import json
+
+from stepup.core.api import amend, get_amended_info
+from stepup.core.cattrs import json_converter
+
+amend(inp="data.txt", out="result.txt")
+# Write result.txt here.
+print(json.dumps(json_converter.unstructure(get_amended_info())))
+```
+
+The step combines the dependencies declared in the plan, those it amended itself,
+and those amended by the child,
+and writes them to a file, apart from that file itself:
+
+```python
+import json
+import subprocess
+import sys
+
+from stepup.core.api import amend, get_amended_info, get_info
+from stepup.core.cattrs import json_converter
+from stepup.core.stepinfo import StepInfo, dump_step_info
+
+amend(out="extra.txt")
+# Write extra.txt here.
+cp = subprocess.run(
+    [sys.executable, "child.py"], cwd="child", check=True, capture_output=True, text=True
+)
+child_info = json_converter.structure(json.loads(cp.stdout), StepInfo)
+info = get_info().merge(get_amended_info(), child_info)
+info.out = [path for path in info.out if path != "all_info.json"]
+dump_step_info("all_info.json", info)
+```
+
+The result keeps the `command` and `workdir` of `get_info()`,
+and holds paths such as `child/result.txt`.
+To combine step infos in a working directory of your choice,
+merge them into an empty one, e.g. `StepInfo(workdir=".").merge(*infos)`.
+
 ### Dependency Filtering
 
 [`filter_dependencies()`][stepup.core.extapi.filter_dependencies] filters a collection of

@@ -1,0 +1,64 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:child/child.py
+             product   file:child/data.txt
+             product   file:work.py
+             product   step:./work.py
+
+file:child/child.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./work.py
+
+file:child/data.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./work.py
+
+file:work.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./work.py
+
+step:./work.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./plan.py
+              source   file:child/child.py
+              source   file:child/data.txt [dynamic]
+              source   file:work.py
+             product   file:child/result.txt
+             product   file:current_all_info.json
+             product   file:extra.txt
+                sink   file:child/result.txt [dynamic]
+                sink   file:current_all_info.json
+                sink   file:extra.txt [dynamic]
+
+file:current_all_info.json
+               state = BUILT
+             creator   step:./work.py
+              source   step:./work.py
+
+file:extra.txt
+               state = BUILT
+             creator   step:./work.py
+              source   step:./work.py
+
+file:child/result.txt
+               state = BUILT
+             creator   step:./work.py
+              source   step:./work.py
