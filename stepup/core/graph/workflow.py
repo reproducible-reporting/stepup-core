@@ -29,7 +29,7 @@ from ..enums import (
 )
 from ..exceptions import ConsistencyError, GraphError
 from ..hash import FileHash, fmt_short_digest
-from ..nglob import NamedGlob, glob_base_dir, has_any_wildcards
+from ..nglob import NamedGlob, convert_nglob_to_regex, glob_base_dir, has_any_wildcards
 from ..path import Path, dir_range_upper, parent_dir
 from ..utils import is_debug
 from .file import REGULAR_OUTPUT_WHERE, File
@@ -2559,7 +2559,9 @@ class Workflow(Trellis):
         Raises
         ------
         GraphError
-            When a match is a known build product, or lies under the `.stepup` directory.
+            When the pattern matches a declared output or volatile file,
+            whether it exists yet or not,
+            or when a match lies under the `.stepup` directory.
 
         Notes
         -----
@@ -2569,33 +2571,34 @@ class Workflow(Trellis):
         `find_glob_violations` catches the ones that never become justified.
         """
 
-        paths = ng.files()
-
-        # A match cannot already be a known build product.
+        # A pattern may not match a declared output or volatile file, built or not.
+        # The test is lexical, like the one in _raise_if_glob_match,
+        # so the outcome does not depend on whether the file exists on disk yet.
         # Detached nodes are excluded: their state is a memory of a former life, not a claim.
-        if paths:
-            db = self.db
-            db.execute("DELETE FROM path_list")
-            db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
-            states = ", ".join(
-                str(state.value)
-                for state in FILE_STATES_BY_ROLE[FileRole.OUTPUT]
-                | FILE_STATES_BY_ROLE[FileRole.VOLATILE]
-            )
-            # An attached node always has a creator, so the LEFT JOIN is only defensive.
-            sql = (
-                "SELECT node.label, creator.label FROM node "
-                "JOIN file ON file.node = node.i "
-                "LEFT JOIN node AS creator ON creator.i = node.creator "
-                "WHERE node.kind = 'file' AND NOT node.detached "
-                "AND node.label IN (SELECT path FROM path_list) "
-                f"AND file.state IN ({states}) "
-                "ORDER BY node.label LIMIT 1"
-            )
-            row = db.execute(sql).fetchone()
-            if row is not None:
-                path, creator_label = row
+        regex = re.compile(convert_nglob_to_regex(ng.pattern, ng.subs))
+        states = ", ".join(
+            str(state.value)
+            for state in FILE_STATES_BY_ROLE[FileRole.OUTPUT]
+            | FILE_STATES_BY_ROLE[FileRole.VOLATILE]
+        )
+        # An attached node always has a creator, so the LEFT JOIN is only defensive.
+        sql = (
+            "SELECT node.label, creator.label FROM node "
+            "JOIN file ON file.node = node.i "
+            "LEFT JOIN node AS creator ON creator.i = node.creator "
+            "WHERE node.kind = 'file' AND NOT node.detached "
+            f"AND file.state IN ({states}) "
+        )
+        args = ()
+        base_dir = glob_base_dir(ng.pattern)
+        if base_dir != ".":
+            sql += "AND node.label >= ? AND node.label < ? "
+            args = (base_dir + "/", dir_range_upper(base_dir + "/"))
+        for path, creator_label in self.db.execute(sql + "ORDER BY node.label", args):
+            if regex.fullmatch(path):
                 raise GraphError(_glob_product_message(ng.pattern, step.label, path, creator_label))
+
+        paths = ng.files()
 
         # Reject matches under .stepup/, mirroring the rule _declare_file applies.
         # This is load-bearing, not defensive:
@@ -2651,7 +2654,7 @@ class Workflow(Trellis):
         """Raise when a registered glob pattern matches a path a step is about to build.
 
         This is the late-arriving half of the rule that a glob pattern may only match static files.
-        `register_nglob` catches the outputs that already exist.
+        `register_nglob` catches the outputs declared before the pattern.
         This method catches the ones declared afterwards.
 
         Whichever event happens second is the one that raises,

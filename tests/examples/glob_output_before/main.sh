@@ -16,7 +16,7 @@ stepup join
 # Wait for background processes, if any.
 wait
 
-# Eager check (a): the pattern matches a file that another step already builds.
+# Eager check (a): the pattern matches a declared output.
 grep -F "Glob pattern (sub/*.txt) registered by step (./plan.py) matches (sub/out.txt), which step (touch sub/out.txt) builds." .stepup/fail.log
 
 # Check files that are expected to be present and/or missing.

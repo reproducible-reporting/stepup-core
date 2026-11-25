@@ -48,6 +48,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   like with a relative `workdir`, so that the same file never gets two names.
   Steps that shared a file but spelled their `workdir` differently remained pending.
   Absolute paths are kept as they are.
+- A glob pattern that matches the output of a step fails the build when the pattern is
+  registered, also when the output does not exist yet.
+  Such a build could succeed and fail only at the next build,
+  depending on which steps had already run.
 
 ## [4.3.0a0][] - 2026-11-23 {: #v4.3.0a0 }
 

@@ -101,6 +101,7 @@ so the pattern is simply wrong and will result in a **failed** build.
 This is reported in either declaration order,
 immediately when the pattern is registered or when the output is declared,
 whichever comes second.
+This does not depend on whether the output exists yet.
 Any occurrence that slipped through is caught by the end-of-build detection as well,
 reported as `N glob match(es) are files that a step builds.`,
 which also set the `FAILED` bit of the [return code](../reference/returncode.md).

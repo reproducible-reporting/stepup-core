@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from stepup.core.api import glob, run
 
-# vol.txt already exists on disk (see main.sh), so the pattern's file system scan sees
-# it. Eager check (a) treats a VOLATILE output the same as PLANNED/BUILT/OUTDATED.
+# Eager check (a) treats a VOLATILE output the same as PLANNED/BUILT/OUTDATED.
+# The stale vol.txt on disk (see main.sh) plays no role in this check.
 run("touch vol.txt", shell=True, vol="vol.txt")
 list(glob("*.txt"))

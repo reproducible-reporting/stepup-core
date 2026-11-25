@@ -151,6 +151,7 @@ EXAMPLES = [
     "glob_no_declare",
     "glob_output_after",
     "glob_output_before",
+    "glob_output_before_unbuilt",
     "glob_overlapping",
     "glob_stepup_dir",
     "glob_unjustified_file",

@@ -1555,6 +1555,40 @@ async def test_register_glob_rejects_outdated_match(wfp: Workflow):
             wfp.register_nglob(plan, ng)
 
 
+async def test_register_glob_rejects_planned_output_not_on_disk(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", out_paths=["sub/out.txt"])
+        ng = NamedGlob("sub/*.txt")
+        with pytest.raises(GraphError, match=r"matches \(sub/out.txt\), which step \(producer\)"):
+            wfp.register_nglob(plan, ng)
+
+
+async def test_register_glob_rejects_volatile_not_on_disk(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", vol_paths=["sub/vol.txt"])
+        ng = NamedGlob("sub/*.txt")
+        with pytest.raises(GraphError, match=r"matches \(sub/vol.txt\), which step \(producer\)"):
+            wfp.register_nglob(plan, ng)
+
+
+async def test_register_glob_ignores_output_of_detached_step(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", out_paths=["sub/out.txt"])
+        wfp.find(Step, "producer").detach()
+        assert wfp.find_and_detached(File, "sub/out.txt")[1]
+        wfp.register_nglob(plan, NamedGlob("sub/*.txt"))  # must not raise
+
+
+async def test_register_glob_ignores_output_outside_base_dir(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", out_paths=["subx/out.txt", "out.txt"])
+        wfp.register_nglob(plan, NamedGlob("sub/*.txt"))  # must not raise
+
+
 async def test_register_glob_ignores_detached_undeclared_match(wfp: Workflow):
     """An unresolved input created by `_resolve_supply_file` (creator=None, forced
     detached by `Trellis.create`) is not a claim that some step builds it, unlike an
@@ -4932,7 +4966,7 @@ async def test_get_observable_file_hashes_skips_unobservable_states(wfp: Workflo
             out_paths=["out.txt"],
             vol_paths=["vol.txt"],
         )
-        wfp.register_nglob(plan, NamedGlob("*.txt"))
+        wfp.register_nglob(plan, NamedGlob("given.txt"))
         paths = ["given.txt", "out.txt", "vol.txt"]
         assert [wfp.find(File, path).get_state() for path in paths] == [
             FileState.UNDECLARED,
@@ -5299,7 +5333,7 @@ async def test_clean_cascades_satellite_rows(wfs: Workflow):
         step.set_hash(StepHash(b"inp", None, b"out", None))
         step.set_outcome(ChildOutcome(0, "hello\n", ""), 0)
         step.add_subprocess("do something", ".", None, 0, False, "in", "out", "err")
-        wfs.register_nglob(step, NamedGlob("*.txt"))
+        wfs.register_nglob(step, NamedGlob("inp*.txt"))
         step_i = step.i
         out_i = out_file.i
 
