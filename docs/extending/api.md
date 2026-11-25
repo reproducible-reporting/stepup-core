@@ -99,9 +99,9 @@ or execute external commands directly.
 
 The [`stepup.core.extapi`](../reference/stepup.core.extapi.md) module provides
 some reusable low-level functions for extension developers.
-One of them, `subs_env_vars()`, lives in
+Two of them, `subs_env_vars()` and `track_amend()`, live in
 [`stepup.core.api`](../reference/stepup.core.api.md) instead,
-because it is mutually recursive with `amend()`.
+because `amend()` depends on them.
 
 ### Environment Variable Substitution
 
@@ -127,6 +127,47 @@ but a leading `./` and a trailing `/` are restored after the normalization,
 because a trailing slash marks a directory in StepUp.
 An affix introduced by the environment variable itself is preserved as well,
 e.g. when `${MYDIR}` holds `data/`.
+
+### Tracking Amended Dependencies
+
+[`track_amend()`][stepup.core.api.track_amend] records the dependencies
+that a part of a step amends,
+e.g. to write them to a file that a follow-up step uses.
+It yields an [`AmendTracker`][stepup.core.api.AmendTracker],
+whose `get_info()` method returns the recorded dependencies
+as a [`StepInfo`][stepup.core.stepinfo.StepInfo] without a command:
+
+```python
+from stepup.core.api import amend, track_amend
+from stepup.core.stepinfo import dump_step_info
+
+with track_amend() as tracker:
+    run_user_code()
+tracker.inp.add("config.toml")
+amend(out="deps.json")
+dump_step_info("deps.json", tracker.get_info())
+```
+
+The tracker records every successful call to `amend()` in the current process
+while the block is open, including the calls made by other API functions.
+Each call is recorded with its complete arguments,
+also when a dependency was amended before the block or declared when the step was defined,
+so that the tracker holds all dependencies of the code in the block,
+regardless of what ran before it.
+A call that raises an exception records nothing.
+Blocks may be nested, in which case every open tracker records the call.
+Calls to `amend()` in other processes, such as subprocesses of the step, are not recorded.
+
+The `workdir` of the tracker is the current working directory at the start of the block,
+relative to `STEPUP_ROOT`.
+Relative paths in the tracker are relative to this `workdir`,
+also when the code in the block changes its working directory.
+
+The sets `inp`, `env`, `out` and `vol` of the tracker may be modified in place,
+as `config.toml` in the example shows.
+Relative paths added to them must be relative to `workdir`.
+In the example, the file `deps.json` is amended after the block,
+so that it is not part of the dependencies it records.
 
 ### Dependency Filtering
 

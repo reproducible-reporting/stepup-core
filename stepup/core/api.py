@@ -90,6 +90,7 @@ from .tracebacks import install_excepthook
 from .utils import as_list, extract_env_overrides, parse_resources
 
 __all__ = (
+    "AmendTracker",
     "CommandArg",
     "amend",
     "call",
@@ -112,6 +113,7 @@ __all__ = (
     "static",
     "step",
     "subs_env_vars",
+    "track_amend",
 )
 
 logger = logging.getLogger(__name__)
@@ -890,14 +892,113 @@ def subs_env_vars() -> Generator[EnvSubstitutor]:
         amend(env=subs_env.used_env)
 
 
-# A history used to avoid amending the same information twice.
-# This effectively reduces the number of amend API calls.
-_AMEND_HISTORY = {
-    "inp": set(),
-    "env": set(),
-    "out": set(),
-    "vol": set(),
-}
+@attrs.define(eq=False)
+class AmendTracker:
+    """The dependencies amended in a [`track_amend()`][stepup.core.api.track_amend] block.
+
+    The sets `inp`, `env`, `out` and `vol` may be modified in place,
+    e.g. to add a dependency that need not be amended.
+    Relative paths in `inp`, `out` and `vol` are relative to `workdir`,
+    also those added by the caller.
+
+    Two trackers are equal only when they are the same object.
+    Use `get_info()` to compare their contents.
+    """
+
+    inp: set[Path] = attrs.field(factory=set)
+    """Input paths."""
+
+    env: set[str] = attrs.field(factory=set)
+    """Names of environment variables."""
+
+    out: set[Path] = attrs.field(factory=set)
+    """Output paths."""
+
+    vol: set[Path] = attrs.field(factory=set)
+    """Volatile output paths."""
+
+    workdir: Path = attrs.field(default=Path("."), converter=coerce_path)
+    """The working directory, relative to `STEPUP_ROOT` unless absolute."""
+
+    def get_info(self) -> StepInfo:
+        """Return the recorded dependencies as a step info without a command.
+
+        Returns
+        -------
+        step_info
+            A `StepInfo` with `command` set to `None`, sorted fields and normalized paths.
+        """
+        return StepInfo(
+            None,
+            [coerce_path(p).normpath() for p in self.inp],
+            self.env,
+            [coerce_path(p).normpath() for p in self.out],
+            [coerce_path(p).normpath() for p in self.vol],
+            self.workdir,
+        )
+
+    def _record(
+        self,
+        tr_inp_paths: Iterable[Path],
+        env_deps: Iterable[str],
+        tr_out_paths: Iterable[Path],
+        tr_vol_paths: Iterable[Path],
+    ) -> None:
+        """Add amended dependencies, whose relative paths are relative to `STEPUP_ROOT`."""
+        info = StepInfo(None, tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths)
+        info = info.rebase(self.workdir)
+        self.inp.update(info.inp)
+        self.env.update(info.env)
+        self.out.update(info.out)
+        self.vol.update(info.vol)
+
+
+# The dependencies that this process has amended so far, relative to `STEPUP_ROOT`.
+# `amend()` sends only what is not in here yet.
+_AMEND_HISTORY = AmendTracker()
+
+# The trackers of the open `track_amend()` blocks, innermost last.
+_AMEND_TRACKERS: list[AmendTracker] = []
+
+
+@contextlib.contextmanager
+def track_amend() -> Generator[AmendTracker]:
+    """Record the dependencies amended by the code in a `with` block.
+
+    The context manager yields an [`AmendTracker`][stepup.core.api.AmendTracker],
+    which records the arguments of every successful [`amend()`][stepup.core.api.amend] call
+    made in the current process while the block is open,
+    including the calls made by other API functions.
+    For example:
+
+    ```python
+    with track_amend() as tracker:
+        run_user_code()
+    dump_step_info("deps.json", tracker.get_info())
+    ```
+
+    Every call is recorded with its complete arguments,
+    also the parts that were amended before the block or declared when the step was defined.
+    A call that raises an exception records nothing.
+    Blocks may be nested, in which case every open tracker records the call.
+    Calls to `amend()` in other processes, e.g. in a subprocess, are not recorded.
+
+    The `workdir` of the tracker is the current working directory at the start of the block,
+    relative to `STEPUP_ROOT` and with symbolic links resolved.
+    Relative paths in the tracker are relative to this `workdir`,
+    also when the process changes its working directory inside the block.
+
+    Returns
+    -------
+    tracker
+        The tracker, whose `get_info()` may be called inside or after the block.
+    """
+    tracker = AmendTracker(workdir=get_here())
+    _AMEND_TRACKERS.append(tracker)
+    try:
+        yield tracker
+    finally:
+        _AMEND_TRACKERS.remove(tracker)
 
 
 class _HoldState:
@@ -994,6 +1095,8 @@ def amend(
     and so is information that the step's plan already declared for it.
     Each argument is matched against its own kind only:
     amending an `out` path that the step declared as `vol`, or vice versa, is still a collision.
+    A successful call is recorded by every open [`track_amend()`][stepup.core.api.track_amend]
+    block with its complete arguments, including the parts that were skipped.
     """
     # Pre-process the arguments for the Director process.
     inp_paths = coerce_paths(inp)
@@ -1034,46 +1137,33 @@ def amend(
     tr_out_paths = {translate(out_path) for out_path in su_out_paths}
     tr_vol_paths = {translate(vol_path) for vol_path in su_vol_paths}
 
-    # Filter out previously given dynamic dependencies.
-    tr_inp_paths.difference_update(_AMEND_HISTORY["inp"])
-    env_deps.difference_update(_AMEND_HISTORY["env"])
-    tr_out_paths.difference_update(_AMEND_HISTORY["out"])
-    tr_vol_paths.difference_update(_AMEND_HISTORY["vol"])
+    # Send only what this process has not amended before.
+    new_inp_paths = tr_inp_paths - _AMEND_HISTORY.inp
+    new_env_deps = env_deps - _AMEND_HISTORY.env
+    new_out_paths = tr_out_paths - _AMEND_HISTORY.out
+    new_vol_paths = tr_vol_paths - _AMEND_HISTORY.vol
+    if any(len(c) > 0 for c in (new_inp_paths, new_env_deps, new_out_paths, new_vol_paths)):
+        # This call may block while the director hashes any dynamic input
+        # that still matches an unconfirmed static file,
+        # which can exceed `STEPUP_SYNC_RPC_TIMEOUT` for a large file,
+        # hence the disabled socket timeout.
+        carry_on = get_rpc_client().call.amend_step(
+            get_job_i(),
+            new_inp_paths,
+            sorted(new_env_deps),
+            new_out_paths,
+            new_vol_paths,
+            _rpc_timeout=NO_RPC_TIMEOUT,
+        )
+        if carry_on is False:
+            raise InputNotFoundError("Dynamic inputs are not available yet.")
+        # Double-check that all inputs are indeed present.
+        # Only the existence check matters here: the directories were already rejected above.
+        _check_inp_paths(su_inp_paths)
 
-    if (
-        len(tr_inp_paths) == 0
-        and len(env_deps) == 0
-        and len(tr_out_paths) == 0
-        and len(tr_vol_paths) == 0
-    ):
-        return
-
-    # Finally, amend for real.
-    # This call may block while the director hashes any dynamic input
-    # that still matches an unconfirmed static file,
-    # which can exceed `STEPUP_SYNC_RPC_TIMEOUT` for a large file,
-    # hence the disabled socket timeout.
-    job_i = get_job_i()
-    carry_on = get_rpc_client().call.amend_step(
-        job_i,
-        tr_inp_paths,
-        sorted(env_deps),
-        tr_out_paths,
-        tr_vol_paths,
-        _rpc_timeout=NO_RPC_TIMEOUT,
-    )
-    if carry_on is False:
-        raise InputNotFoundError("Dynamic inputs are not available yet.")
-
-    # Double-check that all inputs are indeed present.
-    # Only the existence check matters here: the directories were already rejected above.
-    _check_inp_paths(su_inp_paths)
-
-    # Update the amendment history.
-    _AMEND_HISTORY["inp"].update(tr_inp_paths)
-    _AMEND_HISTORY["env"].update(env_deps)
-    _AMEND_HISTORY["out"].update(tr_out_paths)
-    _AMEND_HISTORY["vol"].update(tr_vol_paths)
+    # The trackers get the complete arguments, also what was amended before.
+    for tracker in (_AMEND_HISTORY, *_AMEND_TRACKERS):
+        tracker._record(tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths)
 
 
 @contextlib.contextmanager

@@ -1,0 +1,17 @@
+{
+  "inp": [
+    "../b.txt",
+    "data/a.txt",
+    "work.py"
+  ],
+  "env": [
+    "FOO"
+  ],
+  "out": [
+    "data/a.out"
+  ],
+  "vol": [
+    "vol.txt"
+  ],
+  "workdir": "sub"
+}

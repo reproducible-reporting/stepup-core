@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Tests for stepup.core.api."""
 
+import contextlib
 import logging
 import os
 import pathlib
@@ -34,9 +35,15 @@ from stepup.core.api import (
     static,
     step,
     subs_env_vars,
+    track_amend,
 )
 from stepup.core.constants import DIRECTOR_SOCKET_SENTINEL
-from stepup.core.exceptions import AmendWhileHoldingError, PathError, StepUpError
+from stepup.core.exceptions import (
+    AmendWhileHoldingError,
+    InputNotFoundError,
+    PathError,
+    StepUpError,
+)
 from stepup.core.nglob import NamedGlob
 from stepup.core.path import Path, make_path_out
 from stepup.core.rpc.client import DummySyncRPCClient
@@ -1248,7 +1255,8 @@ def define_step_client(monkeypatch):
 
 @pytest.fixture
 def amend_step_client(monkeypatch):
-    monkeypatch.setattr(api, "_AMEND_HISTORY", {key: set() for key in api._AMEND_HISTORY})
+    monkeypatch.setattr(api, "_AMEND_HISTORY", api.AmendTracker())
+    monkeypatch.setattr(api, "_AMEND_TRACKERS", [])
     monkeypatch.setattr(api, "get_job_i", lambda: 1)
     client = _CaptureAmendClient()
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
@@ -1350,3 +1358,159 @@ def test_amend_recheck_does_not_raise_while_holding(monkeypatch, amend_step_clie
     monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
     amend(recheck=True)
     assert len(amend_step_client.calls) == 1
+
+
+@attrs.define
+class _NotFoundAmendClient(_CaptureAmendClient):
+    """A dummy RPC client whose `amend_step` reports that the inputs are not available."""
+
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+        result = super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
+        return False if name == "amend_step" else result
+
+
+@pytest.fixture
+def amend_sub(monkeypatch, path_tmp, amend_step_client):
+    """Run in the subdirectory `sub/` of a temporary StepUp root, with an input `a.txt`."""
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    (path_tmp / "sub").makedirs()
+    (path_tmp / "sub/a.txt").write_text("a", encoding="utf-8")
+    monkeypatch.chdir(path_tmp / "sub")
+    return amend_step_client
+
+
+def test_track_amend_basic(amend_sub):
+    with track_amend() as tracker:
+        amend(inp="a.txt", env="FOO", out="./b.txt", vol="c.txt")
+    info = tracker.get_info()
+    assert info.command is None
+    assert info.workdir == "sub"
+    assert info.inp == ["a.txt"]
+    assert info.env == ["FOO"]
+    assert info.out == ["b.txt"]
+    assert info.vol == ["c.txt"]
+    _job_i, tr_inp, env_deps, tr_out, tr_vol = amend_sub.calls[0]
+    assert (tr_inp, env_deps, tr_out, tr_vol) == (
+        {"sub/a.txt"},
+        ["FOO"],
+        {"sub/b.txt"},
+        {"sub/c.txt"},
+    )
+
+
+def test_track_amend_before_block(amend_sub):
+    amend(inp="a.txt")
+    with track_amend() as tracker:
+        amend(inp="a.txt")
+    assert len(amend_sub.calls) == 1
+    assert tracker.get_info().inp == ["a.txt"]
+
+
+def test_track_amend_after_block(amend_sub):
+    with track_amend() as tracker:
+        amend(env="FOO")
+    amend(env="BAR")
+    assert api._AMEND_TRACKERS == []
+    assert tracker.get_info().env == ["FOO"]
+
+
+def test_track_amend_nested(amend_sub):
+    with track_amend() as outer:
+        amend(env="FOO")
+        with track_amend() as inner:
+            amend(env="BAR")
+        amend(env="EGG")
+    assert outer.get_info().env == ["BAR", "EGG", "FOO"]
+    assert inner.get_info().env == ["BAR"]
+
+
+def test_track_amend_chdir(amend_sub, path_tmp):
+    (path_tmp / "sub/deep").makedirs()
+    (path_tmp / "sub/deep/x.txt").write_text("x", encoding="utf-8")
+    with track_amend() as tracker, contextlib.chdir("deep"):
+        amend(inp="x.txt", out="../y.txt")
+    info = tracker.get_info()
+    assert info.workdir == "sub"
+    assert info.inp == ["deep/x.txt"]
+    assert info.out == ["y.txt"]
+
+
+def test_track_amend_outside_root(monkeypatch, path_tmp, amend_step_client):
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp / "root")
+    (path_tmp / "root").makedirs()
+    (path_tmp / "ext").makedirs()
+    (path_tmp / "root/a.txt").write_text("a", encoding="utf-8")
+    monkeypatch.chdir(path_tmp / "ext")
+    with track_amend() as tracker:
+        amend(inp="../root/a.txt")
+    info = tracker.get_info()
+    assert info.workdir == "../ext"
+    assert info.inp == ["../root/a.txt"]
+    assert amend_step_client.calls[0][1] == {"a.txt"}
+
+
+def test_track_amend_env_var_in_path(monkeypatch, amend_sub):
+    monkeypatch.setenv("FOO", ".")
+    with track_amend() as tracker:
+        amend(inp="${FOO}/a.txt")
+    info = tracker.get_info()
+    assert info.inp == ["a.txt"]
+    assert info.env == ["FOO"]
+
+
+def test_track_amend_recheck(amend_sub):
+    with track_amend() as tracker:
+        amend(recheck=True)
+    assert tracker.get_info().env == ["STEPUP_STARTUP_I"]
+
+
+def test_track_amend_input_not_found(monkeypatch, amend_sub):
+    monkeypatch.setattr(api, "_get_cached_rpc_client", _NotFoundAmendClient)
+    with track_amend() as tracker, pytest.raises(InputNotFoundError):
+        amend(inp="a.txt", out="b.txt")
+    assert tracker.get_info() == StepInfo(workdir="sub")
+    assert api._AMEND_HISTORY.get_info() == StepInfo()
+
+
+def test_track_amend_while_holding(monkeypatch, amend_sub):
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    with track_amend() as tracker, pytest.raises(AmendWhileHoldingError):
+        amend(inp="a.txt", out="b.txt")
+    assert tracker.get_info() == StepInfo(workdir="sub")
+
+
+def test_track_amend_modify_in_place(amend_sub):
+    with track_amend() as tracker:
+        amend(inp="a.txt")
+    tracker.inp.add("./extra.txt")
+    tracker.inp.add(pathlib.Path("extra.txt"))
+    tracker.env.add("FOO")
+    assert tracker.get_info() == StepInfo(inp=["a.txt", "extra.txt"], env=["FOO"], workdir="sub")
+
+
+def test_track_amend_exception(amend_sub):
+    def fail():
+        with track_amend():
+            assert len(api._AMEND_TRACKERS) == 1
+            raise ValueError("boom")
+
+    with pytest.raises(ValueError, match="boom"):
+        fail()
+    assert api._AMEND_TRACKERS == []
+
+
+def test_track_amend_absolute(amend_sub, path_tmp):
+    path_abs = (path_tmp / "sub/a.txt").realpath()
+    path_out = path_tmp.realpath().parent / "elsewhere.txt"
+    with track_amend() as tracker:
+        amend(inp=path_abs, out=path_out)
+    info = tracker.get_info()
+    assert info.inp == [path_abs]
+    assert info.out == [path_out]
+
+
+def test_track_amend_history_spelling(amend_sub):
+    with track_amend():
+        amend(inp="a.txt")
+    assert api._AMEND_HISTORY.inp == {"sub/a.txt"}
+    assert api._AMEND_HISTORY.workdir == "."

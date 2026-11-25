@@ -49,6 +49,7 @@ EXAMPLES = [
     "amend_self_static_replay",
     "amend_self_static_restart",
     "amend_static",
+    "amend_tracker",
     "amend_validate1",
     "amend_validate2",
     "amend_watch_restore",

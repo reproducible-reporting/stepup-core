@@ -38,7 +38,10 @@ These functions take the same arguments as those of the [`glob()`][stepup.core.a
 and also return a [`NamedGlob`][stepup.core.nglob] instance.
 
 Note that the `StepInfo` object will only contain information known at the time the step is defined.
-Dynamic dependencies (inputs, outputs, ...) cannot be retrieved from `StepInfo` objects.
+Dynamic dependencies (inputs, outputs, ...) amended while the step runs are not included.
+To collect those, wrap the code that amends them in a
+[`track_amend()`][stepup.core.api.track_amend] block,
+which returns them as a `StepInfo` without a command.
 Relative paths in `inp`, `out` and `vol` are relative to `workdir`,
 which is itself relative to `STEPUP_ROOT`, unless it is absolute.
 The method `rebase()` returns a copy with paths relative to another working directory,

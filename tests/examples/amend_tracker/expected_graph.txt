@@ -1,0 +1,66 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:b.txt
+             product   file:sub/data/a.txt
+             product   file:sub/work.py
+             product   step:./work.py  # wd=sub
+
+file:b.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./work.py  # wd=sub
+
+file:sub/data/a.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./work.py  # wd=sub
+
+file:sub/work.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./work.py  # wd=sub
+
+step:./work.py  # wd=sub
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = BAR [dynamic]
+                     = FOO [dynamic]
+                     = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./plan.py
+              source   file:b.txt [dynamic]
+              source   file:sub/data/a.txt [dynamic]
+              source   file:sub/work.py
+             product   file:current_tracked_info.json
+             product   file:sub/data/a.out
+             product   file:sub/vol.txt
+                sink   file:current_tracked_info.json
+                sink   file:sub/data/a.out [dynamic]
+                sink   file:sub/vol.txt [dynamic]
+
+file:current_tracked_info.json
+               state = BUILT
+             creator   step:./work.py  # wd=sub
+              source   step:./work.py  # wd=sub
+
+file:sub/data/a.out
+               state = BUILT
+             creator   step:./work.py  # wd=sub
+              source   step:./work.py  # wd=sub
+
+file:sub/vol.txt
+               state = VOLATILE
+             creator   step:./work.py  # wd=sub
+              source   step:./work.py  # wd=sub

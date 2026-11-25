@@ -37,6 +37,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 ### Added
 
 - `StepInfo.rebase()` expresses the paths relative to another working directory.
+- `track_amend()` records the dependencies that a part of a step amends,
+  and returns them as a `StepInfo` without a command.
 
 ## [4.3.0a0][] - 2026-11-23 {: #v4.3.0a0 }
 

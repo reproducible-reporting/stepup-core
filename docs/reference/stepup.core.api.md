@@ -57,11 +57,15 @@ may undergo larger changes and are not intended to be API stable.
 
 ## Extension API
 
-This part is meant for developers building StepUp extension packages,
-not for use in `plan.py` files.
+This part is meant mainly for developers building StepUp extension packages,
+although `track_amend()` also works in `plan.py` files.
 It lives here instead of in [`stepup.core.extapi`](stepup.core.extapi.md),
 which builds on this module and therefore cannot be imported by it.
 
 ### ::: stepup.core.api.subs_env_vars
 
 ### ::: stepup.core.api.EnvSubstitutor
+
+### ::: stepup.core.api.track_amend
+
+### ::: stepup.core.api.AmendTracker
