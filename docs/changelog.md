@@ -19,6 +19,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.3.0a1][] - 2026-11-25 {: #v4.3.0a1 }
+
 ### Changed
 
 - **Breaking:** A `StepInfo` stores its working directory as an absolute path, `abs_workdir`,
@@ -35,7 +39,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   Its `inp`, `out` and `vol` paths are therefore normalized,
   e.g. `./script.py` becomes `script.py`, and are relative to the step's `workdir`.
 - A `StepInfo` holds each path and environment variable name only once,
-  also when the same path is passed several times or with different spellings.
+  also when the same path is passed several times.
+  The results of `step()`, `get_info()`, `StepInfo.rebase()` and `StepInfo.merge()`
+  also hold a path only once when it was passed with different spellings,
+  because their paths are normalized.
   `step()` also omits such duplicates from its call to the director.
 - `get_info()` returns paths relative to the step's `workdir`,
   also when the step changed its working directory.
@@ -2061,6 +2068,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.3.0a1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.3.0a1
 [4.3.0a0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.3.0a0
 [4.2.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.2.0
 [4.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.1.0
