@@ -1166,6 +1166,28 @@ def test_step_removes_duplicate_spellings(monkeypatch, path_tmp):
     assert tr_workdir == "sub"
 
 
+def test_step_absolute_workdir(monkeypatch, path_tmp):
+    """Relative paths of a step with an absolute `workdir` are sent relative to the root."""
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.chdir(path_tmp)
+    client = _CaptureDefineStepClient()
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
+    workdir = path_tmp / "sub"
+    path_abs = workdir / "abs.txt"
+    step_info = step(
+        "cat b.txt", inp=["b.txt", path_abs], out="c.txt", vol="v.txt", workdir=workdir
+    )
+    assert step_info.inp == [path_abs, "b.txt"]
+    assert step_info.out == ["c.txt"]
+    assert step_info.vol == ["v.txt"]
+    assert step_info.workdir == workdir
+    _job_i, _command, tr_inp, _env, tr_out, tr_vol, tr_workdir, *_ = client.calls[0]
+    assert tr_inp == [path_abs, "sub/b.txt"]
+    assert tr_out == ["sub/c.txt"]
+    assert tr_vol == ["sub/v.txt"]
+    assert tr_workdir == workdir
+
+
 @attrs.define
 class _StepInfoClient(DummySyncRPCClient):
     """A dummy RPC client whose `get_step_info` returns a fixed step info."""

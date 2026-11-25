@@ -65,9 +65,8 @@ class StepInfo:
         Returns
         -------
         step_info
-            A copy with normalized paths in `inp`, `out` and `vol`,
-            which are relative to the new `workdir`, unless they are absolute
-            and do not lie under an absolute `workdir`.
+            A copy with normalized paths in `inp`, `out` and `vol`.
+            Relative paths are relative to the new `workdir`, absolute paths are kept.
             `command` and `env` are kept.
 
         Notes

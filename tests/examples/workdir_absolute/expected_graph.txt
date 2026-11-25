@@ -1,0 +1,65 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:sub/a.txt
+             product   step:cp a.txt b.txt  # wd=${CASE}/sub
+             product   step:cp b.txt c.txt  # wd=sub
+             product   step:cp c.txt d.txt  # wd=${CASE}/sub
+
+file:sub/a.txt
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:cp a.txt b.txt  # wd=${CASE}/sub
+
+step:cp a.txt b.txt  # wd=${CASE}/sub
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:sub/a.txt
+             product   file:sub/b.txt
+                sink   file:sub/b.txt
+
+file:sub/b.txt
+               state = BUILT
+             creator   step:cp a.txt b.txt  # wd=${CASE}/sub
+              source   step:cp a.txt b.txt  # wd=${CASE}/sub
+                sink   step:cp b.txt c.txt  # wd=sub
+
+step:cp b.txt c.txt  # wd=sub
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:sub/b.txt
+             product   file:sub/c.txt
+                sink   file:sub/c.txt
+
+file:sub/c.txt
+               state = BUILT
+             creator   step:cp b.txt c.txt  # wd=sub
+              source   step:cp b.txt c.txt  # wd=sub
+                sink   step:cp c.txt d.txt  # wd=${CASE}/sub
+
+step:cp c.txt d.txt  # wd=${CASE}/sub
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:sub/c.txt
+             product   file:sub/d.txt
+                sink   file:sub/d.txt
+
+file:sub/d.txt
+               state = BUILT
+             creator   step:cp c.txt d.txt  # wd=${CASE}/sub
+              source   step:cp c.txt d.txt  # wd=${CASE}/sub

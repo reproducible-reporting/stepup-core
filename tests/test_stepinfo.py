@@ -300,6 +300,5 @@ def test_rebase_absolute_paths(stepup_root: Path):
     assert step_info.rebase("other").inp == sorted([path_abs, Path("../sub/b.txt")])
     rebased = step_info.rebase(stepup_root.parent / "ext")
     assert rebased.workdir == stepup_root.parent / "ext"
-    assert rebased.inp == ["../root/sub/b.txt", "a.txt"]
-    # Like translate(), a relative path under an absolute workdir becomes absolute.
-    assert rebased.rebase("sub").inp == [path_abs, stepup_root / "sub/b.txt"]
+    assert rebased.inp == ["../root/sub/b.txt", path_abs]
+    assert rebased.rebase("sub") == step_info

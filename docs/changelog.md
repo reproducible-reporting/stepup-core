@@ -40,6 +40,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - `track_amend()` records the dependencies that a part of a step amends,
   and returns them as a `StepInfo` without a command.
 
+### Fixed
+
+- A relative path in a step with an absolute `workdir` is declared relative to `STEPUP_ROOT`,
+  like with a relative `workdir`, so that the same file never gets two names.
+  Steps that shared a file but spelled their `workdir` differently remained pending.
+  Absolute paths are kept as they are.
+
 ## [4.3.0a0][] - 2026-11-23 {: #v4.3.0a0 }
 
 ### Added

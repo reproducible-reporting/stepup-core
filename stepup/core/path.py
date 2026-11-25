@@ -521,8 +521,39 @@ def _anchor(path: Path) -> Path:
     return path
 
 
+def _matching_root(workdir: Path) -> Path:
+    """Select the spelling of the StepUp root against which `workdir` can be compared lexically.
+
+    A relative path computed from the spelled root is only valid as long as it stays below it,
+    because the director follows `..` from the physical root,
+    which may differ from the spelled one above a symbolic link.
+
+    Parameters
+    ----------
+    workdir
+        A normalized working directory, absolute or relative to the current directory.
+
+    Returns
+    -------
+    root
+        The value of `STEPUP_ROOT` when `workdir` is absolute and lies under it,
+        and the physical root otherwise.
+    """
+    real_root = _get_real_root()
+    if workdir.isabs():
+        spelled_root = get_stepup_root()
+        if spelled_root != real_root:
+            rel = workdir.relpath(spelled_root)
+            if not (rel.isabs() or rel == ".." or rel.startswith("../")):
+                return spelled_root
+    return real_root
+
+
 def translate(path: StrPath, workdir: StrPath = ".") -> Path:
     """Normalize the path and, if relative, make it relative to `STEPUP_ROOT`.
+
+    Neither `path` nor `workdir` is accessed on disk, so they need not exist,
+    and the result does not change when they are created later.
 
     Parameters
     ----------
@@ -536,19 +567,22 @@ def translate(path: StrPath, workdir: StrPath = ".") -> Path:
     Returns
     -------
     translated_path
-        A path that can be interpreted in the working directory of the StepUp director.
+        An absolute `path` as it is, after normalization.
+        A relative `path` relative to `STEPUP_ROOT`, whether `workdir` is absolute or relative,
+        also when the result lies outside `STEPUP_ROOT`.
     """
     path = coerce_path(path).normpath()
     if not path.isabs():
         workdir = coerce_path(workdir).normpath()
-        path = workdir / path
-        if not workdir.isabs():
-            path = _anchor(path).relpath(_get_real_root())
+        path = (_anchor(workdir) / path).relpath(_matching_root(workdir))
     return path
 
 
 def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
     """If relative, make the path relative to `workdir`, assuming it is relative to `STEPUP_ROOT`.
+
+    This is the inverse of `translate()`.
+    Neither `path` nor `workdir` is accessed on disk, so they need not exist.
 
     Parameters
     ----------
@@ -562,15 +596,13 @@ def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
     Returns
     -------
     back_translated_path
-        A path that can be interpreted in the working directory.
+        An absolute `path` as it is, after normalization.
+        A relative `path` relative to `workdir`.
     """
     path = coerce_path(path).normpath()
-    workdir = coerce_path(workdir).normpath()
-    if path.isabs():
-        if workdir.isabs() and path.startswith(workdir):
-            path = Path(path).relpath(workdir)
-    else:
-        path = (_get_real_root() / path).relpath(_anchor(workdir))
+    if not path.isabs():
+        workdir = coerce_path(workdir).normpath()
+        path = (_matching_root(workdir) / path).relpath(_anchor(workdir))
     return path
 
 

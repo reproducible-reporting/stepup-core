@@ -351,6 +351,7 @@ EXAMPLES = [
     "warn_plan_non_plan",
     "whitespace",
     "workdir",
+    "workdir_absolute",
 ]
 
 # Examples that can only run when StepUp uses the forkserver path.

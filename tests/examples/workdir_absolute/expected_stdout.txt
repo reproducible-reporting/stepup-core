@@ -1,0 +1,15 @@
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ cp a.txt b.txt  # wd=${CASE}/sub
+ SUCCESS │ cp a.txt b.txt  # wd=${CASE}/sub
+   START │ cp b.txt c.txt  # wd=sub
+ SUCCESS │ cp b.txt c.txt  # wd=sub
+   START │ cp c.txt d.txt  # wd=${CASE}/sub
+ SUCCESS │ cp c.txt d.txt  # wd=${CASE}/sub
+DIRECTOR │ Ran 4 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

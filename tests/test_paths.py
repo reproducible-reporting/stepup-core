@@ -14,6 +14,7 @@ import pytest
 from stepup.core.path import (
     Path,
     _NtPath,
+    _realpath_cached,
     apply_affixes,
     coerce_path,
     coerce_paths,
@@ -463,7 +464,8 @@ def test_translate(monkeypatch, path_tmp, with_stepup_root):
     monkeypatch.chdir(workdir)
     assert translate("somefile.txt") == f"{prefix}somefile.txt"
     assert translate("somefile.txt", "../") == Path(f"{prefix}../somefile.txt").normpath()
-    assert translate("somefile.txt", "/egg/") == "/egg/somefile.txt"
+    egg_rel = Path("/egg/somefile.txt").relpath(path_tmp.realpath())
+    assert translate("somefile.txt", "/egg/") == egg_rel
     assert translate("/somefile.txt", "/egg/") == "/somefile.txt"
     assert translate("/egg/somefile.txt", "../") == "/egg/somefile.txt"
     assert translate("/somefile.txt", "../") == "/somefile.txt"
@@ -533,7 +535,8 @@ def test_translate_outside(monkeypatch, path_tmp):
     assert translate("somefile.txt") == "../bar/somefile.txt"
     assert translate("somefile.txt", "../") == "../somefile.txt"
     assert translate("../foo/somefile.txt") == "somefile.txt"
-    assert translate("somefile.txt", "/egg/") == "/egg/somefile.txt"
+    egg_rel = Path("/egg/somefile.txt").relpath((path_tmp / "foo").realpath())
+    assert translate("somefile.txt", "/egg/") == egg_rel
     assert translate("/somefile.txt", "/egg/") == "/somefile.txt"
     assert translate("/egg/somefile.txt", "../") == "/egg/somefile.txt"
     assert translate("/somefile.txt", "../") == "/somefile.txt"
@@ -551,6 +554,62 @@ def test_translate_symlink_in_root(monkeypatch, path_tmp):
     assert translate_back("sub/somefile.txt") == "sub/somefile.txt"
 
 
+def test_translate_absolute_workdir(monkeypatch, path_tmp):
+    root = path_tmp / "project"
+    (root / "sub").makedirs()
+    (path_tmp / "outside").makedirs()
+    monkeypatch.setenv("STEPUP_ROOT", root)
+    monkeypatch.chdir(root)
+    # Inside the root, an absolute workdir gives the same result as a relative one.
+    assert translate("b.txt", root / "sub") == "sub/b.txt"
+    assert translate("b.txt", "sub") == "sub/b.txt"
+    assert translate_back("sub/b.txt", root / "sub") == "b.txt"
+    # Outside the root, the result is still relative to the root.
+    assert translate("b.txt", path_tmp / "outside") == "../outside/b.txt"
+    assert translate_back("../outside/b.txt", path_tmp / "outside") == "b.txt"
+    # An absolute path is kept, also when it lies under the root or under the workdir.
+    path_abs = root / "sub/b.txt"
+    assert translate(path_abs, root / "sub") == path_abs
+    assert translate(path_abs, "sub") == path_abs
+    assert translate_back(path_abs, root / "sub") == path_abs
+    assert translate_back(path_abs, "sub") == path_abs
+
+
+@pytest.mark.requires_symlinks
+def test_translate_absolute_workdir_symlinks(monkeypatch, path_tmp):
+    (path_tmp / "real/project/sub").makedirs()
+    (path_tmp / "link").symlink_to(path_tmp / "real")
+    (path_tmp / "real/project/alias").symlink_to(path_tmp / "real/project/sub")
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp / "link/project")
+    monkeypatch.chdir(path_tmp / "link/project")
+    # The root may be spelled as in STEPUP_ROOT or physically.
+    for root in path_tmp / "link/project", path_tmp / "real/project":
+        assert translate("b.txt", root / "sub") == "sub/b.txt"
+        assert translate_back("sub/b.txt", root / "sub") == "b.txt"
+        # A symbolic link inside the project is not resolved, as for a relative workdir.
+        assert translate("b.txt", root / "alias") == "alias/b.txt"
+        assert translate_back("alias/b.txt", root / "alias") == "b.txt"
+    assert translate("b.txt", "alias") == "alias/b.txt"
+
+
+@pytest.mark.requires_symlinks
+@pytest.mark.parametrize("absolute", [True, False])
+def test_translate_ignores_disk(monkeypatch, path_tmp, absolute):
+    """The result does not depend on whether the working directory exists or is a link."""
+    root = path_tmp / "project"
+    root.makedirs()
+    (path_tmp / "elsewhere/sub").makedirs()
+    monkeypatch.setenv("STEPUP_ROOT", root)
+    monkeypatch.chdir(root)
+    workdir = root / "build/sub" if absolute else Path("build/sub")
+    assert translate("b.txt", workdir) == "build/sub/b.txt"
+    assert translate_back("build/sub/b.txt", workdir) == "b.txt"
+    (root / "build").symlink_to(path_tmp / "elsewhere")
+    _realpath_cached.cache_clear()
+    assert translate("b.txt", workdir) == "build/sub/b.txt"
+    assert translate_back("build/sub/b.txt", workdir) == "b.txt"
+
+
 @pytest.mark.parametrize("with_stepup_root", [True, False])
 def test_translate_back(monkeypatch, path_tmp, with_stepup_root):
     if with_stepup_root:
@@ -565,7 +624,7 @@ def test_translate_back(monkeypatch, path_tmp, with_stepup_root):
     monkeypatch.chdir(workdir)
     assert translate_back(f"{prefix}somefile.txt") == "somefile.txt"
     assert translate_back(Path(f"{prefix}../somefile.txt").normpath(), "../") == "somefile.txt"
-    assert translate_back("/egg/somefile.txt", "/egg/") == "somefile.txt"
+    assert translate_back("/egg/somefile.txt", "/egg/") == "/egg/somefile.txt"
     assert translate_back("/somefile.txt", "/egg/") == "/somefile.txt"
     assert translate_back("/egg/somefile.txt", "../") == "/egg/somefile.txt"
     assert translate_back("/somefile.txt", "../") == "/somefile.txt"
