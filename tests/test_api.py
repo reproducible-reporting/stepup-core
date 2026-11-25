@@ -1122,12 +1122,38 @@ def test_step_here_root_for_workdir(monkeypatch, path_tmp):
         shell=True,
     )
     assert step_info.inp == ["../script.py"]
-    assert step_info.out == ["../sub/out.txt"]
+    assert step_info.out == ["out.txt"]
     assert step_info.vol == ["../vol.txt"]
     _job_i, _command, tr_inp, _env, tr_out, tr_vol, tr_workdir, *_ = client.calls[0]
     assert tr_inp == ["script.py"]
     assert tr_out == ["sub/out.txt"]
     assert tr_vol == ["vol.txt"]
+    assert tr_workdir == "sub"
+
+
+def test_step_removes_duplicate_spellings(monkeypatch, path_tmp):
+    """Spellings of the same path collapse to one, both in the RPC and in the result."""
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.chdir(path_tmp)
+    client = _CaptureDefineStepClient()
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
+    step_info = step(
+        "cat a.txt",
+        inp=["a.txt", "./a.txt", "../sub/a.txt", "b.txt"],
+        env=["FOO", "FOO"],
+        out=["out.txt", "./out.txt"],
+        vol=["vol.txt", "vol.txt"],
+        workdir="sub",
+    )
+    assert step_info.inp == ["a.txt", "b.txt"]
+    assert step_info.env == ["FOO"]
+    assert step_info.out == ["out.txt"]
+    assert step_info.vol == ["vol.txt"]
+    _job_i, _command, tr_inp, tr_env, tr_out, tr_vol, tr_workdir, *_ = client.calls[0]
+    assert tr_inp == ["sub/a.txt", "sub/b.txt"]
+    assert tr_env == ["FOO"]
+    assert tr_out == ["sub/out.txt"]
+    assert tr_vol == ["sub/vol.txt"]
     assert tr_workdir == "sub"
 
 

@@ -478,6 +478,10 @@ def step(
     -------
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
+        It is identical to the result of [`get_info()`][stepup.core.api.get_info]
+        when called inside the step.
+        Hence, the `inp`, `out` and `vol` paths are normalized, without duplicates,
+        and relative to `workdir`.
 
     Raises
     ------
@@ -596,21 +600,22 @@ def step(
     # and hashed/confirmed by the director in the background;
     # a step consuming one simply does not become runnable until that resolves
     # (see scheduler.py).
+    tr_info = StepInfo(command, tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths, tr_workdir)
     get_rpc_client().call.define_step(
         get_job_i(),
         command,
-        tr_inp_paths,
-        sorted(env_deps),
-        tr_out_paths,
-        tr_vol_paths,
-        tr_workdir,
+        tr_info.inp,
+        tr_info.env,
+        tr_info.out,
+        tr_info.vol,
+        tr_info.workdir,
         need.value,
         resources,
         shell,
         env_overrides,
         duration,
     )
-    return StepInfo(command, su_inp_paths, env_deps, su_out_paths, su_vol_paths, tr_workdir)
+    return _localize_step_info(tr_info, su_workdir)
 
 
 def call(
@@ -1140,11 +1145,32 @@ def get_info() -> StepInfo:
         For consistency with other functions in this module, the `inp`, `out` and `vol`
         paths are relative to the current working directory.
     """
-    step_info = get_rpc_client().call.get_step_info(get_job_i())
-    step_info.inp = sorted(translate_back(inp) for inp in step_info.inp)
-    step_info.out = sorted(translate_back(out) for out in step_info.out)
-    step_info.vol = sorted(translate_back(vol) for vol in step_info.vol)
-    return step_info
+    return _localize_step_info(get_rpc_client().call.get_step_info(get_job_i()), ".")
+
+
+def _localize_step_info(tr_info: StepInfo, workdir: StrPath) -> StepInfo:
+    """Make the paths of a step info relative to the step's working directory.
+
+    Parameters
+    ----------
+    tr_info
+        Step information as stored by the director, with paths relative to `STEPUP_ROOT`.
+    workdir
+        The step's working directory,
+        relative to the current working directory.
+
+    Returns
+    -------
+    step_info
+        A copy of `tr_info` with `inp`, `out` and `vol` relative to `workdir`.
+        The `workdir` field itself is left relative to `STEPUP_ROOT`.
+    """
+    return attrs.evolve(
+        tr_info,
+        inp=[translate_back(p, workdir) for p in tr_info.inp],
+        out=[translate_back(p, workdir) for p in tr_info.out],
+        vol=[translate_back(p, workdir) for p in tr_info.vol],
+    )
 
 
 def graph(prefix: StrPath) -> None:

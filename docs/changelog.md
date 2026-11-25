@@ -19,7 +19,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Changed
+
+- `step()` and the API functions built on it return the same `StepInfo`
+  as `get_info()` returns inside the step.
+  Its `inp`, `out` and `vol` paths are therefore normalized,
+  e.g. `./script.py` becomes `script.py`, and are relative to the step's `workdir`.
+- A `StepInfo` holds each path and environment variable name only once,
+  also when the same path is passed several times or with different spellings.
+  `step()` also omits such duplicates from its call to the director.
 
 ## [4.3.0a0][] - 2026-11-23 {: #v4.3.0a0 }
 

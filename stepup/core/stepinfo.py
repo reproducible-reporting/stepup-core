@@ -15,11 +15,11 @@ __all__ = ("StepInfo", "dump_step_info", "load_step_info")
 
 
 def _convert_to_paths(paths: Iterable[str]) -> list[Path]:
-    return sorted(coerce_path(p) for p in paths)
+    return sorted({coerce_path(p) for p in paths})
 
 
 def _convert_to_strs(words: Iterable[str]) -> list[str]:
-    return sorted(str(w) for w in words)
+    return sorted({str(w) for w in words})
 
 
 @attrs.define
@@ -29,7 +29,8 @@ class StepInfo:
     This object does not contain any dynamic dependency information.
     It only holds initial dependencies known at the time the step is defined.
 
-    All paths and environment variable names are stored in sorted order to ensure consistency.
+    All paths and environment variable names are stored in sorted order without duplicates,
+    to ensure consistency.
     If paths are relative, they should be relative to the work directory.
     """
 

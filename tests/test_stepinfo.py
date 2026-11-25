@@ -27,6 +27,21 @@ def test_step_info_initialization():
     assert step_info.vol == [Path("volatile1.txt")]
 
 
+def test_step_info_removes_duplicates():
+    step_info = StepInfo(
+        command="cat b a",
+        workdir=".",
+        inp=["b.txt", "a.txt", "b.txt"],
+        env=["FOO", "BAR", "FOO"],
+        out=["c.txt", "c.txt"],
+        vol=["d.txt", "d.txt"],
+    )
+    assert step_info.inp == ["a.txt", "b.txt"]
+    assert step_info.env == ["BAR", "FOO"]
+    assert step_info.out == ["c.txt"]
+    assert step_info.vol == ["d.txt"]
+
+
 def test_load_step_info_single(path_tmp: Path):
     path_json = path_tmp / "test_step_info.json"
     data = {
