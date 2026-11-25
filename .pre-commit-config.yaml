@@ -38,22 +38,22 @@ repos:
   - id: snipwise
     args: [fix]
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.16.5
+  rev: v0.17.6
   hooks:
     - id: ruff-format
       types_or: [python, pyi, jupyter, markdown]
     - id: ruff-check
       args: ["--fix", "--show-fixes"]
 - repo: https://github.com/jackdewinter/pymarkdown
-  rev: v0.9.39
+  rev: v0.9.42
   hooks:
   - id: pymarkdown
 - repo: https://github.com/python-jsonschema/check-jsonschema
-  rev: 0.38.0
+  rev: 0.39.0
   hooks:
     - id: check-github-workflows
 - repo: https://github.com/fsfe/reuse-tool
-  rev: v6.2.0
+  rev: v6.3.0
   hooks:
   - id: reuse
 - repo: https://github.com/reproducible-reporting/check-zenodo-json
