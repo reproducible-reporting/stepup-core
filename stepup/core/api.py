@@ -902,10 +902,11 @@ def subs_env_vars() -> Generator[EnvSubstitutor]:
 class AmendTracker:
     """The dependencies amended in a [`track_amend()`][stepup.core.api.track_amend] block.
 
+    Relative paths in `inp`, `out` and `vol` are relative to `workdir`,
+    also when the process changes its working directory inside or after the block.
     The sets `inp`, `env`, `out` and `vol` may be modified in place,
-    e.g. to add a dependency that need not be amended.
-    Relative paths in `inp`, `out` and `vol` are relative to the working directory
-    at the start of the block, also those added by the caller.
+    e.g. to add a dependency that need not be amended,
+    and relative paths added to them must be relative to `workdir` as well.
 
     Two trackers are equal only when they are the same object.
     Use `get_info()` to compare their contents.
@@ -945,9 +946,8 @@ class AmendTracker:
         Returns
         -------
         step_info
-            A `StepInfo` with `command` set to `None`, sorted fields and normalized paths.
-            Its `workdir` is the working directory at the start of the block,
-            relative to the current directory at the time of the call.
+            A `StepInfo` with `command` set to `None`, sorted fields and normalized paths,
+            and the same `workdir` as the tracker.
         """
         return StepInfo(
             None,
@@ -1004,15 +1004,11 @@ def track_amend() -> Generator[AmendTracker]:
     Blocks may be nested, in which case every open tracker records the call.
     Calls to `amend()` in other processes, e.g. in a subprocess, are not recorded.
 
-    The `workdir` of the tracker is the working directory at the start of the block,
-    relative to the current directory at the time it is read.
-    Relative paths in the tracker are relative to this `workdir`,
-    also when the process changes its working directory inside or after the block.
-
     Returns
     -------
     tracker
         The tracker, whose `get_info()` may be called inside or after the block.
+        Its relative paths are relative to the working directory at the start of the block.
     """
     tracker = AmendTracker(abs_workdir=anchor_path("."))
     _AMEND_TRACKERS.append(tracker)

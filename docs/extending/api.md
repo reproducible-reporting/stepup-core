@@ -99,9 +99,9 @@ or execute external commands directly.
 
 The [`stepup.core.extapi`](../reference/stepup.core.extapi.md) module provides
 some reusable low-level functions for extension developers.
-Two of them, `subs_env_vars()` and `track_amend()`, live in
-[`stepup.core.api`](../reference/stepup.core.api.md) instead,
-because `amend()` depends on them.
+The first three below, `subs_env_vars()`, `track_amend()` and `get_amended_info()`,
+live in [`stepup.core.api`](../reference/stepup.core.api.md) instead,
+because they share state with `amend()`.
 
 ### Environment Variable Substitution
 
@@ -131,7 +131,7 @@ e.g. when `${MYDIR}` holds `data/`.
 ### Tracking Amended Dependencies
 
 [`track_amend()`][stepup.core.api.track_amend] records the dependencies
-that a part of a step amends,
+that the code in a `with` block amends,
 e.g. to write them to a file that a follow-up step uses.
 It yields an [`AmendTracker`][stepup.core.api.AmendTracker],
 whose `get_info()` method returns the recorded dependencies
@@ -148,35 +148,22 @@ amend(out="deps.json")
 dump_step_info("deps.json", tracker.get_info())
 ```
 
-The tracker records every successful call to `amend()` in the current process
-while the block is open, including the calls made by other API functions.
-Each call is recorded with its complete arguments,
-also when a dependency was amended before the block or declared when the step was defined,
-so that the tracker holds all dependencies of the code in the block,
-regardless of what ran before it.
-A call that raises an exception records nothing.
-Blocks may be nested, in which case every open tracker records the call.
-Calls to `amend()` in other processes, such as subprocesses of the step, are not recorded.
-
-The `workdir` of the tracker is the working directory at the start of the block,
-relative to the current directory at the time it is read.
-Relative paths in the tracker are relative to this `workdir`,
-also when the code in or after the block changes its working directory.
-
-The sets `inp`, `env`, `out` and `vol` of the tracker may be modified in place,
-as `config.toml` in the example shows.
-Relative paths added to them must be relative to `workdir`.
-In the example, the file `deps.json` is amended after the block,
+The tracker records every successful call to `amend()` in the current process,
+also those made by other API functions, with its complete arguments.
+It therefore holds all dependencies of the code in the block,
+also those that were amended before the block or declared when the step was defined.
+In the example, `config.toml` is added to the tracker in place,
+and `deps.json` is amended after the block,
 so that it is not part of the dependencies it records.
+The API documentation of [`track_amend()`][stepup.core.api.track_amend]
+and [`AmendTracker`][stepup.core.api.AmendTracker]
+covers nested blocks, subprocesses and the working directory of relative paths.
 
 ### Dependencies Amended by a Process
 
 [`get_amended_info()`][stepup.core.api.get_amended_info] returns the dependencies
 that the current process has amended so far, as a `StepInfo` without a command.
-Like a tracker, it includes the calls to `amend()` made by other API functions,
-but it needs no `with` block, because its scope is the whole process.
-Its `workdir` is the current directory, i.e. `.`,
-and relative paths are relative to the current directory at the time of the call.
+It works like a tracker whose scope is the whole process, so it needs no `with` block.
 
 When a step starts a child process that amends dependencies,
 `get_amended_info()` in the step does not include them.
@@ -227,9 +214,6 @@ dump_step_info("all_info.json", info)
 
 The result keeps the `command` and `workdir` of `get_info()`,
 and holds paths such as `child/result.txt`.
-To combine step infos in a working directory of your choice,
-merge them into an empty one,
-e.g. `StepInfo().merge(*infos)` for paths relative to the current directory.
 
 ### Dependency Filtering
 
