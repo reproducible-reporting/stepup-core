@@ -14,6 +14,7 @@ import yaml
 from stepup.core.api import call
 from stepup.core.call import _dispatch, _print_list, driver
 from stepup.core.enums import Need
+from stepup.core.path import anchor_path
 from stepup.core.stepinfo import StepInfo
 
 # ---------------------------------------------------------------------------
@@ -71,7 +72,7 @@ def captured(monkeypatch):
                 "duration": duration,
             }
         )
-        return StepInfo(command, list(inp), list(env), list(out), list(vol), workdir)
+        return StepInfo(command, list(inp), list(env), list(out), list(vol), anchor_path(workdir))
 
     monkeypatch.setattr("stepup.core.api.step", mock_step)
     monkeypatch.setattr("stepup.core.api.amend", lambda **kw: None)

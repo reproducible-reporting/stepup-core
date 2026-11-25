@@ -271,6 +271,7 @@ EXAMPLES = [
     "script_single",
     "script_single_optional",
     "script_single_run_import",
+    "script_step_info_subdir",
     "startup_i_amend",
     "startup_i_getenv",
     "startup_i_offline",

@@ -1,0 +1,13 @@
+ STARTUP │ (Re)initialized boot script
+   PHASE │ build
+   START │ ./plan.py
+ SUCCESS │ ./plan.py
+   START │ ./generate.py plan --step-info=../data/step_info.json  # wd=work
+ SUCCESS │ ./generate.py plan --step-info=../data/step_info.json  # wd=work
+   START │ ./generate.py run  # wd=work
+ SUCCESS │ ./generate.py run  # wd=work
+DIRECTOR │ Ran 3 job(s).
+DIRECTOR │ Trying to remove 0 deletable file(s) and empty director(y|ies)
+   PHASE │ watch
+DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+DIRECTOR │ See you!

@@ -21,6 +21,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Changed
 
+- **Breaking:** A `StepInfo` stores its working directory as an absolute path, `abs_workdir`,
+  with a flag `is_abs` for a working directory given as an absolute path.
+  `workdir` is a read-only property, relative to the current directory unless absolute,
+  also in the result of `step()` and `get_info()`.
+  `dump_step_info()` writes it relative to the directory of the file,
+  and `load_step_info()` converts it back.
+  This changes `workdir` when the current directory is not `STEPUP_ROOT`,
+  e.g. in a `plan.py` started with `plan(..., workdir=...)` and in steps with a `workdir`,
+  and in step info files outside the directory of their writer.
 - `step()` and the API functions built on it return the same `StepInfo`
   as `get_info()` returns inside the step.
   Its `inp`, `out` and `vol` paths are therefore normalized,
@@ -41,6 +50,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   and returns them as a `StepInfo` without a command.
 - `get_amended_info()` returns the dependencies amended by the current process,
   and `StepInfo.merge()` combines step infos with different working directories.
+- `anchor_path()` in `stepup.core.path` makes a path absolute
+  by joining it to a directory whose symbolic links are resolved.
 
 ### Fixed
 

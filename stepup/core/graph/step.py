@@ -15,7 +15,6 @@ from ..exceptions import GraphError
 from ..hash import FileHash, StepHash, fmt_full_digest
 from ..nglob import NamedGlob, convert_nglob_to_regex
 from ..path import Path
-from ..stepinfo import StepInfo
 from ..utils import truncate_output
 from .file import File
 from .outcome import ChildOutcome, ResourceUsage
@@ -863,21 +862,34 @@ class Step(Node):
         parts = self.label.split("  # wd=", maxsplit=1)
         return parts[0], Path(parts[1] if len(parts) == 2 else ".")
 
-    def get_info(self) -> StepInfo:
-        """Return a `StepInfo` object with information about this step.
+    def get_declaration(
+        self,
+    ) -> tuple[str, list[Path], list[str], list[Path], list[Path], Path]:
+        """Return the dependencies with which this step was defined.
 
         Dynamic dependencies are not included for consistency with
         the information that is available when defining a step.
 
         A detached step still describes its own declaration (see `Step._paths`).
+
+        Returns
+        -------
+        command
+            The command of the step.
+        inp, env, out, vol
+            The sorted input paths, names of environment variables,
+            output paths and volatile output paths.
+            Relative paths are relative to the workflow root.
+        workdir
+            The working directory of the step, relative to the workflow root unless absolute.
         """
         command, workdir = self.command_and_workdir
-        return StepInfo(
+        return (
             command,
-            [r.path for r in self.inp_paths(dynamic=False)],
-            self.env_deps(dynamic=False),
-            [r.path for r in self.out_paths(dynamic=False)],
-            [r.path for r in self.vol_paths(dynamic=False)],
+            sorted(Path(r.path) for r in self.inp_paths(dynamic=False)),
+            sorted(self.env_deps(dynamic=False)),
+            sorted(Path(r.path) for r in self.out_paths(dynamic=False)),
+            sorted(Path(r.path) for r in self.vol_paths(dynamic=False)),
             workdir,
         )
 

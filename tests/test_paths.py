@@ -15,6 +15,7 @@ from stepup.core.path import (
     Path,
     _NtPath,
     _realpath_cached,
+    anchor_path,
     apply_affixes,
     coerce_path,
     coerce_paths,
@@ -448,6 +449,32 @@ def test_make_path_out_other_exts():
     assert make_path_out("foo.svg", "bar.png", ".pdf", [".png"]) == "bar.png"
     with pytest.raises(ValueError):
         make_path_out("foo.svg", "bar.jpg", ".pdf", [".png"])
+
+
+def test_anchor_path(monkeypatch, path_tmp):
+    (path_tmp / "base/sub").makedirs()
+    monkeypatch.chdir(path_tmp / "base")
+    assert anchor_path("a.txt") == path_tmp / "base/a.txt"
+    assert anchor_path("./x/../a.txt") == path_tmp / "base/a.txt"
+    assert anchor_path("../b.txt") == path_tmp / "b.txt"
+    assert anchor_path(".") == path_tmp / "base"
+    assert anchor_path("a.txt", "sub") == path_tmp / "base/sub/a.txt"
+    assert anchor_path("a.txt", path_tmp) == path_tmp / "a.txt"
+    assert anchor_path(path_tmp / "x/./y/../a.txt", "sub") == path_tmp / "x/a.txt"
+    assert type(anchor_path("a.txt")) is Path
+
+
+@pytest.mark.requires_symlinks
+def test_anchor_path_symlinks(monkeypatch, path_tmp):
+    """Symbolic links in `base` are resolved, those in `path` are not."""
+    (path_tmp / "real/sub").makedirs()
+    (path_tmp / "link").symlink_to(path_tmp / "real")
+    (path_tmp / "real/alias").symlink_to(path_tmp / "real/sub")
+    monkeypatch.chdir(path_tmp / "link")
+    assert anchor_path("alias/a.txt") == path_tmp / "real/alias/a.txt"
+    assert anchor_path("a.txt", path_tmp / "link/alias") == path_tmp / "real/sub/a.txt"
+    assert anchor_path("a.txt", "alias") == path_tmp / "real/sub/a.txt"
+    assert anchor_path(path_tmp / "link/a.txt") == path_tmp / "link/a.txt"
 
 
 @pytest.mark.parametrize("with_stepup_root", [True, False])

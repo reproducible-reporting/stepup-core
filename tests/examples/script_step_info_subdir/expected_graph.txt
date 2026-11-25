@@ -1,0 +1,59 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = CONFIRMED
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   root:
+              source   file:plan.py
+             product   file:work/config.json
+             product   file:work/generate.py
+             product   step:./generate.py plan --step-info=../data/step_info.json  # wd=work
+
+file:work/config.json
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./generate.py run  # wd=work
+
+file:work/generate.py
+               state = CONFIRMED
+             creator   step:./plan.py
+                sink   step:./generate.py plan --step-info=../data/step_info.json  # wd=work
+                sink   step:./generate.py run  # wd=work
+
+step:./generate.py plan --step-info=../data/step_info.json  # wd=work
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./plan.py
+              source   file:work/generate.py
+             product   file:data/step_info.json
+             product   step:./generate.py run  # wd=work
+                sink   file:data/step_info.json
+
+file:data/step_info.json
+               state = BUILT
+             creator   step:./generate.py plan --step-info=../data/step_info.json  # wd=work
+              source   step:./generate.py plan --step-info=../data/step_info.json  # wd=work
+
+step:./generate.py run  # wd=work
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [dynamic]
+             creator   step:./generate.py plan --step-info=../data/step_info.json  # wd=work
+              source   file:work/config.json
+              source   file:work/generate.py
+             product   file:work/values.txt
+                sink   file:work/values.txt
+
+file:work/values.txt
+               state = BUILT
+             creator   step:./generate.py run  # wd=work
+              source   step:./generate.py run  # wd=work

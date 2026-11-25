@@ -22,7 +22,6 @@ from ..nglob import NamedGlob
 from ..path import Path
 from ..platform.asyncio import wait_for_any_event
 from ..rpc.server import allow_rpc
-from ..stepinfo import StepInfo
 from .builder import Builder
 from .executor import Executor
 from .reporter import ReporterClient
@@ -348,14 +347,20 @@ class DirectorHandler:
             )
 
     @allow_rpc
-    async def get_step_info(self, job_i: int) -> StepInfo:
-        """Return step information, matching the return values of functions in `stepup.core.api`.
+    async def get_step_info(
+        self, job_i: int
+    ) -> tuple[str, list[Path], list[str], list[Path], list[Path], Path]:
+        """Return the dependencies with which the step of a job was defined.
 
+        The result is that of `Step.get_declaration()`:
+        the command, the input paths, the names of environment variables,
+        the output paths, the volatile output paths and the working directory,
+        with relative paths relative to the workflow root.
         For the sake of consistency, dynamic dependencies are not included.
         """
         async with self.db:
             step = self.scheduler.get_job_step(job_i)
-            return step.get_info()
+            return step.get_declaration()
 
     #
     # RPC from steps or the user: diagnostics

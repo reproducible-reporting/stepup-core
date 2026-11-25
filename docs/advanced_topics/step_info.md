@@ -15,7 +15,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
     This feature was introduced in StepUp 1.3.0.
 
-The [`step()`][stepup.core.api.step] function always return
+The [`step()`][stepup.core.api.step] function always returns
 an instance of [`StepInfo`][stepup.core.stepinfo.StepInfo].
 This object holds arguments used to define the step,
 which may be useful for creating follow-up steps.
@@ -29,7 +29,7 @@ instead of reconstructing them manually in your `plan.py` script.
 
 The `StepInfo` object has `inp`, `env`, `out` and `vol` attributes,
 corresponding to the arguments passed into the `step()` function.
-The main difference to the arguments passed in,
+The main difference to the arguments passed in
 is that environment variables are substituted in the paths.
 
 In addition, `StepInfo` has three methods: `filter_inp()`, `filter_out()` and `filter_vol()`,
@@ -37,21 +37,25 @@ which can be used to get a subset of paths.
 These functions take the same arguments as those of the [`glob()`][stepup.core.api.glob] function
 and also return a [`NamedGlob`][stepup.core.nglob] instance.
 
-Note that the `StepInfo` object will only contain information known at the time the step is defined.
-Dynamic dependencies (inputs, outputs, ...) amended while the step runs are not included.
-To collect those, wrap the code that amends them in a
-[`track_amend()`][stepup.core.api.track_amend] block,
-or call [`get_amended_info()`][stepup.core.api.get_amended_info]
-for all dependencies amended by the current process.
-Both return them as a `StepInfo` without a command.
-Relative paths in `inp`, `out` and `vol` are relative to `workdir`,
-which is itself relative to `STEPUP_ROOT`, unless it is absolute.
-The method `rebase()` returns a copy with paths relative to another working directory,
-e.g. `info.rebase(".")` for paths relative to `STEPUP_ROOT`.
-The method `merge()` combines the dependencies of several `StepInfo` objects into one,
-with paths relative to the `workdir` of the first one,
+Relative paths in `inp`, `out` and `vol` are relative to `info.workdir`,
+which is itself relative to the current directory, unless it is absolute.
+Hence, `info.workdir / path` is the path of a dependency relative to the current directory.
+To get paths relative to another directory, use
+[`rebase()`][stepup.core.stepinfo.StepInfo.rebase],
+e.g. `info.rebase(".")` for paths relative to the current directory.
+
+A `StepInfo` only contains the dependencies known when the step was defined.
+Dependencies amended while the step runs can be collected with
+[`track_amend()`][stepup.core.api.track_amend]
+or [`get_amended_info()`][stepup.core.api.get_amended_info],
+and combined with [`merge()`][stepup.core.stepinfo.StepInfo.merge],
 e.g. `get_info().merge(get_amended_info())`
 for the declared and amended dependencies of the current step.
+
+The functions [`dump_step_info()`][stepup.core.stepinfo.dump_step_info]
+and [`load_step_info()`][stepup.core.stepinfo.load_step_info]
+save and load `StepInfo` objects in JSON files,
+which can be loaded from any current directory, also after the directory tree was moved.
 
 ## Example
 

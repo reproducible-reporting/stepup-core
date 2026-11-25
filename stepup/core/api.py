@@ -71,6 +71,7 @@ from .nglob import NamedGlob, has_any_wildcards, has_trailing_recursive_wildcard
 from .path import (
     Path,
     StrPath,
+    anchor_path,
     apply_affixes,
     coerce_path,
     coerce_paths,
@@ -79,6 +80,7 @@ from .path import (
     get_affixes,
     get_here,
     get_root,
+    get_stepup_root,
     is_path_type,
     make_path_out,
     translate,
@@ -481,10 +483,12 @@ def step(
     -------
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
-        It is identical to the result of [`get_info()`][stepup.core.api.get_info]
+        It is equal to the result of [`get_info()`][stepup.core.api.get_info]
         when called inside the step.
         Hence, the `inp`, `out` and `vol` paths are normalized, without duplicates,
         and relative to `workdir`.
+        Like the argument `workdir`, a relative `workdir` of the result
+        is relative to the current directory.
 
     Raises
     ------
@@ -603,7 +607,8 @@ def step(
     # and hashed/confirmed by the director in the background;
     # a step consuming one simply does not become runnable until that resolves
     # (see scheduler.py).
-    tr_info = StepInfo(command, tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths, tr_workdir)
+    # The step info sorts the paths and removes duplicates.
+    tr_info = _make_tr_info(command, tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths)
     get_rpc_client().call.define_step(
         get_job_i(),
         command,
@@ -611,14 +616,14 @@ def step(
         tr_info.env,
         tr_info.out,
         tr_info.vol,
-        tr_info.workdir,
+        tr_workdir,
         need.value,
         resources,
         shell,
         env_overrides,
         duration,
     )
-    return _localize_step_info(tr_info)
+    return _localize_step_info(tr_info, tr_workdir)
 
 
 def call(
@@ -899,8 +904,8 @@ class AmendTracker:
 
     The sets `inp`, `env`, `out` and `vol` may be modified in place,
     e.g. to add a dependency that need not be amended.
-    Relative paths in `inp`, `out` and `vol` are relative to `workdir`,
-    also those added by the caller.
+    Relative paths in `inp`, `out` and `vol` are relative to the working directory
+    at the start of the block, also those added by the caller.
 
     Two trackers are equal only when they are the same object.
     Use `get_info()` to compare their contents.
@@ -918,8 +923,21 @@ class AmendTracker:
     vol: set[Path] = attrs.field(factory=set)
     """Volatile output paths."""
 
-    workdir: Path = attrs.field(default=Path("."), converter=coerce_path)
-    """The working directory, relative to `STEPUP_ROOT` unless absolute."""
+    _abs_workdir: Path | None = attrs.field(
+        default=None, converter=attrs.converters.optional(coerce_path)
+    )
+    """The working directory at the start of the block, anchored with `anchor_path()`.
+
+    `None` stands for the physical `STEPUP_ROOT`, which is only resolved when needed.
+    """
+
+    def _get_abs_workdir(self) -> Path:
+        return _get_tr_anchor() if self._abs_workdir is None else self._abs_workdir
+
+    @property
+    def workdir(self) -> Path:
+        """The working directory at the start of the block, relative to the current directory."""
+        return self._get_abs_workdir().relpath(anchor_path("."))
 
     def get_info(self) -> StepInfo:
         """Return the recorded dependencies as a step info without a command.
@@ -928,6 +946,8 @@ class AmendTracker:
         -------
         step_info
             A `StepInfo` with `command` set to `None`, sorted fields and normalized paths.
+            Its `workdir` is the working directory at the start of the block,
+            relative to the current directory at the time of the call.
         """
         return StepInfo(
             None,
@@ -935,7 +955,7 @@ class AmendTracker:
             self.env,
             [coerce_path(p).normpath() for p in self.out],
             [coerce_path(p).normpath() for p in self.vol],
-            self.workdir,
+            self._get_abs_workdir(),
         )
 
     def _record(
@@ -946,7 +966,7 @@ class AmendTracker:
         tr_vol_paths: Iterable[Path],
     ) -> None:
         """Add amended dependencies, whose relative paths are relative to `STEPUP_ROOT`."""
-        info = StepInfo(None, tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths)
+        info = _make_tr_info(None, tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths)
         info = info.rebase(self.workdir)
         self.inp.update(info.inp)
         self.env.update(info.env)
@@ -984,17 +1004,17 @@ def track_amend() -> Generator[AmendTracker]:
     Blocks may be nested, in which case every open tracker records the call.
     Calls to `amend()` in other processes, e.g. in a subprocess, are not recorded.
 
-    The `workdir` of the tracker is the current working directory at the start of the block,
-    relative to `STEPUP_ROOT` and with symbolic links resolved.
+    The `workdir` of the tracker is the working directory at the start of the block,
+    relative to the current directory at the time it is read.
     Relative paths in the tracker are relative to this `workdir`,
-    also when the process changes its working directory inside the block.
+    also when the process changes its working directory inside or after the block.
 
     Returns
     -------
     tracker
         The tracker, whose `get_info()` may be called inside or after the block.
     """
-    tracker = AmendTracker(workdir=get_here())
+    tracker = AmendTracker(abs_workdir=anchor_path("."))
     _AMEND_TRACKERS.append(tracker)
     try:
         yield tracker
@@ -1022,8 +1042,7 @@ def get_amended_info() -> StepInfo:
         [`amend()`][stepup.core.api.amend] calls made so far in the current process,
         including the calls made by other API functions.
         A dependency that was amended several times appears once.
-        `workdir` is the current working directory, relative to `STEPUP_ROOT`
-        and with symbolic links resolved, and relative paths are relative to it.
+        `workdir` is the current directory, i.e. `.`, and relative paths are relative to it.
         The result is correct regardless of earlier changes of the working directory.
 
     Notes
@@ -1033,7 +1052,7 @@ def get_amended_info() -> StepInfo:
     which can then be combined with the others using
     [`StepInfo.merge()`][stepup.core.stepinfo.StepInfo.merge].
     """
-    return _AMEND_HISTORY.get_info().rebase(get_here())
+    return _AMEND_HISTORY.get_info().rebase(".")
 
 
 class _HoldState:
@@ -1267,33 +1286,58 @@ def get_info() -> StepInfo:
     -------
     step_info
         Holds relevant information of the current step, useful for defining follow-up steps.
-        It is identical to the result of the [`step()`][stepup.core.api.step] call
+        It is equal to the result of the [`step()`][stepup.core.api.step] call
         that defined the current step.
         Hence, the `inp`, `out` and `vol` paths are relative to `workdir`,
         also when the step has changed its current working directory.
+        A relative `workdir` is relative to the current directory,
+        so it is `.` in a step that did not change its working directory.
         It only holds the dependencies declared when the step was defined,
         not those amended later.
         Those amended by the current process are returned by
         [`get_amended_info()`][stepup.core.api.get_amended_info].
     """
-    return _localize_step_info(get_rpc_client().call.get_step_info(get_job_i()))
+    command, tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths, tr_workdir = (
+        get_rpc_client().call.get_step_info(get_job_i())
+    )
+    tr_info = _make_tr_info(command, tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths)
+    return _localize_step_info(tr_info, tr_workdir)
 
 
-def _localize_step_info(tr_info: StepInfo) -> StepInfo:
+def _get_tr_anchor() -> Path:
+    """Return the physical `STEPUP_ROOT`, to which the paths sent to the director are relative."""
+    return anchor_path(".", get_stepup_root())
+
+
+def _make_tr_info(
+    command: str | None,
+    tr_inp_paths: Iterable[Path],
+    env_deps: Iterable[str],
+    tr_out_paths: Iterable[Path],
+    tr_vol_paths: Iterable[Path],
+) -> StepInfo:
+    """Hold paths in the form of the director in a step info anchored at the physical root."""
+    return StepInfo(command, tr_inp_paths, env_deps, tr_out_paths, tr_vol_paths, _get_tr_anchor())
+
+
+def _localize_step_info(tr_info: StepInfo, tr_workdir: Path) -> StepInfo:
     """Make the paths of a step info relative to the step's working directory.
 
     Parameters
     ----------
     tr_info
-        Step information as stored by the director,
-        with paths relative to `STEPUP_ROOT` and `workdir` set to the step's working directory.
+        Step information anchored at the physical `STEPUP_ROOT`,
+        with paths in the form of the director.
+    tr_workdir
+        The working directory of the step, relative to `STEPUP_ROOT` unless absolute.
 
     Returns
     -------
     step_info
-        A copy of `tr_info` with `inp`, `out` and `vol` relative to `workdir`.
+        A copy of `tr_info` with its paths relative to the working directory of the step,
+        whose `workdir` is relative to the current directory unless absolute.
     """
-    return attrs.evolve(tr_info, workdir=".").rebase(tr_info.workdir)
+    return tr_info.rebase(translate_back(tr_workdir))
 
 
 def graph(prefix: StrPath) -> None:

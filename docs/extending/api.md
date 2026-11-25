@@ -158,10 +158,10 @@ A call that raises an exception records nothing.
 Blocks may be nested, in which case every open tracker records the call.
 Calls to `amend()` in other processes, such as subprocesses of the step, are not recorded.
 
-The `workdir` of the tracker is the current working directory at the start of the block,
-relative to `STEPUP_ROOT`.
+The `workdir` of the tracker is the working directory at the start of the block,
+relative to the current directory at the time it is read.
 Relative paths in the tracker are relative to this `workdir`,
-also when the code in the block changes its working directory.
+also when the code in or after the block changes its working directory.
 
 The sets `inp`, `env`, `out` and `vol` of the tracker may be modified in place,
 as `config.toml` in the example shows.
@@ -175,13 +175,16 @@ so that it is not part of the dependencies it records.
 that the current process has amended so far, as a `StepInfo` without a command.
 Like a tracker, it includes the calls to `amend()` made by other API functions,
 but it needs no `with` block, because its scope is the whole process.
-Its `workdir` is the current working directory at the time of the call,
-relative to `STEPUP_ROOT`.
+Its `workdir` is the current directory, i.e. `.`,
+and relative paths are relative to the current directory at the time of the call.
 
 When a step starts a child process that amends dependencies,
 `get_amended_info()` in the step does not include them.
 The child process can call `get_amended_info()` itself and report the result to its parent,
 e.g. as JSON on its standard output.
+This JSON holds the working directory as an absolute path,
+so the parent uses the report as it is,
+and its `workdir` is relative to the current directory of the parent.
 The parent then combines the reports with
 [`StepInfo.merge()`][stepup.core.stepinfo.StepInfo.merge],
 which rebases the paths of each report onto its own `workdir`.
@@ -225,7 +228,8 @@ dump_step_info("all_info.json", info)
 The result keeps the `command` and `workdir` of `get_info()`,
 and holds paths such as `child/result.txt`.
 To combine step infos in a working directory of your choice,
-merge them into an empty one, e.g. `StepInfo(workdir=".").merge(*infos)`.
+merge them into an empty one,
+e.g. `StepInfo().merge(*infos)` for paths relative to the current directory.
 
 ### Dependency Filtering
 
@@ -357,6 +361,12 @@ project root (`STEPUP_ROOT`).
 into a director-relative path, and [`translate_back()`][stepup.core.path.translate_back]
 does the reverse.
 Use them when an API function exchanges paths with the director on the user's behalf.
+
+[`anchor_path()`][stepup.core.path.anchor_path] makes a path absolute
+by joining it to a directory whose symbolic links are resolved,
+e.g. the current directory or the directory of a file that is being read.
+Relative paths computed between such anchored paths are consistent,
+also on Windows, where the current directory may be spelled through a symbolic link.
 
 ## Steps That Use the Network
 

@@ -1,0 +1,13 @@
+{
+  "command": "./generate.py run",
+  "inp": [
+    "config.json",
+    "generate.py"
+  ],
+  "env": [],
+  "out": [
+    "values.txt"
+  ],
+  "vol": [],
+  "workdir": "../work"
+}

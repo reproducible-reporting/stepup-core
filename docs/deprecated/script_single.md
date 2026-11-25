@@ -58,6 +58,7 @@ The planning of the run scripts is then expected to
 write all the information about the created run steps to this JSON file.
 In complex workflows, it may be useful to load this JSON file with
 [`load_step_info()`][stepup.core.stepinfo.load_step_info].
+A relative `workdir` in this file is relative to the directory that contains the file.
 Consult the section on [StepInfo Objects](../advanced_topics/step_info.md)
 to learn how to use these objects.
 

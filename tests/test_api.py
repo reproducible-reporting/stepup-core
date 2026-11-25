@@ -1191,40 +1191,73 @@ def test_step_absolute_workdir(monkeypatch, path_tmp):
 
 @attrs.define
 class _StepInfoClient(DummySyncRPCClient):
-    """A dummy RPC client whose `get_step_info` returns a fixed step info."""
+    """A dummy RPC client whose `get_step_info` returns a fixed declaration of a step."""
 
-    tr_info: StepInfo = attrs.field(kw_only=True)
+    declaration: tuple = attrs.field(kw_only=True)
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
         if name == "get_step_info":
-            return self.tr_info
+            return self.declaration
         return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
 
 
-@pytest.mark.parametrize("cwd", ["sub", "sub/deep", "."])
-def test_get_info_relative_to_workdir(monkeypatch, path_tmp, cwd):
+@pytest.mark.parametrize(("cwd", "workdir"), [("sub", "."), ("sub/deep", ".."), (".", "sub")])
+def test_get_info_relative_to_workdir(monkeypatch, path_tmp, cwd, workdir):
     """The paths are relative to the step's `workdir`, whatever the current directory."""
     monkeypatch.setenv("STEPUP_ROOT", path_tmp)
     (path_tmp / "sub/deep").makedirs()
     monkeypatch.chdir(path_tmp / cwd)
-    tr_info = StepInfo(
+    declaration = (
         "./script.py",
-        inp=["sub/script.py", "a.txt"],
-        env=["FOO"],
-        out=["sub/out.txt"],
-        vol=["sub/deep/vol.txt"],
-        workdir="sub",
+        ["a.txt", "sub/script.py"],
+        ["FOO"],
+        ["sub/out.txt"],
+        ["sub/deep/vol.txt"],
+        "sub",
     )
-    client = _StepInfoClient(tr_info=tr_info)
+    client = _StepInfoClient(declaration=declaration)
     monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
-    assert get_info() == StepInfo(
+    info = get_info()
+    assert info == StepInfo(
         "./script.py",
         inp=["../a.txt", "script.py"],
         env=["FOO"],
         out=["out.txt"],
         vol=["deep/vol.txt"],
-        workdir="sub",
+        abs_workdir=path_tmp / "sub",
     )
+    assert info.workdir == workdir
+
+
+def test_get_info_absolute_workdir(monkeypatch, path_tmp):
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    (path_tmp / "sub").makedirs()
+    monkeypatch.chdir(path_tmp)
+    declaration = ("./script.py", ["sub/script.py"], [], [], [], path_tmp / "sub")
+    client = _StepInfoClient(declaration=declaration)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
+    info = get_info()
+    assert info.inp == ["script.py"]
+    assert info.workdir == path_tmp / "sub"
+    assert info.is_abs is True
+
+
+@pytest.mark.requires_symlinks
+def test_step_absolute_workdir_through_symlink(monkeypatch, path_tmp):
+    """An absolute `workdir` spelled through the symbolic link of `STEPUP_ROOT` is recognized."""
+    (path_tmp / "real/proj/sub").makedirs()
+    (path_tmp / "link").symlink_to(path_tmp / "real")
+    root = path_tmp / "link/proj"
+    monkeypatch.setenv("STEPUP_ROOT", root)
+    monkeypatch.chdir(root)
+    client = _CaptureDefineStepClient()
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
+    step_info = step("cat a.txt", inp="a.txt", workdir=root / "sub")
+    assert step_info.inp == ["a.txt"]
+    assert step_info.workdir == root / "sub"
+    _job_i, _command, tr_inp, _env, _out, _vol, tr_workdir, *_ = client.calls[0]
+    assert tr_inp == ["sub/a.txt"]
+    assert tr_workdir == root / "sub"
 
 
 def test_run_callable_here_root_for_workdir(monkeypatch, path_tmp, captured_step_kwargs):
@@ -1407,7 +1440,7 @@ def test_track_amend_basic(amend_sub):
         amend(inp="a.txt", env="FOO", out="./b.txt", vol="c.txt")
     info = tracker.get_info()
     assert info.command is None
-    assert info.workdir == "sub"
+    assert info.workdir == "."
     assert info.inp == ["a.txt"]
     assert info.env == ["FOO"]
     assert info.out == ["b.txt"]
@@ -1452,10 +1485,25 @@ def test_track_amend_chdir(amend_sub, path_tmp):
     (path_tmp / "sub/deep/x.txt").write_text("x", encoding="utf-8")
     with track_amend() as tracker, contextlib.chdir("deep"):
         amend(inp="x.txt", out="../y.txt")
+        assert tracker.workdir == ".."
+        assert tracker.get_info().workdir == ".."
     info = tracker.get_info()
-    assert info.workdir == "sub"
+    assert info.workdir == "."
     assert info.inp == ["deep/x.txt"]
     assert info.out == ["y.txt"]
+
+
+def test_track_amend_leave_directory(amend_sub, path_tmp):
+    with track_amend() as tracker:
+        amend(inp="a.txt", out="b.txt")
+    info = tracker.get_info()
+    with contextlib.chdir(".."):
+        assert tracker.workdir == "sub"
+        moved = tracker.get_info()
+        assert moved.workdir == "sub"
+    assert moved == info
+    assert moved.inp == ["a.txt"]
+    assert moved.out == ["b.txt"]
 
 
 def test_track_amend_outside_root(monkeypatch, path_tmp, amend_step_client):
@@ -1467,7 +1515,7 @@ def test_track_amend_outside_root(monkeypatch, path_tmp, amend_step_client):
     with track_amend() as tracker:
         amend(inp="../root/a.txt")
     info = tracker.get_info()
-    assert info.workdir == "../ext"
+    assert info.workdir == "."
     assert info.inp == ["../root/a.txt"]
     assert amend_step_client.calls[0][1] == {"a.txt"}
 
@@ -1487,28 +1535,30 @@ def test_track_amend_recheck(amend_sub):
     assert tracker.get_info().env == ["STEPUP_STARTUP_I"]
 
 
-def test_track_amend_input_not_found(monkeypatch, amend_sub):
+def test_track_amend_input_not_found(monkeypatch, amend_sub, path_tmp):
     monkeypatch.setattr(api, "_get_cached_rpc_client", _NotFoundAmendClient)
     with track_amend() as tracker, pytest.raises(InputNotFoundError):
         amend(inp="a.txt", out="b.txt")
-    assert tracker.get_info() == StepInfo(workdir="sub")
-    assert api._AMEND_HISTORY.get_info() == StepInfo()
+    assert tracker.get_info() == StepInfo(abs_workdir=path_tmp / "sub")
+    assert api._AMEND_HISTORY.get_info() == StepInfo(abs_workdir=path_tmp)
 
 
-def test_track_amend_while_holding(monkeypatch, amend_sub):
+def test_track_amend_while_holding(monkeypatch, amend_sub, path_tmp):
     monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
     with track_amend() as tracker, pytest.raises(AmendWhileHoldingError):
         amend(inp="a.txt", out="b.txt")
-    assert tracker.get_info() == StepInfo(workdir="sub")
+    assert tracker.get_info() == StepInfo(abs_workdir=path_tmp / "sub")
 
 
-def test_track_amend_modify_in_place(amend_sub):
+def test_track_amend_modify_in_place(amend_sub, path_tmp):
     with track_amend() as tracker:
         amend(inp="a.txt")
     tracker.inp.add("./extra.txt")
     tracker.inp.add(pathlib.Path("extra.txt"))
     tracker.env.add("FOO")
-    assert tracker.get_info() == StepInfo(inp=["a.txt", "extra.txt"], env=["FOO"], workdir="sub")
+    assert tracker.get_info() == StepInfo(
+        inp=["a.txt", "extra.txt"], env=["FOO"], abs_workdir=path_tmp / "sub"
+    )
 
 
 def test_track_amend_exception(amend_sub):
@@ -1536,28 +1586,37 @@ def test_track_amend_history_spelling(amend_sub):
     with track_amend():
         amend(inp="a.txt")
     assert api._AMEND_HISTORY.inp == {"sub/a.txt"}
-    assert api._AMEND_HISTORY.workdir == "."
+    assert api._AMEND_HISTORY._abs_workdir is None
 
 
-def test_get_amended_info_empty(amend_sub):
+def test_get_amended_info_empty(amend_sub, path_tmp):
     info = get_amended_info()
     assert info.command is None
-    assert info == StepInfo(workdir="sub")
+    assert info.workdir == "."
+    assert info == StepInfo(abs_workdir=path_tmp / "sub")
 
 
 def test_get_amended_info_chdir(amend_sub, path_tmp):
     (path_tmp / "sub/deep").makedirs()
     amend(inp="a.txt", env="FOO", out="./b.txt", vol="c.txt")
     info = get_amended_info()
-    assert info == StepInfo(inp=["a.txt"], env=["FOO"], out=["b.txt"], vol=["c.txt"], workdir="sub")
+    assert info.workdir == "."
+    assert info == StepInfo(
+        inp=["a.txt"], env=["FOO"], out=["b.txt"], vol=["c.txt"], abs_workdir=path_tmp / "sub"
+    )
     with contextlib.chdir("deep"):
         info = get_amended_info()
+        assert info.workdir == "."
     assert info == StepInfo(
-        inp=["../a.txt"], env=["FOO"], out=["../b.txt"], vol=["../c.txt"], workdir="sub/deep"
+        inp=["../a.txt"],
+        env=["FOO"],
+        out=["../b.txt"],
+        vol=["../c.txt"],
+        abs_workdir=path_tmp / "sub/deep",
     )
 
 
-def test_get_amended_info_inside_and_outside_tracker(amend_sub):
+def test_get_amended_info_inside_and_outside_tracker(amend_sub, path_tmp):
     amend(inp="a.txt")
     with track_amend():
         amend(inp="a.txt", env="FOO")
@@ -1567,13 +1626,13 @@ def test_get_amended_info_inside_and_outside_tracker(amend_sub):
     amend(env="BAR")
     assert len(amend_sub.calls) == 4
     assert get_amended_info() == StepInfo(
-        inp=["a.txt"], env=["BAR", "FOO"], out=["b.txt"], workdir="sub"
+        inp=["a.txt"], env=["BAR", "FOO"], out=["b.txt"], abs_workdir=path_tmp / "sub"
     )
 
 
-def test_get_amended_info_failed_amend(monkeypatch, amend_sub):
+def test_get_amended_info_failed_amend(monkeypatch, amend_sub, path_tmp):
     amend(env="FOO")
     monkeypatch.setattr(api, "_get_cached_rpc_client", _NotFoundAmendClient)
     with pytest.raises(InputNotFoundError):
         amend(inp="a.txt", out="b.txt")
-    assert get_amended_info() == StepInfo(env=["FOO"], workdir="sub")
+    assert get_amended_info() == StepInfo(env=["FOO"], abs_workdir=path_tmp / "sub")

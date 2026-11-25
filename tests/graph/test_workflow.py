@@ -49,7 +49,6 @@ from stepup.core.graph.workflow import (
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NamedGlob
 from stepup.core.path import Path, dir_range_upper
-from stepup.core.stepinfo import StepInfo
 
 
 def _amend(wfx: Workflow, step: Step, **kwargs) -> tuple[bool, list]:
@@ -676,14 +675,14 @@ async def test_record_subprocess_detached_step_is_recorded(wfp: Workflow):
         assert count == 1
 
 
-async def test_get_info_detached_step_returns_declaration(wfp: Workflow):
-    """A detached step's `get_info()` call must still describe its own declaration."""
+async def test_get_declaration_detached_step(wfp: Workflow):
+    """A detached step's `get_declaration()` call must still describe its own declaration."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "sub", inp_paths=["inp.txt"], out_paths=["out.txt"])
         sub = wfp.find(Step, "sub")
         sub.detach()
-        assert sub.get_info() == StepInfo("sub", ["inp.txt"], [], ["out.txt"], [], Path("."))
+        assert sub.get_declaration() == ("sub", ["inp.txt"], [], ["out.txt"], [], ".")
 
 
 async def test_define_step_input_static(wfp: Workflow):

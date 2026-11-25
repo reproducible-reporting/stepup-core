@@ -64,7 +64,8 @@ This will create an output file `out/hello.txt`
   which may be used for defining follow-up steps.
   The `StepInfo` objects follow the same convention:
   their `inp`, `out` and `vol` attributes are lists of paths.
-  If these are relative paths, they are relative to the `step_info.workdir` attribute.
+  If these are relative paths, they are relative to the `step_info.workdir` attribute,
+  which is itself relative to the current working directory, unless it is absolute.
   Consult the section [StepInfo Objects](../advanced_topics/step_info.md) for more details.
 
 - In advanced workflows, [`HERE` and `ROOT`](../advanced_topics/here_and_root.md)

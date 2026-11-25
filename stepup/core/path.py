@@ -27,6 +27,7 @@ from .exceptions import PathError
 __all__ = (
     "Path",
     "StrPath",
+    "anchor_path",
     "apply_affixes",
     "coerce_path",
     "coerce_paths",
@@ -349,7 +350,7 @@ def apply_affixes(path: StrPath, leading: str, trailing: str) -> Path:
 
 
 def parent_dir(path: StrPath) -> str:
-    """The directory containing `path`, with the project root written as `.`.
+    """The directory containing `path`, written as `.` when `path` has no directory part.
 
     A path ending in a separator names a directory,
     and its parent is then that same directory without the trailing separator.
@@ -359,12 +360,13 @@ def parent_dir(path: StrPath) -> str:
     Parameters
     ----------
     path
-        A path relative to the project root.
+        An absolute path, or a path relative to some directory.
 
     Returns
     -------
     parent
-        The parent directory, never empty and without a trailing separator.
+        The parent directory, relative to the same directory as `path` unless absolute,
+        never empty and without a trailing separator.
     """
     return str(coerce_path(path).parent) or "."
 
@@ -509,16 +511,36 @@ def _realpath_cached(path: Path) -> Path:
     return path.realpath()
 
 
-def _anchor(path: Path) -> Path:
-    """Prepare a path for the computation of a relative path to or from the real root.
+def anchor_path(path: StrPath, base: StrPath = ".") -> Path:
+    """Make a path absolute by joining it to a directory whose symbolic links are resolved.
 
-    A relative path is interpreted in the current directory, which POSIX reports as a physical path.
-    Windows reports the path through which the directory was entered, symbolic links included,
-    so there a relative path is joined to the resolved current directory first.
+    Relative paths computed between two anchored paths are then consistent,
+    because all anchors are spelled physically.
+    This matters on Windows, which reports the current directory
+    through the path by which it was entered, symbolic links included,
+    while POSIX reports it as a physical path.
+
+    Parameters
+    ----------
+    path
+        The path to anchor.
+        Its own symbolic links are not resolved,
+        so it need not exist and the result does not change when it is created later.
+    base
+        The directory to which a relative `path` is relative.
+        If relative, it is relative to the current directory.
+        It must exist, because its symbolic links are resolved.
+
+    Returns
+    -------
+    anchored_path
+        An absolute `path` as it is, after normalization,
+        or the normalized join of the resolved `base` and a relative `path`.
     """
-    if sys.platform == "win32" and not path.isabs():
-        return _realpath_cached(Path.cwd()) / path
-    return path
+    path = coerce_path(path).normpath()
+    if path.isabs():
+        return path
+    return (_realpath_cached(coerce_path(base).absolute()) / path).normpath()
 
 
 def _matching_root(workdir: Path) -> Path:
@@ -574,7 +596,7 @@ def translate(path: StrPath, workdir: StrPath = ".") -> Path:
     path = coerce_path(path).normpath()
     if not path.isabs():
         workdir = coerce_path(workdir).normpath()
-        path = (_anchor(workdir) / path).relpath(_matching_root(workdir))
+        path = (anchor_path(workdir) / path).relpath(_matching_root(workdir))
     return path
 
 
@@ -602,7 +624,7 @@ def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
     path = coerce_path(path).normpath()
     if not path.isabs():
         workdir = coerce_path(workdir).normpath()
-        path = (_matching_root(workdir) / path).relpath(_anchor(workdir))
+        path = (_matching_root(workdir) / path).relpath(anchor_path(workdir))
     return path
 
 
