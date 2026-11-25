@@ -65,10 +65,6 @@ to learn how to use these objects.
 In addition, the `script()` function also supports all the arguments of `step()`,
 which it simply passes on when creating the `./executable plan` step.
 
-!!! note
-
-    The `step_info` argument, and support for all `step()` arguments were added in StepUp 2.0.0.
-
 ## Script driver
 
 StepUp implements a [`driver()`][stepup.core.script.driver] function

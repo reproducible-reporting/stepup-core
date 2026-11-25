@@ -62,10 +62,6 @@ Hence, removed files remain in StepUp's workflow as detached nodes,
 until one runs `sb` (with `--clean` or `STEPUP_CLEAN=1`)
 to trigger automatic cleaning.
 
-!!! note
-
-    In StepUp 3.0.0, the old `cleanup` was renamed to `stepup clean`.
-
 ## Try the Following
 
 - The [Named Glob](../getting_started/named_glob.md) tutorial provides a good test case

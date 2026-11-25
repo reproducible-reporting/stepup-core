@@ -63,12 +63,6 @@ as in the first query,
 or converted to a plain list of paths with `ng.files()`, as in the second one.
 More of its features are covered in the [Named Glob](named_glob.md) tutorial.
 
-!!! note "Changed in StepUp 4"
-
-    In StepUp 3, overlapping queries were impossible:
-    `glob()` declared its matches, so two calls matching the same file raised an error.
-    Projects worked around this with ordering tricks and non-overlapping patterns.
-
 ## Reacting to New and Deleted Files
 
 Just like a pattern passed to `static()`,

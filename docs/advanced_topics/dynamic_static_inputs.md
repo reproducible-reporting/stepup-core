@@ -16,7 +16,7 @@ it is possible to declare a static input file and then amend the same step
 with that file as a dynamic input, all in the same script.
 It is a special case of [Dynamic Dependencies](dynamic_dependencies.md),
 which is occasionally useful.
-As of StepUp 1.2.0, this is allowed and no longer treated as a cyclic dependency.
+StepUp does not treat this as a cyclic dependency.
 
 For example, `plan.py` may read a configuration file to decide which steps to add to the workflow.
 Hence, the config file is a static input to the workflow.

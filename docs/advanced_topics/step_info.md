@@ -11,10 +11,6 @@ SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-!!! note
-
-    This feature was introduced in StepUp 1.3.0.
-
 The [`step()`][stepup.core.api.step] function always returns
 an instance of [`StepInfo`][stepup.core.stepinfo.StepInfo].
 This object holds arguments used to define the step,

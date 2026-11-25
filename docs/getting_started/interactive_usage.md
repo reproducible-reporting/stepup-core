@@ -13,8 +13,6 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 !!! note
 
-    The command-line options related to interactive usage have changed in StepUp 3.0.0
-
     More detailed information on interactive usage can be found in the
     [Interactive Usage Reference](../reference/interactive.md).
 

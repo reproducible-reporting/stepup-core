@@ -172,10 +172,3 @@ but the call to `static()` will fail in case of a missing file even when using a
   The plan is re-run because the set of matches shrank,
   and the copy step for `src/bar.txt` disappears from the workflow,
   together with its output `dst/bar.txt`.
-
-!!! note "Changed in StepUp 4"
-
-    In StepUp 3, `static()` only accepted literal paths:
-    a pattern had to be passed to `glob()`, which declared its matches as a side effect.
-    See [`static()` and `glob()` Have New Roles](../migration/from_3x_to_4x.md#static-and-glob-have-new-roles)
-    for the (usually one-word) edit this requires.
