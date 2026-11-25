@@ -28,6 +28,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - A `StepInfo` holds each path and environment variable name only once,
   also when the same path is passed several times or with different spellings.
   `step()` also omits such duplicates from its call to the director.
+- `get_info()` returns paths relative to the step's `workdir`,
+  also when the step changed its working directory.
+- `StepInfo.command` may be `None`, and every field of `StepInfo` has a default.
+  `dump_step_info()` omits `command` when it is `None`,
+  and `load_step_info()` accepts files without it.
+
+### Added
+
+- `StepInfo.rebase()` expresses the paths relative to another working directory.
 
 ## [4.3.0a0][] - 2026-11-23 {: #v4.3.0a0 }
 

@@ -39,7 +39,10 @@ and also return a [`NamedGlob`][stepup.core.nglob] instance.
 
 Note that the `StepInfo` object will only contain information known at the time the step is defined.
 Dynamic dependencies (inputs, outputs, ...) cannot be retrieved from `StepInfo` objects.
-Also note that relative paths in `inp`, `out` and `vol` are relative to the working directory.
+Relative paths in `inp`, `out` and `vol` are relative to `workdir`,
+which is itself relative to `STEPUP_ROOT`, unless it is absolute.
+The method `rebase()` returns a copy with paths relative to another working directory,
+e.g. `info.rebase(".")` for paths relative to `STEPUP_ROOT`.
 
 ## Example
 

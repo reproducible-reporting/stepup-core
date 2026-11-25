@@ -6,10 +6,11 @@ import json
 from collections.abc import Iterable
 
 import attrs
+from cattrs.gen import make_dict_unstructure_fn
 
 from .cattrs import json_converter
 from .nglob import NamedGlob
-from .path import Path, StrPath, coerce_path
+from .path import Path, StrPath, coerce_path, translate, translate_back
 
 __all__ = ("StepInfo", "dump_step_info", "load_step_info")
 
@@ -24,33 +25,77 @@ def _convert_to_strs(words: Iterable[str]) -> list[str]:
 
 @attrs.define
 class StepInfo:
-    """Information about a step in a StepUp build, intended for defining follow-up steps.
+    """Paths and environment variables of a step, or of another set of dependencies.
 
-    This object does not contain any dynamic dependency information.
-    It only holds initial dependencies known at the time the step is defined.
+    `command` is `None` when the dependencies do not belong to a single step definition,
+    e.g. when they were amended by a part of a step.
 
     All paths and environment variable names are stored in sorted order without duplicates,
     to ensure consistency.
-    If paths are relative, they should be relative to the work directory.
+    Relative paths in `inp`, `out` and `vol` are relative to `workdir`,
+    and a relative `workdir` is relative to `STEPUP_ROOT`.
     """
 
-    command: str = attrs.field(converter=str)
-    """The command executed by the step."""
+    command: str | None = attrs.field(default=None, converter=attrs.converters.optional(str))
+    """The command executed by the step, or `None`."""
 
-    inp: list[Path] = attrs.field(converter=_convert_to_paths)
-    """List of input paths of the step."""
+    inp: list[Path] = attrs.field(factory=list, converter=_convert_to_paths)
+    """List of input paths."""
 
-    env: list[str] = attrs.field(converter=_convert_to_strs)
+    env: list[str] = attrs.field(factory=list, converter=_convert_to_strs)
     """List of names of environment variables to which the step is sensitive."""
 
-    out: list[Path] = attrs.field(converter=_convert_to_paths)
-    """List of output paths of the step."""
+    out: list[Path] = attrs.field(factory=list, converter=_convert_to_paths)
+    """List of output paths."""
 
-    vol: list[Path] = attrs.field(converter=_convert_to_paths)
-    """List of volatile output paths of the step."""
+    vol: list[Path] = attrs.field(factory=list, converter=_convert_to_paths)
+    """List of volatile output paths."""
 
-    workdir: Path = attrs.field(converter=coerce_path)
-    """The work directory of the step."""
+    workdir: Path = attrs.field(default=Path("."), converter=coerce_path)
+    """The working directory, relative to `STEPUP_ROOT` unless absolute."""
+
+    def rebase(self, workdir: StrPath) -> "StepInfo":
+        """Express the same dependencies relative to another working directory.
+
+        Parameters
+        ----------
+        workdir
+            The new working directory, relative to `STEPUP_ROOT` unless absolute.
+
+        Returns
+        -------
+        step_info
+            A copy with normalized paths in `inp`, `out` and `vol`,
+            which are relative to the new `workdir`, unless they are absolute
+            and do not lie under an absolute `workdir`.
+            `command` and `env` are kept.
+
+        Notes
+        -----
+        When the working directory changes, relative paths are resolved through `STEPUP_ROOT`.
+        If this environment variable is not set, the current directory is taken as the root,
+        like in [`get_stepup_root()`][stepup.core.path.get_stepup_root].
+        The result does not depend on the current directory otherwise.
+        """
+        workdir = coerce_path(workdir).normpath()
+        if workdir == self.workdir.normpath():
+            return attrs.evolve(
+                self,
+                inp=[p.normpath() for p in self.inp],
+                out=[p.normpath() for p in self.out],
+                vol=[p.normpath() for p in self.vol],
+                workdir=workdir,
+            )
+        # Both working directories relative to the current directory.
+        old = translate_back(self.workdir)
+        new = translate_back(workdir)
+        return attrs.evolve(
+            self,
+            inp=[translate_back(translate(p, old), new) for p in self.inp],
+            out=[translate_back(translate(p, old), new) for p in self.out],
+            vol=[translate_back(translate(p, old), new) for p in self.vol],
+            workdir=workdir,
+        )
 
     def filter_inp(self, pattern: str, **subs: str) -> NamedGlob:
         """Return a `NamedGlob` object with matching results from `self.inp`."""
@@ -71,10 +116,25 @@ class StepInfo:
         return ng
 
 
+_unstructure_step_info_fields = make_dict_unstructure_fn(StepInfo, json_converter)
+
+
+def _unstructure_step_info(step_info: StepInfo) -> dict:
+    """Unstructure a `StepInfo`, omitting `command` when it is `None`."""
+    data = _unstructure_step_info_fields(step_info)
+    if step_info.command is None:
+        del data["command"]
+    return data
+
+
+json_converter.register_unstructure_hook(StepInfo, _unstructure_step_info)
+
+
 def load_step_info(filename: StrPath) -> StepInfo | list[StepInfo]:
     """Load one or more step info objects from a JSON file.
 
     The file should contain a single JSON object or a JSON array of such objects.
+    The `command` key may be omitted, in which case `command` is `None`.
     """
     with open(filename, encoding="utf-8") as fh:
         data = json.load(fh)
@@ -87,6 +147,7 @@ def dump_step_info(filename: StrPath, step_info: StepInfo | Iterable[StepInfo]):
     """Dump one or more step info objects to a JSON file.
 
     The file will contain a single JSON object or a JSON array of such objects.
+    The `command` key is omitted when `command` is `None`.
     """
     with open(filename, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(json_converter.unstructure(step_info), fh, indent=2)

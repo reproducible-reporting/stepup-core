@@ -19,6 +19,7 @@ from stepup.core.api import (
     call,
     copy,
     dumpns,
+    get_info,
     get_rpc_client,
     getenv,
     glob,
@@ -39,6 +40,7 @@ from stepup.core.exceptions import AmendWhileHoldingError, PathError, StepUpErro
 from stepup.core.nglob import NamedGlob
 from stepup.core.path import Path, make_path_out
 from stepup.core.rpc.client import DummySyncRPCClient
+from stepup.core.stepinfo import StepInfo
 
 
 def noop_amend(*_args, **_kwargs):
@@ -1155,6 +1157,44 @@ def test_step_removes_duplicate_spellings(monkeypatch, path_tmp):
     assert tr_out == ["sub/out.txt"]
     assert tr_vol == ["sub/vol.txt"]
     assert tr_workdir == "sub"
+
+
+@attrs.define
+class _StepInfoClient(DummySyncRPCClient):
+    """A dummy RPC client whose `get_step_info` returns a fixed step info."""
+
+    tr_info: StepInfo = attrs.field(kw_only=True)
+
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+        if name == "get_step_info":
+            return self.tr_info
+        return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
+
+
+@pytest.mark.parametrize("cwd", ["sub", "sub/deep", "."])
+def test_get_info_relative_to_workdir(monkeypatch, path_tmp, cwd):
+    """The paths are relative to the step's `workdir`, whatever the current directory."""
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    (path_tmp / "sub/deep").makedirs()
+    monkeypatch.chdir(path_tmp / cwd)
+    tr_info = StepInfo(
+        "./script.py",
+        inp=["sub/script.py", "a.txt"],
+        env=["FOO"],
+        out=["sub/out.txt"],
+        vol=["sub/deep/vol.txt"],
+        workdir="sub",
+    )
+    client = _StepInfoClient(tr_info=tr_info)
+    monkeypatch.setattr(api, "_get_cached_rpc_client", lambda: client)
+    assert get_info() == StepInfo(
+        "./script.py",
+        inp=["../a.txt", "script.py"],
+        env=["FOO"],
+        out=["out.txt"],
+        vol=["deep/vol.txt"],
+        workdir="sub",
+    )
 
 
 def test_run_callable_here_root_for_workdir(monkeypatch, path_tmp, captured_step_kwargs):

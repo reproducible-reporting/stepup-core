@@ -615,7 +615,7 @@ def step(
         env_overrides,
         duration,
     )
-    return _localize_step_info(tr_info, su_workdir)
+    return _localize_step_info(tr_info)
 
 
 def call(
@@ -1142,35 +1142,31 @@ def get_info() -> StepInfo:
     -------
     step_info
         Holds relevant information of the current step, useful for defining follow-up steps.
-        For consistency with other functions in this module, the `inp`, `out` and `vol`
-        paths are relative to the current working directory.
+        It is identical to the result of the [`step()`][stepup.core.api.step] call
+        that defined the current step.
+        Hence, the `inp`, `out` and `vol` paths are relative to `workdir`,
+        also when the step has changed its current working directory.
+        It only holds the dependencies declared when the step was defined,
+        not those amended later.
     """
-    return _localize_step_info(get_rpc_client().call.get_step_info(get_job_i()), ".")
+    return _localize_step_info(get_rpc_client().call.get_step_info(get_job_i()))
 
 
-def _localize_step_info(tr_info: StepInfo, workdir: StrPath) -> StepInfo:
+def _localize_step_info(tr_info: StepInfo) -> StepInfo:
     """Make the paths of a step info relative to the step's working directory.
 
     Parameters
     ----------
     tr_info
-        Step information as stored by the director, with paths relative to `STEPUP_ROOT`.
-    workdir
-        The step's working directory,
-        relative to the current working directory.
+        Step information as stored by the director,
+        with paths relative to `STEPUP_ROOT` and `workdir` set to the step's working directory.
 
     Returns
     -------
     step_info
         A copy of `tr_info` with `inp`, `out` and `vol` relative to `workdir`.
-        The `workdir` field itself is left relative to `STEPUP_ROOT`.
     """
-    return attrs.evolve(
-        tr_info,
-        inp=[translate_back(p, workdir) for p in tr_info.inp],
-        out=[translate_back(p, workdir) for p in tr_info.out],
-        vol=[translate_back(p, workdir) for p in tr_info.vol],
-    )
+    return attrs.evolve(tr_info, workdir=".").rebase(tr_info.workdir)
 
 
 def graph(prefix: StrPath) -> None:
